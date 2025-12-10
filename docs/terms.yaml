@@ -1,0 +1,315 @@
+terms:
+- spanish: Tendencia
+  english: Trend
+- spanish: Magnitud
+  english: Magnitude
+- spanish: Velas
+  english: Candles
+- spanish: Velocidad
+  english: Velocity
+- spanish: Tiempo
+  english: Time
+- spanish: Cadencia
+  english: Cadence
+- spanish: Retroceso
+  english: Pullback
+- spanish: MOMENTUM
+  english: Momentum
+- spanish: Alto
+  english: High
+- spanish: Medio
+  english: Medium
+- spanish: Bajo
+  english: Low
+- spanish: Volatilidad
+  english: Volatility
+- spanish: Modelos
+  english: Models
+- spanish: Fundamental
+  english: Fundamental
+- spanish: Quiebres
+  english: Breakouts
+- spanish: Soportes y Resistencias
+  english: Supports and Resistances
+- spanish: Picos y valles
+  english: Peaks and Valleys
+- spanish: Bloques de órdenes
+  english: Order Blocks
+- spanish: Swings de precio
+  english: Price Swings
+- spanish: Swing high
+  english: Swing High
+- spanish: Swing low
+  english: Swing Low
+- spanish: Order Flow
+  english: Order Flow
+- spanish: Regresiones
+  english: Regressions
+- spanish: Órdenes
+  english: Orders
+- spanish: Nueva Teoría de Soportes y Resistencias
+  english: New Theory of Supports and Resistances
+- spanish: Niveles institucionales
+  english: Institutional Levels
+- spanish: Cantidad de toques
+  english: Number of Touches
+- spanish: Nivel crítico
+  english: Critical Level
+- spanish: Niveles Implícitos
+  english: Implicit Levels
+- spanish: Aperturas
+  english: Opens
+- spanish: Cierres
+  english: Closes
+- spanish: Anuales
+  english: Annuals
+- spanish: Mensuales
+  english: Monthlies
+- spanish: Semanales
+  english: Weeklies
+- spanish: Diarios
+  english: Dailies
+- spanish: Líneas verticales
+  english: Vertical Lines
+- spanish: S/R
+  english: S/R
+- spanish: Psicología
+  english: Psychology
+- spanish: Comerciales
+  english: Commercials
+- spanish: Especular
+  english: Speculate
+- spanish: Takers
+  english: Takers
+- spanish: Makers
+  english: Makers
+- spanish: Indicadores
+  english: Indicators
+- spanish: Riesgo
+  english: Risk
+- spanish: FED
+  english: FED
+- spanish: Bancos Centrales
+  english: Central Banks
+- spanish: Money Market
+  english: Money Market
+- spanish: Rentable
+  english: Profitable
+- spanish: Riesgos asimétricos
+  english: Asymmetric Risks
+- spanish: Mercado
+  english: Market
+- spanish: Gráfica
+  english: Chart
+- spanish: Órdenes stops
+  english: Stop Orders
+- spanish: Órdenes limit
+  english: Limit Orders
+- spanish: Equilibrio
+  english: Equilibrium
+- spanish: Desbalance
+  english: Imbalance
+- spanish: Mesas de intercambio
+  english: Exchange Desks
+- spanish: Aggregator
+  english: Aggregator
+- spanish: Dealers-Interdealers
+  english: Dealers-Interdealers
+- spanish: Liquidez
+  english: Liquidity
+- spanish: Risk-on
+  english: Risk-On
+- spanish: Risk-off
+  english: Risk-Off
+- spanish: Sell-side
+  english: Sell-Side
+- spanish: Buy-side
+  english: Buy-Side
+- spanish: Market making
+  english: Market Making
+- spanish: Ejes de poder
+  english: Power Axes
+- spanish: Derivados
+  english: Derivatives
+- spanish: Bloques
+  english: Blocks
+- spanish: Egocéntrico
+  english: Egocentric
+- spanish: Trading
+  english: Trading
+- spanish: Precio
+  english: Price
+- spanish: Valor
+  english: Value
+- spanish: Costo
+  english: Cost
+- spanish: Análisis técnico
+  english: Technical Analysis
+- spanish: Manejo de Riesgo
+  english: Risk Management
+- spanish: Stop Loss
+  english: Stop Loss
+- spanish: Pips
+  english: Pips
+- spanish: R:R
+  english: R:R
+- spanish: Probabilidades
+  english: Probabilities
+- spanish: Renta
+  english: Income
+- spanish: Estrategia
+  english: Strategy
+- spanish: Quiebres
+  english: Breaks
+- spanish: Aperturas diarias
+  english: Daily Opens
+- spanish: Magnitud
+  english: Magnitude
+- spanish: Alcista
+  english: Bullish
+- spanish: Bajista
+  english: Bearish
+- spanish: MHM
+  english: MHM
+- spanish: LTF
+  english: LTF
+- spanish: Pérdida de Momentum
+  english: Momentum Loss
+- spanish: Similitud
+  english: Similarity
+- spanish: Fundamentos
+  english: Fundamentals
+- spanish: Proceso
+  english: Process
+- spanish: Direccionalidad
+  english: Directionality
+- spanish: Patrón
+  english: Pattern
+- spanish: Estructura de precio
+  english: Price Structure
+- spanish: Premisa
+  english: Premise
+- spanish: INFO EXTERIOR
+  english: EXTERNAL INFO
+- spanish: Lotaje
+  english: Lot Size
+- spanish: Proyecciones
+  english: Projections
+- spanish: Probabilidad
+  english: Probability
+- spanish: Macro
+  english: Macro
+- spanish: Acercamiento
+  english: Approach
+- spanish: MCHM
+  english: Market Makers' Buy Movement
+- spanish: MVHC
+  english: Market Makers' Sell Movement
+- spanish: TM
+  english: Macro Trend
+- spanish: IPDA
+  english: IPDA
+- spanish: Retailers
+  english: Retailers
+- spanish: Bancos SIFI
+  english: SIFI Banks
+- spanish: Logística
+  english: Logistics
+- spanish: Arquitectura
+  english: Architecture
+- spanish: Pullbacks
+  english: Pullbacks
+- spanish: Post-volatilidad
+  english: Post-Volatility
+- spanish: Pre-momentum
+  english: Pre-Momentum
+- spanish: Orden
+  english: Order
+- spanish: Rangos
+  english: Ranges
+- spanish: PFQs
+  english: False Breakout Patterns
+- spanish: Presión
+  english: Pressure
+- spanish: Retroceso Redondo
+  english: Round Retracement
+- spanish: Abdicación
+  english: Abdication
+- spanish: Continuación
+  english: Continuation
+- spanish: Exceso de precio
+  english: Price Excess
+- spanish: Shutdown de liquidez
+  english: Liquidity Shutdown
+- spanish: Riesgo por abdicación
+  english: Abdication Risk
+- spanish: Cash Flow
+  english: Cash Flow
+- spanish: Baile Bursátil
+  english: Stock Market Dance
+- spanish: Marco de trabajo
+  english: Framework
+- spanish: Expansión
+  english: Expansion
+- spanish: Regresión
+  english: Regression
+- spanish: Consolidación
+  english: Consolidation
+- spanish: Puntos de referencia institucional
+  english: Institutional Reference Points
+- spanish: Desbalances
+  english: Imbalances
+- spanish: Piscinas de liquidez
+  english: Liquidity Pools
+- spanish: CSL
+  english: Stop Loss Hunt
+- spanish: Rapidez
+  english: Speed
+- spanish: Comercio
+  english: Trade
+- spanish: Volumen
+  english: Volume
+- spanish: Órdenes pendientes
+  english: Pending Orders
+- spanish: Ingeniería de liquidez
+  english: Liquidity Engineering
+- spanish: Bloques de precio
+  english: Price Blocks
+- spanish: Rejection
+  english: Rejection
+- spanish: Impulse
+  english: Impulse
+- spanish: Suspension
+  english: Suspension
+- spanish: Mitigation
+  english: Mitigation
+- spanish: GVJ
+  english: Fair Value Gap
+- spanish: ZC
+  english: Confluence Zones
+- spanish: PZC
+  english: Possible Confluence Zone
+- spanish: Sistema Orientado a Procesos SOP
+  english: Process-Oriented System SOP
+- spanish: Fundamentales
+  english: Fundamentals
+- spanish: Divisas
+  english: Currencies
+- spanish: PPP
+  english: Purchasing Power Parity
+- spanish: NIIIP
+  english: Net International Investment Position
+- spanish: Setups
+  english: Setups
+- spanish: Nivel Invertido NI
+  english: Inverted Level NI
+- spanish: Patrón de Falso Quiebre PFQ
+  english: False Break Pattern PFQ
+- spanish: Pullback
+  english: Pullback
+- spanish: Momentum desbalance
+  english: Momentum Imbalance
+- spanish: Swing Failure Pattern
+  english: Swing Failure Pattern
+- spanish: Punto Óptimo de Descuento
+  english: Optimal Discount Point

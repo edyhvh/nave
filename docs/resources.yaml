@@ -1,0 +1,13 @@
+repositories:
+- name: OpenBB
+  url: https://github.com/OpenBB-finance/OpenBB
+- name: QuantConnect (Lean)
+  url: https://github.com/QuantConnect/Lean
+- name: PyCryptoBot
+  url: https://github.com/whittlem/pycryptobot
+- name: TradingView Charting Library Examples
+  url: https://github.com/tradingview/charting-library-examples
+- name: CoinAPI SDK
+  url: https://github.com/api-bricks/api-bricks-sdk
+- name: Glassnode API Python Client
+  url: https://github.com/glassnode/glassnode-api-python-client

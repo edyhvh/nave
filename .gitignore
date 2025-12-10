@@ -1,0 +1,144 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables - IMPORTANT: Never commit API keys!
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OpenBB credentials (stored locally by OpenBB)
+.openbb/
+
+# Logs
+*.log
+
+# Cache
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Data files (never commit sensitive or large data files)
+*.csv
+*.xlsx
+*.xls
+*.json
+*.parquet
+*.feather
+*.pkl
+*.pickle
+data/
+raw_data/
+processed_data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# IDE and Editor files
+.vscode/settings.json
+.idea/workspace.xml
+.idea/tasks.xml
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Financial data and API keys (extra protection)
+config/secrets.json
+config/api_keys.json
+secrets/
+credentials/
+
+# Cache directories
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+test-results/
+htmlcov/
+
+# Distribution and packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments (extra patterns)
+.venv/
+venv/
+ENV/
+env/
+.conda/
+conda/
+
+# Tools and utilities
+.mise/
+.direnv/
+

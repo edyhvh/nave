@@ -1,0 +1,51 @@
+# OpenBB Core Platform
+openbb>=4.0.0
+
+# OpenBB Extensions - Required for data access
+openbb-benzinga>=1.5.0
+openbb-bls>=1.2.0
+openbb-cftc>=1.2.0
+openbb-commodity>=1.4.0
+openbb-congress-gov>=1.1.0
+openbb-crypto>=1.5.0
+openbb-currency>=1.5.0
+openbb-derivatives>=1.5.0
+openbb-econdb>=1.4.0
+openbb-economy>=1.5.0
+openbb-equity>=1.5.0
+openbb-etf>=1.5.0
+openbb-federal-reserve>=1.5.0
+openbb-fixedincome>=1.5.0
+openbb-fmp>=1.5.1
+openbb-fred>=1.5.0
+openbb-imf>=1.2.0
+openbb-index>=1.5.0
+openbb-intrinio>=1.5.0
+openbb-news>=1.5.0
+openbb-oecd>=1.5.0
+openbb-polygon>=1.5.0
+openbb-regulators>=1.5.0
+openbb-sec>=1.5.0
+openbb-tiingo>=1.5.0
+openbb-tradingeconomics>=1.5.0
+openbb-us-eia>=1.2.0
+# Note: openbb-uscongress may not be available as a separate package
+# It might be included in the core OpenBB platform
+openbb-yfinance>=1.5.0
+
+# Core data science and financial analysis
+pandas>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0  # For HTTP requests (more reliable than urllib)
+python-dotenv>=1.0.0  # For loading .env files securely
+
+# Data visualization (optional but recommended for analysis)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Date and time utilities
+python-dateutil>=2.8.0
+
+# Development and testing
+pytest>=7.0.0
+ruff>=0.1.0  # Linter and formatter

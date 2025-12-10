@@ -1,0 +1,390 @@
+technical_philosophy:
+  trend:
+    components:
+      - magnitude: Candles - Measure trend strength via candle size.
+      - velocity: Time - Speed of price movement.
+      - cadence: Pullback - Frequency and depth of corrections.
+    code_orientation: Implement as a function to classify trend (e.g., calculate average candle body, time between highs/lows, Fibonacci retracements for cadence).
+
+  momentum:
+    levels:
+      - high: High momentum - Strong directional moves.
+      - medium: Medium momentum - Balanced trends.
+      - low: Low momentum - Weak or ranging markets.
+    volatility_interaction:
+      - Models do not fulfill perfectly; dance between momentum and volatility.
+      - Fundamental needed for momentum; post-momentum volatility leads to counter-moves for setups.
+      - 80% breakouts fail in volatility; changes between models are non-violent.
+    code_orientation: Develop momentum indicator (e.g., using RSI or rate of change); integrate volatility check (ATR) to detect shifts and generate setup alerts.
+
+  volatility:
+    definition: percentage of asset decision with respect to its average price over a determined period.
+    code_orientation: Calculate as standard deviation or ATR; use for filtering trades (e.g., avoid entries if volatility > threshold).
+
+  supports_and_resistances:
+    key_elements:
+      - Peaks and valleys.
+      - Order blocks.
+      - Price swings.
+      - Delimit in HTF; use order flow and volatility formation.
+      - NAVE assumes positions in regressions.
+      - Long-data swings important for S/R.
+      - Market moves via orders; identify trapped orders and trend.
+    new_theory:
+      - Institutional levels: 00, 20, 50, 80.
+      - Number of touches: Critical levels.
+      - Implicit levels: Annual, monthly, weekly, daily opens/closes.
+      - Time importance; vertical lines for trend changes.
+      - S/R should match institutional levels.
+      - Wait candle-by-candle for peak/valley formation.
+    code_orientation: Algorithm to detect swings (e.g., ZigZag indicator); mark institutional levels; backtest touches for criticality.
+
+  psychology:
+    principles:
+      - Commercials move the market.
+      - Speculate is making a bet.
+      - We are takers.
+      - Commercials/institutions are makers.
+      - Commercials/institutions do not watch indicators.
+      - Watch time.
+      - Watch momentum.
+      - There is a 50%-50%.
+      - Lesser market exposure = Lesser risk exposure.
+      - Each market is different.
+      - Some assets are more technical than others.
+      - FED and central banks seek to generate necessary confidence.
+      - Money Market. The market prices money.
+      - Being profitable consists in:
+      - Asymmetric risks.
+      - Know how to reduce losses and increase gains.
+      - The market is an efficient site to generate transactions.
+      - Why does it move from one point to another? By the quantity of orders.
+      - When stop orders overpower limits, there is continuation of the impulse.
+      - When limit orders overpower stops, there is regression of the impulse.
+      - The market is not the chart.
+      - Regression points are formed by orders at those levels.
+      - Equilibrium. Optimal movement for arbitrage.
+      - Imbalance. Optimal movement for leverage.
+      - Exchange desks. Aggregator, monitor and try to offer the best price. Dealers-Interdealers.
+      - An efficient market consists of sufficient liquidity in consolidative processes and releases them in impulsive processes.
+      - Liquidity. Capacity that a market place has to absorb orders (matching) of offerers and demanders through risk third-party and charge of the service (offset risk-liquidity engine) or assuming the risk within their own balance sheets.
+      - Not the same: price, chart, market.
+      - Risk-on: Risk opening.
+      - Risk-off: Risk aversion.
+      - No one trades the market but their belief of the market.
+      - Sell-side: Market making.
+      - Buy-side: All others.
+      - Market making. Create market, necessary liquidity. Matching process, matching trading. Pair positions, buyers and sellers.
+      - Power axes
+      - 1. USA
+      - 2. EU (European Union)
+      - 3. China.
+      - A trader is paid for the quantity of uncertainty they are willing to assume.
+      - Derivatives are also useful for price ranges.
+      - Know how to locate blocks.
+      - We position pre-momentum because there is the greatest amount of money.
+      - Do not be egocentric, trading is discretionary.
+      - The market is a perfectly arbitrated site when it is not, desbalances occur.
+      - The Market is a dynamic process and cannot be static in a system of constant dynamism.
+      - There is an important difference between Difference between price, value, cost.
+      - The existence of fundamental value (in the chaos of technical analysis) does not exist such thing as "technical value".
+      - Time is primordial for speculators and, inclusive, can be their best friend if used correctly.
+    code_orientation: Incorporate in risk models (e.g., position sizing based on risk-on/off detection via VIX); simulate psychology via backtests.
+
+  risk_management:
+    steps:
+      - Position size. Q
+      - What is the Stop Loss in pips.
+      - How many pips we are winning or losing.
+      - Risk per operation.
+    guidelines:
+      - Evolution of the R.
+      - Have a good R:R.
+      - Take profits before objective if necessary.
+      - Do not seek entries but probabilities.
+      - Establish budget.
+      - No need to take all operations.
+      - Establish an income and operate around it.
+      - Reduce risk if you are slapped by the market.
+      - Define a weekly risk according to capital.
+      - Define which setups are the best.
+    stop_loss:
+      - SL according to TA and not percentages.
+      - Calculate the SL where it is known it will not be touched.
+      - SL in invalidation points, points where the setup is invalidated by price. Where the idea is not true.
+      - Avoid putting stops in obvious liquidity pools.
+      - Monitor price action.
+      - Retailers are more foolish and obvious than we see or believe.
+      - They are unique depending on the setup.
+    code_orientation: Build risk calculator module; functions for SL placement (e.g., beyond swings); backtest R:R ratios.
+
+  strategy:
+    core:
+      - We are in favor of the trend.
+      - We seek regressions in favor of the trend.
+      - We use breaks.
+      - Observe if the market is starting or ending a trend.
+      - Time we are going to dedicate.
+      - Establish what I like to see in the chart.
+      - Wait candle by candle for the peak and valley to form.
+      - Be aware of the daily openings of the pairs to observe.
+      - Define magnitude: High, Medium, Low.
+      - Bullish or Bearish.
+      - Seek MHM in LTF.
+      - Watch loss of Momentum.
+      - Similarity not exactitude.
+      - Watch systematically the fundamentals.
+    process:
+      - Trend.
+      - Directionality.
+      - Pattern.
+      - Order Flow.
+      - If TM bullish, tm bullish.
+      - If TM bearish, tm bearish.
+    price_structure:
+      - Serves for:
+      - Define risks. Asymmetric risks.
+      - Create projections. Confluence zones.
+      - Use directionality. Situational analysis.
+      - The premise gives me the structure - EXTERNAL INFO.
+      - The premise gives me directionality.
+      - Evaluate market data with respect to the trend.
+      - Define if there is risk-on or risk-off.
+    before_taking_any_position:
+      - When am I going to exit?
+      - What is the lot size to assume?
+      - Projections of the movement.
+      - a) Probability.
+      - b) What happens in the macro?
+    approach:
+      - Premise.
+      - Establish trend. Market Makers' Buy Movement - Market Makers' Sell Movement.
+      - Define graphic structure. Macro Trend
+      - Define phase. IPDA.
+    retailers:
+      - What levels are they watching?
+      - Their orders?
+      - Toward where would be the liquidity necessary for IPDA to liquidate 86% of the movement?
+    sifi_banks:
+      - Toward where are they aiming?
+      - Which have the competitive advantage?
+      - What are they doing at level of?:
+      - Interest rates.
+      - Trades.
+      - Clients.
+      - Price.
+      - Cost.
+      - Business.
+      - Investment.
+    logistics_and_architecture:
+      logistics:
+        description: Everything needed to arm a position.
+        exit_points:
+          - Exit points.
+          - a) TP: Possible Confluence Zone, SZC.
+          - b) SL: Invalidation points.
+        entry_points:
+          - Entry points. Entry reason.
+          - Continuation or regression.
+          - Pullback or impulse.
+        assumed_risk:
+          - Assumed risk.
+      architecture:
+        description: Reasons to watch the asset in question and locate the logistics elements in the chart.
+        elements:
+          - Macro and fundamental reading.
+          - 1. Fundamental reason.
+          - 2. Forecast of the asset value.
+      notes:
+        description: All systems are based on leveraging positions in pullbacks. Post-volatility pre-momentum. We must wait for directionality.
+        points:
+          - While farther you place the order from the breakout point.
+          - a) Higher probability of being taken.
+          - b) Higher amount of assumed risk.
+          - c) Higher space for price to oscillate,
+          - While closer you place the order from the breakout point.
+          - a) Lower possibility of being taken.
+          - b) Lower amount of assumed risk.
+          - c) Lower space for price to oscillate.
+      timeframes:
+        description: Macro Trend - Price phase in which we are (IPDA)
+        elements:
+          - Tm - Imbalances.
+          - Tm - Entry patterns.
+    code_orientation: Strategy engine with functions for trend detection (Market Makers' Buy Movement/Market Makers' Sell Movement), phase classification (IPDA), entry/exit signals based on regressions.
+
+  ranges:
+    pfqs:
+      - Toward where is the pressure?
+      - For ranges:
+      - Apply regression patterns.
+      - Wait False Breakout Patterns.
+      - Go in favor of the trend.
+      - Wide stops.
+      - Position reduction.
+      - Risk reduction.
+      - If there is break, wait round retracement.
+      - When we are in a range can occur 2 scenarios after a break, continuation, breaks the level, retraces to then continue expanding or abdication, respect of the level, can even close above the level but retraces to the range violently.
+      - False Breakout Patterns - Stop Loss Hunt are risks by abdication.
+    price_excess: Levels of absolute regression after collecting liquidity in a point of order accumulation. Liquidity shutdown.
+    abdication_risk:
+      description: Strong regression to range; focus on trapped traders, use opposite side advantage, assume equal/greater risk.
+      points:
+        - When there is a break we could have:
+        - 1. Abdication risk.
+        - 2. Certain breakout movement.
+        - Strong candle against the break.
+        - Abdication risk.
+        - When there is a break one must ask What changed?
+        - It is a liquidity trap.
+        - Is there a fundamental reason that explains the movement?
+    concepts:
+      - Cash Flow: Search for the greatest amount of money in a retracement to then regress with the trend.
+      - Order Flow: Movements that are generated in IPDA phase to perform the Cash Flow.
+    code_orientation: Range detector (e.g., Bollinger Bands); False Breakout Patterns breakout scanner; abdication risk calculator.
+
+  stock_market_dance:
+    framework:
+      - Expansion.
+      - Retracement.
+      - Regression.
+      - Consolidation.
+    institutional_reference_points:
+      - Price blocks.
+      - Imbalances.
+      - Liquidity pools and Stop Loss Hunt.
+      - Equilibrium.
+    market_movement:
+      description: By liquidity. How fast the market can absorb certain quantity of orders at certain point.
+      elements:
+        - Speed.
+        - Trade.
+        - Volume.
+        - Pending orders.
+    phases:
+      - Consolidation: Volatility, order matching.
+      - Expansion: Order blocks.
+      - Retracement: Re-pricing. Manifests in form of imbalances. Fair value.
+      - Regression: Movement in opposite sense.
+    code_orientation: State machine for phase detection; liquidity absorption models.
+
+  imbalances:
+    elements:
+      - Pre-imbalance candle.
+      - Post-imbalance candle.
+    liquidity_locations:
+      - Swings.
+      - Price blocks.
+      - Rejection blocks.
+      - Order blocks.
+      - Liquidity blocks.
+      - Suspension blocks.
+      - Mitigation blocks.
+      - Annual/monthly/weekly opens.
+      - Historical supports.
+      - Institutional levels.
+    liquidity_pool:
+      - Below swing lows or above swing highs.
+      - Above high ranges.
+      - Below low ranges.
+      - Important swings.
+      - HTF highs and lows.
+      - Equal swings.
+    identification:
+      - Where are the retail stops? Stop Loss Hunt is when price goes toward an area where retail stops are.
+    blocks_of_price:
+      - Blocks are supports and resistances. They are zones or areas where we expect a rebound. Price zones.
+      - Rejection block. Normally found in liquidity search processes like False Breakout Patterns and Stop Loss Hunt.
+      - Order blocks. Points where there was sponsorship of an institutional movement.
+      - Impulse blocks. They are reaction movements that confirm the structure break.
+      - Suspension blocks. Presume that the last SH made in a Market Makers' Buy Movement or the last SL made by a Market Makers' Sell Movement, is, in effect, the last of that profile. These hunt bottoms or tops.
+      - Mitigation blocks. The categorization of block of the candles give those candles that go against the current movement.
+      - Bullish, bearish candles.
+      - Bearish, bullish candles.
+    mitigation_blocks: Why mitigation blocks? Because we are seeking the last point of optimal/efficient commercialization in the market. That happens in regression movements, price goes toward those levels by order flow.
+    projections:
+      description: Fair Value Gap and confluence zones serve to make projections.
+    fair_value_gaps:
+      description: Imbalances or excesses in price due to market inefficiencies to arbitrage them. Price will tend to return to fill that gap.
+    confluence_zones:
+      description: Demarcate areas that can present rejection by price. Also points where there can be lateralization.
+      elements:
+        - In bullish. Supports during the prior Market Makers' Sell Movement.
+        - In bearish. Resistances during the prior Market Makers' Buy Movement.
+    code_orientation: Block classifier; overlay on charts.
+
+  process_oriented_system_sop:
+    steps:
+      - Define the level in Macro: Bullish or Bearish.
+      - Define trend in Macro Trend.
+      - Define structure. IPDA phase.
+      - Propitious liquidity for discount.
+      - Propitious liquidity for discount.
+      - 3.1 Liquidity generation points.
+      - 3.2 Order matching.
+      - While price goes in its trend, mark liquidity generation points.
+      - Optimal discount levels.
+      - Anticipate regression to those levels to seek setups.
+      - Point to which the pullback can extend.
+      - The liquidity that resides there is to seek positions.
+    pre_launch_order_questions:
+      - Is there or not momentum in the trend?
+      - Is there trend change or are we in a Pullback of a major movement?
+      - What orders is price triggering currently? Stop orders or limit orders.
+    code_orientation: SOP workflow in code; pre-trade checklist functions.
+
+  fundamentals:
+    analysis: The fundamental analysis depends on the subject and probability, 'When you hear something barking think first of a dog' is to go for the most intuitive.
+    currencies:
+      - Currencies are divided in 2 groups.
+      - To know the value of a currency in the long term we can use: Purchasing Power Parity and Net International Investment Position. In the short term we focus on capital flows.
+      - 1. Center and periphery.
+      - Their variables are:
+      - 1. Growth.
+      - 2. Monetary policy.
+      - 3. Risk appetite.
+      - 2. Commodities and free float.
+    code_orientation: Fundamental scorer integrating APIs.
+
+  setups:
+    inverted_level_ni_or_ni_plus_50_percent:
+      - Breakout.
+      - Round retracement
+      - Swing high or Swing low.
+      - Place order.
+      - They can occur via expansion, consolidation, retracement or expansion, retracement.
+    false_break_pattern_pfq:
+      - Peaks and valleys (explicit and implicit).
+      - Stop Loss Hunt in previous swings.
+      - Regression. (Consolidation or rejection).
+      - Evaluate R:R.
+      - 1. Establish levels and see previous swings.
+      - 2. The swing has to form.
+      - 3. High volume.
+      - 4. Order.
+    pullback:
+      - Defined trend.
+      - Defined structure.
+      - Clear levels.
+      - A MHM
+      - Wait strong movement. Direction.
+      - Wait for an entry when price retraces to a price defined in advance.
+      - Immediate pullbacks are better in tm.
+      - When it breaks a support or resistance we place a limit order immediately at the support or resistance to wait the retracement.
+      - In pullbacks we bet on liquidity shutdowns.
+    momentum_imbalance:
+      - Imbalance.
+      - Equilibrium.
+      - Entry.
+      - Profit.
+    swing_failure_pattern:
+      - Swing in your directional TF.
+      - Break of that swing with False Breakout Patterns.
+      - Structure break. (Confirm Market Makers' Buy Movement or Market Makers' Sell Movement).
+      - Retracement to volatility zone and filling of imbalance up to 75%.
+    optimal_discount_point:
+      - 50% of the block.
+      - Point within which it should present rejection.
+      - Can be crossed by a wick but not above.
+      - If it closes above it can seek higher levels.
+    code_orientation: Setup detectors; backtest each for probability/R:R.

@@ -1,0 +1,65 @@
+tech_stack:
+  frontend:
+    framework: Next.js
+    description: Server-side rendering and static site generation capabilities for interactive dashboards.
+    dependencies:
+      - react: Core library for UI components.
+      - typescript: For type safety in code.
+      - tailwindcss: Utility-first CSS framework for styling.
+      - recharts: For data visualization and charts (e.g., momentum, volatility graphs).
+      - tanstack/react-query: For data fetching, caching, and synchronization with backend APIs.
+      - zustand: Lightweight state management.
+      - axios: For HTTP requests to backend.
+      - socket.io-client: For real-time updates via WebSockets.
+    dev_tools:
+      - eslint: Code linter.
+      - prettier: Code formatter.
+      - jest: Testing framework.
+      - react-testing-library: For component testing.
+
+  backend:
+    framework: FastAPI
+    description: Asynchronous Python API framework for handling data processing and integrations.
+    dependencies:
+      - pydantic: Data validation and settings management.
+      - sqlalchemy: ORM for database interactions.
+      - celery: For background tasks (e.g., API polling).
+      - pandas: Data manipulation for custom indicators.
+      - ta-lib: Technical analysis library for momentum/volatility calculations.
+      - httpx: Asynchronous HTTP client for API calls (e.g., FRED, Coingecko).
+      - uvicorn: ASGI server for running FastAPI.
+    dev_tools:
+      - pytest: Testing framework.
+      - black: Code formatter.
+
+  database:
+    primary: SQLite
+    description: Simple, file-based open-source database for MVP time-series data (e.g., historical indicators, crypto prices). No server required, easy setup for development.
+    alternatives_for_scale:
+      - QuestDB: Open-source time-series database for high-ingestion/low-latency needs if SQLite becomes insufficient.
+      - PostgreSQL: Base open-source relational DB (self-hosted) for more complex queries.
+    caching:
+      name: Redis
+      description: For pub/sub messaging and caching (e.g., real-time alerts, API responses). Use in-memory mode for simplicity in MVP.
+
+  deployment:
+    hosting_options:
+      - frontend: Vercel
+        tier: Free tier for Next.js deployment with automatic CI/CD and global CDN.
+      - backend_and_db: Render
+        tier: Free tier for FastAPI backend and SQLite/QuestDB hosting; supports custom domains and autoscaling.
+      - alternatives:
+          - Fly.io: Free tier for full-stack apps, open-source compatible.
+          - Railway: Free hobby tier for Python apps and databases.
+          - Self-hosted: Oracle Cloud Free Tier or AWS Free Tier for VPS (manual deployment for full open-source control).
+    ci_cd:
+      name: GitHub Actions
+      description: Free for open-source repos; automate builds/tests/deploys.
+    reverse_proxy: NGINX (optional)
+    notes: All components are open-source; free tiers ensure no-cost MVP. Scale to paid if traffic grows.
+
+  additional_tools:
+    security: JWT for authentication; HTTPS enforcement (handled by hosting platforms).
+    monitoring: Prometheus and Grafana (open-source, self-hosted or via free tiers).
+    version_control: Git (with GitHub for free repos).
+    ide: Cursor.
