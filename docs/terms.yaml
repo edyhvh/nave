@@ -28,7 +28,7 @@ terms:
 - spanish: Fundamental
   english: Fundamental
 - spanish: Quiebres
-  english: Breakouts
+  english: Breakouts / Breaks
 - spanish: Soportes y Resistencias
   english: Supports and Resistances
 - spanish: Picos y valles
@@ -159,12 +159,8 @@ terms:
   english: Income
 - spanish: Estrategia
   english: Strategy
-- spanish: Quiebres
-  english: Breaks
 - spanish: Aperturas diarias
   english: Daily Opens
-- spanish: Magnitud
-  english: Magnitude
 - spanish: Alcista
   english: Bullish
 - spanish: Bajista
@@ -312,7 +308,8 @@ terms:
 - spanish: Swing Failure Pattern
   english: Swing Failure Pattern
 - spanish: Punto Óptimo de Descuento
-  english: Optimal Discount Point- spanish: F.I.T.S.
+  english: Optimal Discount Point
+- spanish: F.I.T.S.
   english: Fundamental-Intermarket-Technical-Sentiment Framework
 - spanish: FITS
   english: F.I.T.S. (Nave methodology analytical framework)
@@ -349,7 +346,8 @@ terms:
 - spanish: Zona volátil
   english: Volatile Zone (imbalance zone, up to 75% fill)
 - spanish: Bloque de mitigación
-  english: Mitigation Block (candles against current move; unfilled institutional orders)
+  english: Mitigation Block (candles against current move; unfilled institutional
+    orders)
 - spanish: Mentalidad de trading
   english: Trading Mindset
 - spanish: Plan de trading
