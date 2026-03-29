@@ -388,3 +388,242 @@ technical_philosophy:
       - Can be crossed by a wick but not above.
       - If it closes above it can seek higher levels.
     code_orientation: Setup detectors; backtest each for probability/R:R.
+  fits_framework:
+    description: >
+      F.I.T.S. - Fundamental, Intramercado (Intermarket), Técnico, Sentimiento.
+      The overarching analytical lens of the Nave methodology. All four must be evaluated
+      before taking any position. The premise (direction/narrative) is built from the outside in.
+    components:
+      fundamental:
+        description: >
+          Macroeconomic and microeconomic reading of the asset. Determines the directional bias
+          for currencies, crypto, equities. Uses variables like growth, monetary policy, and
+          risk appetite for center/periphery currencies; PPP and NIIP for long-term currency value;
+          capital flows for short-term.
+        key_questions:
+          - What is the fundamental reason to be in this asset?
+          - What is the forecast of the asset value?
+          - Is the current price above or below fundamental value?
+      intermarket:
+        description: >
+          Cross-market analysis. How correlated assets (bonds, equities, commodities, DXY)
+          interact and give directional context. The IPDA algorithm operates within this layer.
+        key_elements:
+          - Bond yields vs equity flows.
+          - DXY correlation with commodities and crypto.
+          - Power axes: USA, EU, China.
+      technical:
+        description: >
+          Price structure, phases (IPDA), setups, entry and exit mechanics.
+          Technical analysis serves as the execution layer, not the directional layer.
+          A chart is only a representation of reality, not reality itself.
+        notes:
+          - The chart is a reflection of the fears, ambitions, and panic of market participants.
+          - Do not confuse price with value or cost.
+      sentiment:
+        description: >
+          Market psychology and positioning. AAII surveys, VIX, risk-on/risk-off gauges.
+          Sentiment provides the filter: confirm that the crowd is wrong before positioning against them.
+        key_elements:
+          - Contrarian use of AAII (spike in bulls may indicate continuation).
+          - VIX for risk appetite gauge.
+          - Fear and greed indices for crypto.
+
+  institutional_narrative:
+    description: >
+      Understanding how institutions operate is foundational to the Nave methodology.
+      This is not about blaming institutions for market moves, but understanding their
+      structural constraints and how they create the liquidity we exploit.
+    who_moves_the_market:
+      - Investment banks and hedge funds.
+      - Central banks of different countries.
+      - Private speculators with enough capital to move markets.
+      - Corporations and large institutional investors.
+    institutional_characteristics:
+      - Institutions abhor risk and use hedging on all positions (long spot + short futures, etc.).
+      - They operate with "bigger pockets" — their position sizes dwarf retail traders.
+      - They focus on price vs. value vs. cost distinctions.
+      - They do not watch technical indicators; they watch time and order flow.
+      - They use portfolio diversification and correlation-based risk management.
+      - They can go long spot and short futures simultaneously for arbitrage/coverage.
+    retail_vs_institutional:
+      - Retail traders bet on direction without coverage.
+      - Options without coverage (naked options) are highly risky for retail.
+      - Institutions operate multi-market hedging that retail cannot replicate.
+      - The casino analogy: same win rate but institutional nominal gains dwarf retail gains.
+    how_institutions_analyze:
+      - They distinguish between price (what you pay), value (what you receive), and cost.
+      - They use the IPDA algorithm to deliver price efficiently.
+      - They position for order matching, not chart patterns.
+      - Time is their primary tool; price is secondary.
+    interbank_trading_vs_order_flow:
+      interbank_trading:
+        description: >
+          Cash flow. Responds to the four IPDA phases (expansion, consolidation, retracement, regression).
+          Interbank algorithms deliver price through these phases to generate and absorb liquidity.
+        alias: Cash Flow
+      institutional_order_flow:
+        description: >
+          The moment when institutional money enters the market. Two types:
+          1. Liquidity generation points.
+          2. Order matching (emparejamiento de órdenes).
+          This is about TIMING — when does the money enter?
+        alias: Order Flow
+        key_insight: >
+          Order flow is the moment of institutional entry. Cash flow (interbank trading) is
+          the delivery mechanism. Identify order flow first, then use cash flow to time entry.
+
+  price_as_stochastic_system:
+    description: >
+      Price behaves as a stochastic system — directional but not precisely predictable.
+      Like an ant trail: you can see the direction and pattern, but not the exact endpoint.
+    implications:
+      - Seek similarities, not exactitude.
+      - We are placing bets, not making predictions.
+      - The left side of the chart is readable; the right side is a probability distribution.
+      - All trading systems are betting systems — maximize high-probability setups.
+    fractal_nature:
+      - Price patterns repeat across timeframes (fractals).
+      - The same setup logic applies from LTF to HTF with structural context.
+      - HTF confluence increases the probability of LTF setups succeeding.
+
+  volatility_deep_dive:
+    academic_basis: >
+      Concepts derived from the Bank for International Settlements (BIS) report:
+      "Financial Market Volatility: Measurement, Causes and Consequences" (1996).
+      Trading is the final effect of many causes. We bet on the next consequence.
+    market_phases_expanded:
+      consolidation:
+        type: Volatility phase.
+        description: Points of equilibrium. Order matching. The market pairs buyers and sellers.
+      expansion:
+        type: Momentum phase.
+        description: >
+          Points of abduction — price moves away from its equilibrium point.
+          Abduction (from anatomy): moving a body part away from its midpoint.
+          In finance: price disparity from equilibrium, creating momentum.
+      retracement:
+        type: Momentum phase.
+        description: >
+          Pullback within the trend. Generates imbalances (fair value gaps).
+          Price "steps back" to continue the move. Creates Cash Flow opportunities.
+      regression:
+        type: Volatility phase.
+        description: >
+          Full counter-movement. Points of high liquidity. Where major position reversals occur.
+          This is where volatility strategies are applied.
+    strategies_by_phase:
+      momentum_strategies: Apply during expansion and retracement phases.
+      volatility_strategies: Apply during consolidation and regression phases.
+    key_formula: >
+      Volatility = Percentage of asset price decision relative to its average price over a determined period.
+      Operationally: Standard deviation or ATR. Use to filter trades and size risk.
+
+  new_sr_theory_expanded:
+    description: >
+      The New Theory of Supports and Resistances does not work with exact points but with
+      CONFLUENCE ZONES — areas where multiple factors align to create high-probability rejection levels.
+    zone_construction:
+      step_1: Identify the true retracement point (swing high or swing low).
+      step_2: Identify the nearest institutional price level (ends in 00, 20, 50, or 80).
+      step_3: The zone between the true retracement and the institutional level is the PRICE BLOCK.
+      step_4: Score the zone by counting confluence factors.
+    confluence_factors:
+      - Price block (imbalance zone between true swing and institutional level).
+      - Demand or supply zone (order block at that level).
+      - Daily/weekly/monthly open or close nearby.
+      - Number of previous touches (more touches = more critical).
+      - HTF swing high or swing low.
+      - Fair value gap within the zone.
+      - Vertical time lines (time-based S&R).
+    critical_level_criteria:
+      - Institutional price (ends in 00, 20, 50, 80).
+      - At least 2-3 confluence factors present.
+      - Prior reaction (rejection wicks, imbalance candles).
+    important_note: >
+      Price does not need to touch the zone exactly. It can reject before reaching it
+      if the zone is dense with confluence. A rejection candle before touching the block
+      is itself a signal (imbalance/desbalance candle).
+
+  75_percent_retracement_entry:
+    description: >
+      The 75% retracement setup (Retroceso al 75%) is one of the highest-probability
+      entry tactics in the Nave methodology. It is specifically designed to catch
+      tops and bottoms within the context of a HIGHER TIMEFRAME trend.
+    classification: Regression pattern / Volatility setup.
+    context_required: >
+      Must be applied within a clear HTF directional context.
+      Catching a top or bottom is inherently risky; HTF trend confluence reduces that risk.
+    steps:
+      1: Identify a clear swing in your directional timeframe.
+      2: Wait for the swing to break with a False Breakout Pattern (PFQ).
+      3: Confirm structure break (confirms Market Makers' Buy or Sell Movement).
+      4: Wait for retracement to the volatile zone (fills imbalance up to 75%).
+      5: Enter at the 75% level with defined SL at invalidation.
+    relationship_to_other_setups:
+      - Similar to Swing Failure Pattern but with 75% retracement trigger.
+      - Uses the same imbalance/Fair Value Gap mechanics as other regression setups.
+      - Immediate pullbacks in LTF are preferred over extended retracements.
+    risk_note: >
+      This is a high-risk/high-reward setup. The wide stop required means strict position sizing.
+      Only valid when HTF structure is clearly defined.
+
+  trading_psychology_expanded:
+    description: >
+      Psychology is the deepest layer of trading competence. Without the right mental framework,
+      even the best technical system fails. The chart is a tool, not the market itself.
+    key_mental_models:
+      uncertainty_as_foundation:
+        description: >
+          The market is an uncertain system. Accepting this is the first step.
+          You cannot know the right side of the chart — you can only read the left side
+          and bet on the most probable continuation.
+      trading_as_betting_system:
+        description: >
+          All trading is a betting system. Maximize bet on highest-probability setups.
+          Minimize exposure on uncertain setups. A good R:R overcomes a sub-50% win rate.
+      chart_as_reflection:
+        description: >
+          The chart reflects the fears, ambitions, and panic of all market participants.
+          It is NOT the market. The market is the underlying flow of orders and capital.
+      narrative_over_signals:
+        description: >
+          You need a narrative (premise) that ties together fundamental, intermarket,
+          technical, and sentiment analysis. Signals without narrative are noise.
+      similarity_not_exactitude:
+        description: >
+          Price patterns rhyme, they do not repeat exactly.
+          Trade the probable similarity, not the exact replica.
+      process_orientation:
+        description: >
+          Focus on following the process (SOP) correctly, not on the outcome of any single trade.
+          A correct process with a losing trade is better than a wrong process with a winning trade.
+    common_mistakes_to_avoid:
+      - Looking for predictions instead of probabilities.
+      - Treating technical signals as certainties.
+      - Ignoring the narrative/fundamental premise.
+      - Overexposure (reducing exposure reduces risk and emotional pressure).
+      - Seeking entries instead of setups with favorable probability.
+      - Being egocentric — the market does not care about your analysis.
+
+  mitigation_blocks_deep_dive:
+    description: >
+      Mitigation blocks are the last point of optimal/efficient commercialization in the market.
+      They occur in regression movements — price returns to these levels via order flow.
+    definition: >
+      Candles that go AGAINST the current movement direction. In a bullish trend, bearish candles.
+      In a bearish trend, bullish candles. These candles mark where institutional orders
+      were placed and not yet filled.
+    why_they_work: >
+      Price seeks the last point of optimal efficiency for market commercialization.
+      Institutions need to fill their orders at these levels, so price is "delivered" back
+      to mitigate those unfilled orders.
+    usage:
+      - Locate mitigation blocks on HTF first.
+      - Use them as high-probability entry zones for Cash Flow setups.
+      - Combine with IPDA phase (retracement/regression) for confirmation.
+      - The 75% retracement setup often uses mitigation blocks as entry zones.
+    identification_criteria:
+      - Last bearish candle before a strong bullish expansion (for bullish mitigation).
+      - Last bullish candle before a strong bearish expansion (for bearish mitigation).
+      - Must occur at or near an institutional price level for maximum confluence.
