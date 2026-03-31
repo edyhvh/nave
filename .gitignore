@@ -97,11 +97,22 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# Financial data and API keys (extra protection)
-config/secrets.json
-config/api_keys.json
-secrets/
-credentials/
+# ─── Web3 / Wallet Security (CRITICAL — never commit these) ──────────────────
+.secrets/
+wallets/
+*.key
+*.pem
+*.enc
+*_wallet.json
+*_keystore.json
+wallet_*.json
+vault_key
+.vault_key
+mnemonic*.txt
+seed_phrase*.txt
+private_key*.txt
+*_private_key*
+hyperliquid_config.json
 
 # Cache directories
 .cache/

@@ -46,6 +46,10 @@ seaborn>=0.12.0
 # Date and time utilities
 python-dateutil>=2.8.0
 
-# Development and testing
-pytest>=7.0.0
+# Web3 / Trading
+mnemonic>=0.20           # BIP39 seed phrase generation
+eth-account>=0.11.0      # EVM HD wallet derivation and signing
+web3>=6.0.0              # Ethereum JSON-RPC client
+hyperliquid-python>=0.1  # Hyperliquid exchange API SDK
+
 ruff>=0.1.0  # Linter and formatter
