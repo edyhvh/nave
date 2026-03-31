@@ -1,0 +1,214 @@
+"""
+Hyperliquid client — wraps the Hyperliquid REST API and Python SDK.
+
+Design principles:
+  - Read-only queries (prices, positions, orders) use direct REST — no auth needed.
+  - Write operations (open/close/cancel) load the private key from vault only at
+    call time, sign the payload, then discard the key reference.
+  - Testnet is the default; pass testnet=False only when ready for live trading.
+  - All dollar amounts are USD-denominated floats.
+
+Usage:
+    from trading import HyperliquidClient
+
+    client = HyperliquidClient("openfang", testnet=True)
+    client.summary()                              # print safe account info
+    client.market_open("ETH", "long", 50.0)      # open $50 long ETH
+
+Required packages:  requests, eth-account, hyperliquid-python-sdk
+"""
+
+import json
+from typing import Literal
+
+import requests
+
+from trading.vault import WalletVault
+
+
+MAINNET_API = "https://api.hyperliquid.xyz"
+TESTNET_API = "https://api.hyperliquid-testnet.xyz"
+
+
+class HyperliquidClient:
+    def __init__(self, wallet_name: str = "openfang", testnet: bool = True):
+        self.testnet = testnet
+        self.base_url = TESTNET_API if testnet else MAINNET_API
+        self._wallet_name = wallet_name
+        self._vault = WalletVault()
+        self._address = self._vault.address(wallet_name)
+        self._exchange = None  # lazy-loaded on first write operation
+
+    @property
+    def address(self) -> str:
+        return self._address
+
+    @property
+    def env(self) -> str:
+        return "TESTNET" if self.testnet else "MAINNET"
+
+    # ── Internal helpers ──────────────────────────────────────────────────────
+
+    def _info(self, payload: dict) -> dict | list:
+        resp = requests.post(f"{self.base_url}/info", json=payload, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
+    def _get_exchange(self):
+        """Lazy-load the signing exchange client."""
+        if self._exchange is not None:
+            return self._exchange
+        try:
+            import eth_account
+            from hyperliquid.exchange import Exchange
+            from hyperliquid.utils import constants
+        except ImportError as e:
+            raise ImportError(
+                "Missing trading deps. Run: pip install eth-account hyperliquid-python-sdk"
+            ) from e
+
+        private_key = self._vault.private_key(self._wallet_name)
+        account = eth_account.Account.from_key(private_key)
+        del private_key  # discard from local scope after use
+        base_url = constants.TESTNET_API_URL if self.testnet else constants.MAINNET_API_URL
+        self._exchange = Exchange(account, base_url, account_address=account.address)
+        return self._exchange
+
+    # ── Read-only endpoints ───────────────────────────────────────────────────
+
+    def get_account_state(self) -> dict:
+        """Full portfolio state: equity, margin, open positions."""
+        return self._info({"type": "clearinghouseState", "user": self._address})
+
+    def get_open_positions(self) -> list[dict]:
+        return self.get_account_state().get("assetPositions", [])
+
+    def get_open_orders(self) -> list[dict]:
+        return self._info({"type": "openOrders", "user": self._address})
+
+    def get_fills(self, limit: int = 50) -> list[dict]:
+        result = self._info({"type": "userFills", "user": self._address})
+        return result[:limit] if isinstance(result, list) else result
+
+    def get_all_mids(self) -> dict[str, str]:
+        """Mid prices for every perp market, e.g. {"BTC": "67500.0", ...}."""
+        return self._info({"type": "allMids"})
+
+    def get_mid(self, coin: str) -> float:
+        mids = self.get_all_mids()
+        if coin not in mids:
+            raise ValueError(f"Unknown market: {coin}. Check get_all_mids() for valid symbols.")
+        return float(mids[coin])
+
+    def get_meta(self) -> dict:
+        """Exchange metadata: assets, leverage tiers, tick sizes."""
+        return self._info({"type": "meta"})
+
+    def get_markets(self) -> list[str]:
+        """Return sorted list of all tradeable symbols."""
+        meta = self.get_meta()
+        return sorted(u["name"] for u in meta.get("universe", []))
+
+    # ── Trading endpoints ─────────────────────────────────────────────────────
+
+    def market_open(
+        self,
+        coin: str,
+        side: Literal["long", "short"],
+        size_usd: float,
+        slippage: float = 0.01,
+    ) -> dict:
+        """
+        Open a market position.
+
+        Args:
+            coin:      Symbol, e.g. "ETH", "BTC"
+            side:      "long" or "short"
+            size_usd:  Notional position size in USD
+            slippage:  Max acceptable slippage (default 1%)
+
+        Returns:
+            Exchange response dict with status and filled details.
+        """
+        exchange = self._get_exchange()
+        is_buy = side == "long"
+        price = self.get_mid(coin)
+        size = round(size_usd / price, 6)
+        return exchange.market_open(coin, is_buy, size, slippage=slippage)
+
+    def market_close(self, coin: str, slippage: float = 0.01) -> dict:
+        """Close the entire open position for a coin at market price."""
+        return self._get_exchange().market_close(coin, slippage=slippage)
+
+    def limit_order(
+        self,
+        coin: str,
+        side: Literal["buy", "sell"],
+        size: float,
+        price: float,
+        reduce_only: bool = False,
+    ) -> dict:
+        """Place a GTC limit order. size is in coin units (not USD)."""
+        exchange = self._get_exchange()
+        return exchange.order(
+            coin, side == "buy", size, price,
+            {"limit": {"tif": "Gtc"}},
+            reduce_only=reduce_only,
+        )
+
+    def cancel_order(self, coin: str, order_id: int) -> dict:
+        return self._get_exchange().cancel(coin, order_id)
+
+    def set_leverage(self, coin: str, leverage: int, cross_margin: bool = True) -> dict:
+        return self._get_exchange().update_leverage(leverage, coin, cross_margin)
+
+    # ── Convenience ───────────────────────────────────────────────────────────
+
+    def summary(self) -> None:
+        """Print a safe account summary. No private data is shown."""
+        state = self.get_account_state()
+        margin = state.get("marginSummary", {})
+        positions = self.get_open_positions()
+        orders = self.get_open_orders()
+
+        print(f"\n{'─'*50}")
+        print(f"  Hyperliquid {self.env}")
+        print(f"  Wallet  : {self._wallet_name}  ({self._address})")
+        print(f"  Equity  : ${float(margin.get('accountValue', 0)):>12,.2f}")
+        print(f"  Margin  : ${float(margin.get('totalMarginUsed', 0)):>12,.2f}")
+        print(f"  Positions : {len(positions)}  |  Open orders: {len(orders)}")
+        if positions:
+            print()
+            for pos in positions:
+                p = pos.get("position", {})
+                pnl = float(p.get("unrealizedPnl", 0))
+                print(f"    {p.get('coin'):>6}  sz={p.get('szi')}  "
+                      f"entry={p.get('entryPx')}  uPnL=${pnl:+.2f}")
+        print(f"{'─'*50}\n")
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Hyperliquid CLI")
+    parser.add_argument("command", choices=["summary", "positions", "orders", "mids", "markets"])
+    parser.add_argument("--wallet", default="openfang")
+    parser.add_argument("--mainnet", action="store_true", help="Use mainnet (default: testnet)")
+    args = parser.parse_args()
+
+    client = HyperliquidClient(wallet_name=args.wallet, testnet=not args.mainnet)
+
+    if args.command == "summary":
+        client.summary()
+    elif args.command == "positions":
+        print(json.dumps(client.get_open_positions(), indent=2))
+    elif args.command == "orders":
+        print(json.dumps(client.get_open_orders(), indent=2))
+    elif args.command == "mids":
+        for coin, mid in sorted(client.get_all_mids().items()):
+            print(f"  {coin:<10} {mid}")
+    elif args.command == "markets":
+        for m in client.get_markets():
+            print(f"  {m}")

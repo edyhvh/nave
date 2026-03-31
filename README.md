@@ -91,15 +91,56 @@ pip list          # See installed packages
 
 ```
 nave/
-├── .venv/               # Virtual environment (auto-created)
+├── trading/             # Trading integration package
+│   ├── vault.py         # Encrypted wallet storage (Fernet/AES)
+│   ├── client.py        # Hyperliquid REST + SDK client
+│   ├── signals.py       # Signal types and macro signal producers
+│   └── strategy.py      # BaseStrategy + example strategy
 ├── scripts/             # Analysis and utility scripts
+│   ├── setup_wallets.py # One-time EVM wallet generation
+│   ├── show_mnemonic.py # Reveal seed phrase securely (60s auto-clear)
+│   └── openbb_tools.py  # OpenBB data fetching helpers
 ├── docs/               # Documentation and configuration
+│   └── web3-setup.md   # Wallet setup and trading integration guide
 ├── extensions/         # OpenBB extensions
 ├── setup.py            # One-command environment setup
 ├── .envrc             # Direnv configuration (optional)
 ├── mise.toml          # Python version management
 └── requirements.txt   # Python dependencies
 ```
+
+## Trading on Hyperliquid
+
+Nave integrates with [Hyperliquid](https://hyperliquid.xyz) for futures paper
+trading. Wallets are managed locally via an encrypted vault — no MetaMask or
+browser required.
+
+### Quick start
+
+```bash
+# 1. Generate wallets (one-time)
+python scripts/setup_wallets.py
+
+# 2. Check account state on testnet
+python -m trading.client summary --wallet openfang
+
+# 3. Run a strategy in dry-run mode (no real orders)
+python -m trading.strategy --wallet openfang --coins BTC ETH
+```
+
+### Wallets
+
+Two EVM wallets are pre-generated for the trading agents:
+
+| Agent | Address |
+|-------|---------|
+| `openfang` | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51` |
+| `ironclaw`  | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F` |
+
+Private keys and seed phrases are encrypted in `~/.secrets/nave-wallets/`
+and never committed to this repository.
+
+For full setup instructions see **[docs/web3-setup.md](docs/web3-setup.md)**.
 
 ## Troubleshooting
 
