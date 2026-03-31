@@ -87,6 +87,19 @@ python --version  # Python 3.12.x
 pip list          # See installed packages
 ```
 
+### Strategy runner (momentum + volatility + liquidity)
+
+You can generate a leveraged `1h`/`4h` directional signal using the new strategy script:
+
+```bash
+./run.sh strategy_momentum_volatility --symbol BTC-USD --timeframe 1h --liquidity-pulse 0.35
+```
+
+Notes:
+- `--liquidity-pulse` is expected in `[-1, 1]` from your internal liquidity model.
+- Output includes `bias` (`long/short/neutral`), confidence, leverage suggestion, and risk parameters (ATR stop distance and target R:R).
+- This strategy combines momentum (EMA + RSI + price acceleration), volatility regime (ATR + Bollinger width), and liquidity context to avoid one-dimensional signals.
+
 ## Project Structure
 
 ```
