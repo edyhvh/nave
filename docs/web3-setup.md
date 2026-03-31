@@ -1,122 +1,200 @@
-# Web3 Setup — Wallets & Hyperliquid
+# Web3 & Trading Setup
+
+This document covers the wallet setup and Hyperliquid integration for nave's
+automated trading strategies.
 
 ## Architecture
 
 ```
 nave/
-├── scripts/
-│   ├── wallet_vault.py        # Encrypted wallet storage
-│   ├── setup_wallets.py       # One-time wallet generator
-│   ├── show_mnemonic.py       # Safely reveal seed phrase for Phantom import
-│   └── hyperliquid_client.py  # Hyperliquid trading API wrapper
-└── docs/
-    └── web3-setup.md          # This file
+├── trading/                  ← Python package (import from here)
+│   ├── vault.py              ← Encrypted wallet storage (Fernet/AES)
+│   ├── client.py             ← Hyperliquid REST + SDK client
+│   ├── signals.py            ← Signal types and aggregation
+│   └── strategy.py           ← BaseStrategy + example strategy
+└── scripts/
+    ├── setup_wallets.py      ← One-time wallet generation
+    └── show_mnemonic.py      ← Reveal seed phrase (for cold storage backup)
 ```
 
-Wallet secrets live exclusively in `~/.secrets/nave-wallets/` — never in the repo.
-
-## Wallets
-
-Two EVM wallets (BIP39, 24-word, HD path `m/44'/60'/0'/0/0`):
-
-| Wallet | Purpose | Address |
-|--------|---------|---------|
-| `ironclaw` | IronClaw executor | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F` |
-| `openfang` | OpenFang executor | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51` |
-
-Both wallets are EVM-compatible (Ethereum, Hyperliquid, Polygon, etc.) and can also be imported into Phantom for Solana by choosing the Ethereum account type.
-
-### Vault storage
-
 ```
-~/.secrets/nave-wallets/
-├── .vault_key      # Fernet encryption key (chmod 400)
-├── ironclaw.enc    # Encrypted wallet data (chmod 600)
-└── openfang.enc    # Encrypted wallet data (chmod 600)
-```
-
-### Commands
-
-```bash
-# List all wallets and their public addresses
-cd ~/nave && .venv/bin/python scripts/wallet_vault.py list
-
-# Show seed phrase for Phantom import (use in private terminal only)
-.venv/bin/python scripts/show_mnemonic.py ironclaw
-.venv/bin/python scripts/show_mnemonic.py openfang
+                    ┌──────────────────────────────┐
+    Macro signals   │  nave / OpenBB data scripts  │
+    (RRP, AAII,     └──────────────┬───────────────┘
+     VIX, ETF flows)               │ indicators dict
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │   trading/signals.py          │
+                    │   MacroSignalProducer         │
+                    │   SignalAggregator            │
+                    └──────────────┬───────────────┘
+                                   │ list[Signal]
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │   trading/strategy.py         │
+                    │   BaseStrategy.execute()      │
+                    └──────────────┬───────────────┘
+                                   │ market_open / market_close
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │   trading/client.py           │  ← signs with eth-account
+                    │   HyperliquidClient           │  ← no MetaMask needed
+                    └──────────────┬───────────────┘
+                                   │ signed JSON-RPC
+                                   ▼
+                       Hyperliquid testnet / mainnet
 ```
 
-## Importing into Phantom
+**No MetaMask, no browser automation.** The private key is loaded from the
+encrypted vault at signing time and discarded immediately after. All trading
+is server-side via the Hyperliquid Python SDK.
 
-1. Open Phantom browser extension → **Add/Connect Wallet** → **Import Wallet**
-2. Choose **Ethereum** (for Hyperliquid) or **Solana**
-3. Run `show_mnemonic.py <name>` in a private terminal to see the 24-word phrase
-4. Type the words into Phantom — **do not paste** on shared systems
-5. The terminal auto-clears after 60 seconds
+---
 
-## Hyperliquid Paper Trading
+## Wallet Setup
 
-### Setup
+> ⚠️ Run setup once per environment. If wallets already exist, the script skips them.
 
 ```bash
 cd ~/nave
-.venv/bin/pip install hyperliquid-python eth-account
+source .venv/bin/activate
+python scripts/setup_wallets.py
 ```
 
-### Usage
+This generates two EVM wallets — `ironclaw` and `openfang` — using 24-word
+BIP39 mnemonics derived via `m/44'/60'/0'/0/0`. They are stored **encrypted**
+at `~/.secrets/nave-wallets/` and **never committed to git**.
 
-```python
-from scripts.hyperliquid_client import HyperliquidClient
+### Vault files (local only, never in git)
 
-# Always start on testnet
-client = HyperliquidClient(wallet_name="openfang", testnet=True)
-client.summary()
+| File | Permissions | Contents |
+|------|-------------|----------|
+| `~/.secrets/nave-wallets/.vault_key` | `400` | Fernet encryption key — back up offline |
+| `~/.secrets/nave-wallets/ironclaw.enc` | `600` | Encrypted wallet data |
+| `~/.secrets/nave-wallets/openfang.enc` | `600` | Encrypted wallet data |
 
-# Check prices
-mids = client.get_all_mids()
-
-# Open a $100 long on ETH (testnet paper trading)
-client.market_open("ETH", side="long", size_usd=100)
-
-# View positions
-client.get_open_positions()
-
-# Close position
-client.market_close("ETH")
-```
-
-### CLI
+### Viewing wallet addresses (safe)
 
 ```bash
-.venv/bin/python scripts/hyperliquid_client.py --wallet openfang summary
-.venv/bin/python scripts/hyperliquid_client.py --wallet openfang positions
-.venv/bin/python scripts/hyperliquid_client.py mids
+python scripts/wallet_vault.py list
 ```
 
-### Testnet funding
+### Revealing seed phrase (for cold storage / hardware wallet import)
 
-Get testnet USDC from the Hyperliquid testnet faucet:
-https://app.hyperliquid-testnet.xyz/
+```bash
+python scripts/show_mnemonic.py openfang
+```
 
-Connect with your wallet address, request test funds.
+> Displays the 24-word phrase for 60 seconds, then clears the terminal.
+> Only run in a private terminal session. Never pipe to a file or log.
 
-## Phantom MCP (openfang integration)
+---
 
-Phantom MCP lets openfang agents interact with the wallet via natural language.
+## Hyperliquid Client
 
-### Setup
+### Paper trading (testnet)
 
-1. Get an App ID from https://phantom.com/portal (create an app)
-2. Add `PHANTOM_APP_ID` to `~/.openfang/.env`
-3. Uncomment the `[[mcp_servers]]` block in `~/.openfang/config.toml`
-4. Restart openfang: `systemctl restart openfang`
+```python
+from trading import HyperliquidClient
 
-The MCP server handles SSO login via browser and persists the session at `~/.phantom-mcp/session.json`.
+client = HyperliquidClient("openfang", testnet=True)
+client.summary()                            # print account state
+client.get_markets()                        # list all perp markets
+client.get_mid("ETH")                       # current ETH mid price
+client.market_open("ETH", "long", 50.0)    # open $50 long (paper)
+client.market_close("ETH")                 # close position
+```
 
-## Security Rules
+### CLI shortcuts
 
-- **Never** commit `.enc` files, `.vault_key`, or anything from `~/.secrets/`
-- **Never** print or log private keys — use `vault.address()` for display
-- **Never** store seed phrases in plaintext anywhere
-- Vault key (`~/.secrets/nave-wallets/.vault_key`) should be backed up securely offline
-- Rotate wallets if any key material is ever suspected to be exposed
+```bash
+# Account summary
+python -m trading.client summary --wallet openfang
+
+# Live prices
+python -m trading.client mids --wallet openfang
+
+# Open positions
+python -m trading.client positions --wallet openfang
+```
+
+### Testnet vs mainnet
+
+| | Testnet | Mainnet |
+|--|---------|---------|
+| URL | `api.hyperliquid-testnet.xyz` | `api.hyperliquid.xyz` |
+| Funds | Mock USDC (requires testnet deposit) | Real funds |
+| Default | ✅ Yes | ❌ No — pass `testnet=False` |
+
+> **Never set `testnet=False` unless you have confirmed the strategy is
+> profitable on testnet and you accept the risk of real losses.**
+
+---
+
+## Signals & Strategy
+
+### Running the example strategy (dry-run)
+
+```bash
+python -m trading.strategy --wallet openfang --coins BTC ETH --max-usd 50
+```
+
+Output shows computed signals and what orders *would* be placed. No orders are
+submitted in dry-run mode.
+
+### Implementing a real strategy
+
+```python
+from trading import HyperliquidClient, BaseStrategy, Signal, Direction
+
+class MyStrategy(BaseStrategy):
+    def compute_signals(self) -> list[Signal]:
+        # Pull data from nave's OpenBB scripts:
+        # from scripts.openbb_tools import ...
+        return [
+            Signal(coin="BTC", direction=Direction.LONG, confidence=0.8, source="macro/rrp"),
+        ]
+
+client = HyperliquidClient("openfang", testnet=True)
+strategy = MyStrategy(client, max_position_usd=100, dry_run=True)
+strategy.run_once()
+```
+
+### Signal sources (nave indicators)
+
+| Indicator | Signal logic |
+|-----------|-------------|
+| RRP weekly change | Rising RRP drains liquidity → SHORT |
+| AAII sentiment | Extreme bearishness → contrarian LONG |
+| VIX spike (>25) | Risk-off → CLOSE positions |
+| BTC ETF net flows | (TODO) Positive flows → LONG BTC |
+
+See `trading/signals.py` → `MacroSignalProducer` for implementation.
+
+---
+
+## Funding a testnet wallet
+
+Hyperliquid testnet requires a small mainnet deposit to unlock the faucet
+(`/drip`). Options:
+
+1. **Mainnet first**: deposit ~$10 USDC on HL mainnet with the same wallet
+   address, then claim 1000 mock USDC on testnet.
+2. **Bridge from another chain**: send USDC via Arbitrum or Base bridge.
+3. **Request from team**: for internal testing, reach out to the HL team.
+
+Wallet addresses:
+- `ironclaw`:  `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F`
+- `openfang`:  `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51`
+
+---
+
+## Security rules
+
+- 🔒 Private keys are **never** stored in env vars, config files, or git.
+- 🔒 The vault key (`~/.secrets/nave-wallets/.vault_key`) must be backed up
+  **offline** (e.g. password manager or USB). If lost, wallets cannot be recovered
+  from the `.enc` files.
+- 🔒 Seed phrases shown by `show_mnemonic.py` should only be viewed in a
+  private terminal session. Auto-clears after 60 seconds.
+- 🔒 `testnet=True` is the default. Live trading requires an explicit opt-in.

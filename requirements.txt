@@ -50,6 +50,7 @@ python-dateutil>=2.8.0
 mnemonic>=0.20           # BIP39 seed phrase generation
 eth-account>=0.11.0      # EVM HD wallet derivation and signing
 web3>=6.0.0              # Ethereum JSON-RPC client
-hyperliquid-python>=0.1  # Hyperliquid exchange API SDK
+hyperliquid-python-sdk>=0.22.0  # Hyperliquid exchange API SDK
+cryptography>=42.0.0    # Fernet encryption for wallet vault
 
 ruff>=0.1.0  # Linter and formatter
