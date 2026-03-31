@@ -53,4 +53,4 @@ web3>=6.0.0              # Ethereum JSON-RPC client
 hyperliquid-python-sdk>=0.22.0  # Hyperliquid exchange API SDK
 cryptography>=42.0.0    # Fernet encryption for wallet vault
 
-ruff>=0.1.0  # Linter and formatter
+ruff>=0.1.0  # Linter and formattermcp>=1.0.0              # Model Context Protocol server
