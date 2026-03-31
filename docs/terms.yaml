@@ -28,7 +28,7 @@ terms:
 - spanish: Fundamental
   english: Fundamental
 - spanish: Quiebres
-  english: Breakouts
+  english: Breakouts / Breaks
 - spanish: Soportes y Resistencias
   english: Supports and Resistances
 - spanish: Picos y valles
@@ -159,12 +159,8 @@ terms:
   english: Income
 - spanish: Estrategia
   english: Strategy
-- spanish: Quiebres
-  english: Breaks
 - spanish: Aperturas diarias
   english: Daily Opens
-- spanish: Magnitud
-  english: Magnitude
 - spanish: Alcista
   english: Bullish
 - spanish: Bajista
@@ -313,3 +309,62 @@ terms:
   english: Swing Failure Pattern
 - spanish: Punto Óptimo de Descuento
   english: Optimal Discount Point
+- spanish: F.I.T.S.
+  english: Fundamental-Intermarket-Technical-Sentiment Framework
+- spanish: FITS
+  english: F.I.T.S. (Nave methodology analytical framework)
+- spanish: Narrativa
+  english: Narrative (directional premise that ties all analysis together)
+- spanish: Narrativa Institucional
+  english: Institutional Narrative
+- spanish: Premisa Institucional
+  english: Institutional Premise
+- spanish: Trading Interbancario
+  english: Interbank Trading (Cash Flow delivery via IPDA phases)
+- spanish: Emparejamiento de órdenes
+  english: Order Matching
+- spanish: Puntos de generación de liquidez
+  english: Liquidity Generation Points
+- spanish: Cobertura
+  english: Hedge / Coverage
+- spanish: Sistema estocástico
+  english: Stochastic System
+- spanish: Fractal
+  english: Fractal (price pattern that repeats across timeframes)
+- spanish: Sistema de apuestas
+  english: Betting System
+- spanish: Incertidumbre bursátil
+  english: Market Uncertainty
+- spanish: Abducción
+  english: Abduction (expansion away from equilibrium point)
+- spanish: Zona de confluencia
+  english: Confluence Zone (area where multiple S/R factors align)
+- spanish: Bloque de precio
+  english: Price Block (zone between true swing and nearest institutional level)
+- spanish: Retroceso al 75%
+  english: 75% Retracement Entry (regression pattern for catching tops/bottoms)
+- spanish: Zona volátil
+  english: Volatile Zone (imbalance zone, up to 75% fill)
+- spanish: Bloque de mitigación
+  english: Mitigation Block (candles against current move; unfilled institutional
+    orders)
+- spanish: Mentalidad de trading
+  english: Trading Mindset
+- spanish: Plan de trading
+  english: Trading Plan
+- spanish: Táctica de entrada
+  english: Entry Tactic
+- spanish: Curva precio-tiempo
+  english: Price-Time Curve (Teoría de precio y tiempo)
+- spanish: Proyecciones temporales
+  english: Temporal Projections
+- spanish: Centro y periferia
+  english: Center and Periphery (currency classification)
+- spanish: Materias primas y flotación libre
+  english: Commodities and Free Float (currency classification)
+- spanish: Caminito de hormigas
+  english: Ant Trail (price as stochastic directional system metaphor)
+- spanish: Precio vs Valor vs Costo
+  english: Price vs Value vs Cost
+- spanish: Opción sin cobertura
+  english: Naked Option (position without hedge coverage)
