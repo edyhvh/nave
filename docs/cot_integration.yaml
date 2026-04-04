@@ -1,0 +1,26 @@
+cot_integration:
+  philosophy:
+    fits_role: |
+      COT is the Sentiment pillar in F.I.T.S. Non-commercial (smart money) net positions
+      indicate institutional bias. High net long/short + increasing = strong weekly premise.
+    weekly_driver: |
+      Primary bias for asset selection (BTC vs ETH). Aligns with IPDA retracement/regression
+      phases for 75% retrace entries, mitigation blocks, confluence zones.
+    risk_adjustments:
+      strong_bias: >0.8 conf → 10x leverage perps, full allocation.
+      medium_bias: 0.5-0.8 → 5x leverage, 50% allocation.
+      weak_bias: <0.5 → Skip or options for ranges/vol plays.
+    ta_confluence:
+      - 75% retracement on 4H/1H swings.
+      - FVG/imbalance fill.
+      - Institutional levels (00/20/50/80) + mitigation blocks.
+      - SL at invalidation (structure break).
+    multi_asset:
+      BTC/ETH comparison via net %OI + changes.
+      Extensible Hyperliquid perp scan: liquidity >$1M vol, favorable funding, low slippage.
+  config:
+    btc_code: 133741
+    eth_code: 138741
+    capital_usd: 2000
+    risk_pct: 0.10  # 10% risk per trade
+    max_leverage: 10

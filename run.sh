@@ -1,22 +1,22 @@
 #!/bin/bash
-# Simple script runner for NAVE
-# Usage: ./run.sh <script_name> [args...]
+# Nave run script - quick access to common workflows
 
-if [ $# -eq 0 ]; then
-    echo "Usage: ./run.sh <script_name> [args...]"
-    echo "Available scripts:"
-    ls scripts/*.py 2>/dev/null || echo "No scripts found"
+set -euo pipefail
+
+cd \"$(dirname \"${BASH_SOURCE[0]}\")\"
+
+case \"${1:-}\" in
+  \"openbb_tools\")
+    python scripts/openbb_tools.py
+    ;;
+  \"trading\")
+    python -m trading.strategy --dry-run
+    ;;
+  \"weekly-cot\")
+    python scripts/weekly_cot_analysis.py
+    ;;
+  \"*\")
+    echo \"Usage: ./run.sh [openbb_tools|trading|weekly-cot]\" >&2
     exit 1
-fi
-
-SCRIPT_NAME="$1"
-shift
-
-if [ -f "scripts/${SCRIPT_NAME}.py" ]; then
-    python "scripts/${SCRIPT_NAME}.py" "$@"
-elif [ -f "scripts/${SCRIPT_NAME}" ]; then
-    python "scripts/${SCRIPT_NAME}" "$@"
-else
-    echo "Script '${SCRIPT_NAME}' not found in scripts/ directory"
-    exit 1
-fi
+    ;;
+esac

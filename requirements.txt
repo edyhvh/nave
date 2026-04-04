@@ -29,28 +29,29 @@ openbb-sec>=1.5.0
 openbb-tiingo>=1.5.0
 openbb-tradingeconomics>=1.5.0
 openbb-us-eia>=1.2.0
-# Note: openbb-uscongress may not be available as a separate package
-# It might be included in the core OpenBB platform
 openbb-yfinance>=1.5.0
 
 # Core data science and financial analysis
 pandas>=2.0.0
 numpy>=1.24.0
-requests>=2.31.0  # For HTTP requests (more reliable than urllib)
-python-dotenv>=1.0.0  # For loading .env files securely
+requests>=2.31.0
+python-dotenv>=1.0.0
 
-# Data visualization (optional but recommended for analysis)
+# Data visualization (optional)
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
-# Date and time utilities
+# Date utilities
 python-dateutil>=2.8.0
 
 # Web3 / Trading
-mnemonic>=0.20           # BIP39 seed phrase generation
-eth-account>=0.11.0      # EVM HD wallet derivation and signing
-web3>=6.0.0              # Ethereum JSON-RPC client
-hyperliquid-python-sdk>=0.22.0  # Hyperliquid exchange API SDK
-cryptography>=42.0.0    # Fernet encryption for wallet vault
+mnemonic>=0.20
+eth-account>=0.11.0
+web3>=6.0.0
+hyperliquid-python-sdk>=0.22.0
+cryptography>=42.0.0
+ruff>=0.1.0
+mcp>=1.0.0
 
-ruff>=0.1.0  # Linter and formattermcp>=1.0.0              # Model Context Protocol server
+# COT Reports
+cot-reports>=0.4.0
