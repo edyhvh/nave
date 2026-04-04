@@ -1,26 +1,196 @@
+# COT (Commitment of Traders) Integration Configuration
+# 
+# This file defines how CME COT reports integrate with Nave's trading philosophy.
+# COT is the Sentiment pillar of the F.I.T.S. framework.
+
 cot_integration:
+  # Asset Configuration
+  assets:
+    BTC:
+      code: "133741"
+      name: "CME Bitcoin Futures"
+      exchanges: ["CME"]
+      priority: 1  # Primary asset
+    ETH:
+      code: "138741"
+      name: "CME Ether Futures"
+      exchanges: ["CME"]
+      priority: 2  # Secondary asset
+
+  # Data Source
+  data_source:
+    provider: "cot-reports"
+    format: "legacy_futures"
+    release_schedule: "Friday 15:30 ET"
+    data_as_of: "Tuesday close"
+    cache_ttl_hours: 24
+
+  # FITS Framework Integration
+  fits:
+    sentiment:
+      role: "Primary weekly driver"
+      weight: 0.40  # 40% of signal weight
+      description: |
+        Non-commercial (speculator) net positions indicate smart money bias.
+        High net long + increasing = strong bullish premise.
+        High net short + increasing = strong bearish premise.
+    
+    fundamental:
+      role: "Regime filter"
+      weight: 0.20
+      indicators:
+        - ETF flows (BTC-specific institutional demand)
+        - Mining metrics (hash rate, difficulty)
+        - Network activity (active addresses, fees)
+    
+    intermarket:
+      role: "Liquidity conditions"
+      weight: 0.20
+      indicators:
+        - VIX (volatility regime)
+        - TGA (Treasury General Account - liquidity drain/injection)
+        - RRP (Reverse Repo - liquidity conditions)
+        - DXY (USD strength - risk-off signal)
+        - Yields (10Y-2Y spread - risk appetite)
+    
+    technical:
+      role: "Entry execution"
+      weight: 0.20
+      concepts:
+        - IPDA phases (expansion, retracement, regression, consolidation)
+        - 75% retracement setups
+        - Mitigation blocks and Order blocks
+        - Fair Value Gaps (FVG)
+        - Confluence zones (institutional levels 00/20/50/80)
+
+  # Signal Generation Rules
+  signal_rules:
+    thresholds:
+      strong_bull: 20.0    # Net long %OI
+      moderate_bull: 10.0
+      neutral_band: 5.0
+      moderate_bear: -10.0
+      strong_bear: -20.0   # Net short %OI
+    
+    confidence_calculation:
+      base_from_net_pct: true
+      max_base: 0.70
+      momentum_boost: 0.20  # When change aligns with net
+      divergence_penalty: -0.15
+      liquidity_boost: 0.05  # High OI confirmation
+      extreme_penalty: -0.10  # >90th percentile caution
+    
+    extreme_positioning:
+      percentile_threshold: 90
+      action: "contrarian_warning"
+      reduce_size: true
+      require_confirmation: true
+
+  # Weekly Workflow
+  workflow:
+    sunday:
+      - Fetch latest COT data (BTC, ETH)
+      - Calculate percentiles and changes
+      - Generate sentiment signals
+      - Fetch macro indicators (VIX, TGA, RRP, ETF flows)
+      - Fetch technical data (4H/1H structure)
+      - Compare BTC vs ETH setups
+      - Select best asset
+      - Generate position sizing
+      - Scan Hyperliquid perps for alts
+      - Output comprehensive report
+    
+    execution:
+      entry_strategy: "75% retracement on 4H/1H confluence"
+      invalidation: "Structure break beyond key level"
+      scale_out: "50% at 2:1 R:R, runner to 3:1+"
+
+  # Risk Management
+  risk_management:
+    capital_default: 2000
+    risk_per_trade_pct: 0.10  # 8-12% range
+    max_risk_pct: 0.12
+    min_risk_pct: 0.08
+    
+    leverage:
+      scaling: "confidence_based"
+      formula: "confidence * 20"
+      max_leverage: 10
+      min_leverage: 1
+    
+    position_sizing:
+      method: "risk_based"
+      formula: "risk_usd / stop_distance"
+      notional_cap: "capital * leverage"
+    
+    stop_loss:
+      placement: "invalidation_point"
+      base_distance_pct:
+        BTC: 0.02
+        ETH: 0.03
+        ALTS: 0.05
+      confidence_adjustment: true  # Tighter stops for high confidence
+    
+    take_profit:
+      min_rr: 2.0
+      target_rr: 3.0
+      scale_out_levels: [2.0, 3.0, 5.0]
+
+  # Perp Scan Configuration
+  perp_scan:
+    enabled: true
+    max_positions: 3
+    filters:
+      min_liquidity: 1000000  # $1M daily volume
+      min_confidence: 0.5
+      funding_bias_threshold: 0.01  # 1% funding differential
+    
+    scoring:
+      liquidity_weight: 0.4
+      funding_weight: 0.3
+      volatility_weight: 0.2
+      momentum_weight: 0.1
+
+  # Timeframes
+  timeframes:
+    primary: "4H"    # Structure analysis
+    entry: "1H"      # Entry refinement
+    context: "1D"    # Trend direction
+    cot: "1W"        # COT release cycle
+
+  # Philosophy Alignment
   philosophy:
-    fits_role: |
-      COT is the Sentiment pillar in F.I.T.S. Non-commercial (smart money) net positions
-      indicate institutional bias. High net long/short + increasing = strong weekly premise.
-    weekly_driver: |
-      Primary bias for asset selection (BTC vs ETH). Aligns with IPDA retracement/regression
-      phases for 75% retrace entries, mitigation blocks, confluence zones.
-    risk_adjustments:
-      strong_bias: >0.8 conf → 10x leverage perps, full allocation.
-      medium_bias: 0.5-0.8 → 5x leverage, 50% allocation.
-      weak_bias: <0.5 → Skip or options for ranges/vol plays.
-    ta_confluence:
-      - 75% retracement on 4H/1H swings.
-      - FVG/imbalance fill.
-      - Institutional levels (00/20/50/80) + mitigation blocks.
-      - SL at invalidation (structure break).
-    multi_asset:
-      BTC/ETH comparison via net %OI + changes.
-      Extensible Hyperliquid perp scan: liquidity >$1M vol, favorable funding, low slippage.
-  config:
-    btc_code: 133741
-    eth_code: 138741
-    capital_usd: 2000
-    risk_pct: 0.10  # 10% risk per trade
-    max_leverage: 10
+    ipda:
+      expansion: "COT extreme + price breakout"
+      retracement: "75% pullback into COT-aligned zone"
+      regression: "Mean reversion within trend (primary setup)"
+      consolidation: "Range-bound, use options or reduce size"
+    
+    confluence_requirements:
+      minimum_factors: 2
+      preferred_factors: 3
+      factors:
+        - COT sentiment alignment
+        - Macro regime filter
+        - Technical structure (FVG, OB, mitigation)
+        - Institutional level proximity
+    
+    market_structure:
+      mitigation_blocks: true
+      order_blocks: true
+      rejection_blocks: true
+      fv_gaps: true
+      institutional_levels: ["00", "20", "50", "80"]
+
+  # CLI Commands
+  commands:
+    weekly_analysis: "./run.sh weekly-cot"
+    dry_run: "./run.sh weekly-cot --capital 2000"
+    live_mode: "./run.sh weekly-cot --live --capital 5000"
+    plain_output: "./run.sh weekly-cot --plain"
+
+  # Testing
+  testing:
+    dry_run_default: true
+    test_data: "Use cached COT for reproducible tests"
+    mock_prices: true
