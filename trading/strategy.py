@@ -68,9 +68,20 @@ class BaseStrategy(ABC):
         ...
 
     def position_size_usd(self, signal: Signal) -> float:
-        """Scale position size by confidence. Override to customise."""
-        base = signal.size_usd or self.max_position_usd
-        return min(base * signal.confidence, self.max_position_usd)
+        """Advanced sizing from PR #7: (capital * risk_pct) / stop_distance adjusted by momentum/vol.
+        Uses COT metadata for risk adjustment per philosophy (8-12% risk).
+        """
+        # Default stop distance (e.g. from IPDA invalidation or 75% retrace)
+        stop_distance = signal.metadata.get(
+            "stop_distance", 0.05) or 0.05  # 5% example
+        risk_pct = 0.10  # 8-12% per philosophy
+        capital = signal.metadata.get("capital_usd", 2000.0)
+        base_size = (capital * risk_pct) / stop_distance
+        # Adjust by COT bias score and confidence
+        adjustment = signal.confidence * \
+            (signal.metadata.get("fits_weighted_score", 50) / 100)
+        size = min(base_size * adjustment, self.max_position_usd)
+        return max(size, 50.0)  # minimum position
 
     def _open(self, coin: str, direction: Direction, size_usd: float) -> None:
         side = "long" if direction == Direction.LONG else "short"
