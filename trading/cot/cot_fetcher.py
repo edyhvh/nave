@@ -6,7 +6,7 @@ Caches weekly reports (released Fridays, analyzed Sundays).
 from __future__ import annotations
 
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 import json

@@ -47,8 +47,11 @@ class COTAnalyzer:
             df = pd.DataFrame(raw.get("raw", []))
             if not df.empty and "Noncommercial_Positions_Long" in df.columns:
                 long = df["Noncommercial_Positions_Long"].sum()
-                short = df.get("Noncommercial_Positions_Short",
-                               pd.Series([0])).sum()
+                short = (
+                    df["Noncommercial_Positions_Short"].sum()
+                    if "Noncommercial_Positions_Short" in df.columns
+                    else 0
+                )
                 net = long - short
             else:
                 net = 0

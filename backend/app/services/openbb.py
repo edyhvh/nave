@@ -114,40 +114,6 @@ def fetch_openbb_indicator(slug: str) -> dict[str, Any]:
 
     raise ValueError(f"Unsupported indicator type: {indicator_type}")
 
-    # Original OpenBB code (commented out until library is properly configured):
-    """
-    indicator = OPENBB_INDICATORS[slug]
-    indicator_type = indicator["type"]
-
-    if indicator_type == "fred_series":
-        return fetch_fred_series(indicator["series_id"])
-
-    if indicator_type == "fixedincome_rate":
-        return fetch_fixedincome_rate(indicator["symbol"])
-
-    if indicator_type == "yield_curve_spread":
-        long_term = fetch_fixedincome_rate(indicator["long_symbol"])
-        short_term = fetch_fixedincome_rate(indicator["short_symbol"])
-
-        long_value = _extract_latest_value(long_term.get("records", []))
-        short_value = _extract_latest_value(short_term.get("records", []))
-
-        spread = None
-        if long_value is not None and short_value is not None:
-            spread = float(long_value) - float(short_value)
-
-        return {
-            "long_symbol": indicator["long_symbol"],
-            "short_symbol": indicator["short_symbol"],
-            "long_value": long_value,
-            "short_value": short_value,
-            "spread": spread,
-            "as_of": datetime.now(timezone.utc).isoformat(),
-        }
-
-    raise ValueError(f"Unsupported indicator type: {indicator_type}")
-    """
-
 
 def _extract_latest_value(records: list[dict[str, Any]]) -> Any:
     if not records:

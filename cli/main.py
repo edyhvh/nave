@@ -55,7 +55,8 @@ def run_strategy(
     typer.echo(f"Running strategy for wallet={wallet}, dry_run={dry_run}...")
     # TODO: import and call from trading.strategy (direct call in future refactor)
     import subprocess
-    cmd = ["python", "-m", "trading.strategy", f"--wallet={wallet}"]
+    import sys
+    cmd = [sys.executable, "-m", "trading.strategy", f"--wallet={wallet}"]
     if dry_run:
         cmd.append("--dry-run")
     subprocess.run(cmd, check=False)
@@ -87,7 +88,8 @@ def run_mcp():
     """Run the MCP server for AI agents."""
     typer.echo("Starting MCP server (uses trading/mcp_server)...")
     import subprocess
-    subprocess.run(["python", "-m", "trading.mcp_server"], check=False)
+    import sys
+    subprocess.run([sys.executable, "-m", "trading.mcp_server"], check=False)
 
 
 @cot_app.command("analyze")
@@ -95,7 +97,8 @@ def analyze_cot(coins: str = typer.Option("BTC ETH", help="Coins to analyze")):
     """Analyze COT data as main trading driver."""
     typer.echo(f"Analyzing COT for {coins}...")
     import subprocess
-    subprocess.run(["python", "-m", "trading.cot.cot_analyzer"], check=False)
+    import sys
+    subprocess.run([sys.executable, "-m", "trading.cot.cot_analyzer"], check=False)
 
 
 if __name__ == "__main__":

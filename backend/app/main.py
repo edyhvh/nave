@@ -18,7 +18,7 @@ if str(root_path) not in sys.path:
 
 
 # TODO: import routers from app.api when implemented
-# from app.api.indicators import router as indicators_router
+from app.api.indicators import router as indicators_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -40,8 +40,8 @@ app.add_middleware(
 # Security, rate limiting, logging
 setup_security_middleware(app)
 
-# Include routers (add as implemented)
-# app.include_router(indicators_router, prefix="/api/v1", tags=["indicators"])
+# Include routers
+app.include_router(indicators_router, prefix="/api/v1", tags=["indicators"])
 
 
 @app.get("/health")
