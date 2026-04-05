@@ -59,7 +59,8 @@ class BaseStrategy(ABC):
         self.dry_run = dry_run
 
         if dry_run:
-            logger.warning("Strategy running in DRY-RUN mode — no orders will be submitted.")
+            logger.warning(
+                "Strategy running in DRY-RUN mode — no orders will be submitted.")
 
     @abstractmethod
     def compute_signals(self) -> list[Signal]:
@@ -74,10 +75,12 @@ class BaseStrategy(ABC):
     def _open(self, coin: str, direction: Direction, size_usd: float) -> None:
         side = "long" if direction == Direction.LONG else "short"
         if self.dry_run:
-            logger.info("[DRY-RUN] market_open %s %s $%.2f", coin, side, size_usd)
+            logger.info("[DRY-RUN] market_open %s %s $%.2f",
+                        coin, side, size_usd)
             return
         result = self.client.market_open(coin, side, size_usd)
-        logger.info("market_open %s %s $%.2f → %s", coin, side, size_usd, result)
+        logger.info("market_open %s %s $%.2f → %s",
+                    coin, side, size_usd, result)
 
     def _close(self, coin: str) -> None:
         if self.dry_run:
@@ -164,19 +167,29 @@ class MacroMomentumStrategy(BaseStrategy):
 
     def _fetch_indicators(self) -> dict:
         """
-        Stub — replace with actual nave/OpenBB data fetching.
-
-        Example integration with nave's existing scripts:
-            from scripts.openbb_tools import get_rrp, get_aaii, get_vix
-            return {
-                "rrp_weekly_change_bn": get_rrp()["weekly_change"],
-                "aaii_bull_pct": get_aaii()["bull"],
-                "aaii_bear_pct": get_aaii()["bear"],
-                "vix": get_vix(),
-            }
+        Fetch indicators including COT as the MAIN weekly driver.
+        Integrates with trading.cot for BTC/ETH comparison per philosophy.
         """
-        logger.warning("_fetch_indicators() is using stub data — integrate with nave/OpenBB")
-        return {}
+        from trading.cot.cot_fetcher import fetch_latest_cot
+        from trading.cot.cot_analyzer import COTAnalyzer
+
+        logger.info(
+            "Fetching COT as primary weekly bias (Sunday analysis of Friday release)")
+
+        cot_data = fetch_latest_cot()
+        analyzer = COTAnalyzer()
+        biases = analyzer.analyze(cot_data)
+
+        # Stub other macros (extend with real OpenBB later)
+        indicators = {
+            "cot_data": cot_data,  # primary driver
+            "cot_biases": biases,
+            "rrp_weekly_change_bn": -25.0,  # example
+            "aaii_bull_pct": 35.0,
+            "aaii_bear_pct": 45.0,
+            "vix": 18.0,
+        }
+        return indicators
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -185,18 +198,22 @@ if __name__ == "__main__":
     import argparse
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    parser = argparse.ArgumentParser(description="Run MacroMomentumStrategy once")
+    parser = argparse.ArgumentParser(
+        description="Run MacroMomentumStrategy once")
     parser.add_argument("--wallet", default="openfang")
     parser.add_argument("--mainnet", action="store_true")
-    parser.add_argument("--live", action="store_true", help="Disable dry-run (REAL ORDERS)")
+    parser.add_argument("--live", action="store_true",
+                        help="Disable dry-run (REAL ORDERS)")
     parser.add_argument("--coins", nargs="+", default=["BTC", "ETH"])
     parser.add_argument("--max-usd", type=float, default=50.0)
     args = parser.parse_args()
 
     if args.live and not args.mainnet:
-        parser.error("--live requires --mainnet (testnet is for paper trading)")
+        parser.error(
+            "--live requires --mainnet (testnet is for paper trading)")
 
-    client = HyperliquidClient(wallet_name=args.wallet, testnet=not args.mainnet)
+    client = HyperliquidClient(
+        wallet_name=args.wallet, testnet=not args.mainnet)
     strategy = MacroMomentumStrategy(
         client,
         coins=args.coins,

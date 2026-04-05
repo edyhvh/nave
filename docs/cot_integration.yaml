@@ -1,0 +1,34 @@
+# COT Integration with Nave Philosophy
+# How Commitment of Traders influences weekly setups
+
+cot_as_weekly_driver:
+  frequency: "Weekly (Friday release, Sunday analysis)"
+  assets: ["BTC (code 133741)", "ETH (CME Ether futures)"]
+  key_metrics:
+    - net_non_commercial_positions
+    - percent_of_open_interest
+    - week-over-week_changes
+    - commercials_vs_specs_positioning
+
+influence_on:
+  momentum: "Extreme spec positioning signals potential reversals (contrarian)"
+  volatility: "High COT imbalance → higher expected vol for setups"
+  risk_sizing: "Adjust position size based on COT confidence (8-12% risk max)"
+  asset_selection: "Compare BTC vs ETH COT bias to allocate 100% capital to best"
+  option_usage: "In ranges with neutral COT, prefer options for defined risk"
+
+alignment_with:
+  fits_framework: "Primarily Sentiment + Fundamental layers"
+  ipda: "Use COT bias to confirm IPDA phase (expansion/retracement)"
+  setups: "Prioritize 75% retracement, order blocks, FVG in direction of COT bias"
+  risk_management: "SL at IPDA invalidation points; asymmetric R:R"
+
+usage:
+  command: "python scripts/weekly_cot_analysis.py"
+  report_includes: "COT tables, best asset, sizing, perps scan, philosophy references"
+  extensible: "Add more Hyperliquid perps via client.get_meta()"
+
+notes:
+  - "Commercials/institutions are makers and move the market (technical.yaml)"
+  - "Do not use indicators in isolation - combine with technical confluence"
+  - "Dry-run first. Integrate with vault for execution."

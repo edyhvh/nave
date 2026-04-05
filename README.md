@@ -5,6 +5,7 @@ A financial data analysis platform that tracks macroeconomic indicators and cryp
 ## Project Overview
 
 This project analyzes 20+ economic and financial indicators across 8 categories:
+
 - **Liquidity and Monetary Policy**: TGA, RRP, Fed injections, interest rates
 - **Sentiment and Market Psychology**: AAII surveys, risk appetite (VIX)
 - **Debt, Deficit, and Fiat Currency Value**: Debt/GDP ratios, purchasing power
@@ -25,6 +26,7 @@ python setup.py
 ```
 
 That's it! The setup script will:
+
 - Install Python 3.12 via mise (if available)
 - Create a virtual environment
 - Install all dependencies (OpenBB + extensions)
@@ -60,11 +62,13 @@ pip install -r requirements.txt
    FRED_API_KEY=your_fred_api_key_here
    ```
 3. Configure OpenBB with your key:
+
    ```bash
    python -c "from openbb import obb; obb.user.credentials.fred_api_key.set('your_fred_api_key_here'); obb.account.save()"
    ```
 
    Or use the interactive setup:
+
    ```bash
    python -c "from openbb import obb; print('FRED Setup:'); key=input('Enter FRED API key: '); obb.user.credentials.fred_api_key.set(key); obb.account.save(); print('✅ FRED key saved')"
    ```
@@ -128,14 +132,36 @@ python -m trading.client summary --wallet openfang
 python -m trading.strategy --wallet openfang --coins BTC ETH
 ```
 
+### Weekly COT Analysis (feat/cot_grok)
+
+COT is now the **main weekly driver** for trading setups.
+
+```bash
+# Run weekly analysis (Sunday)
+python scripts/weekly_cot_analysis.py --capital 2000 --dry-run
+
+# Or with live execution (careful!)
+python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet openfang
+```
+
+**Features**:
+
+- Fetches latest CME COT for BTC (133741) and ETH
+- Compares setups using F.I.T.S. + IPDA philosophy (75% retracement, order blocks, etc.)
+- Recommends best asset + capital allocation, leverage, SL/TP
+- Scans other Hyperliquid perps for liquidity/funding opportunities
+- Dry-run by default
+
+See `docs/technical.yaml` for full philosophy and `trading/cot/` for implementation.
+
 ### Wallets
 
 Two EVM wallets are pre-generated for the trading agents:
 
-| Agent | Address |
-|-------|---------|
+| Agent      | Address                                      |
+| ---------- | -------------------------------------------- |
 | `openfang` | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51` |
-| `ironclaw`  | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F` |
+| `ironclaw` | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F` |
 
 Private keys and seed phrases are encrypted in `~/.secrets/nave-wallets/`
 and never committed to this repository.
@@ -145,6 +171,7 @@ For full setup instructions see **[docs/web3-setup.md](docs/web3-setup.md)**.
 ## Troubleshooting
 
 ### Environment Issues
+
 ```bash
 # Rebuild environment
 rm -rf .venv
@@ -152,12 +179,14 @@ python setup.py
 ```
 
 ### Dependency Issues
+
 ```bash
 source .venv/bin/activate
 pip install -r requirements.txt --upgrade
 ```
 
 ### Python Version Issues
+
 ```bash
 mise install python@3.12
 rm -rf .venv

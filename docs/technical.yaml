@@ -428,6 +428,8 @@ technical_philosophy:
           - Contrarian use of AAII (spike in bulls may indicate continuation).
           - VIX for risk appetite gauge.
           - Fear and greed indices for crypto.
+          - COT (Commitment of Traders): tracks commercials (makers/institutions) vs speculators.
+            Weekly driver for BTC/ETH bias. Commercials move the market.
 
   institutional_narrative:
     description: >
