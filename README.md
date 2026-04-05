@@ -168,6 +168,22 @@ and never committed to this repository.
 
 For full setup instructions see **[docs/web3-setup.md](docs/web3-setup.md)**.
 
+## Unified CLI
+
+After setup (`python setup.py`), use the professional `nave` CLI (powered by Typer):
+
+```bash
+nave --help
+nave version
+nave trading run-strategy --wallet openfang --dry-run
+nave api start --reload
+nave mcp
+nave cot analyze --coins BTC ETH
+nave data fetch aaii
+```
+
+This unifies all previous scripts, strategies, MCP, and backend. Legacy `./run.sh` and `python -m trading.*` still work.
+
 ## Troubleshooting
 
 ### Environment Issues
