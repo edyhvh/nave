@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:5173"]
     allow_credentials: bool = True
     allow_methods: List[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers: List[str] = ["Content-Type", "Authorization", "X-Requested-With"]
+    allow_headers: List[str] = ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
 
     # Rate limiting
     rate_limit_requests: int = 100

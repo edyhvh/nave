@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
 
@@ -133,7 +133,7 @@ class MockHyperliquidClient:
             exit_price *= (1 + self.slippage)
             pnl = (trade.entry_price - exit_price) * trade.size
 
-        trade.exit_date = self.current_date if self.current_date is not None else datetime.now()
+        trade.exit_date = self.current_date if self.current_date is not None else datetime.now(timezone.utc)
         trade.exit_price = exit_price
         trade.pnl = pnl - trade.fees
         trade.status = 'closed'
