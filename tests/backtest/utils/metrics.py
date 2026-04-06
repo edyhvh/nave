@@ -165,7 +165,7 @@ def calculate_metrics(
         gross_profit = sum(winning) if winning else 0
         gross_loss = abs(sum(losing)) if losing else 0
         profit_factor = gross_profit / \
-            gross_loss if gross_loss > 0 else float('inf')
+            gross_loss if gross_loss > 0 else 100.0  # Avoid inf/NaN per Copilot review
 
         avg_win = np.mean(winning) if winning else 0
         avg_loss = np.mean(losing) if losing else 0

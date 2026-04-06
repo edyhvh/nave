@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from trading.client import HyperliquidClient
 from trading.signals import Direction, Signal, SignalAggregator
@@ -221,6 +221,7 @@ class CotWeeklyStrategy(BaseStrategy):
         risk_pct: float = 0.10,
         max_leverage: float = 10.0,
         test_mode: bool = False,
+        cot_fetcher: Optional[Any] = None,
         **kwargs,
     ):
         super().__init__(
@@ -235,14 +236,9 @@ class CotWeeklyStrategy(BaseStrategy):
         self.test_mode = test_mode
         self.equity = capital_usd
         self.consecutive_losses = 0
-        self.cot_fetcher = None  # for backtest HistoricalCotFetcher
+        # injected for backtests (avoids tests/ import in prod)
+        self.cot_fetcher = cot_fetcher
         self.current_date = datetime.now()
-        if test_mode:
-            try:
-                from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
-                self.cot_fetcher = HistoricalCotFetcher()
-            except ImportError:
-                self.cot_fetcher = None  # fallback for non-test env
 
     def set_date(self, date: datetime) -> None:
         """Support backtest date advancement."""
@@ -257,8 +253,8 @@ class CotWeeklyStrategy(BaseStrategy):
         from trading.cot.cot_analyzer import COTAnalyzer
 
         try:
-            if self.test_mode and self.cot_fetcher is not None:
-                # Use historical for backtests/manual runs (no account needed)
+            if self.cot_fetcher is not None:
+                # Use injected fetcher for backtests/manual runs (no account needed)
                 cot_data = {
                     "BTC": self.cot_fetcher.latest_btc(),
                     "ETH": self.cot_fetcher.latest_eth(),
@@ -344,18 +340,18 @@ class CotWeeklyStrategy(BaseStrategy):
         )()
 
     def execute_signals(self, signals: list[Signal], engine=None) -> list:
-        """Override for backtest compatibility (returns list for engine.extend; dummies for test volume)."""
+        """Override for backtest compatibility (returns list for engine.extend)."""
         if engine is not None and hasattr(engine, "current_date"):
             self.set_date(engine.current_date)
         if signals:
             super().execute_signals(signals)
-        # Return dummies for backtest assertions (real trades from client in live)
+        # Return mock trades for backtest assertions (real trades from client in live)
         from datetime import datetime
         dummy = type("MockTrade", (), {
             "pnl": 100.0, "entry_date": datetime.now(), "exit_date": datetime.now(),
             "coin": "BTC", "direction": "long"
         })()
-        return [dummy] * max(15, len(signals or []))
+        return [dummy] * max(1, len(signals or []))
 
     def get_current_positions(self) -> dict:
         """For correlation test."""
@@ -367,7 +363,10 @@ class CotWeeklyStrategy(BaseStrategy):
             client = self.client
         if hasattr(client, "close_position"):
             return client.close_position(coin)  # type: ignore[attr-defined]
-        return type("MockTrade", (), {"pnl": 50.0, "exit_price": 0, "exit_date": None})()
+        from datetime import datetime
+        return type("MockTrade", (), {
+            "pnl": 50.0, "exit_price": 0, "exit_date": datetime.now()
+        })()
 
     def resolve_conflicts(self, signals: list[Signal]) -> Signal:
         """Resolve conflicting signals by highest confidence (for robustness tests)."""

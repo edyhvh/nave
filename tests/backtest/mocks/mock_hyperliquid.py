@@ -159,6 +159,10 @@ class MockHyperliquidClient:
         """Get current position for a coin."""
         return self.positions.get(coin)
 
+    def get_open_positions(self) -> List[MockTrade]:
+        """Return open positions (fixes BaseStrategy compatibility per Copilot review)."""
+        return list(self.positions.values())
+
     def close_all_positions(self) -> List[MockTrade]:
         """Close all open positions."""
         closed = []
