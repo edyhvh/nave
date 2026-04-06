@@ -10,6 +10,7 @@ Usage:
 This script runs the backtest tests and generates reports.
 """
 
+from trading.utils.clean_backtest_files import clean_backtest_outputs
 import argparse
 import json
 import sys
@@ -21,8 +22,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 ROOT_DIR = Path(__file__).parent.parent.parent
-
-from trading.utils.clean_backtest_files import clean_backtest_outputs
 
 
 def _write_timestamped_backtest_exports(
@@ -95,7 +94,7 @@ def run_setup_discovery():
     print()
     print("Objective: Find optimal COT signal parameters")
     print()
-    
+
     import subprocess
     result = subprocess.run(
         ["python", "-m", "pytest", "test_setup_discovery.py", "-v", "-s"],
@@ -113,7 +112,7 @@ def run_strategy_validation():
     print()
     print("Objective: Validate complete CotWeeklyStrategy")
     print()
-    
+
     import subprocess
     result = subprocess.run(
         ["python", "-m", "pytest", "test_strategy.py", "-v", "-s"],
@@ -186,7 +185,7 @@ def run_all():
     print("COMPLETE BACKTEST SUITE")
     print("=" * 60)
     print()
-    
+
     import subprocess
     result = subprocess.run(
         ["python", "-m", "pytest", ".", "-v", "--tb=short"],
@@ -200,12 +199,14 @@ def generate_report():
     """Generate HTML report from test results."""
     import subprocess
     result = subprocess.run(
-        ["python", "-m", "pytest", ".", "--html=backtest_report.html", "--self-contained-html"],
+        ["python", "-m", "pytest", ".",
+            "--html=backtest_report.html", "--self-contained-html"],
         cwd=Path(__file__).parent,
         capture_output=False
     )
     if result.returncode == 0:
-        print(f"\nReport generated: {Path(__file__).parent / 'backtest_report.html'}")
+        print(
+            f"\nReport generated: {Path(__file__).parent / 'backtest_report.html'}")
     else:
         print("\nReport generation failed (missing pytest-html plugin?)")
     return result.returncode
@@ -219,14 +220,16 @@ def main():
         help="Which objective to run"
     )
     parser.add_argument("--all", action="store_true", help="Run all tests")
-    parser.add_argument("--report", action="store_true", help="Generate HTML report")
-    parser.add_argument("--quick", action="store_true", help="Run quick tests only")
-    
+    parser.add_argument("--report", action="store_true",
+                        help="Generate HTML report")
+    parser.add_argument("--quick", action="store_true",
+                        help="Run quick tests only")
+
     args = parser.parse_args()
-    
+
     if args.report:
         return generate_report()
-    
+
     if args.objective == "setup-discovery":
         return run_setup_discovery()
     elif args.objective == "strategy-validation":
@@ -236,8 +239,11 @@ def main():
     elif args.all:
         return run_all()
     else:
-        parser.print_help()
-        return 1
+        print(
+            "No objective specified; defaulting to '--objective setup-learning' "
+            "to generate backtest exports."
+        )
+        return run_setup_learning()
 
 
 if __name__ == "__main__":
