@@ -31,6 +31,7 @@ from trading.signals import MacroSignalProducer, SignalAggregator
 from trading.client import HyperliquidClient
 from trading.journal import TradeJournal
 from trading.strategy import CotWeeklyStrategy
+from trading.utils.clean_backtest_files import clean_backtest_outputs
 
 from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
 from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
@@ -263,6 +264,12 @@ def run_setup_learning_pipeline(
         report_text=report_text,
         patterns=patterns,
         run_trades=run_trades,
+    )
+    clean_backtest_outputs(
+        output_dir=Path(__file__).parent.parent / "trade_journal",
+        archive_dir=Path(__file__).parent.parent / "backtest_archive" / "invalid",
+        delete=False,
+        verbose=True,
     )
     db_path = getattr(journal.storage, "db_path", "n/a")
     print(f"Backtest journal saved: trades={len(run_trades)} db={db_path}")

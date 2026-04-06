@@ -22,6 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 ROOT_DIR = Path(__file__).parent.parent.parent
 
+from trading.utils.clean_backtest_files import clean_backtest_outputs
+
 
 def _write_timestamped_backtest_exports(
     report_text: str,
@@ -161,6 +163,12 @@ def run_setup_learning():
         report_text=report,
         patterns=patterns,
         run_trades=run_trades,
+    )
+    clean_backtest_outputs(
+        output_dir=ROOT_DIR / "trade_journal",
+        archive_dir=ROOT_DIR / "backtest_archive" / "invalid",
+        delete=False,
+        verbose=True,
     )
     db_path = getattr(journal.storage, "db_path", "n/a")
     print(
