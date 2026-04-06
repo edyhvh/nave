@@ -122,8 +122,8 @@ def calculate_metrics(
 
     # Risk-adjusted metrics
     excess_returns = returns - risk_free_rate / 252
-    sharpe = excess_returns.mean() / excess_returns.std() * \
-        np.sqrt(252) if excess_returns.std() > 0 else 0
+    excess_std = excess_returns.std()
+    sharpe = excess_returns.mean() / excess_std * np.sqrt(252) if excess_std > 0 else 0
 
     # Sortino (downside deviation)
     downside_returns = returns[returns < 0]
@@ -270,7 +270,16 @@ def calculate_regime_metrics(
     # Segment trades by regime
     regime_metrics = {}
     for r in ['bull_trend', 'bear_trend', 'range']:
-        regime_trades = [t for t in trades if regime.get(t.entry_date) == r]
+        regime_trades = []
+        for t in trades:
+            try:
+                # Use nearest index for robust datetime matching
+                nearest_idx = regime.index.get_indexer([t.entry_date], method='nearest')[0]
+                trade_regime = regime.iloc[nearest_idx] if nearest_idx >= 0 else None
+            except (KeyError, TypeError, ValueError):
+                trade_regime = None
+            if trade_regime == r:
+                regime_trades.append(t)
         if regime_trades:
             # Create sub-equity curve (simplified)
             regime_metrics[r] = calculate_metrics(equity_curve, regime_trades)

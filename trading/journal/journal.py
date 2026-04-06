@@ -3,12 +3,15 @@ Main TradeJournal class - high-level interface for trade recording.
 """
 
 from datetime import datetime, timedelta, timezone
+import logging
 import os
 from typing import List, Optional, Dict, Any
 
 from .models import Trade, TradeEnvironment, TradeStatus, PositionUpdate, TradeReview, TradeOutcome, TradeJournalEntry
 from .storage import StorageBackend, SQLiteStorage
 from .github_sync import GitHubDataRepoSync
+
+logger = logging.getLogger(__name__)
 
 
 class TradeJournal:
@@ -83,6 +86,13 @@ class TradeJournal:
                 trades=trades, stats=stats, metadata=metadata)
         except Exception:
             # Never fail core journal operations due to sync/network issues.
+            logger.warning(
+                "GitHub auto-sync failed for event '%s' (trade_id=%s). "
+                "Check NAVE_GITHUB_TOKEN and data-repo settings.",
+                event,
+                trade.id if trade else None,
+                exc_info=True,
+            )
             return
 
     def sync_to_github(self, trade_id: Optional[str] = None) -> bool:

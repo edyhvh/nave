@@ -1,10 +1,13 @@
 from datetime import datetime, timezone
 from typing import Any
 from collections.abc import Hashable, Mapping
+import logging
 
 import pandas as pd
 
 from app.domain.openbb_indicators import OPENBB_INDICATORS
+
+logger = logging.getLogger(__name__)
 
 
 def _get_obb():
@@ -64,8 +67,13 @@ def fetch_openbb_indicator(slug: str) -> dict[str, Any]:
     if slug not in OPENBB_INDICATORS:
         raise KeyError(f"Unknown OpenBB indicator: {slug}")
 
-    # TEMPORARY: Return mock data for testing frontend integration
-    # TODO: Restore actual OpenBB calls when library and API keys are configured
+    # TEMPORARY: Return mock data for testing frontend integration.
+    # TODO: Restore actual OpenBB calls when library and API keys are configured.
+    logger.warning(
+        "fetch_openbb_indicator('%s') is returning MOCK data. "
+        "Configure OpenBB API keys to enable real data.",
+        slug,
+    )
     import random
     from datetime import timedelta
 

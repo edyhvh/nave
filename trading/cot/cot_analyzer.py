@@ -73,8 +73,24 @@ class COTAnalyzer:
                 net = long - short
             else:
                 net = 0
-            pct = 22.0  # placeholder
-            change = 1000
+            # Compute pct of OI if open-interest column is present
+            if not df.empty and "Open_Interest_All" in df.columns:
+                total_oi = df["Open_Interest_All"].iloc[-1]
+                pct = round(float(abs(net) / total_oi * 100), 2) if total_oi else 0.0
+            else:
+                pct = 0.0
+            # Weekly change: diff of net between latest two rows if available
+            if not df.empty and len(df) >= 2 and "Noncommercial_Positions_Long" in df.columns:
+                prev_long = df["Noncommercial_Positions_Long"].iloc[-2]
+                prev_short = (
+                    df["Noncommercial_Positions_Short"].iloc[-2]
+                    if "Noncommercial_Positions_Short" in df.columns
+                    else 0
+                )
+                prev_net = prev_long - prev_short
+                change = int(net - prev_net)
+            else:
+                change = 0
 
         # Advanced F.I.T.S. weighting (from PR #7): Sentiment (COT commercials) 40%, Fundamental 30%, Technical stub 30%
         # Bias score 0-100 for overall setup quality

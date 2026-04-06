@@ -392,6 +392,11 @@ class TestCotWeeklyStrategy:
 class TestStrategyRobustness:
     """Stress tests and edge cases for strategy robustness."""
 
+    @pytest.fixture
+    def mock_client(self):
+        """Fixture for mock Hyperliquid client."""
+        return MockHyperliquidClient(slippage_pct=0.001)
+
     def test_empty_signal_handling(self, mock_client):
         """Strategy should handle weeks with no signals gracefully."""
         strategy = CotWeeklyStrategy(

@@ -162,10 +162,14 @@ class BacktestEngine:
         regime_metrics = {}
         if price_data is not None:
             from .metrics import calculate_regime_metrics
+            # Ensure price_data has a DatetimeIndex for regime matching
+            close_series = price_data['close']
+            if not isinstance(close_series.index, pd.DatetimeIndex) and 'timestamp' in price_data.columns:
+                close_series = price_data.set_index('timestamp')['close']
             regime_metrics = calculate_regime_metrics(
                 equity_series,
                 self.trades,
-                price_data['close']
+                close_series
             )
         
         result = BacktestResult(

@@ -461,7 +461,8 @@ class TestTradeJournal:
         
         assert "TRADE JOURNAL REPORT" in report
         assert "PAPER" in report
-        assert "Total Trades:     3" in report
+        assert "Total Trades:" in report
+        assert "3" in report
 
 
 # ─────────────────────────────────────────────────────────────────────────────

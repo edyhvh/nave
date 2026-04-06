@@ -133,7 +133,7 @@ class MockHyperliquidClient:
             exit_price *= (1 + self.slippage)
             pnl = (trade.entry_price - exit_price) * trade.size
 
-        trade.exit_date = self.current_date
+        trade.exit_date = self.current_date if self.current_date is not None else datetime.now()
         trade.exit_price = exit_price
         trade.pnl = pnl - trade.fees
         trade.status = 'closed'

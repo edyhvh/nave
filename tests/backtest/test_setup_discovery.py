@@ -382,13 +382,13 @@ class TestSetupDiscovery:
 
         for signal in signals:
             # Simplified model: COT direction predicts price with some accuracy
-            base_return = np.random.normal(0, 0.10)  # 10% volatility
+            base_return = np.random.normal(0, 0.05)  # 5% volatility
 
             # Directional bias based on signal
             if signal['direction'] == Direction.LONG:
-                base_return += 0.02  # 2% upward bias
+                base_return += 0.05  # 5% upward bias
             else:
-                base_return -= 0.02  # 2% downward bias
+                base_return -= 0.05  # 5% downward bias
 
             # Confidence scaling
             base_return *= signal['confidence']

@@ -51,7 +51,6 @@ async def health_check():
         "status": "healthy",
         "environment": settings.environment,
         "version": settings.app_version,
-        "cache_path": settings.cache_db_path,
     }
 
 
