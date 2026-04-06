@@ -1,6 +1,6 @@
 """Core backtest engine for strategy validation."""
 
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Callable, cast
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -34,6 +34,7 @@ class BacktestResult:
     trades: List[Any]
     metrics: PerformanceMetrics
     regime_metrics: Dict[str, PerformanceMetrics] = field(default_factory=dict)
+    best_params: Dict[str, Any] = field(default_factory=dict)
     
     def summary(self) -> str:
         """Generate summary report."""
@@ -225,10 +226,19 @@ class BacktestEngine:
             if not hasattr(trade, 'entry_date'):
                 continue
             
-            entry_price = price_data.asof(trade.entry_date)
-            ma_price = ma50.asof(trade.entry_date)
+            entry_price_raw = price_data.asof(trade.entry_date)
+            ma_price_raw = ma50.asof(trade.entry_date)
             
-            if pd.isna(entry_price) or pd.isna(ma_price):
+            if not np.isscalar(entry_price_raw) or not np.isscalar(ma_price_raw):
+                continue
+
+            try:
+                entry_price = float(cast(Any, entry_price_raw))
+                ma_price = float(cast(Any, ma_price_raw))
+            except (TypeError, ValueError):
+                continue
+
+            if np.isnan(entry_price) or np.isnan(ma_price):
                 continue
             
             if entry_price > ma_price:

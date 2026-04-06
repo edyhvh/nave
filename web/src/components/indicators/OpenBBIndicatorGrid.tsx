@@ -42,8 +42,8 @@ const INDICATOR_COLORS: Record<string, string> = {
 interface OpenBBIndicatorCardProps {
   slug: string;
   data: OpenBBIndicatorData | undefined;
-  loading?: boolean;
-  error?: string | null;
+  loading: boolean;
+  error: string | null;
   onRefresh?: () => void;
   key?: string;
 }

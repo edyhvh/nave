@@ -185,6 +185,7 @@ class TestCotWeeklyStrategy:
         
         # BTC should be selected (higher confidence)
         selected = strategy.select_best_asset([btc_signal, eth_signal])
+        assert selected is not None, "Should return a signal"
         assert selected.coin == 'BTC', "Should select BTC with higher confidence"
         
         # Reverse case
@@ -192,6 +193,7 @@ class TestCotWeeklyStrategy:
         btc_signal.confidence = 0.5
         
         selected = strategy.select_best_asset([btc_signal, eth_signal])
+        assert selected is not None, "Should return a signal"
         assert selected.coin == 'ETH', "Should select ETH with higher confidence"
     
     def test_market_regime_performance(self, mock_client, strategy_config):
@@ -330,7 +332,7 @@ class TestCotWeeklyStrategy:
         
         # Should select BTC (higher confidence) and not also take ETH
         selected = strategy.select_best_asset(signals)
-        
+        assert selected is not None, "Should return a signal"
         assert selected.coin == 'BTC', "Should select highest confidence"
         
         # Check that we're not over-concentrated

@@ -78,21 +78,28 @@ class HyperliquidClient:
 
     def get_account_state(self) -> dict:
         """Full portfolio state: equity, margin, open positions."""
-        return self._info({"type": "clearinghouseState", "user": self._address})
+        result = self._info({"type": "clearinghouseState", "user": self._address})
+        return result if isinstance(result, dict) else {}
 
     def get_open_positions(self) -> list[dict]:
         return self.get_account_state().get("assetPositions", [])
 
     def get_open_orders(self) -> list[dict]:
-        return self._info({"type": "openOrders", "user": self._address})
+        result = self._info({"type": "openOrders", "user": self._address})
+        return [r for r in result if isinstance(r, dict)] if isinstance(result, list) else []
 
     def get_fills(self, limit: int = 50) -> list[dict]:
         result = self._info({"type": "userFills", "user": self._address})
-        return result[:limit] if isinstance(result, list) else result
+        if not isinstance(result, list):
+            return []
+        return [r for r in result[:limit] if isinstance(r, dict)]
 
     def get_all_mids(self) -> dict[str, str]:
         """Mid prices for every perp market, e.g. {"BTC": "67500.0", ...}."""
-        return self._info({"type": "allMids"})
+        result = self._info({"type": "allMids"})
+        if not isinstance(result, dict):
+            return {}
+        return {str(k): str(v) for k, v in result.items()}
 
     def get_mid(self, coin: str) -> float:
         mids = self.get_all_mids()
@@ -102,7 +109,8 @@ class HyperliquidClient:
 
     def get_meta(self) -> dict:
         """Exchange metadata: assets, leverage tiers, tick sizes."""
-        return self._info({"type": "meta"})
+        result = self._info({"type": "meta"})
+        return result if isinstance(result, dict) else {}
 
     def get_markets(self) -> list[str]:
         """Return sorted list of all tradeable symbols."""
@@ -139,6 +147,23 @@ class HyperliquidClient:
     def market_close(self, coin: str, slippage: float = 0.01) -> dict:
         """Close the entire open position for a coin at market price."""
         return self._get_exchange().market_close(coin, slippage=slippage)
+
+    def open_position(
+        self,
+        coin: str,
+        direction: Literal["long", "short"],
+        size_usd: float,
+        leverage: float | None = None,
+    ) -> dict:
+        """Compatibility wrapper used by strategy/tests."""
+        if leverage is not None:
+            # Hyperliquid leverage is integer; clamp to at least 1x.
+            self.set_leverage(coin, max(1, int(round(leverage))))
+        return self.market_open(coin, direction, size_usd)
+
+    def close_position(self, coin: str) -> dict:
+        """Compatibility wrapper used by strategy/tests."""
+        return self.market_close(coin)
 
     def limit_order(
         self,
