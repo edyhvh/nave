@@ -5,24 +5,26 @@ import { type IndicatorResponse } from "@/types/api";
 interface IndicatorCardProps {
   title: string;
   indicator: IndicatorResponse | null;
-  loading: boolean;
-  error: string | null;
+  loading?: boolean;
+  error?: string | null;
   onRefresh?: () => void;
-  children?: React.ReactNode;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export default function IndicatorCard({
   title,
   indicator,
-  loading,
-  error,
+  loading = false,
+  error = null,
   onRefresh,
+  className = "",
   children,
-  className,
 }: IndicatorCardProps) {
   return (
-    <div className={`rounded-2xl border border-border bg-white p-6 shadow-card ${className ?? ""}`}>
+    <div
+      className={`rounded-2xl border border-border bg-white p-6 shadow-card ${className}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-ink">{title}</h3>
         <div className="flex items-center gap-2">

@@ -1,25 +1,20 @@
 import type { OpenBBIndicatorSlug } from "@/lib/config";
 
-export interface IndicatorResponse<T = unknown> {
+export interface IndicatorResponse<T = Record<string, any>> {
+  name: string;
+  as_of: string | Date;
+  source: string;
   data: T;
-  as_of?: string;
-  cached?: boolean;
-  source?: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  timestamp?: string;
-  service?: string;
+  cached: boolean;
 }
 
 export interface APIError {
   message: string;
   status?: number;
-  details?: unknown;
+  details?: any;
 }
 
-export interface UseIndicatorResult<T = unknown> {
+export interface UseIndicatorResult<T = Record<string, any>> {
   data: IndicatorResponse<T> | null;
   loading: boolean;
   error: APIError | null;
@@ -31,18 +26,23 @@ export interface UseIndicatorsResult {
   loading: boolean;
   errors: Record<string, APIError>;
   refetch: (indicator?: OpenBBIndicatorSlug | string) => Promise<void>;
-  refetchAll: () => Promise<void>;
+  refetchAll?: () => Promise<void>;
 }
 
-export interface AAIIData {
-  bullish: number;
-  bearish: number;
-  neutral: number;
-  total?: number;
-  date?: string;
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  version?: string;
+  services?: Record<string, boolean>;
 }
 
-export interface OpenBBIndicatorData {
+export type AAIIData = {
+  sentiment: "bullish" | "bearish" | "neutral";
   value: number;
-  date?: string;
-}
+  date: string;
+  [key: string]: any;
+};
+
+export type OpenBBIndicatorData = IndicatorResponse;
+export type CBDCData = any;
+export type TariffData = any;
