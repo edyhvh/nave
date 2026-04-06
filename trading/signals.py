@@ -21,11 +21,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
+from trading.setup_learning import SetupLearner
+
 
 class Direction(str, Enum):
-    LONG    = "long"
-    SHORT   = "short"
-    CLOSE   = "close"    # close any existing position
+    LONG = "long"
+    SHORT = "short"
+    CLOSE = "close"    # close any existing position
     NEUTRAL = "neutral"  # no action
 
 
@@ -51,7 +53,8 @@ class Signal:
 
     def __post_init__(self):
         if not 0.0 <= self.confidence <= 1.0:
-            raise ValueError(f"confidence must be in [0, 1], got {self.confidence}")
+            raise ValueError(
+                f"confidence must be in [0, 1], got {self.confidence}")
         if isinstance(self.direction, str):
             self.direction = Direction(self.direction)
 
@@ -116,7 +119,8 @@ class SignalAggregator:
             net = self.net_direction(coin)
             print(f"  {coin:<8} net={net.value:<8} ({len(sigs)} signal(s)):")
             for s in sorted(sigs, key=lambda x: -x.confidence):
-                print(f"           {s.direction.value:<8} conf={s.confidence:.2f}  [{s.source}]")
+                print(
+                    f"           {s.direction.value:<8} conf={s.confidence:.2f}  [{s.source}]")
 
 
 # ── Macro signal producers ────────────────────────────────────────────────────
@@ -135,8 +139,13 @@ class MacroSignalProducer:
       - BTC ETF net flows (positive → long BTC)
     """
 
-    def __init__(self, coins: list[str] | None = None):
+    def __init__(
+        self,
+        coins: list[str] | None = None,
+        setup_learner: SetupLearner | None = None,
+    ):
         self.coins = coins or ["BTC", "ETH"]
+        self.setup_learner = setup_learner
 
     def from_rrp_delta(self, rrp_weekly_change_bn: float) -> list[Signal]:
         """
@@ -184,6 +193,21 @@ class MacroSignalProducer:
             for c in self.coins
         ]
 
+    def from_cot(self, cot_biases: dict, setups: list[str] | None = None) -> list[Signal]:
+        """
+        COT (Commitment of Traders) as primary weekly driver.
+        Uses non-commercial positioning (specs vs commercials per philosophy).
+        Integrates with F.I.T.S. sentiment layer.
+        """
+        from trading.cot.cot_analyzer import COTAnalyzer
+        analyzer = COTAnalyzer(setups=setups, setup_learner=self.setup_learner)
+        # If raw data, analyze first
+        if "BTC" in cot_biases and isinstance(cot_biases["BTC"], dict) and "bias" not in cot_biases["BTC"]:
+            biases = analyzer.analyze(cot_biases)
+        else:
+            biases = cot_biases
+        return analyzer.to_signals(biases)
+
     def produce(self, indicators: dict) -> list[Signal]:
         """
         Produce signals from a dict of nave indicators.
@@ -193,14 +217,22 @@ class MacroSignalProducer:
             aaii_bull_pct: float
             aaii_bear_pct: float
             vix: float
+            cot_data: dict  # COT as main weekly driver
         """
         signals: list[Signal] = []
         if "rrp_weekly_change_bn" in indicators:
-            signals.extend(self.from_rrp_delta(indicators["rrp_weekly_change_bn"]))
+            signals.extend(self.from_rrp_delta(
+                indicators["rrp_weekly_change_bn"]))
         if "aaii_bull_pct" in indicators and "aaii_bear_pct" in indicators:
             signals.extend(self.from_aaii_sentiment(
                 indicators["aaii_bull_pct"], indicators["aaii_bear_pct"]
             ))
         if "vix" in indicators:
             signals.extend(self.from_vix(indicators["vix"]))
+        if "cot_data" in indicators:
+            # COT is the MAIN weekly driver
+            signals.extend(self.from_cot(
+                indicators["cot_data"],
+                setups=indicators.get("setups"),
+            ))
         return signals

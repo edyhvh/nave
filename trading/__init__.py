@@ -11,7 +11,10 @@ variables. All secrets live in ~/.secrets/nave-wallets/ (Fernet-encrypted).
 from trading.vault import WalletVault
 from trading.client import HyperliquidClient
 from trading.signals import Signal, Direction
-from trading.strategy import BaseStrategy
+from trading.strategy import BaseStrategy, CotWeeklyStrategy
+from trading.cot.cot_fetcher import fetch_latest_cot
+from trading.cot.cot_analyzer import COTAnalyzer
+from trading.setup_learning import SetupLearner
 
 __all__ = [
     "HyperliquidClient",
@@ -19,4 +22,8 @@ __all__ = [
     "Signal",
     "Direction",
     "BaseStrategy",
+    "CotWeeklyStrategy",
+    "fetch_latest_cot",
+    "COTAnalyzer",
+    "SetupLearner",
 ]

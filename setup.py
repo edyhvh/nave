@@ -10,6 +10,7 @@ import subprocess
 import shutil
 from pathlib import Path
 
+
 def run_command(cmd, cwd=None, check=True):
     """Run a command and return the result"""
     try:
@@ -25,14 +26,18 @@ def run_command(cmd, cwd=None, check=True):
     except subprocess.CalledProcessError as e:
         return False, "", str(e)
 
+
 def print_status(message):
     print(f"🔧 {message}")
+
 
 def print_success(message):
     print(f"✅ {message}")
 
+
 def print_error(message):
     print(f"❌ {message}")
+
 
 def check_requirements():
     """Check if required tools are available"""
@@ -50,6 +55,7 @@ def check_requirements():
 
     return True
 
+
 def setup_mise():
     """Setup mise if available"""
     if shutil.which('mise'):
@@ -61,6 +67,7 @@ def setup_mise():
         else:
             print_status("Using system Python")
     return False
+
 
 def create_venv():
     """Create virtual environment"""
@@ -79,6 +86,7 @@ def create_venv():
     print_success("Virtual environment created")
     return True
 
+
 def install_dependencies():
     """Install dependencies from requirements.txt"""
     print_status("Installing dependencies...")
@@ -93,13 +101,21 @@ def install_dependencies():
         )
         if success:
             print_success("Dependencies installed successfully")
-            return True
         else:
             print_error("Failed to install dependencies")
             return False
+
+    # Install editable for CLI entrypoint (uses pyproject.toml)
+    print_status("Installing editable package for nave CLI...")
+    success, _, _ = run_command(f"{pip_cmd} install -e .")
+    if success:
+        print_success("Editable install complete - 'nave' command available")
     else:
-        print_status("No requirements.txt found, skipping dependency installation")
-        return True
+        print_status(
+            "Editable install skipped (CLI may require manual pip install -e .)")
+
+    return True
+
 
 def setup_direnv():
     """Setup direnv if available"""
@@ -107,11 +123,14 @@ def setup_direnv():
         print_status("Setting up direnv...")
         success, _, _ = run_command("direnv allow")
         if success:
-            print_success("direnv configured - environment will activate automatically")
+            print_success(
+                "direnv configured - environment will activate automatically")
         else:
             print_status("direnv available but configuration failed")
     else:
-        print_status("direnv not found - install it for automatic environment activation")
+        print_status(
+            "direnv not found - install it for automatic environment activation")
+
 
 def create_scripts():
     """Create utility scripts"""
@@ -147,6 +166,7 @@ fi
 
     print_success("Utility scripts created")
 
+
 def main():
     """Main setup function"""
     print("🚀 NAVE Environment Setup")
@@ -168,14 +188,19 @@ def main():
     print("1. Enter directory: cd /path/to/nave")
     print("2. Environment activates automatically (if direnv installed)")
     print("3. Or manually: source .venv/bin/activate")
-    print("4. Run scripts: python scripts/your_script.py")
-    print("5. Or use: ./run.sh your_script_name")
+    print("4. Use unified CLI: nave --help")
+    print("5. Run scripts: python scripts/your_script.py or ./run.sh script_name")
     print("\n📚 Available commands:")
-    print("- python --version     # Check Python version")
-    print("- pip list            # List installed packages")
-    print("- ./run.sh script_name # Run scripts easily")
+    print("- nave --help                  # Unified CLI")
+    print("- nave trading run-strategy    # Run strategies")
+    print("- nave api start               # Start FastAPI backend")
+    print("- nave mcp                     # Start MCP server")
+    print("- python --version             # Check Python version")
+    print("- pip list                     # List installed packages")
+    print("- ./run.sh script_name         # Legacy script runner")
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

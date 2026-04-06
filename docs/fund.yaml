@@ -17,239 +17,249 @@
 # External Not available (No): 13
 
 categories:
-- indicators:
-  - customization: '"Liquidity Pulse" (TGA + RRP + crypto ETF flows).'
-    description: Treasury balance in Fed and liquidity injections; reductions inject slack into the system (e.g., 300k million for Q1 2026 drive BTC/gold).
-    frequency: Daily.
-    name: TGA (Treasury General Account) and RRP (Reverse Repo Facility)
-    relevance: Key in videos for predicting rises due to "ample liquidity".
-    source_api: FRED (Fed Reserve Economic Data).
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Available via obb.economy.fred_series() for TGA/RRP data. Crypto ETF flows available via obb.crypto module.
-  - customization: Alert if stimulus > GDP threshold (e.g., 20T historical).
-    description: 'Stimuli like $2000 from Trump increase deficit and rises in hard assets; fiscal indiscipline (videos #2, #10-12).'
-    frequency: Weekly (track bills).
-    name: Fed Injections and Fiscal Stimuli (e.g., Government Checks)
-    relevance: Fiscal indiscipline guarantees rises.
-    source_api: FRED for QE/RRP; news via web_search for fiscal bills.
-    status: Pending
-    external_available: Partial
-    openbb_available: Yes
-    notes: Available via obb.economy.fred_series() for TGA/RRP data. QE data available via obb.economy.fred_series(). Fiscal bills/news tracking requires external web_search integration.
-  - customization: Global comparison (USA vs. Japan/EU).
-    description: No aggressive rate cuts favor hedging in BTC; PDF mentions as variable for center/periphery currencies.
-    frequency: Monthly (Fed meetings).
-    name: Monetary Policy (Interest Rates and Aggressive Cuts)
-    relevance: Affects hedging in crypto.
-    source_api: FRED for Fed Funds Rate; ECB/BOJ APIs.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Fed Funds Rate available via obb.economy.fred_series(). ECB/BOJ rates may be available through obb.economy module with multiple data providers (FRED, OECD, IMF).
-  name: Liquidity and Monetary Policy
-- indicators:
-  - customization: 'Integrate with Fear & Greed Index for crypto-specific.'
-    description: 'Contrarian theory; spike in bulls indicates continuation (videos #1-2, #4-6).'
-    frequency: Weekly.
-    name: 'AAII Survey (Bullish Spread: Bulls vs. Bears)'
-    relevance: Signals trend continuation.
-    source_api: AAII public or Alpha Vantage.
-    status: Pending
-    external_available: Yes
-    openbb_available: No
-    notes: ✅ VERIFIED - Functional implementation available. Script `scripts/check_aaii.py` proves AAII website scraping works correctly, extracting Bullish/Bearish percentages and calculating spread. No API keys required - uses direct web scraping. Ready for FastAPI integration as psychological filter.
-  - customization: Gauge 0-100 based on VIX + ETF flows.
-    description: Risk appetite/aversion; PDF (p.19) lists as variable for currencies/crypto; videos link to global flows.
-    frequency: Daily.
-    name: Risk Appetite (Risk-On/Off)
-    relevance: Determines flows to crypto.
-    source_api: VIX (volatility) via Yahoo Finance; capital flows via IMF.
-    status: Pending
-    external_available: Partial
-    openbb_available: Yes
-    notes: VIX data available via obb.equity.price(symbol='^VIX') or obb.equity modules. ETF flows available via obb.crypto module. IMF capital flows may be available through obb.economy.balance_of_payments() or require external integration.
-  name: Sentiment and Market Psychology
-- indicators:
-  - customization: '"Fiat Bubble Index" (debt/GDP vs. BTC/gold cap).'
-    description: 'High ratios (e.g., Japan 252%) justify aggressive spending, weakening fiat (videos #3, #7-9); PDF mentions PPP/NIIP for long term.'
-    frequency: Quarterly.
-    name: Debt/GDP Ratio (Total vs. Net)
-    relevance: Fiat weakening favors BTC/gold.
-    source_api: World Bank or FRED.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Available via obb.economy.fred_series() for US data. World Bank data may be available through obb.economy module with multiple providers (OECD, IMF, EconDB).
-  - customization: Percentage coverage of tariffs vs. deficit (e.g., current ~$259B tariff revenue vs. monthly deficits).
-    description: 'US monthly deficit not covered by tariff revenue; low coverage percentage (<10% historically) favors fiscal indiscipline driving hard assets like BTC/gold (videos #2, #10).'
-    frequency: Monthly.
-    name: Public Deficit and Tariff Revenue
-    relevance: Measures fiscal discipline vs. revenue generation from tariffs.
-    source_api: FRED for deficit data; US Treasury FiscalData API for tariff revenue.
-    status: Verified
-    external_available: Yes
-    openbb_available: Partial
-    notes: "✅ VERIFIED - Functional implementation available. Script `scripts/test_tariff_api.py` proves US Treasury FiscalData API connectivity and data retrieval. Deficit data available via obb.economy.fred_series(). Tariff revenue via direct US Treasury FiscalData API integration. Currently implementing 'openbb-treasury' extension to bridge this gap. Goal: Contribute to OpenBB upstream, or use as private extension if not merged."
-  - customization: Historical chart 1700-current; "Fiat Decay Rate".
-    description: 'Post-1971 plunge shows "fiat trash" (videos #1, #3); PDF uses PPP for currency value.'
-    frequency: Weekly.
-    name: Fiat Purchasing Power (e.g., Dollar/Yen vs. Gold/BTC)
-    relevance: Shows fiat bubble.
-    source_api: FRED for inflation/PPP; Coingecko for vs. BTC.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Fully available via obb.economy.cpi() and obb.economy.pce() for inflation data, obb.economy.fred_series() for historical inflation, obb.commodity.price(symbol='GC') for gold prices, obb.crypto.price(symbol='BTC') for Bitcoin prices, and obb.currency.* for exchange rates. Historical data (1700+) may be limited in FRED but sufficient for analysis.
-  name: Debt, Deficit, and Fiat Currency Value
-- indicators:
-  - customization: BTC prediction (e.g., 375k if x3 cap).
-    description: 'Cap to 15T (x3); ETF flows x10 miners cause "supply shock" (videos #3, #5, #8).'
-    frequency: Daily.
-    name: Crypto Market Capitalization and ETF Flows
-    relevance: Predicts BTC rises (e.g., 375k).
-    source_api: Coingecko for cap/flows.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Available via obb.crypto module. Market cap and ETF flows data accessible through crypto endpoints. OpenBB integrates with Blockworks API for ETF flows.
-  - customization: Emerging markets adoption index.
-    description: Global flows (e.g., emergents to stablecoins) steal savings; PDF (p.19) for short-term currencies.
-    frequency: Weekly.
-    name: Capital Flows and Stablecoins Adoption
-    relevance: Affects crypto adoption.
-    source_api: Chainalysis or IMF for flows; Coingecko for stablecoins.
-    status: Pending
-    external_available: Partial
-    openbb_available: Yes
-    notes: Stablecoin data available via obb.crypto.price() and obb.crypto modules. IMF capital flows available through obb.economy.balance_of_payments() and obb.economy.direction_of_trade(). Chainalysis detailed data requires external integration.
-  - customization: Comparison USA/EU/China (power axes, PDF p.3).
-    description: Besen/Trump predictions; PDF lists as center/periphery variable.
-    frequency: Quarterly.
-    name: Economic Growth (2025-2026 Recovery)
-    relevance: Drives markets.
-    source_api: FRED for GDP; IMF forecasts.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: GDP data available via obb.economy.fred_series() for US. IMF forecasts available through obb.economy module with multiple providers (FRED, OECD, IMF, EconDB).
-  - customization: '"Currency Health Score" vs. BTC.'
-    description: For long-term currency value (PDF p.19); aligns with fiat weakening in videos.
-    frequency: Annual/quarterly.
-    name: PPP (Purchasing Power Parity) and NIIP (Net International Investment Position)
-    relevance: Long-term currency value vs. crypto.
-    source_api: World Bank for PPP; BEA for NIIP USA.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: PPP data available via obb.economy.fred_search(query='PPP') and multiple providers (OECD/IMF). NIIP data available via obb.economy.fred_series(series_id='IIPUSNETIQ') and obb.economy.indicators(). World Bank/BEA detailed data may be available through additional providers.
-  name: Crypto-Specific and Global Flows
-- indicators:
-  - customization: '"Inflation Hedge Score" (CPI vs. BTC returns).'
-    description: Measures general and core inflation; rising inflation accelerates hedging in BTC as "digital gold" against fiat devaluation (complements Cava's "fiat decay").
-    frequency: Monthly.
-    name: Inflation Rates (CPI/PCE - Consumer Price Index / Personal Consumption Expenditures)
-    relevance: In 2025, hawkish Fed shifts could cause crypto volatility.
-    source_api: FRED (CPI) or BEA (PCE).
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: CPI and PCE data available via obb.economy.fred_series(). Both indicators are standard FRED series accessible through OpenBB.
-  - customization: Alert if >4.5% (recession signal).
-    description: Indicators of economic health; high unemployment signals recession, boosting risk aversion and flows to safe-havens like BTC/gold (extends Cava's "risk-on/off").
-    frequency: Monthly (NFP first Friday).
-    name: Unemployment Rate and Non-Farm Payrolls
-    relevance: Crucial for anticipating fiscal stimuli.
-    source_api: FRED or BLS (Bureau of Labor Statistics).
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Unemployment rate and NFP data available via obb.economy.fred_series(). Both are standard FRED series (UNRATE, PAYEMS) accessible through OpenBB.
-  - customization: '"MSTR Wall Alert" -> <188-192$ = Bitcoin capped / >192$ = door open / Detect gamma wall biggest in options.'
-    description: MicroStrategy (MSTR) price and options. Jose Luis Cava uses it since 2024-2025 as the main leading indicator of institutional Bitcoin. Wall Street buys BTC spot and sells MSTR calls/futures. While MSTR doesn't cleanly exceed 188-192$, bearish pressure on Bitcoin continues.
-    frequency: Daily
-    name: MicroStrategy (MSTR) – Bitcoin Institutional Proxy
-    relevance: In 2025 it's more sensitive than Bitcoin's own price to dealers and Wall Street action.
-    source_api: Yahoo Finance + Polygon via OpenBB
-    status: Ready
-    external_available: No
-    openbb_available: Yes
-    notes: 100% functional with obb.equity.price.historical(symbol="MSTR") and obb.derivatives.options.chains(symbol="MSTR")
-  name: Inflation and Employment
-- indicators:
-  - customization: '"Recession Probability Index" based on spread.'
-    description: Difference between long/short bonds; inversion (negative) predicts recessions, impacting liquidity and crypto adoption (complements Cava's Fed injections).
-    frequency: Daily.
-    name: Yield Curve (10Y-2Y Treasury Yield Spread)
-    relevance: In 2025, could signal macro turning points.
-    source_api: FRED.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Available via obb.fixedincome module. Yield curve data accessible through fixedincome endpoints. Can calculate spread from 10Y and 2Y Treasury yields.
-  - customization: '"Commodity-Crypto Correlation" (oil vs. BTC).'
-    description: Prices of commodities like oil or copper reflect global demand and inflation; rises drive BTC as hedge (extends Cava's gold, mentioning rare earths).
-    frequency: Daily.
-    name: Commodity Prices Index (e.g., Oil, Copper, besides Gold)
-    relevance: Useful for sectors like AI/energy.
-    source_api: FRED or Bloomberg (via proxies).
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Available via obb.commodities module. Oil, copper, gold, and other commodity prices accessible through commodities endpoints.
-  - customization: '"Yield Stress Alert" → >4.5% = QE probable; <3.90% = yields cayendo fuerte. Detectar triángulo lateral.'
-    description: Nivel absoluto de la rentabilidad del bono USA 10 años. Cava lo usa como trigger de intervención Fed cuando sube demasiado (inflación/deuda) o como en el último vídeo (triángulo lateral desde oct-2023, soporte ~3.95%).
-    frequency: Daily
-    name: US 10-Year Treasury Yield (Absolute Level)
-    relevance: Mide tensión en el mercado de bonos y probabilidad de QE disfrazado. Muy usado por José Luis Cava 2024-2025.
-    source_api: FRED (DGS10) vía OpenBB
-    status: Ready
-    external_available: No
-    openbb_available: Yes
-    notes: 100% funcional con obb.fixedincome.rate(symbol="DGS10"). Histórico desde 1962. Fácil detección de rangos/triángulos con pandas.
-  name: Bond and Commodity Markets
-- indicators:
-  - customization: '"Global Growth Score" (average PMI regions).'
-    description: Measures global economic activity (USA, EU, China); readings <50 indicate contraction, affecting capital flows to crypto (complements PDF's power axes USA/EU/China).
-    frequency: Monthly.
-    name: Global PMI (Purchasing Managers' Index - Manufacturing/Services)
-    relevance: Predicts recoveries like 2025-2026.
-    source_api: S&P Global or Trading Economics.
-    status: Pending
-    external_available: No
-    openbb_available: Yes
-    notes: Available via obb.economy.fred_search(query='PMI') or obb.economy.fred_search(query='NAPM') for Manufacturing PMI. Also available through obb.economy.indicators(), obb.economy.survey(), and obb.economy.composite_leading_indicator() with multiple providers (FRED, OECD, EconDB). S&P Global PMI may be available via different FRED series.
-  - customization: '"On-Chain Health Index" (combined with market cap).'
-    description: Blockchain data for BTC/ETH/SOL; high hash rate indicates secure network and adoption, complementing Cava's ETF flows (e.g., "supply shock"). Includes custom health scoring (0-100) based on normalized metrics.
-    frequency: Daily.
-    name: On-Chain Metrics (Hash Rate, Active Addresses, Transaction Volume)
-    relevance: Essential for 2025 crypto fundamentals with institutionalization.
-    source_api: Blockchain.com (hash rate, transaction volume) + CoinGecko (market cap, active addresses approximation).
-    status: Verified
-    external_available: Yes
-    openbb_available: Partial
-    notes: ✅ VERIFIED - Fully implementable with free APIs. Script `scripts/verify_onchain_simple.py` proves functionality. Blockchain.com provides hash rate and transaction volume for BTC/ETH. CoinGecko provides market cap and price volatility (proxy for active addresses). No API keys required. OpenBB crypto extension has partial support but external APIs needed for comprehensive coverage. Ready for FastAPI integration.
-  name: Global Activity and On-Chain
-- indicators:
-  - customization: Alert if > historical threshold (e.g., impact on stablecoins).
-    description: Measures global tensions (wars, sanctions); high risk drives hedging in BTC (extends Cava's fiat weakening).
-    frequency: Monthly.
-    name: Geopolitical Risk Index (GRI)
-    relevance: In 2025, with elections/conflicts, correlates with volatility.
-    source_api: Caldara & Iacoviello (via FRED) or BlackRock GRI.
-    status: Pending
-    external_available: Partial
-    openbb_available: Yes
-    notes: Available via obb.economy.fred_search(query='GPR') for Geopolitical Risk Index. Caldara & Iacoviello GRI is published on FRED and accessible through obb.economy.fred_series(). BlackRock GRI is optional and would require external integration if needed.
-  - customization: '"CBDC Adoption Score" by country.'
-    description: Progress of central digital currencies (e.g., digital dollar/euro); competes with stablecoins, affecting crypto adoption (complements Cava's emergents stablecoins).
-    frequency: Quarterly.
-    name: CBDC Progress Tracker (Central Bank Digital Currencies)
-    relevance: Key for 2025 with global pilots.
-    source_api: CBDC Tracker API (https://cbdctracker.org/api) from liquifi-org/cbdc-tracker GitHub repository.
-    status: Pending
-    external_available: Yes
-    openbb_available: No
-    notes: Validated via scripts/validate_cbdc_api.py. API provides structured data by country with development stages (Research/Pilot/Launched). Covers 120+ countries including key markets (China, India, Brazil, Nigeria). Requires simple wrapper script for automated quarterly updates. This is primarily qualitative/policy data rather than quantitative market data.
-  name: Risk and Digital Currencies
+  - indicators:
+      - customization: '"Liquidity Pulse" (TGA + RRP + crypto ETF flows).'
+        description: Treasury balance in Fed and liquidity injections; reductions inject slack into the system (e.g., 300k million for Q1 2026 drive BTC/gold).
+        frequency: Daily.
+        name: TGA (Treasury General Account) and RRP (Reverse Repo Facility)
+        relevance: Key in videos for predicting rises due to "ample liquidity".
+        source_api: FRED (Fed Reserve Economic Data).
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Available via obb.economy.fred_series() for TGA/RRP data. Crypto ETF flows available via obb.crypto module.
+      - customization: Alert if stimulus > GDP threshold (e.g., 20T historical).
+        description: "Stimuli like $2000 from Trump increase deficit and rises in hard assets; fiscal indiscipline (videos #2, #10-12)."
+        frequency: Weekly (track bills).
+        name: Fed Injections and Fiscal Stimuli (e.g., Government Checks)
+        relevance: Fiscal indiscipline guarantees rises.
+        source_api: FRED for QE/RRP; news via web_search for fiscal bills.
+        status: Pending
+        external_available: Partial
+        openbb_available: Yes
+        notes: Available via obb.economy.fred_series() for TGA/RRP data. QE data available via obb.economy.fred_series(). Fiscal bills/news tracking requires external web_search integration.
+      - customization: Global comparison (USA vs. Japan/EU).
+        description: No aggressive rate cuts favor hedging in BTC; PDF mentions as variable for center/periphery currencies.
+        frequency: Monthly (Fed meetings).
+        name: Monetary Policy (Interest Rates and Aggressive Cuts)
+        relevance: Affects hedging in crypto.
+        source_api: FRED for Fed Funds Rate; ECB/BOJ APIs.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Fed Funds Rate available via obb.economy.fred_series(). ECB/BOJ rates may be available through obb.economy module with multiple data providers (FRED, OECD, IMF).
+    name: Liquidity and Monetary Policy
+  - indicators:
+      - customization: "Integrate with Fear & Greed Index for crypto-specific."
+        description: "Contrarian theory; spike in bulls indicates continuation (videos #1-2, #4-6)."
+        frequency: Weekly.
+        name: "AAII Survey (Bullish Spread: Bulls vs. Bears)"
+        relevance: Signals trend continuation.
+        source_api: AAII public or Alpha Vantage.
+        status: Pending
+        external_available: Yes
+        openbb_available: No
+        notes: ✅ VERIFIED - Functional implementation available. Script `scripts/check_aaii.py` proves AAII website scraping works correctly, extracting Bullish/Bearish percentages and calculating spread. No API keys required - uses direct web scraping. Ready for FastAPI integration as psychological filter.
+      - customization: "Use for BTC (133741) and ETH futures. Focus on non-commercial net and %OI."
+        description: "Commitment of Traders report from CFTC. Tracks commercials (makers) vs speculators. Primary weekly driver for asset selection between BTC/ETH."
+        frequency: Weekly (Friday release).
+        name: "CME COT Report (BTC/ETH)"
+        relevance: Institutional positioning bias; confirms F.I.T.S. sentiment.
+        source_api: OpenBB regulators.cftc.cot or direct CFTC CSV.
+        status: Implemented
+        external_available: Yes
+        openbb_available: Yes (via openbb-cftc)
+        notes: Integrated in trading/cot/. Commercials move the market per technical.yaml. Used for best setup comparison and capital allocation.
+      - customization: Gauge 0-100 based on VIX + ETF flows.
+        description: Risk appetite/aversion; PDF (p.19) lists as variable for currencies/crypto; videos link to global flows.
+        frequency: Daily.
+        name: Risk Appetite (Risk-On/Off)
+        relevance: Determines flows to crypto.
+        source_api: VIX (volatility) via Yahoo Finance; capital flows via IMF.
+        status: Pending
+        external_available: Partial
+        openbb_available: Yes
+        notes: VIX data available via obb.equity.price(symbol='^VIX') or obb.equity modules. ETF flows available via obb.crypto module. IMF capital flows may be available through obb.economy.balance_of_payments() or require external integration.
+    name: Sentiment and Market Psychology
+  - indicators:
+      - customization: '"Fiat Bubble Index" (debt/GDP vs. BTC/gold cap).'
+        description: "High ratios (e.g., Japan 252%) justify aggressive spending, weakening fiat (videos #3, #7-9); PDF mentions PPP/NIIP for long term."
+        frequency: Quarterly.
+        name: Debt/GDP Ratio (Total vs. Net)
+        relevance: Fiat weakening favors BTC/gold.
+        source_api: World Bank or FRED.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Available via obb.economy.fred_series() for US data. World Bank data may be available through obb.economy module with multiple providers (OECD, IMF, EconDB).
+      - customization: Percentage coverage of tariffs vs. deficit (e.g., current ~$259B tariff revenue vs. monthly deficits).
+        description: "US monthly deficit not covered by tariff revenue; low coverage percentage (<10% historically) favors fiscal indiscipline driving hard assets like BTC/gold (videos #2, #10)."
+        frequency: Monthly.
+        name: Public Deficit and Tariff Revenue
+        relevance: Measures fiscal discipline vs. revenue generation from tariffs.
+        source_api: FRED for deficit data; US Treasury FiscalData API for tariff revenue.
+        status: Verified
+        external_available: Yes
+        openbb_available: Partial
+        notes: "✅ VERIFIED - Functional implementation available. Script `scripts/test_tariff_api.py` proves US Treasury FiscalData API connectivity and data retrieval. Deficit data available via obb.economy.fred_series(). Tariff revenue via direct US Treasury FiscalData API integration. Currently implementing 'openbb-treasury' extension to bridge this gap. Goal: Contribute to OpenBB upstream, or use as private extension if not merged."
+      - customization: Historical chart 1700-current; "Fiat Decay Rate".
+        description: 'Post-1971 plunge shows "fiat trash" (videos #1, #3); PDF uses PPP for currency value.'
+        frequency: Weekly.
+        name: Fiat Purchasing Power (e.g., Dollar/Yen vs. Gold/BTC)
+        relevance: Shows fiat bubble.
+        source_api: FRED for inflation/PPP; Coingecko for vs. BTC.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Fully available via obb.economy.cpi() and obb.economy.pce() for inflation data, obb.economy.fred_series() for historical inflation, obb.commodity.price(symbol='GC') for gold prices, obb.crypto.price(symbol='BTC') for Bitcoin prices, and obb.currency.* for exchange rates. Historical data (1700+) may be limited in FRED but sufficient for analysis.
+    name: Debt, Deficit, and Fiat Currency Value
+  - indicators:
+      - customization: BTC prediction (e.g., 375k if x3 cap).
+        description: 'Cap to 15T (x3); ETF flows x10 miners cause "supply shock" (videos #3, #5, #8).'
+        frequency: Daily.
+        name: Crypto Market Capitalization and ETF Flows
+        relevance: Predicts BTC rises (e.g., 375k).
+        source_api: Coingecko for cap/flows.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Available via obb.crypto module. Market cap and ETF flows data accessible through crypto endpoints. OpenBB integrates with Blockworks API for ETF flows.
+      - customization: Emerging markets adoption index.
+        description: Global flows (e.g., emergents to stablecoins) steal savings; PDF (p.19) for short-term currencies.
+        frequency: Weekly.
+        name: Capital Flows and Stablecoins Adoption
+        relevance: Affects crypto adoption.
+        source_api: Chainalysis or IMF for flows; Coingecko for stablecoins.
+        status: Pending
+        external_available: Partial
+        openbb_available: Yes
+        notes: Stablecoin data available via obb.crypto.price() and obb.crypto modules. IMF capital flows available through obb.economy.balance_of_payments() and obb.economy.direction_of_trade(). Chainalysis detailed data requires external integration.
+      - customization: Comparison USA/EU/China (power axes, PDF p.3).
+        description: Besen/Trump predictions; PDF lists as center/periphery variable.
+        frequency: Quarterly.
+        name: Economic Growth (2025-2026 Recovery)
+        relevance: Drives markets.
+        source_api: FRED for GDP; IMF forecasts.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: GDP data available via obb.economy.fred_series() for US. IMF forecasts available through obb.economy module with multiple providers (FRED, OECD, IMF, EconDB).
+      - customization: '"Currency Health Score" vs. BTC.'
+        description: For long-term currency value (PDF p.19); aligns with fiat weakening in videos.
+        frequency: Annual/quarterly.
+        name: PPP (Purchasing Power Parity) and NIIP (Net International Investment Position)
+        relevance: Long-term currency value vs. crypto.
+        source_api: World Bank for PPP; BEA for NIIP USA.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: PPP data available via obb.economy.fred_search(query='PPP') and multiple providers (OECD/IMF). NIIP data available via obb.economy.fred_series(series_id='IIPUSNETIQ') and obb.economy.indicators(). World Bank/BEA detailed data may be available through additional providers.
+    name: Crypto-Specific and Global Flows
+  - indicators:
+      - customization: '"Inflation Hedge Score" (CPI vs. BTC returns).'
+        description: Measures general and core inflation; rising inflation accelerates hedging in BTC as "digital gold" against fiat devaluation (complements Cava's "fiat decay").
+        frequency: Monthly.
+        name: Inflation Rates (CPI/PCE - Consumer Price Index / Personal Consumption Expenditures)
+        relevance: In 2025, hawkish Fed shifts could cause crypto volatility.
+        source_api: FRED (CPI) or BEA (PCE).
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: CPI and PCE data available via obb.economy.fred_series(). Both indicators are standard FRED series accessible through OpenBB.
+      - customization: Alert if >4.5% (recession signal).
+        description: Indicators of economic health; high unemployment signals recession, boosting risk aversion and flows to safe-havens like BTC/gold (extends Cava's "risk-on/off").
+        frequency: Monthly (NFP first Friday).
+        name: Unemployment Rate and Non-Farm Payrolls
+        relevance: Crucial for anticipating fiscal stimuli.
+        source_api: FRED or BLS (Bureau of Labor Statistics).
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Unemployment rate and NFP data available via obb.economy.fred_series(). Both are standard FRED series (UNRATE, PAYEMS) accessible through OpenBB.
+      - customization: '"MSTR Wall Alert" -> <188-192$ = Bitcoin capped / >192$ = door open / Detect gamma wall biggest in options.'
+        description: MicroStrategy (MSTR) price and options. Jose Luis Cava uses it since 2024-2025 as the main leading indicator of institutional Bitcoin. Wall Street buys BTC spot and sells MSTR calls/futures. While MSTR doesn't cleanly exceed 188-192$, bearish pressure on Bitcoin continues.
+        frequency: Daily
+        name: MicroStrategy (MSTR) – Bitcoin Institutional Proxy
+        relevance: In 2025 it's more sensitive than Bitcoin's own price to dealers and Wall Street action.
+        source_api: Yahoo Finance + Polygon via OpenBB
+        status: Ready
+        external_available: No
+        openbb_available: Yes
+        notes: 100% functional with obb.equity.price.historical(symbol="MSTR") and obb.derivatives.options.chains(symbol="MSTR")
+    name: Inflation and Employment
+  - indicators:
+      - customization: '"Recession Probability Index" based on spread.'
+        description: Difference between long/short bonds; inversion (negative) predicts recessions, impacting liquidity and crypto adoption (complements Cava's Fed injections).
+        frequency: Daily.
+        name: Yield Curve (10Y-2Y Treasury Yield Spread)
+        relevance: In 2025, could signal macro turning points.
+        source_api: FRED.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Available via obb.fixedincome module. Yield curve data accessible through fixedincome endpoints. Can calculate spread from 10Y and 2Y Treasury yields.
+      - customization: '"Commodity-Crypto Correlation" (oil vs. BTC).'
+        description: Prices of commodities like oil or copper reflect global demand and inflation; rises drive BTC as hedge (extends Cava's gold, mentioning rare earths).
+        frequency: Daily.
+        name: Commodity Prices Index (e.g., Oil, Copper, besides Gold)
+        relevance: Useful for sectors like AI/energy.
+        source_api: FRED or Bloomberg (via proxies).
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Available via obb.commodities module. Oil, copper, gold, and other commodity prices accessible through commodities endpoints.
+      - customization: '"Yield Stress Alert" → >4.5% = QE probable; <3.90% = yields cayendo fuerte. Detectar triángulo lateral.'
+        description: Nivel absoluto de la rentabilidad del bono USA 10 años. Cava lo usa como trigger de intervención Fed cuando sube demasiado (inflación/deuda) o como en el último vídeo (triángulo lateral desde oct-2023, soporte ~3.95%).
+        frequency: Daily
+        name: US 10-Year Treasury Yield (Absolute Level)
+        relevance: Mide tensión en el mercado de bonos y probabilidad de QE disfrazado. Muy usado por José Luis Cava 2024-2025.
+        source_api: FRED (DGS10) vía OpenBB
+        status: Ready
+        external_available: No
+        openbb_available: Yes
+        notes: 100% funcional con obb.fixedincome.rate(symbol="DGS10"). Histórico desde 1962. Fácil detección de rangos/triángulos con pandas.
+    name: Bond and Commodity Markets
+  - indicators:
+      - customization: '"Global Growth Score" (average PMI regions).'
+        description: Measures global economic activity (USA, EU, China); readings <50 indicate contraction, affecting capital flows to crypto (complements PDF's power axes USA/EU/China).
+        frequency: Monthly.
+        name: Global PMI (Purchasing Managers' Index - Manufacturing/Services)
+        relevance: Predicts recoveries like 2025-2026.
+        source_api: S&P Global or Trading Economics.
+        status: Pending
+        external_available: No
+        openbb_available: Yes
+        notes: Available via obb.economy.fred_search(query='PMI') or obb.economy.fred_search(query='NAPM') for Manufacturing PMI. Also available through obb.economy.indicators(), obb.economy.survey(), and obb.economy.composite_leading_indicator() with multiple providers (FRED, OECD, EconDB). S&P Global PMI may be available via different FRED series.
+      - customization: '"On-Chain Health Index" (combined with market cap).'
+        description: Blockchain data for BTC/ETH/SOL; high hash rate indicates secure network and adoption, complementing Cava's ETF flows (e.g., "supply shock"). Includes custom health scoring (0-100) based on normalized metrics.
+        frequency: Daily.
+        name: On-Chain Metrics (Hash Rate, Active Addresses, Transaction Volume)
+        relevance: Essential for 2025 crypto fundamentals with institutionalization.
+        source_api: Blockchain.com (hash rate, transaction volume) + CoinGecko (market cap, active addresses approximation).
+        status: Verified
+        external_available: Yes
+        openbb_available: Partial
+        notes: ✅ VERIFIED - Fully implementable with free APIs. Script `scripts/verify_onchain_simple.py` proves functionality. Blockchain.com provides hash rate and transaction volume for BTC/ETH. CoinGecko provides market cap and price volatility (proxy for active addresses). No API keys required. OpenBB crypto extension has partial support but external APIs needed for comprehensive coverage. Ready for FastAPI integration.
+    name: Global Activity and On-Chain
+  - indicators:
+      - customization: Alert if > historical threshold (e.g., impact on stablecoins).
+        description: Measures global tensions (wars, sanctions); high risk drives hedging in BTC (extends Cava's fiat weakening).
+        frequency: Monthly.
+        name: Geopolitical Risk Index (GRI)
+        relevance: In 2025, with elections/conflicts, correlates with volatility.
+        source_api: Caldara & Iacoviello (via FRED) or BlackRock GRI.
+        status: Pending
+        external_available: Partial
+        openbb_available: Yes
+        notes: Available via obb.economy.fred_search(query='GPR') for Geopolitical Risk Index. Caldara & Iacoviello GRI is published on FRED and accessible through obb.economy.fred_series(). BlackRock GRI is optional and would require external integration if needed.
+      - customization: '"CBDC Adoption Score" by country.'
+        description: Progress of central digital currencies (e.g., digital dollar/euro); competes with stablecoins, affecting crypto adoption (complements Cava's emergents stablecoins).
+        frequency: Quarterly.
+        name: CBDC Progress Tracker (Central Bank Digital Currencies)
+        relevance: Key for 2025 with global pilots.
+        source_api: CBDC Tracker API (https://cbdctracker.org/api) from liquifi-org/cbdc-tracker GitHub repository.
+        status: Pending
+        external_available: Yes
+        openbb_available: No
+        notes: Validated via scripts/validate_cbdc_api.py. API provides structured data by country with development stages (Research/Pilot/Launched). Covers 120+ countries including key markets (China, India, Brazil, Nigeria). Requires simple wrapper script for automated quarterly updates. This is primarily qualitative/policy data rather than quantitative market data.
+    name: Risk and Digital Currencies
