@@ -40,10 +40,30 @@ def fetch_latest_cot() -> Dict[str, Any]:
         # BTC futures COT code ~133741, ETH similar
         for asset, symbol in [("BTC", "BTC"), ("ETH", "ETH")]:
             try:
-                # Try different calls based on API (dynamic extension)
-                result = obb.regulators.cftc.cot(
-                    symbol=symbol)  # type: ignore[attr-defined]
-                df = result.to_df() if hasattr(result, "to_df") else pd.DataFrame(result)
+                # OpenBB extension APIs are dynamically attached; resolve callables safely.
+                regulators = getattr(obb, "regulators", None)
+                cftc = getattr(regulators, "cftc", None)
+                cot = getattr(cftc, "cot", None)
+                if not callable(cot):
+                    raise AttributeError("OpenBB CFTC COT endpoint is unavailable")
+
+                result: Any = cot(symbol=symbol)
+                to_df = getattr(result, "to_df", None)
+                df: pd.DataFrame
+                if callable(to_df):
+                    converted = to_df()
+                    if isinstance(converted, pd.DataFrame):
+                        df = converted
+                    elif isinstance(converted, (list, tuple, dict)):
+                        df = pd.DataFrame(converted)
+                    else:
+                        df = pd.DataFrame()
+                elif isinstance(result, pd.DataFrame):
+                    df = result
+                elif isinstance(result, (list, tuple, dict)):
+                    df = pd.DataFrame(result)
+                else:
+                    df = pd.DataFrame()
                 data[asset] = {
                     "raw": df.to_dict("records") if not df.empty else [],
                     "latest_date": str(df["Report_Date_as_of"].iloc[-1]) if not df.empty and "Report_Date_as_of" in df.columns else str(today.date()),
