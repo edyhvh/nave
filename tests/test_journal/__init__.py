@@ -1,0 +1,1 @@
+"""Tests for the trade journaling system."""
