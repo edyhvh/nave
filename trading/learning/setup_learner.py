@@ -264,55 +264,162 @@ class SetupLearner:
         confidence_term = float(np.clip(base_confidence, 0.0, 1.0))
         win_term = float(np.clip(win_probability, 0.0, 1.0))
         edge_score = float(np.clip(predicted_pnl / 90.0, -1.0, 1.0))
+        regime_key = regime if regime in {"bull", "bear", "high_vol"} else "all"
 
-        weak_bias = bias_strength < 0.42
-        high_vol = volatility >= 0.04
-        weak_win_prob = win_term < 0.45
-        clearly_negative_edge = predicted_pnl < -22.0
-        strong_negative_edge = predicted_pnl < -38.0
+        regime_thresholds = {
+            "bull": {
+                "weak_bias": 0.38,
+                "weak_win": 0.42,
+                "clear_negative": -34.0,
+                "strong_negative": -48.0,
+                "high_vol": 0.055,
+                "vol_scale": 0.78,
+                "quality_shift": 0.08,
+                "size_cap": 2.20,
+                "lev_cap": 1.95,
+            },
+            "bear": {
+                "weak_bias": 0.45,
+                "weak_win": 0.44,
+                "clear_negative": -26.0,
+                "strong_negative": -42.0,
+                "high_vol": 0.042,
+                "vol_scale": 1.12,
+                "quality_shift": -0.03,
+                "size_cap": 1.70,
+                "lev_cap": 1.45,
+            },
+            "high_vol": {
+                "weak_bias": 0.44,
+                "weak_win": 0.43,
+                "clear_negative": -24.0,
+                "strong_negative": -36.0,
+                "high_vol": 0.038,
+                "vol_scale": 1.32,
+                "quality_shift": -0.05,
+                "size_cap": 1.55,
+                "lev_cap": 1.35,
+            },
+            "all": {
+                "weak_bias": 0.42,
+                "weak_win": 0.45,
+                "clear_negative": -22.0,
+                "strong_negative": -38.0,
+                "high_vol": 0.04,
+                "vol_scale": 1.0,
+                "quality_shift": 0.0,
+                "size_cap": 1.75,
+                "lev_cap": 1.60,
+            },
+        }[regime_key]
+
+        weak_bias = bias_strength < float(regime_thresholds["weak_bias"])
+        high_vol = volatility >= float(regime_thresholds["high_vol"])
+        weak_win_prob = win_term < float(regime_thresholds["weak_win"])
+        clearly_negative_edge = predicted_pnl < float(regime_thresholds["clear_negative"])
+        strong_negative_edge = predicted_pnl < float(regime_thresholds["strong_negative"])
         extreme_oi = abs(oi_level) >= 26.0
 
         should_trade = True
         reasons: list[str] = []
-        if strong_negative_edge and weak_win_prob:
+        if strong_negative_edge and weak_win_prob and (weak_bias or high_vol):
             should_trade = False
-            reasons.append("strong negative edge with low win probability")
-        elif clearly_negative_edge and weak_win_prob and (high_vol or weak_bias):
+            reasons.append(f"strong negative {regime_key} edge with weak bias/odds")
+        elif clearly_negative_edge and weak_win_prob and weak_bias and high_vol:
             should_trade = False
-            reasons.append("negative edge under weak-bias/high-volatility conditions")
-        elif regime == "high_vol" and weak_bias and predicted_pnl < -12 and win_term < 0.45:
-            should_trade = False
-            reasons.append("high_vol regime with weak COT bias and sub-50% edge")
+            reasons.append(f"clear negative {regime_key} edge in weak-bias/high-volatility context")
 
-        vol_penalty = float(np.clip((volatility - 0.03) * 6.0, 0.0, 0.28))
-        momentum_bonus = float(np.clip(momentum / 4000.0, -0.2, 0.25))
+        vol_penalty = float(
+            np.clip((volatility - 0.028) * 6.5, 0.0, 0.34) * float(regime_thresholds["vol_scale"])
+        )
+        momentum_signal = float(np.clip(momentum / 2500.0, -0.45, 0.50))
+        if regime_key == "bull":
+            momentum_bonus = (0.26 * max(momentum_signal, 0.0)) - (0.08 * max(-momentum_signal, 0.0))
+        elif regime_key == "bear":
+            momentum_bonus = (0.10 * max(momentum_signal, 0.0)) - (0.23 * max(-momentum_signal, 0.0))
+        elif regime_key == "high_vol":
+            momentum_bonus = (0.12 * max(momentum_signal, 0.0)) - (0.16 * max(-momentum_signal, 0.0))
+        else:
+            momentum_bonus = (0.14 * max(momentum_signal, 0.0)) - (0.11 * max(-momentum_signal, 0.0))
         oi_penalty = 0.06 if (extreme_oi and predicted_pnl < 0) else 0.0
         quality = (
             0.45 * win_term
             + 0.35 * confidence_term
             + 0.20 * float(np.clip(bias_strength, 0.0, 1.0))
         )
+        quality += float(regime_thresholds["quality_shift"])
+        quality = float(np.clip(quality, 0.0, 1.0))
 
         edge_strength = max(edge_score, 0.0)
         if predicted_pnl >= 35 and win_term >= 0.55:
-            size_floor, lev_floor = 1.15, 1.10
+            if regime_key == "bull":
+                size_floor, lev_floor = 1.30, 1.25
+            elif regime_key == "bear":
+                size_floor, lev_floor = 1.04, 1.00
+            elif regime_key == "high_vol":
+                size_floor, lev_floor = 0.96, 0.92
+            else:
+                size_floor, lev_floor = 1.15, 1.10
         elif predicted_pnl >= 12 and win_term >= 0.50:
-            size_floor, lev_floor = 0.95, 0.95
+            if regime_key == "bull":
+                size_floor, lev_floor = 1.05, 1.00
+            elif regime_key == "bear":
+                size_floor, lev_floor = 0.86, 0.84
+            elif regime_key == "high_vol":
+                size_floor, lev_floor = 0.78, 0.75
+            else:
+                size_floor, lev_floor = 0.95, 0.95
         elif predicted_pnl >= 0:
-            size_floor, lev_floor = 0.78, 0.75
+            if regime_key == "bull":
+                size_floor, lev_floor = 0.82, 0.78
+            elif regime_key == "bear":
+                size_floor, lev_floor = 0.72, 0.70
+            elif regime_key == "high_vol":
+                size_floor, lev_floor = 0.66, 0.62
+            else:
+                size_floor, lev_floor = 0.78, 0.75
         else:
-            size_floor, lev_floor = 0.55, 0.55
+            size_floor, lev_floor = 0.56, 0.56
 
         size_multiplier = float(np.clip(
-            size_floor + (0.58 * quality) + (0.22 * edge_strength) + momentum_bonus - vol_penalty - oi_penalty,
+            size_floor
+            + (0.58 * quality)
+            + (0.22 * edge_strength)
+            + momentum_bonus
+            - vol_penalty
+            - oi_penalty,
             size_floor,
-            1.75,
+            float(regime_thresholds["size_cap"]),
         ))
         leverage_multiplier = float(np.clip(
-            lev_floor + (0.52 * quality) + (0.30 * edge_strength) + (0.08 * momentum_bonus) - (vol_penalty * 1.15),
+            lev_floor
+            + (0.52 * quality)
+            + (0.30 * edge_strength)
+            + (0.42 * momentum_bonus)
+            - (vol_penalty * 1.05),
             lev_floor,
-            1.60,
+            float(regime_thresholds["lev_cap"]),
         ))
+
+        if (
+            should_trade
+            and regime_key == "bull"
+            and predicted_pnl >= 30
+            and win_term >= 0.56
+            and momentum_signal > 0.08
+        ):
+            size_multiplier = min(float(regime_thresholds["size_cap"]), size_multiplier + 0.30)
+            leverage_multiplier = min(float(regime_thresholds["lev_cap"]), leverage_multiplier + 0.25)
+        elif (
+            should_trade
+            and regime_key == "high_vol"
+            and predicted_pnl >= 26
+            and win_term >= 0.55
+            and momentum_signal > 0.10
+            and volatility <= 0.035
+        ):
+            size_multiplier = min(float(regime_thresholds["size_cap"]), size_multiplier + 0.16)
+            leverage_multiplier = min(float(regime_thresholds["lev_cap"]), leverage_multiplier + 0.14)
 
         if should_trade and predicted_pnl < 0:
             size_multiplier = max(0.55, min(size_multiplier, 0.88))
@@ -735,13 +842,30 @@ class SetupLearner:
             stats = self._policy_stats.get(regime_key, {}).get(setup)
             if not stats:
                 continue
-            bias_gate = max(0.45, stats["avg_bias_strength"] - 0.06)
-            vol_cap = max(0.02, stats["avg_volatility"] + 0.008)
-            momentum_gate = stats["avg_momentum"] - 250.0
+            if regime_key == "bull":
+                bias_gate = max(0.40, stats["avg_bias_strength"] - 0.10)
+                vol_cap = max(0.02, stats["avg_volatility"] + 0.014)
+                momentum_gate = stats["avg_momentum"] - 150.0
+                sizing_hint = "scale up when expected_pnl>30 and momentum is positive"
+            elif regime_key == "bear":
+                bias_gate = max(0.50, stats["avg_bias_strength"] - 0.03)
+                vol_cap = max(0.02, stats["avg_volatility"] + 0.006)
+                momentum_gate = stats["avg_momentum"] - 50.0
+                sizing_hint = "stay selective; trim size/leverage when momentum turns negative"
+            elif regime_key == "high_vol":
+                bias_gate = max(0.48, stats["avg_bias_strength"] - 0.03)
+                vol_cap = max(0.02, stats["avg_volatility"] + 0.004)
+                momentum_gate = stats["avg_momentum"] - 120.0
+                sizing_hint = "prefer lower-volatility pockets; only boost on strong edge + momentum"
+            else:
+                bias_gate = max(0.45, stats["avg_bias_strength"] - 0.06)
+                vol_cap = max(0.02, stats["avg_volatility"] + 0.008)
+                momentum_gate = stats["avg_momentum"] - 250.0
+                sizing_hint = "scale with edge quality and win probability"
             use_rule = (
                 f"use when regime=={regime_key}, bias_strength>{bias_gate:.2f}, "
                 f"volatility<={vol_cap:.3f}, momentum>{momentum_gate:.0f}, "
-                f"win_rate≈{stats['win_rate']:.2%}"
+                f"win_rate≈{stats['win_rate']:.2%}; {sizing_hint}"
             )
             skip_rule = self._best_skip_rule(regime_key, setup)
             lines.append(
@@ -756,7 +880,7 @@ class SetupLearner:
             if reg == regime and stp == setup and stats["samples"] >= 4:
                 candidates.append((key, stats))
         if not candidates:
-            return "expected_pnl < -22 and win_probability < 45%"
+            return self._default_skip_rule(regime)
 
         worst = min(
             candidates,
@@ -772,6 +896,15 @@ class SetupLearner:
             f"regime={regime}, bias={bias_bucket}, vol={vol_bucket}, momentum={momentum_bucket} "
             f"(avg_pnl={avg_pnl:.2f})"
         )
+
+    def _default_skip_rule(self, regime: str) -> str:
+        if regime == "bull":
+            return "expected_pnl < -34 and win_probability < 42% and weak-bias/high-volatility"
+        if regime == "bear":
+            return "expected_pnl < -26 and win_probability < 44% and weak-bias/high-volatility"
+        if regime == "high_vol":
+            return "expected_pnl < -24 and win_probability < 43% and weak-bias/high-volatility"
+        return "expected_pnl < -22 and win_probability < 45% and weak-bias/high-volatility"
 
     def _edge_label(self, predicted_pnl: float) -> str:
         if predicted_pnl >= 30:
