@@ -61,7 +61,6 @@ Thumbs.db
 *.csv
 *.xlsx
 *.xls
-*.json
 *.parquet
 *.feather
 *.pkl
@@ -152,4 +151,3 @@ conda/
 # Tools and utilities
 .mise/
 .direnv/
-

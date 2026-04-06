@@ -260,6 +260,7 @@ class CotWeeklyStrategy(BaseStrategy):
         capital_usd: float = 10000.0,
         risk_pct: float = 0.10,
         max_leverage: float = 10.0,
+        max_parallel_positions: int = 2,
         test_mode: bool = False,
         cot_fetcher: Optional[Any] = None,
         setups: list[str] | None = None,
@@ -275,6 +276,7 @@ class CotWeeklyStrategy(BaseStrategy):
         self.capital_usd = capital_usd
         self.risk_pct = risk_pct
         self.max_leverage = max_leverage
+        self.max_parallel_positions = max_parallel_positions
         self.test_mode = test_mode
         self.equity = capital_usd
         self.consecutive_losses = 0
@@ -371,7 +373,7 @@ class CotWeeklyStrategy(BaseStrategy):
         """Execute signal using client (for test compatibility with MockTrade)."""
         if client is None:
             client = self.client
-        size = self.position_size_usd(signal)
+        base_size = self.position_size_usd(signal)
         if hasattr(client, "open_position"):
             # Use mock's open_position for proper MockTrade with attrs
             metadata = dict(getattr(signal, "metadata", {}) or {})
@@ -379,15 +381,46 @@ class CotWeeklyStrategy(BaseStrategy):
             if isinstance(setups, list) and setups:
                 selector = (self.current_date.isocalendar().week + len(signal.coin)) % len(setups)
                 metadata.setdefault("setup", str(setups[selector]))
+            selected_setup = str(metadata.get("setup", "75_retracement"))
+            policy = self.setup_learner.recommend_setup_action(
+                setup=selected_setup,
+                regime=str(metadata.get("market_regime", metadata.get("regime", "all"))),
+                context=metadata,
+                base_confidence=float(signal.confidence),
+            )
+            metadata["setup_learning_policy"] = {
+                "should_trade": policy["should_trade"],
+                "reason": policy["reason"],
+                "predicted_pnl": policy["predicted_pnl"],
+                "win_probability": policy["win_probability"],
+                "size_multiplier": policy["size_multiplier"],
+                "leverage_multiplier": policy["leverage_multiplier"],
+            }
+            metadata["setup"] = selected_setup
+            if not policy["should_trade"]:
+                logger.info(
+                    "Skipping %s %s via setup learner: %s",
+                    signal.coin,
+                    signal.direction.value,
+                    policy["reason"],
+                )
+                return None
+            size = min(base_size * float(policy["size_multiplier"]), self.max_position_usd)
+            if size <= 0:
+                return None
+            leverage = min(
+                self.max_leverage,
+                self.calculate_leverage(signal.confidence) * float(policy["leverage_multiplier"]),
+            )
             trade = client.open_position(
                 coin=signal.coin,
                 direction="long" if signal.direction == Direction.LONG else "short",
                 size_usd=size,
-                leverage=self.calculate_leverage(signal.confidence),
+                leverage=leverage,
                 metadata=metadata,
             )
             return trade
-        self._open(signal.coin, signal.direction, size)
+        self._open(signal.coin, signal.direction, base_size)
         # Minimal mock for fallback
         return type(
             "MockTrade",
@@ -406,7 +439,7 @@ class CotWeeklyStrategy(BaseStrategy):
         if engine is not None and hasattr(engine, "current_date"):
             self.set_date(engine.current_date)
         # Backtest path: close previous positions at current timestamp (realized PnL),
-        # then open current best signal with market price from mock price history.
+        # then open top actionable signals with market prices from mock history.
         if engine is not None and hasattr(self.client, "close_all_positions"):
             closed = self.client.close_all_positions()  # type: ignore[attr-defined]
             actionable = [
@@ -414,9 +447,13 @@ class CotWeeklyStrategy(BaseStrategy):
                 if s.direction in {Direction.LONG, Direction.SHORT}
                 and s.confidence >= self.min_confidence
             ]
-            selected = self.select_best_asset(actionable)
-            if selected is not None:
-                self.execute_signal(selected, self.client)
+            selected = sorted(
+                actionable,
+                key=lambda s: getattr(s, "confidence", 0.0),
+                reverse=True,
+            )[: max(1, int(self.max_parallel_positions))]
+            for signal in selected:
+                self.execute_signal(signal, self.client)
             return closed
 
         if signals:

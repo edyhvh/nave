@@ -139,8 +139,8 @@ def run_setup_learning():
     model_path = Path(__file__).parent / "artifacts" / "setup_learner.joblib"
     journal = TradeJournal()
     engine = BacktestEngine(
-        start_date=datetime(2023, 1, 1),
-        end_date=datetime(2024, 12, 31),
+        start_date=datetime(2019, 1, 1),
+        end_date=datetime(2025, 12, 31),
         initial_capital=10000.0,
         journal_enabled=True,
         journal=journal,

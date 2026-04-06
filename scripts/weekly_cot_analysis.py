@@ -247,8 +247,8 @@ def run_setup_learning_pipeline(
         setups=setups,
     )
     engine = BacktestEngine(
-        start_date=datetime(2023, 1, 1),
-        end_date=datetime(2024, 12, 31),
+        start_date=datetime(2019, 1, 1),
+        end_date=datetime(2025, 12, 31),
         initial_capital=capital_usd,
         journal_enabled=True,
         journal=journal,
