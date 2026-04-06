@@ -5,8 +5,8 @@ from __future__ import annotations
 import base64
 import json
 import os
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Optional
 from urllib import error, parse, request
 
@@ -23,7 +23,7 @@ class GitHubDataRepoSync:
 
     owner: str
     repo: str
-    token: str
+    token: str = field(repr=False)
     branch: str = "main"
     base_path: str = "trade_journal"
     api_base: str = "https://api.github.com"
@@ -114,7 +114,7 @@ class GitHubDataRepoSync:
         """Sync one trade as a dedicated JSON file."""
         path = f"{self.base_path.strip('/')}/trades/{trade.id}.json"
         payload = {
-            "synced_at": datetime.utcnow().isoformat(),
+            "synced_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             "event": event,
             "trade": trade.to_dict(),
         }
@@ -129,7 +129,7 @@ class GitHubDataRepoSync:
         """Sync latest full snapshot of trades and aggregate stats."""
         path = f"{self.base_path.strip('/')}/latest_snapshot.json"
         payload = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             "trade_count": len(trades),
             "stats": stats or {},
             "metadata": metadata or {},

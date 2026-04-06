@@ -3,6 +3,7 @@ Integrations for trade journaling with strategy and backtest systems.
 """
 
 from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta, timezone
 
 from .journal import TradeJournal
 from .models import Trade, TradeEnvironment, PositionUpdate, TradeReview
@@ -31,7 +32,10 @@ class StrategyJournalMixin:
     """
 
     journal: Optional[TradeJournal] = None
-    _open_trades: Dict[str, str] = {}  # coin -> trade_id mapping
+    _open_trades: Dict[str, str]  # coin -> trade_id mapping
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
 
     def setup_journal(
         self,
@@ -195,8 +199,8 @@ class BacktestJournalMixin:
     """
 
     journal: Optional[TradeJournal] = None
-    storage: Optional[StorageBackend] = None
-    _backtest_trade_ids: List[str] = []
+    _journal_storage: Optional[StorageBackend] = None
+    _backtest_trade_ids: List[str]
 
     def setup_journal(self, journal: Optional[TradeJournal] = None) -> None:
         """
@@ -206,7 +210,7 @@ class BacktestJournalMixin:
             journal: Custom journal instance
         """
         self.journal = journal or TradeJournal()
-        self.storage = self.journal.storage
+        self._journal_storage = self.journal.storage
         self._backtest_trade_ids = []
 
     def record_backtest_trade(self, trade: Trade) -> None:
@@ -222,8 +226,8 @@ class BacktestJournalMixin:
         # Ensure it's marked as backtest
         trade.environment = TradeEnvironment.BACKTEST
 
-        if self.storage:
-            self.storage.save_trade(trade)
+        if self._journal_storage:
+            self._journal_storage.save_trade(trade)
         self._backtest_trade_ids.append(trade.id)
 
     def get_backtest_trades(self) -> List[Trade]:
@@ -256,9 +260,7 @@ class BacktestJournalMixin:
         if not self.journal:
             return {}
 
-        from datetime import datetime, timedelta
-
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc).replace(tzinfo=None)
         start_date = end_date - timedelta(days=days)
 
         backtest_stats = self.journal.get_stats(

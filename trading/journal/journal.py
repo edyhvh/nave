@@ -2,11 +2,11 @@
 Main TradeJournal class - high-level interface for trade recording.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from typing import List, Optional, Dict, Any
 
-from .models import Trade, TradeEnvironment, TradeStatus, PositionUpdate, TradeReview, TradeOutcome
+from .models import Trade, TradeEnvironment, TradeStatus, PositionUpdate, TradeReview, TradeOutcome, TradeJournalEntry
 from .storage import StorageBackend, SQLiteStorage
 from .github_sync import GitHubDataRepoSync
 
@@ -205,9 +205,9 @@ class TradeJournal:
         if not trade:
             return None
 
-        # Close the trade
-        trade.close(exit_price)
+        # Close the trade (set exit_fee first so P&L includes it)
         trade.exit_fee = exit_fee
+        trade.close(exit_price)
         trade.exit_signals = exit_signals or {}
 
         if notes_addition:
@@ -243,7 +243,7 @@ class TradeJournal:
 
         update = PositionUpdate(
             trade_id=trade_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
             current_price=current_price,
             unrealized_pnl=unrealized_pnl,
             funding_paid=funding_paid,
@@ -353,6 +353,23 @@ class TradeJournal:
         """Get a trade by ID."""
         return self.storage.get_trade(trade_id)
 
+    def get_journal_entry(self, trade_id: str) -> Optional[TradeJournalEntry]:
+        """
+        Get a full journal entry (trade + position updates + review).
+
+        Args:
+            trade_id: Trade ID
+
+        Returns:
+            TradeJournalEntry or None if trade not found
+        """
+        trade = self.storage.get_trade(trade_id)
+        if not trade:
+            return None
+        updates = self.storage.get_position_updates(trade_id)
+        review = self.storage.get_review(trade_id)
+        return TradeJournalEntry(trade=trade, position_updates=updates, review=review)
+
     def get_open_trades(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -441,7 +458,7 @@ class TradeJournal:
         Returns:
             Formatted report string
         """
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc).replace(tzinfo=None)
         start_date = end_date - timedelta(days=days)
 
         stats = self.get_stats(
@@ -496,7 +513,7 @@ class TradeJournal:
         self,
         filepath: str,
         environment: Optional[TradeEnvironment] = None,
-        format: str = "csv",
+        export_format: str = "csv",
     ) -> None:
         """
         Export trades to file.
@@ -504,17 +521,17 @@ class TradeJournal:
         Args:
             filepath: Output file path
             environment: Filter by environment
-            format: "csv" or "json"
+            export_format: "csv" or "json"
         """
         trades = self.storage.get_trades(environment=environment, limit=10000)
 
-        if format == "json":
+        if export_format == "json":
             import json
             with open(filepath, 'w') as f:
                 json.dump([t.to_dict()
                           for t in trades], f, indent=2, default=str)
 
-        elif format == "csv":
+        elif export_format == "csv":
             import csv
             if trades:
                 with open(filepath, 'w', newline='') as f:

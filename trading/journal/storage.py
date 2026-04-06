@@ -591,6 +591,14 @@ class JSONStorage(StorageBackend):
             t.pnl_absolute for t in losses if t.pnl_absolute is not None]
 
         total_pnl = sum(t.pnl_absolute for t in trades if t.pnl_absolute)
+        avg_win = sum(wins_pnl) / len(wins_pnl) if wins_pnl else 0
+        avg_loss = sum(losses_pnl) / len(losses_pnl) if losses_pnl else 0
+
+        durations = [
+            t.duration for t in trades if t.duration is not None
+        ]
+
+        pnl_percents = [t.pnl_percent for t in trades if t.pnl_percent is not None]
 
         return {
             'total_trades': len(trades),
@@ -600,10 +608,13 @@ class JSONStorage(StorageBackend):
             'win_rate': len(wins) / len(trades) if trades else 0,
             'total_pnl': total_pnl,
             'avg_pnl': total_pnl / len(trades) if trades else 0,
-            'avg_win': sum(wins_pnl) / len(wins_pnl) if wins_pnl else 0,
-            'avg_loss': sum(losses_pnl) / len(losses_pnl) if losses_pnl else 0,
-            'best_trade': max(t.pnl_absolute for t in trades if t.pnl_absolute) if trades else 0,
-            'worst_trade': min(t.pnl_absolute for t in trades if t.pnl_absolute) if trades else 0,
+            'avg_win': avg_win,
+            'avg_loss': avg_loss,
+            'profit_factor': abs((avg_win * len(wins)) / (avg_loss * len(losses))) if losses and avg_loss else float('inf'),
+            'avg_return_pct': sum(pnl_percents) / len(pnl_percents) if pnl_percents else 0,
+            'best_trade': max((t.pnl_absolute for t in trades if t.pnl_absolute is not None), default=0),
+            'worst_trade': min((t.pnl_absolute for t in trades if t.pnl_absolute is not None), default=0),
+            'avg_duration_hours': sum(durations) / len(durations) if durations else 0,
         }
 
     def _load_all_trades(self) -> List[Trade]:

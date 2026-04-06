@@ -3,12 +3,10 @@ Data models for the trade journaling system.
 """
 
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
-from decimal import Decimal
-from enum import Enum, auto
+from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional, Dict, List, Any
 import uuid
-import json
 
 
 class TradeStatus(Enum):
@@ -44,7 +42,7 @@ class Trade:
     Supports both spot and leveraged positions.
     """
     # Identification
-    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    id: str = field(default_factory=lambda: str(uuid.uuid4())[:12])
     strategy_name: str = "unknown"
 
     # Market info
@@ -65,7 +63,7 @@ class Trade:
     funding_fees: float = 0.0  # Accumulated funding payments
 
     # Timing
-    entry_time: datetime = field(default_factory=datetime.utcnow)
+    entry_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     exit_time: Optional[datetime] = None
 
     # Trade lifecycle
@@ -167,7 +165,7 @@ class Trade:
             exit_time: Exit timestamp (defaults to now)
         """
         self.exit_price = exit_price
-        self.exit_time = exit_time or datetime.utcnow()
+        self.exit_time = exit_time or datetime.now(timezone.utc).replace(tzinfo=None)
         self.status = TradeStatus.CLOSED
 
         # Calculate P&L
@@ -234,7 +232,7 @@ class PositionUpdate:
 class TradeReview:
     """Post-trade review and lessons learned."""
     trade_id: str
-    reviewed_at: datetime = field(default_factory=datetime.utcnow)
+    reviewed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     # Analysis
     setup_quality: int = 0  # 1-10 rating
