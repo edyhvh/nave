@@ -14,7 +14,6 @@ import argparse
 import sys
 from pathlib import Path
 from datetime import datetime
-import json
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -56,6 +55,51 @@ def run_strategy_validation():
     return result.returncode
 
 
+def run_setup_learning():
+    """Run backtest → learn setups → discover patterns pipeline."""
+    print("=" * 60)
+    print("SETUP LEARNING PIPELINE")
+    print("=" * 60)
+    print()
+    print("Objective: Learn setup rankings and discover new pattern clusters")
+    print()
+
+    from trading.strategy import CotWeeklyStrategy
+    from trading.journal import TradeEnvironment, TradeJournal
+    from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
+    from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
+    from tests.backtest.utils.backtest_engine import BacktestEngine
+
+    model_path = Path(__file__).parent / "artifacts" / "setup_learner.joblib"
+    journal = TradeJournal()
+    engine = BacktestEngine(
+        start_date=datetime(2023, 1, 1),
+        end_date=datetime(2024, 12, 31),
+        initial_capital=10000.0,
+        journal_enabled=True,
+        journal=journal,
+    )
+    strategy = CotWeeklyStrategy(
+        client=MockHyperliquidClient(),
+        cot_fetcher=HistoricalCotFetcher(),
+        test_mode=True,
+    )
+    result = engine.run(strategy)
+    learner = strategy.setup_learner
+    learner.save_model(model_path)
+    patterns = learner.discover_new_patterns(result)
+    report = learner.generate_report(regime="all", patterns=patterns)
+    print(report)
+    journal_stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
+    db_path = getattr(journal.storage, "db_path", "n/a")
+    print(
+        f"\nBacktest journal saved: trades={journal_stats.get('total_trades', 0)} "
+        f"db={db_path}"
+    )
+    print(f"\nSaved model: {model_path}")
+    return 0
+
+
 def run_all():
     """Run all backtest tests."""
     print("=" * 60)
@@ -80,7 +124,10 @@ def generate_report():
         cwd=Path(__file__).parent,
         capture_output=False
     )
-    print(f"\nReport generated: {Path(__file__).parent / 'backtest_report.html'}")
+    if result.returncode == 0:
+        print(f"\nReport generated: {Path(__file__).parent / 'backtest_report.html'}")
+    else:
+        print("\nReport generation failed (missing pytest-html plugin?)")
     return result.returncode
 
 
@@ -88,7 +135,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run COT strategy backtests")
     parser.add_argument(
         "--objective",
-        choices=["setup-discovery", "strategy-validation"],
+        choices=["setup-discovery", "strategy-validation", "setup-learning"],
         help="Which objective to run"
     )
     parser.add_argument("--all", action="store_true", help="Run all tests")
@@ -104,6 +151,8 @@ def main():
         return run_setup_discovery()
     elif args.objective == "strategy-validation":
         return run_strategy_validation()
+    elif args.objective == "setup-learning":
+        return run_setup_learning()
     elif args.all:
         return run_all()
     else:

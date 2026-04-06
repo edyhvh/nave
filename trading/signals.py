@@ -201,11 +201,10 @@ class MacroSignalProducer:
         """
         from trading.cot.cot_analyzer import COTAnalyzer
         analyzer = COTAnalyzer(setups=setups, setup_learner=self.setup_learner)
-        # If raw data, analyze first
-        if "BTC" in cot_biases and isinstance(cot_biases["BTC"], dict) and "bias" not in cot_biases["BTC"]:
-            biases = analyzer.analyze(cot_biases)
-        else:
-            biases = cot_biases
+        # If data isn't already COTBias objects, analyze raw dict payload first.
+        is_bias_object_map = all(hasattr(v, "bias") and hasattr(v, "confidence")
+                                 for v in cot_biases.values())
+        biases = cot_biases if is_bias_object_map else analyzer.analyze(cot_biases)
         return analyzer.to_signals(biases)
 
     def produce(self, indicators: dict) -> list[Signal]:

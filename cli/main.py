@@ -66,7 +66,7 @@ def fetch_data(indicator: str = typer.Argument("all")):
 
 @trading_app.command("run-strategy")
 def run_strategy(
-    wallet: str = typer.Option("openfang", help="Wallet name"),
+    wallet: str = typer.Option("hermes", help="Wallet name"),
     coins: Optional[str] = typer.Option(None, help="Coins to trade"),
     dry_run: bool = typer.Option(True, help="Dry run mode"),
     mainnet: bool = typer.Option(False, help="Use mainnet"),
@@ -93,7 +93,7 @@ def run_trading(
         "--strategy",
         help="Strategy id to run (e.g. cot-weekly)",
     ),
-    wallet: str = typer.Option("openfang", help="Wallet name"),
+    wallet: str = typer.Option("hermes", help="Wallet name"),
     capital: float = typer.Option(2000.0, help="Capital for weekly COT analysis"),
     paper: bool = typer.Option(
         False,
@@ -109,6 +109,11 @@ def run_trading(
         False,
         "--live",
         help="Disable dry-run safeguards (real execution path)",
+    ),
+    learn: bool = typer.Option(
+        False,
+        "--learn",
+        help="Run setup learning pipeline from backtest outcomes",
     ),
 ):
     """Run trading workflows.
@@ -131,6 +136,8 @@ def run_trading(
             cmd.append("--paper")
         if live:
             cmd.append("--live")
+        if learn:
+            cmd.append("--learn")
         typer.echo(f"Running {strategy} (paper={not backtest}, backtest={backtest})")
         subprocess.run(cmd, check=False)
         return

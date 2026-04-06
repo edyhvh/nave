@@ -57,7 +57,8 @@ is server-side via the Hyperliquid Python SDK.
 
 ```bash
 cd ~/nave
-source .venv/bin/activate
+direnv allow  # preferred; enables plain `python` and `pip` in this repo
+# or fallback: source .venv/bin/activate
 python scripts/setup_wallets.py
 ```
 

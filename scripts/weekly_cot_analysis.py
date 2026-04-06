@@ -16,14 +16,24 @@ Examples:
 """
 import argparse
 import logging
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from trading.config import DEFAULT_SETUPS
 from trading.cot.cot_fetcher import fetch_latest_cot
 from trading.cot.cot_analyzer import COTAnalyzer
 from trading.signals import MacroSignalProducer, SignalAggregator
 from trading.client import HyperliquidClient
+from trading.journal import TradeEnvironment, TradeJournal
+from trading.strategy import CotWeeklyStrategy
+
+from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
+from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
+from tests.backtest.utils.backtest_engine import BacktestEngine
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -57,6 +67,8 @@ def generate_weekly_report(
     capital_usd: float = 2000,
     dry_run: bool = True,
     mode: str = "paper",
+    wallet: str = "hermes",
+    learn: bool = False,
     setups: list[str] | None = None,
 ) -> Dict:
     """Main weekly COT analysis and recommendation."""
@@ -74,9 +86,18 @@ def generate_weekly_report(
 
     # Fetch and analyze COT
     cot_data = fetch_latest_cot()
-    analyzer = COTAnalyzer(setups=active_setups)
+    setup_learner = None
+    learned_patterns = []
+    if learn:
+        setup_learner, learned_patterns = run_setup_learning_pipeline(
+            model_path=Path("tests/backtest/artifacts/setup_learner.joblib"),
+            setups=active_setups,
+            capital_usd=capital_usd,
+        )
+
+    analyzer = COTAnalyzer(setups=active_setups, setup_learner=setup_learner)
     biases = analyzer.analyze(cot_data)
-    producer = MacroSignalProducer()
+    producer = MacroSignalProducer(setup_learner=setup_learner)
     signals = producer.produce({"cot_data": cot_data})
 
     # Compare BTC vs ETH
@@ -108,7 +129,7 @@ def generate_weekly_report(
     # Perps scan
     print("\n🔍 Other Hyperliquid Opportunities:")
     try:
-        client = HyperliquidClient(wallet_name="openfang", testnet=True)
+        client = HyperliquidClient(wallet_name=wallet, testnet=True)
         perps = scan_hyperliquid_perps(client)
         for p in perps[:3]:
             print(
@@ -126,12 +147,50 @@ def generate_weekly_report(
         "recommended_size_usd": position_size,
         "signals": len(signals),
         "dry_run": dry_run,
+        "learned_patterns": learned_patterns[:5],
+        "learning_enabled": learn,
         "timestamp": datetime.now().isoformat(),
     }
+
+    if setup_learner is not None:
+        print()
+        print(setup_learner.generate_report(regime="all", setups=active_setups, patterns=learned_patterns))
 
     print("\n✅ Report complete. Run with --live for execution (use vault).")
     print("="*80)
     return report
+
+
+def run_setup_learning_pipeline(
+    model_path: Path,
+    setups: list[str],
+    capital_usd: float,
+):
+    """Run the full setup-learning pipeline from a lightweight backtest."""
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    journal = TradeJournal()
+    strategy = CotWeeklyStrategy(
+        client=MockHyperliquidClient(),
+        cot_fetcher=HistoricalCotFetcher(),
+        capital_usd=capital_usd,
+        test_mode=True,
+        setups=setups,
+    )
+    engine = BacktestEngine(
+        start_date=datetime(2023, 1, 1),
+        end_date=datetime(2024, 12, 31),
+        initial_capital=capital_usd,
+        journal_enabled=True,
+        journal=journal,
+    )
+    result = engine.run(strategy)
+    learner = strategy.setup_learner
+    learner.save_model(model_path)
+    patterns = learner.discover_new_patterns(result)
+    stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
+    db_path = getattr(journal.storage, "db_path", "n/a")
+    print(f"Backtest journal saved: trades={stats.get('total_trades', 0)} db={db_path}")
+    return learner, patterns
 
 
 if __name__ == "__main__":
@@ -140,9 +199,9 @@ if __name__ == "__main__":
         epilog=(
             "Examples:\n"
             "  nave trading run --paper --strategy cot-weekly\n"
-            "  nave trading run --backtest --strategy cot-weekly\n"
+            "  nave trading run --backtest --strategy cot-weekly --learn\n"
             "  python scripts/weekly_cot_analysis.py --paper --capital 2000\n"
-            "  python scripts/weekly_cot_analysis.py --backtest --capital 2000"
+            "  python scripts/weekly_cot_analysis.py --backtest --learn --capital 2000"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -156,7 +215,9 @@ if __name__ == "__main__":
                         help="Force dry-run output mode")
     parser.add_argument("--live", action="store_true",
                         help="Disable dry-run (execution path, use with care)")
-    parser.add_argument("--wallet", default="openfang")
+    parser.add_argument("--wallet", default="hermes")
+    parser.add_argument("--learn", action="store_true",
+                        help="Run setup learning from backtest and apply learned setups")
     parser.add_argument(
         "--setups",
         nargs="+",
@@ -179,6 +240,8 @@ if __name__ == "__main__":
         capital_usd=args.capital,
         dry_run=dry_run,
         mode=mode,
+        wallet=args.wallet,
+        learn=args.learn,
         setups=args.setups,
     )
     print(

@@ -31,7 +31,7 @@ TESTNET_API = "https://api.hyperliquid-testnet.xyz"
 
 
 class HyperliquidClient:
-    def __init__(self, wallet_name: str = "openfang", testnet: bool = True):
+    def __init__(self, wallet_name: str = "hermes", testnet: bool = True):
         self.testnet = testnet
         self.base_url = TESTNET_API if testnet else MAINNET_API
         self._wallet_name = wallet_name
@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Hyperliquid CLI")
     parser.add_argument("command", choices=["summary", "positions", "orders", "mids", "markets"])
-    parser.add_argument("--wallet", default="openfang")
+    parser.add_argument("--wallet", default="hermes")
     parser.add_argument("--mainnet", action="store_true", help="Use mainnet (default: testnet)")
     args = parser.parse_args()
 

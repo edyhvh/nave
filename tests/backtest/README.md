@@ -38,6 +38,7 @@ tests/backtest/
 **Run:**
 ```bash
 python run_backtests.py --objective setup-discovery
+python run_backtests.py --objective setup-learning
 # or
 pytest test_setup_discovery.py -v
 ```
@@ -72,9 +73,18 @@ python run_backtests.py --all
 
 # Run specific objective
 python run_backtests.py --objective setup-discovery
+python run_backtests.py --objective setup-learning
 
 # Generate HTML report
 python run_backtests.py --report
+
+# Inspect persisted backtest journal trades
+python - <<'PY'
+import sqlite3, pathlib
+db = pathlib.Path.home()/'.nave'/'trades.db'
+con = sqlite3.connect(db)
+print(con.execute("select count(*) from trades where environment='backtest'").fetchone())
+PY
 
 # Run with pytest directly
 pytest tests/backtest/ -v

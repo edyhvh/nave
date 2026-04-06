@@ -1,13 +1,15 @@
 """Core backtest engine for strategy validation."""
 
-from typing import List, Dict, Any, Optional, Callable, cast
+from typing import List, Dict, Any, Optional, cast
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
+import logging
 import pandas as pd
 import numpy as np
 
 from .metrics import calculate_metrics, PerformanceMetrics
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -84,7 +86,9 @@ class BacktestEngine:
         start_date: datetime,
         end_date: datetime,
         initial_capital: float = 10000.0,
-        config: Optional[BacktestConfig] = None
+        config: Optional[BacktestConfig] = None,
+        journal_enabled: bool = False,
+        journal: Optional[Any] = None,
     ):
         """
         Initialize backtest engine.
@@ -105,6 +109,12 @@ class BacktestEngine:
         self.equity_curve: Dict[datetime, float] = {}
         self.trades: List[Any] = []
         self.positions: Dict[str, Any] = {}
+        self.journal_enabled = journal_enabled
+        self.journal = journal
+        self._backtest_trade_ids: List[str] = []
+        if self.journal_enabled and self.journal is None:
+            from trading.journal import TradeJournal
+            self.journal = TradeJournal()
     
     def run(self, strategy: Any, price_data: Optional[pd.DataFrame] = None) -> BacktestResult:
         """
@@ -139,6 +149,9 @@ class BacktestEngine:
             if hasattr(strategy, 'execute_signals'):
                 executed = strategy.execute_signals(signals, self)
                 self.trades.extend(executed)
+                if self.journal_enabled and self.journal is not None:
+                    for trade in executed:
+                        self._record_journal_trade(trade, strategy_name=strategy.__class__.__name__)
             
             # Update equity (mark to market)
             self._update_equity()
@@ -182,12 +195,65 @@ class BacktestEngine:
 
         setup_learner = getattr(strategy, "setup_learner", None)
         if setup_learner is not None and hasattr(setup_learner, "fit"):
-            try:
-                setup_learner.fit(result)
-            except Exception:
-                pass
+            setup_learner.fit(result)
 
         return result
+
+    def _record_journal_trade(self, trade: Any, strategy_name: str) -> None:
+        """Persist executed backtest trade in TradeJournal storage."""
+        from trading.journal import Trade, TradeEnvironment, TradeOutcome, TradeStatus
+
+        if isinstance(trade, Trade):
+            trade.environment = TradeEnvironment.BACKTEST
+            to_save = trade
+        else:
+            coin = str(getattr(trade, "coin", "UNKNOWN") or "UNKNOWN")
+            direction = str(getattr(trade, "direction", "long") or "long")
+            if direction not in {"long", "short"}:
+                direction = "long" if str(direction).lower() in {"buy", "bullish"} else "short"
+
+            entry_price = float(getattr(trade, "entry_price", 1.0) or 1.0)
+            exit_price = float(getattr(trade, "exit_price", entry_price) or entry_price)
+            size_usd = float(getattr(trade, "size_usd", self.config.initial_capital * 0.1) or 0.0)
+            leverage = float(getattr(trade, "leverage", 1.0) or 1.0)
+            pnl = float(getattr(trade, "pnl", 0.0) or 0.0)
+            metadata = dict(getattr(trade, "metadata", {}) or {})
+
+            to_save = Trade(
+                strategy_name=strategy_name,
+                coin=coin,
+                direction=direction,
+                size_usd=size_usd,
+                leverage=leverage,
+                entry_price=entry_price,
+                environment=TradeEnvironment.BACKTEST,
+                entry_signals=metadata,
+                notes="Recorded by BacktestEngine",
+            )
+            to_save.status = TradeStatus.CLOSED
+            to_save.entry_time = getattr(trade, "entry_date", self.current_date)
+            to_save.exit_time = getattr(trade, "exit_date", self.current_date)
+            to_save.exit_price = exit_price
+            to_save.pnl_absolute = pnl
+            if size_usd:
+                to_save.pnl_percent = (pnl / size_usd) * 100
+            to_save.outcome = (
+                TradeOutcome.WIN if pnl > 0 else TradeOutcome.LOSS if pnl < 0 else TradeOutcome.BREAKEVEN
+            )
+
+        self.journal.storage.save_trade(to_save)
+        self._backtest_trade_ids.append(to_save.id)
+
+    def get_journal_trades(self) -> List[Any]:
+        """Return journal-backed trades for this backtest run."""
+        if not self.journal_enabled or self.journal is None:
+            return []
+        trades = []
+        for trade_id in self._backtest_trade_ids:
+            loaded = self.journal.get_trade(trade_id)
+            if loaded is not None:
+                trades.append(loaded)
+        return trades
     
     def _update_equity(self):
         """Mark positions to market."""
@@ -300,7 +366,9 @@ class WalkForwardOptimizer:
         param_grid: Dict[str, List[Any]],
         start_date: datetime,
         end_date: datetime,
-        initial_capital: float = 10000.0
+        initial_capital: float = 10000.0,
+        setup_learning: bool = False,
+        setup_model_path: Optional[str] = None,
     ) -> List[BacktestResult]:
         """
         Run walk-forward optimization.
@@ -332,7 +400,18 @@ class WalkForwardOptimizer:
                 train_end,
                 initial_capital
             )
-            
+
+            train_strategy = strategy_class(**best_params)
+            train_engine = BacktestEngine(train_start, train_end, initial_capital)
+            train_result = train_engine.run(train_strategy)
+            setup_learner = getattr(train_strategy, "setup_learner", None)
+
+            if setup_learning and setup_learner is not None:
+                model_path = setup_model_path or "tests/backtest/artifacts/setup_learner.joblib"
+                if hasattr(setup_learner, "save_model"):
+                    saved = setup_learner.save_model(model_path)
+                    logger.info("Saved setup learner model: %s", saved)
+
             # Test on out-of-sample data
             test_engine = BacktestEngine(
                 test_start,
@@ -340,8 +419,16 @@ class WalkForwardOptimizer:
                 initial_capital
             )
             test_strategy = strategy_class(**best_params)
+            if setup_learning and setup_learner is not None:
+                if hasattr(setup_learner, "save_model") and hasattr(test_strategy, "setup_learner"):
+                    getattr(test_strategy, "setup_learner").load_model(
+                        setup_model_path or "tests/backtest/artifacts/setup_learner.joblib"
+                    )
             test_result = test_engine.run(test_strategy)
             test_result.best_params = best_params
+            if setup_learning:
+                test_result.best_params["objective"] = "setup-learning"
+            train_result.best_params = best_params
             results.append(test_result)
             
             # Roll forward

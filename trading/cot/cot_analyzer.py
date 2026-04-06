@@ -42,6 +42,7 @@ class COTAnalyzer:
             candidate_setups = self.setup_learner.rank_setups(
                 candidate_setups,
                 regime=self.regime,
+                context={"market_regime": self.regime or "all"},
             )
         self.setups = candidate_setups
 
@@ -55,38 +56,40 @@ class COTAnalyzer:
 
     def _analyze_single(self, asset: str, raw: Dict) -> COTBias:
         """Parse single asset COT into bias (aligned to F.I.T.S. sentiment)."""
-        if isinstance(raw, dict) and "net_non_commercial" in raw:
-            # Mock data case
-            net = raw["net_non_commercial"]
-            pct = raw.get("pct_oi_non_com", 20.0)
-            change = raw.get("change", 0)
+        if isinstance(raw, dict) and (
+            "net_non_commercial" in raw or "noncomm_net" in raw
+        ):
+            # Mock/simplified data case
+            net = raw.get("net_non_commercial", raw.get("noncomm_net", 0))
+            pct = raw.get("pct_oi_non_com", raw.get("noncomm_pct_oi", 20.0))
+            change = raw.get("change", raw.get("change_noncomm_net", 0))
         else:
             # From real DF or records
             df = pd.DataFrame(raw.get("raw", []))
-            if not df.empty and "Noncommercial_Positions_Long" in df.columns:
-                long = df["Noncommercial_Positions_Long"].sum()
-                short = (
-                    df["Noncommercial_Positions_Short"].sum()
-                    if "Noncommercial_Positions_Short" in df.columns
-                    else 0
-                )
-                net = long - short
+            long_col = self._first_existing(
+                df, ["noncomm_positions_long_all", "Noncommercial_Positions_Long"]
+            )
+            short_col = self._first_existing(
+                df, ["noncomm_positions_short_all", "Noncommercial_Positions_Short"]
+            )
+            oi_col = self._first_existing(df, ["open_interest_all", "Open_Interest_All"])
+
+            if not df.empty and long_col:
+                latest_long = float(df[long_col].iloc[-1] or 0.0)
+                latest_short = float(df[short_col].iloc[-1] or 0.0) if short_col else 0.0
+                net = latest_long - latest_short
             else:
                 net = 0
-            # Compute pct of OI if open-interest column is present
-            if not df.empty and "Open_Interest_All" in df.columns:
-                total_oi = df["Open_Interest_All"].iloc[-1]
+
+            if not df.empty and oi_col:
+                total_oi = float(df[oi_col].iloc[-1] or 0.0)
                 pct = round(float(abs(net) / total_oi * 100), 2) if total_oi else 0.0
             else:
                 pct = 0.0
-            # Weekly change: diff of net between latest two rows if available
-            if not df.empty and len(df) >= 2 and "Noncommercial_Positions_Long" in df.columns:
-                prev_long = df["Noncommercial_Positions_Long"].iloc[-2]
-                prev_short = (
-                    df["Noncommercial_Positions_Short"].iloc[-2]
-                    if "Noncommercial_Positions_Short" in df.columns
-                    else 0
-                )
+
+            if not df.empty and len(df) >= 2 and long_col:
+                prev_long = float(df[long_col].iloc[-2] or 0.0)
+                prev_short = float(df[short_col].iloc[-2] or 0.0) if short_col else 0.0
                 prev_net = prev_long - prev_short
                 change = int(net - prev_net)
             else:
@@ -109,6 +112,7 @@ class COTAnalyzer:
             conf = 0.5
         bias_score = score  # 0-100 overall
 
+        market_regime = self.regime or self._infer_market_regime(change=change, pct_oi=float(pct))
         metadata = {
             "net_non_commercial": int(net),
             "pct_oi": round(pct, 1),
@@ -119,7 +123,12 @@ class COTAnalyzer:
             "setups": self.setups,
             "cot_weight": COT_PRIMARY_WEIGHT,
             "fits_weighted_score": bias_score,
-            "bias_strength": "strong" if bias_score > 70 else "medium" if bias_score > 40 else "weak"
+            "bias_strength": "strong" if bias_score > 70 else "medium" if bias_score > 40 else "weak",
+            "cot_bias_strength": 1.0 if bias_score > 70 else 0.6 if bias_score > 40 else 0.25,
+            "market_regime": market_regime,
+            "momentum": float(change),
+            "oi_level": float(pct),
+            "volatility": 0.02 + (min(abs(change), 5000) / 5000) * 0.03,
         }
 
         return COTBias(
@@ -177,6 +186,19 @@ class COTAnalyzer:
             source="macro/cot_75_retrace",
             metadata=metadata
         )
+
+    def _infer_market_regime(self, change: int, pct_oi: float) -> str:
+        if abs(change) > 2500 or abs(pct_oi) > 22:
+            return "high_vol"
+        if change >= 0:
+            return "bull"
+        return "bear"
+
+    def _first_existing(self, df: pd.DataFrame, names: list[str]) -> str | None:
+        for name in names:
+            if name in df.columns:
+                return name
+        return None
 
 
 if __name__ == "__main__":

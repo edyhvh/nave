@@ -6,6 +6,7 @@ The phrase is printed once and cleared. Never pipe output to a file or log.
 
     python scripts/show_mnemonic.py ironclaw
     python scripts/show_mnemonic.py openfang
+    python scripts/show_mnemonic.py hermes
 """
 
 import sys
@@ -20,7 +21,7 @@ from trading.vault import WalletVault
 def main():
     if len(sys.argv) != 2:
         print("Usage: python scripts/show_mnemonic.py <wallet-name>")
-        print("       wallet-name: ironclaw | openfang")
+        print("       wallet-name: ironclaw | openfang | hermes")
         sys.exit(1)
 
     name = sys.argv[1]

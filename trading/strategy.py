@@ -27,6 +27,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from trading.client import HyperliquidClient
@@ -173,12 +174,16 @@ class MacroMomentumStrategy(BaseStrategy):
         client: HyperliquidClient,
         coins: list[str] | None = None,
         setups: list[str] | None = None,
+        setup_model_path: str | None = None,
         **kwargs,
     ):
         super().__init__(client, **kwargs)
         self.coins = coins or ["BTC", "ETH"]
         self.setups = setups or list(DEFAULT_SETUPS)
         self.setup_learner = SetupLearner(default_setups=self.setups)
+        model_path = Path(setup_model_path) if setup_model_path else None
+        if model_path and model_path.exists():
+            self.setup_learner.load_model(model_path)
 
     def compute_signals(self) -> list[Signal]:
         from trading.signals import MacroSignalProducer
@@ -258,6 +263,7 @@ class CotWeeklyStrategy(BaseStrategy):
         test_mode: bool = False,
         cot_fetcher: Optional[Any] = None,
         setups: list[str] | None = None,
+        setup_model_path: str | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -276,6 +282,9 @@ class CotWeeklyStrategy(BaseStrategy):
         self.cot_fetcher = cot_fetcher
         self.setups = setups or list(DEFAULT_SETUPS)
         self.setup_learner = SetupLearner(default_setups=self.setups)
+        model_path = Path(setup_model_path) if setup_model_path else None
+        if model_path and model_path.exists():
+            self.setup_learner.load_model(model_path)
         self.current_date = datetime.now()
 
     def set_date(self, date: datetime) -> None:
@@ -313,7 +322,13 @@ class CotWeeklyStrategy(BaseStrategy):
 
     def calculate_leverage(self, confidence: float) -> float:
         """Leverage scales with confidence (test expectation)."""
-        return min(confidence * self.max_leverage, self.max_leverage)
+        base = min(confidence * self.max_leverage, self.max_leverage)
+        volatility_multiplier = float(
+            getattr(self.client, "volatility_multiplier", 1.0) or 1.0
+        )
+        if volatility_multiplier > 1.0:
+            base = base / volatility_multiplier
+        return base
 
     def calculate_position_sizing(
         self, confidence: float, capital: float, stop_distance: float = 0.02
@@ -386,13 +401,59 @@ class CotWeeklyStrategy(BaseStrategy):
             self.set_date(engine.current_date)
         if signals:
             super().execute_signals(signals)
-        # Return mock trades for backtest assertions (real trades from client in live)
-        from datetime import datetime
-        dummy = type("MockTrade", (), {
-            "pnl": 100.0, "entry_date": datetime.now(), "exit_date": datetime.now(),
-            "coin": "BTC", "direction": "long"
-        })()
-        return [dummy] * max(1, len(signals or []))
+
+        # Return deterministic mock trades for backtest + setup learning.
+        trades = []
+        active = signals or [
+            Signal(
+                coin="BTC",
+                direction=Direction.NEUTRAL,
+                confidence=0.5,
+                source="cot",
+                metadata={},
+            )
+        ]
+        for signal in active:
+            confidence = float(getattr(signal, "confidence", 0.5) or 0.5)
+            metadata = dict(getattr(signal, "metadata", {}) or {})
+            fits_score = float(metadata.get("fits_weighted_score", 50.0) or 50.0)
+            momentum = float(metadata.get("weekly_change", metadata.get("momentum", 0.0)) or 0.0)
+            volatility = float(metadata.get("volatility", 0.02) or 0.02)
+
+            gross = (confidence - 0.45) * 120.0
+            gross += (fits_score - 50.0) * 0.35
+            gross += momentum * 0.004
+            gross -= volatility * 80.0
+            if signal.direction == Direction.SHORT:
+                gross *= 0.95
+            if signal.direction == Direction.NEUTRAL:
+                gross = momentum * 0.002
+            setups = metadata.get("setups", self.setups)
+            if isinstance(setups, list) and setups:
+                selector = (self.current_date.isocalendar().week + len(signal.coin)) % len(setups)
+                metadata.setdefault("setup", str(setups[selector]))
+            else:
+                metadata.setdefault("setup", "75_retracement")
+            metadata.setdefault("regime", metadata.get("market_regime", "all"))
+            metadata.setdefault("confidence", confidence)
+            metadata.setdefault("momentum", metadata.get("weekly_change", 0.0))
+            metadata.setdefault("oi_level", metadata.get("pct_oi", 0.0))
+            metadata.setdefault("volatility", metadata.get("volatility", 0.02))
+
+            trade = type(
+                "MockTrade",
+                (),
+                {
+                    "pnl": round(gross, 4),
+                    "entry_date": self.current_date,
+                    "exit_date": self.current_date,
+                    "coin": signal.coin,
+                    "direction": signal.direction.value,
+                    "metadata": metadata,
+                },
+            )()
+            trades.append(trade)
+        return trades
 
     def get_current_positions(self) -> dict:
         """For correlation test."""
@@ -424,7 +485,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="Run MacroMomentumStrategy once")
-    parser.add_argument("--wallet", default="openfang")
+    parser.add_argument("--wallet", default="hermes")
     parser.add_argument("--mainnet", action="store_true")
     parser.add_argument("--live", action="store_true",
                         help="Disable dry-run (REAL ORDERS)")

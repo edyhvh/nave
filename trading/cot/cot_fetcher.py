@@ -64,9 +64,16 @@ def fetch_latest_cot() -> Dict[str, Any]:
                     df = pd.DataFrame(result)
                 else:
                     df = pd.DataFrame()
+                filtered = _filter_asset_rows(df, asset)
+                latest_date = str(today.date())
+                if not filtered.empty:
+                    for date_col in ("report_date_as_yyyy_mm_dd", "Report_Date_as_of"):
+                        if date_col in filtered.columns:
+                            latest_date = str(filtered[date_col].iloc[-1])
+                            break
                 data[asset] = {
-                    "raw": df.to_dict("records") if not df.empty else [],
-                    "latest_date": str(df["Report_Date_as_of"].iloc[-1]) if not df.empty and "Report_Date_as_of" in df.columns else str(today.date()),
+                    "raw": filtered.to_dict("records") if not filtered.empty else [],
+                    "latest_date": latest_date,
                     "symbol": symbol
                 }
                 print(f"✅ Fetched COT for {asset}")
@@ -102,6 +109,28 @@ def _mock_cot_data(asset: str) -> Dict:
         "change": 1200 if is_bullish else -800,
         "bias": "bullish" if is_bullish else "bearish"
     }
+
+
+def _filter_asset_rows(df: pd.DataFrame, asset: str) -> pd.DataFrame:
+    """Keep only rows relevant to the requested crypto asset."""
+    if df.empty:
+        return df
+
+    market_col = None
+    for candidate in ("market_and_exchange_names", "Market_and_Exchange_Names"):
+        if candidate in df.columns:
+            market_col = candidate
+            break
+
+    if market_col is None:
+        return df.tail(260).copy()
+
+    keyword = "BITCOIN" if asset.upper() == "BTC" else "ETHER"
+    mask = df[market_col].astype(str).str.upper().str.contains(keyword, na=False)
+    filtered = df[mask].copy()
+    if filtered.empty:
+        return df.tail(260).copy()
+    return filtered
 
 
 if __name__ == "__main__":

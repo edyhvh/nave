@@ -77,11 +77,21 @@ pip install -r requirements.txt
 
 ## Usage
 
+### One-time shell setup for direnv
+
+```bash
+# bash
+echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+
+# zsh
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+```
+
 ### Working with the Environment
 
 ```bash
-# Activate environment (automatic with direnv, or manual)
-source .venv/bin/activate
+# Preferred: auto-activate local .venv in this folder
+direnv allow
 
 # Run scripts easily
 ./run.sh openbb_tools  # Interactive menu for all OpenBB operations
@@ -89,6 +99,14 @@ source .venv/bin/activate
 # Check environment
 python --version  # Python 3.12.x
 pip list          # See installed packages
+```
+
+If you don't use direnv, run one of:
+
+```bash
+source .venv/bin/activate
+# or
+./scripts/dev_shell.sh
 ```
 
 ## Project Structure
@@ -126,10 +144,10 @@ browser required.
 python scripts/setup_wallets.py
 
 # 2. Check account state on testnet
-python -m trading.client summary --wallet openfang
+python -m trading.client summary --wallet hermes
 
 # 3. Run a strategy in dry-run mode (no real orders)
-python -m trading.strategy --wallet openfang --coins BTC ETH
+python -m trading.strategy --wallet hermes --coins BTC ETH
 ```
 
 ### Weekly COT Analysis (feat/cot_grok)
@@ -144,11 +162,30 @@ python scripts/weekly_cot_analysis.py --capital 2000 --paper
 python scripts/weekly_cot_analysis.py --capital 2000 --backtest
 
 # Or with live execution (careful!)
-python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet openfang
+python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet hermes
+
+# Learn setups from backtest and apply them to selection/ranking
+python scripts/weekly_cot_analysis.py --capital 2000 --backtest --learn
 
 # Unified CLI
 nave trading run --paper --strategy cot-weekly
 nave trading run --backtest --strategy cot-weekly
+nave trading run --backtest --strategy cot-weekly --learn
+```
+
+Backtest trades are now persisted in the journal DB (`~/.nave/trades.db`) and can
+be analyzed after each run.
+
+```bash
+python - <<'PY'
+import sqlite3, pathlib
+db = pathlib.Path.home()/'.nave'/'trades.db'
+con = sqlite3.connect(db)
+rows = con.execute("select environment, coin, direction, pnl_absolute, entry_time from trades where environment='backtest' order by entry_time desc limit 10").fetchall()
+print("db:", db)
+for row in rows:
+    print(row)
+PY
 ```
 
 **Features**:
@@ -164,7 +201,7 @@ See `docs/technical.yaml` for full philosophy and `trading/cot/` for implementat
 ## Roadmap after PR #8
 
 - PR #8 (merged): COT as main weekly driver + robust backtesting framework
-- Next PR: Strategy Testing Engine + Automatic Setup Learning + Paper Trading execution
+- PR #9 (this branch): Strategy Testing + Setup Learning (ML) + Paper Trading execution
 
 ### Wallets
 
@@ -174,6 +211,7 @@ Two EVM wallets are pre-generated for the trading agents:
 | ---------- | -------------------------------------------- |
 | `openfang` | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51` |
 | `ironclaw` | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F` |
+| `hermes`   | Generated locally via `python scripts/setup_wallets.py` |
 
 Private keys and seed phrases are encrypted in `~/.secrets/nave-wallets/`
 and never committed to this repository.
@@ -187,7 +225,7 @@ After setup (`python setup.py`), use the professional `nave` CLI (powered by Typ
 ```bash
 nave --help
 nave version
-nave trading run-strategy --wallet openfang --dry-run
+nave trading run-strategy --wallet hermes --dry-run
 nave api start --reload
 nave mcp
 nave cot analyze --coins BTC ETH
@@ -209,6 +247,10 @@ python setup.py
 ### Dependency Issues
 
 ```bash
+# Preferred
+direnv allow
+
+# Or manual
 source .venv/bin/activate
 pip install -r requirements.txt --upgrade
 ```
