@@ -106,16 +106,17 @@ def _inspect(
     payload = _safe_load(path)
     kind = "snapshot" if "snapshot" in path.name else "summary"
     paired: Path | None = None
-    trades = _extract_trades(payload)
+    trades: list[dict[str, Any]] = []
+    stamp = _extract_stamp(path.name)
+    if stamp:
+        if kind == "summary":
+            paired = snapshots_by_stamp.get(stamp)
+        else:
+            paired = summaries_by_stamp.get(stamp)
+    if paired is not None:
+        trades = _extract_trades(_safe_load(paired))
     if not trades:
-        stamp = _extract_stamp(path.name)
-        if stamp:
-            if kind == "summary":
-                paired = snapshots_by_stamp.get(stamp)
-            else:
-                paired = summaries_by_stamp.get(stamp)
-        if paired is not None:
-            trades = _extract_trades(_safe_load(paired))
+        trades = _extract_trades(payload)
     has_real_prices = bool(trades) and not any(_is_fake_trade(trade) for trade in trades)
     return BacktestFileStatus(
         path=path,

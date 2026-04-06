@@ -265,11 +265,11 @@ class SetupLearner:
         win_term = float(np.clip(win_probability, 0.0, 1.0))
         edge_score = float(np.clip(predicted_pnl / 90.0, -1.0, 1.0))
 
-        weak_bias = bias_strength < 0.45
+        weak_bias = bias_strength < 0.42
         high_vol = volatility >= 0.04
-        weak_win_prob = win_term < 0.42
-        clearly_negative_edge = predicted_pnl < -18.0
-        strong_negative_edge = predicted_pnl < -32.0
+        weak_win_prob = win_term < 0.45
+        clearly_negative_edge = predicted_pnl < -22.0
+        strong_negative_edge = predicted_pnl < -38.0
         extreme_oi = abs(oi_level) >= 26.0
 
         should_trade = True
@@ -280,33 +280,43 @@ class SetupLearner:
         elif clearly_negative_edge and weak_win_prob and (high_vol or weak_bias):
             should_trade = False
             reasons.append("negative edge under weak-bias/high-volatility conditions")
-        elif regime == "high_vol" and weak_bias and predicted_pnl < 0 and win_term < 0.45:
+        elif regime == "high_vol" and weak_bias and predicted_pnl < -12 and win_term < 0.45:
             should_trade = False
             reasons.append("high_vol regime with weak COT bias and sub-50% edge")
 
-        vol_penalty = float(np.clip((volatility - 0.03) * 7.0, 0.0, 0.35))
+        vol_penalty = float(np.clip((volatility - 0.03) * 6.0, 0.0, 0.28))
         momentum_bonus = float(np.clip(momentum / 4000.0, -0.2, 0.25))
-        oi_penalty = 0.1 if (extreme_oi and predicted_pnl < 0) else 0.0
+        oi_penalty = 0.06 if (extreme_oi and predicted_pnl < 0) else 0.0
         quality = (
             0.45 * win_term
             + 0.35 * confidence_term
             + 0.20 * float(np.clip(bias_strength, 0.0, 1.0))
         )
 
+        edge_strength = max(edge_score, 0.0)
+        if predicted_pnl >= 35 and win_term >= 0.55:
+            size_floor, lev_floor = 1.15, 1.10
+        elif predicted_pnl >= 12 and win_term >= 0.50:
+            size_floor, lev_floor = 0.95, 0.95
+        elif predicted_pnl >= 0:
+            size_floor, lev_floor = 0.78, 0.75
+        else:
+            size_floor, lev_floor = 0.55, 0.55
+
         size_multiplier = float(np.clip(
-            0.45 + quality + (0.35 * max(edge_score, 0.0)) + momentum_bonus - vol_penalty - oi_penalty,
-            0.35,
+            size_floor + (0.58 * quality) + (0.22 * edge_strength) + momentum_bonus - vol_penalty - oi_penalty,
+            size_floor,
             1.75,
         ))
         leverage_multiplier = float(np.clip(
-            0.55 + (0.9 * quality) + (0.45 * max(edge_score, 0.0)) + (0.12 * momentum_bonus) - (vol_penalty * 1.2),
-            0.45,
-            1.55,
+            lev_floor + (0.52 * quality) + (0.30 * edge_strength) + (0.08 * momentum_bonus) - (vol_penalty * 1.15),
+            lev_floor,
+            1.60,
         ))
 
         if should_trade and predicted_pnl < 0:
-            size_multiplier = max(0.45, min(size_multiplier, 0.95))
-            leverage_multiplier = max(0.5, min(leverage_multiplier, 0.9))
+            size_multiplier = max(0.55, min(size_multiplier, 0.88))
+            leverage_multiplier = max(0.55, min(leverage_multiplier, 0.82))
 
         if not should_trade:
             size_multiplier = 0.0
@@ -329,6 +339,7 @@ class SetupLearner:
             "win_probability": float(win_probability),
             "size_multiplier": size_multiplier,
             "leverage_multiplier": leverage_multiplier,
+            "edge_label": self._edge_label(predicted_pnl),
         }
 
     def discover_new_patterns(
@@ -486,6 +497,7 @@ class SetupLearner:
                     "recommended_size_multiplier": round(policy["size_multiplier"], 3),
                     "recommended_leverage_multiplier": round(policy["leverage_multiplier"], 3),
                     "suggested_leverage_x": round(min(10.0, max(0.0, 10.0 * policy["leverage_multiplier"])), 2),
+                    "edge_label": policy["edge_label"],
                     "action": "use" if policy["should_trade"] else "skip",
                 }
             )
@@ -516,6 +528,7 @@ class SetupLearner:
                 f"| size_mult={item['recommended_size_multiplier']:.2f} "
                 f"| lev_mult={item['recommended_leverage_multiplier']:.2f} "
                 f"| lev_x≈{item['suggested_leverage_x']:.2f} "
+                f"| expected_edge={item['edge_label']} "
                 f"| avg_pnl={item['avg_pnl']:.4f} | samples={item['samples']}"
             )
         lines.append("")
@@ -722,8 +735,8 @@ class SetupLearner:
             stats = self._policy_stats.get(regime_key, {}).get(setup)
             if not stats:
                 continue
-            bias_gate = max(0.45, stats["avg_bias_strength"] - 0.08)
-            vol_cap = max(0.02, stats["avg_volatility"] + 0.01)
+            bias_gate = max(0.45, stats["avg_bias_strength"] - 0.06)
+            vol_cap = max(0.02, stats["avg_volatility"] + 0.008)
             momentum_gate = stats["avg_momentum"] - 250.0
             use_rule = (
                 f"use when regime=={regime_key}, bias_strength>{bias_gate:.2f}, "
@@ -743,7 +756,7 @@ class SetupLearner:
             if reg == regime and stp == setup and stats["samples"] >= 4:
                 candidates.append((key, stats))
         if not candidates:
-            return "expected_pnl < -18 and win_probability < 42%"
+            return "expected_pnl < -22 and win_probability < 45%"
 
         worst = min(
             candidates,
@@ -759,3 +772,14 @@ class SetupLearner:
             f"regime={regime}, bias={bias_bucket}, vol={vol_bucket}, momentum={momentum_bucket} "
             f"(avg_pnl={avg_pnl:.2f})"
         )
+
+    def _edge_label(self, predicted_pnl: float) -> str:
+        if predicted_pnl >= 30:
+            return "strong-positive"
+        if predicted_pnl >= 8:
+            return "positive"
+        if predicted_pnl >= -10:
+            return "marginal"
+        if predicted_pnl >= -22:
+            return "weak-negative"
+        return "negative"
