@@ -260,6 +260,23 @@ class SetupLearner:
         bias_strength = float(row["cot_bias_strength"])
         momentum = float(row["momentum"])
         oi_level = float(row["oi_level"])
+        direction_hint = str(
+            context.get("direction")
+            or context.get("signal_direction")
+            or context.get("position_direction")
+            or ""
+        ).lower()
+        net_non_commercial = float(context.get("net_non_commercial", 0.0) or 0.0)
+        if direction_hint.startswith("long"):
+            trade_side = 1.0
+        elif direction_hint.startswith("short"):
+            trade_side = -1.0
+        elif net_non_commercial > 0:
+            trade_side = -1.0
+        elif net_non_commercial < 0:
+            trade_side = 1.0
+        else:
+            trade_side = 1.0
 
         confidence_term = float(np.clip(base_confidence, 0.0, 1.0))
         win_term = float(np.clip(win_probability, 0.0, 1.0))
@@ -313,6 +330,7 @@ class SetupLearner:
             },
         }[regime_key]
 
+        momentum_signal = float(np.clip((momentum * trade_side) / 1800.0, -0.65, 0.65))
         weak_bias = bias_strength < float(regime_thresholds["weak_bias"])
         high_vol = volatility >= float(regime_thresholds["high_vol"])
         weak_win_prob = win_term < float(regime_thresholds["weak_win"])
@@ -322,31 +340,46 @@ class SetupLearner:
 
         should_trade = True
         reasons: list[str] = []
-        if strong_negative_edge and weak_win_prob and (weak_bias or high_vol):
+        if (
+            strong_negative_edge
+            and weak_win_prob
+            and (weak_bias or high_vol or momentum_signal < -0.10)
+        ):
             should_trade = False
             reasons.append(f"strong negative {regime_key} edge with weak bias/odds")
-        elif clearly_negative_edge and weak_win_prob and weak_bias and high_vol:
+        elif (
+            clearly_negative_edge
+            and weak_win_prob
+            and weak_bias
+            and high_vol
+            and momentum_signal < 0.0
+        ):
             should_trade = False
             reasons.append(f"clear negative {regime_key} edge in weak-bias/high-volatility context")
 
         vol_penalty = float(
             np.clip((volatility - 0.028) * 6.5, 0.0, 0.34) * float(regime_thresholds["vol_scale"])
         )
-        momentum_signal = float(np.clip(momentum / 2500.0, -0.45, 0.50))
         if regime_key == "bull":
-            momentum_bonus = (0.26 * max(momentum_signal, 0.0)) - (0.08 * max(-momentum_signal, 0.0))
+            momentum_bonus = (0.42 * max(momentum_signal, 0.0)) - (0.14 * max(-momentum_signal, 0.0))
         elif regime_key == "bear":
-            momentum_bonus = (0.10 * max(momentum_signal, 0.0)) - (0.23 * max(-momentum_signal, 0.0))
+            momentum_bonus = (0.18 * max(momentum_signal, 0.0)) - (0.32 * max(-momentum_signal, 0.0))
         elif regime_key == "high_vol":
-            momentum_bonus = (0.12 * max(momentum_signal, 0.0)) - (0.16 * max(-momentum_signal, 0.0))
+            momentum_bonus = (0.16 * max(momentum_signal, 0.0)) - (0.26 * max(-momentum_signal, 0.0))
         else:
-            momentum_bonus = (0.14 * max(momentum_signal, 0.0)) - (0.11 * max(-momentum_signal, 0.0))
+            momentum_bonus = (0.24 * max(momentum_signal, 0.0)) - (0.16 * max(-momentum_signal, 0.0))
         oi_penalty = 0.06 if (extreme_oi and predicted_pnl < 0) else 0.0
         quality = (
             0.45 * win_term
             + 0.35 * confidence_term
             + 0.20 * float(np.clip(bias_strength, 0.0, 1.0))
         )
+        if regime_key == "bull" and momentum_signal > 0 and predicted_pnl > 0:
+            quality += 0.10
+        elif regime_key == "bear" and momentum_signal < 0:
+            quality -= 0.09
+        elif regime_key == "high_vol" and momentum_signal < 0:
+            quality -= 0.06
         quality += float(regime_thresholds["quality_shift"])
         quality = float(np.clip(quality, 0.0, 1.0))
 
@@ -404,12 +437,12 @@ class SetupLearner:
         if (
             should_trade
             and regime_key == "bull"
-            and predicted_pnl >= 30
-            and win_term >= 0.56
-            and momentum_signal > 0.08
+            and predicted_pnl >= 18
+            and win_term >= 0.52
+            and momentum_signal > 0.12
         ):
-            size_multiplier = min(float(regime_thresholds["size_cap"]), size_multiplier + 0.30)
-            leverage_multiplier = min(float(regime_thresholds["lev_cap"]), leverage_multiplier + 0.25)
+            size_multiplier = min(float(regime_thresholds["size_cap"]), size_multiplier + 0.44)
+            leverage_multiplier = min(float(regime_thresholds["lev_cap"]), leverage_multiplier + 0.34)
         elif (
             should_trade
             and regime_key == "high_vol"
@@ -422,15 +455,24 @@ class SetupLearner:
             leverage_multiplier = min(float(regime_thresholds["lev_cap"]), leverage_multiplier + 0.14)
 
         if should_trade and predicted_pnl < 0:
-            size_multiplier = max(0.55, min(size_multiplier, 0.88))
-            leverage_multiplier = max(0.55, min(leverage_multiplier, 0.82))
+            if regime_key == "bear":
+                size_cap = 0.68 if momentum_signal >= -0.10 else 0.58
+                lev_cap = 0.62 if momentum_signal >= -0.10 else 0.54
+                size_multiplier = max(0.44, min(size_multiplier, size_cap))
+                leverage_multiplier = max(0.42, min(leverage_multiplier, lev_cap))
+            elif regime_key == "high_vol":
+                size_multiplier = max(0.40, min(size_multiplier, 0.55))
+                leverage_multiplier = max(0.40, min(leverage_multiplier, 0.52))
+            else:
+                size_multiplier = max(0.48, min(size_multiplier, 0.74))
+                leverage_multiplier = max(0.46, min(leverage_multiplier, 0.68))
 
         if not should_trade:
             size_multiplier = 0.0
             leverage_multiplier = 0.0
             reason = "; ".join(reasons) if reasons else "policy rule triggered"
         else:
-            momentum_text = "supportive" if momentum >= 0 else "adverse"
+            momentum_text = "aligned" if momentum_signal >= 0 else "adverse"
             reason = (
                 f"expected_pnl={predicted_pnl:.2f}, win_prob={win_probability:.2%}, "
                 f"regime={regime}, bias={bias_strength:.2f}, oi={oi_level:.1f}, "
@@ -645,6 +687,10 @@ class SetupLearner:
             lines.append("  (insufficient samples for detailed policy rules)")
         else:
             lines.extend(policy_lines[:8])
+        if regime == "all":
+            lines.append("")
+            lines.append("Regime-Specific Playbook (examples):")
+            lines.extend(self._regime_examples())
         lines.append("")
         lines.append("New Patterns Detected:")
         if not patterns:
@@ -905,6 +951,13 @@ class SetupLearner:
         if regime == "high_vol":
             return "expected_pnl < -24 and win_probability < 43% and weak-bias/high-volatility"
         return "expected_pnl < -22 and win_probability < 45% and weak-bias/high-volatility"
+
+    def _regime_examples(self) -> list[str]:
+        return [
+            "  - bull: if expected_pnl>18 and momentum>+0.12, scale up size/lev aggressively.",
+            "  - bear: keep trading marginal/positive edge, but reduce multipliers when momentum<0.",
+            "  - high_vol: avoid hard skip unless regime-negative edge is clear; keep size/lev compact.",
+        ]
 
     def _edge_label(self, predicted_pnl: float) -> str:
         if predicted_pnl >= 30:
