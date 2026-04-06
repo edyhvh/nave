@@ -7,19 +7,23 @@ recommends best asset, capital allocation ($2000 example), leverage, and scans
 other Hyperliquid perps.
 
 Usage:
-    python scripts/weekly_cot_analysis.py --capital 2000 --dry-run
+    python scripts/weekly_cot_analysis.py --capital 2000 --paper
+    python scripts/weekly_cot_analysis.py --capital 2000 --backtest
+
+Examples:
+    nave trading run --paper --strategy cot-weekly
+    nave trading run --backtest --strategy cot-weekly
 """
 import argparse
 import logging
 from datetime import datetime
 from typing import Dict, Any
 
+from trading.config import DEFAULT_SETUPS
 from trading.cot.cot_fetcher import fetch_latest_cot
 from trading.cot.cot_analyzer import COTAnalyzer
 from trading.signals import MacroSignalProducer, SignalAggregator
-from trading.strategy import MacroMomentumStrategy
 from trading.client import HyperliquidClient
-from trading.vault import WalletVault  # for potential execution
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -49,19 +53,28 @@ def scan_hyperliquid_perps(client: HyperliquidClient) -> list:
         return []
 
 
-def generate_weekly_report(capital_usd: float = 2000, dry_run: bool = True) -> Dict:
+def generate_weekly_report(
+    capital_usd: float = 2000,
+    dry_run: bool = True,
+    mode: str = "paper",
+    setups: list[str] | None = None,
+) -> Dict:
     """Main weekly COT analysis and recommendation."""
+    active_setups = setups or list(DEFAULT_SETUPS)
+
     print("\n" + "="*80)
     print("🚀 NAVE WEEKLY COT ANALYSIS")
     print("="*80)
     print(
         f"Date: {datetime.now().strftime('%Y-%m-%d')} (Sunday analysis of Friday COT)")
-    print("Philosophy: F.I.T.S. + IPDA | Commercials move the market | 75% retracement setups")
+    print("Philosophy: F.I.T.S. + IPDA | Commercials move the market | COT-led setup stack")
+    print(f"Mode: {mode} | Dry-run: {dry_run}")
+    print(f"Configured setups: {', '.join(active_setups)}")
     print()
 
     # Fetch and analyze COT
     cot_data = fetch_latest_cot()
-    analyzer = COTAnalyzer()
+    analyzer = COTAnalyzer(setups=active_setups)
     biases = analyzer.analyze(cot_data)
     producer = MacroSignalProducer()
     signals = producer.produce({"cot_data": cot_data})
@@ -89,8 +102,8 @@ def generate_weekly_report(capital_usd: float = 2000, dry_run: bool = True) -> D
     print(
         f"Capital: ${capital_usd:,} | Risk/trade: {risk_per_trade*100}% | Leverage: {leverage}x")
     print("SL: at invalidation (IPDA mitigation block or FVG)")
-    print("TP: confluence zones (00/50 levels + 75% retrace)")
-    print("Setups: Look for regressions in trend, false break PFQ, order blocks.")
+    print("TP: confluence zones (00/50 levels + setup confluence)")
+    print(f"Setups: {', '.join(active_setups)}")
 
     # Perps scan
     print("\n🔍 Other Hyperliquid Opportunities:")
@@ -122,16 +135,51 @@ def generate_weekly_report(capital_usd: float = 2000, dry_run: bool = True) -> D
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Nave Weekly COT Analysis")
+    parser = argparse.ArgumentParser(
+        description="Nave Weekly COT Analysis",
+        epilog=(
+            "Examples:\n"
+            "  nave trading run --paper --strategy cot-weekly\n"
+            "  nave trading run --backtest --strategy cot-weekly\n"
+            "  python scripts/weekly_cot_analysis.py --paper --capital 2000\n"
+            "  python scripts/weekly_cot_analysis.py --backtest --capital 2000"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--capital", type=float,
                         default=2000.0, help="Available capital USD")
-    parser.add_argument("--live", action="store_true", help="Disable dry-run")
+    parser.add_argument("--paper", action="store_true",
+                        help="Run paper mode analysis (default)")
+    parser.add_argument("--backtest", action="store_true",
+                        help="Run backtest mode analysis")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Force dry-run output mode")
+    parser.add_argument("--live", action="store_true",
+                        help="Disable dry-run (execution path, use with care)")
     parser.add_argument("--wallet", default="openfang")
+    parser.add_argument(
+        "--setups",
+        nargs="+",
+        default=None,
+        help="Override setup list (defaults to trading.config.DEFAULT_SETUPS)",
+    )
     args = parser.parse_args()
+
+    mode = "paper"
+    if args.backtest:
+        mode = "backtest"
+
+    dry_run = True
+    if args.live:
+        dry_run = False
+    elif args.dry_run:
+        dry_run = True
 
     report = generate_weekly_report(
         capital_usd=args.capital,
-        dry_run=not args.live
+        dry_run=dry_run,
+        mode=mode,
+        setups=args.setups,
     )
     print(
         f"\nFinal recommendation: Allocate to {report['best_asset']} with {report['leverage']}x leverage.")

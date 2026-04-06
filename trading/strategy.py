@@ -30,6 +30,8 @@ from datetime import datetime
 from typing import Any, Optional
 
 from trading.client import HyperliquidClient
+from trading.config import DEFAULT_SETUPS
+from trading.setup_learning import SetupLearner
 from trading.signals import Direction, Signal, SignalAggregator
 
 logger = logging.getLogger(__name__)
@@ -166,16 +168,26 @@ class MacroMomentumStrategy(BaseStrategy):
     Extend this with real data from nave's OpenBB scripts.
     """
 
-    def __init__(self, client: HyperliquidClient, coins: list[str] | None = None, **kwargs):
+    def __init__(
+        self,
+        client: HyperliquidClient,
+        coins: list[str] | None = None,
+        setups: list[str] | None = None,
+        **kwargs,
+    ):
         super().__init__(client, **kwargs)
         self.coins = coins or ["BTC", "ETH"]
+        self.setups = setups or list(DEFAULT_SETUPS)
+        self.setup_learner = SetupLearner(default_setups=self.setups)
 
     def compute_signals(self) -> list[Signal]:
         from trading.signals import MacroSignalProducer
 
-        # TODO: replace with real nave indicator pulls from OpenBB
         indicators = self._fetch_indicators()
-        producer = MacroSignalProducer(coins=self.coins)
+        producer = MacroSignalProducer(
+            coins=self.coins,
+            setup_learner=self.setup_learner,
+        )
         return producer.produce(indicators)
 
     def _fetch_indicators(self) -> dict:
@@ -189,18 +201,41 @@ class MacroMomentumStrategy(BaseStrategy):
         logger.info(
             "Fetching COT as primary weekly bias (Sunday analysis of Friday release)")
 
+        rrp_value = -25.0
+        aaii_bull = 35.0
+        aaii_bear = 45.0
+        vix_value = 18.0
+
+        try:
+            from backend.app.services.openbb import fetch_openbb_indicator
+            rrp_data = fetch_openbb_indicator("rrp")
+            rrp_value = float(rrp_data.get("value", rrp_value))
+        except Exception:
+            pass
+
+        try:
+            from backend.app.services.aaii import fetch_aaii_sentiment
+            aaii_data = fetch_aaii_sentiment()
+            aaii_bull = float(aaii_data.get("bullish", aaii_bull) * 100)
+            aaii_bear = float(aaii_data.get("bearish", aaii_bear) * 100)
+        except Exception:
+            pass
+
         cot_data = fetch_latest_cot()
-        analyzer = COTAnalyzer()
+        analyzer = COTAnalyzer(
+            setups=self.setups,
+            setup_learner=self.setup_learner,
+        )
         biases = analyzer.analyze(cot_data)
 
-        # Stub other macros (extend with real OpenBB later)
         indicators = {
             "cot_data": cot_data,  # primary driver
             "cot_biases": biases,
-            "rrp_weekly_change_bn": -25.0,  # example
-            "aaii_bull_pct": 35.0,
-            "aaii_bear_pct": 45.0,
-            "vix": 18.0,
+            "setups": self.setups,
+            "rrp_weekly_change_bn": rrp_value,
+            "aaii_bull_pct": aaii_bull,
+            "aaii_bear_pct": aaii_bear,
+            "vix": vix_value,
         }
         return indicators
 
@@ -222,6 +257,7 @@ class CotWeeklyStrategy(BaseStrategy):
         max_leverage: float = 10.0,
         test_mode: bool = False,
         cot_fetcher: Optional[Any] = None,
+        setups: list[str] | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -238,6 +274,8 @@ class CotWeeklyStrategy(BaseStrategy):
         self.consecutive_losses = 0
         # injected for backtests (avoids tests/ import in prod)
         self.cot_fetcher = cot_fetcher
+        self.setups = setups or list(DEFAULT_SETUPS)
+        self.setup_learner = SetupLearner(default_setups=self.setups)
         self.current_date = datetime.now()
 
     def set_date(self, date: datetime) -> None:
@@ -262,7 +300,10 @@ class CotWeeklyStrategy(BaseStrategy):
             else:
                 from trading.cot.cot_fetcher import fetch_latest_cot
                 cot_data = fetch_latest_cot()
-            analyzer = COTAnalyzer()
+            analyzer = COTAnalyzer(
+                setups=self.setups,
+                setup_learner=self.setup_learner,
+            )
             biases = analyzer.analyze(cot_data)
             return analyzer.to_signals(biases)
         except Exception as e:

@@ -168,13 +168,22 @@ class BacktestEngine:
                 price_data['close']
             )
         
-        return BacktestResult(
+        result = BacktestResult(
             config=self.config,
             equity_curve=equity_series,
             trades=self.trades,
             metrics=metrics,
             regime_metrics=regime_metrics
         )
+
+        setup_learner = getattr(strategy, "setup_learner", None)
+        if setup_learner is not None and hasattr(setup_learner, "fit"):
+            try:
+                setup_learner.fit(result)
+            except Exception:
+                pass
+
+        return result
     
     def _update_equity(self):
         """Mark positions to market."""

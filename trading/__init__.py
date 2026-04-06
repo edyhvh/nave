@@ -14,6 +14,7 @@ from trading.signals import Signal, Direction
 from trading.strategy import BaseStrategy, CotWeeklyStrategy
 from trading.cot.cot_fetcher import fetch_latest_cot
 from trading.cot.cot_analyzer import COTAnalyzer
+from trading.setup_learning import SetupLearner
 
 __all__ = [
     "HyperliquidClient",
@@ -24,4 +25,5 @@ __all__ = [
     "CotWeeklyStrategy",
     "fetch_latest_cot",
     "COTAnalyzer",
+    "SetupLearner",
 ]

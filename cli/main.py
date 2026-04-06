@@ -39,9 +39,29 @@ def version():
 @data_app.command("fetch")
 def fetch_data(indicator: str = typer.Argument("all")):
     """Fetch macro data using OpenBB."""
-    typer.echo(
-        f"Fetching data for {indicator}... (using existing OpenBB services)")
-    # TODO: integrate with backend/services or scripts/openbb_tools.py
+    from backend.app.services.aaii import fetch_aaii_sentiment
+    from backend.app.services.onchain import fetch_onchain_metrics
+    from backend.app.services.openbb import fetch_openbb_indicator
+
+    if indicator == "all":
+        payload = {
+            "aaii": fetch_aaii_sentiment(),
+            "onchain_btc": fetch_onchain_metrics("bitcoin"),
+            "rrp": fetch_openbb_indicator("rrp"),
+            "tga": fetch_openbb_indicator("tga"),
+        }
+        typer.echo(payload)
+        return
+
+    if indicator == "aaii":
+        typer.echo(fetch_aaii_sentiment())
+        return
+
+    if indicator in {"onchain", "onchain_btc"}:
+        typer.echo(fetch_onchain_metrics("bitcoin"))
+        return
+
+    typer.echo(fetch_openbb_indicator(indicator))
 
 
 @trading_app.command("run-strategy")
@@ -52,13 +72,73 @@ def run_strategy(
     mainnet: bool = typer.Option(False, help="Use mainnet"),
 ):
     """Run trading strategy (delegates to trading.strategy)."""
-    typer.echo(f"Running strategy for wallet={wallet}, dry_run={dry_run}...")
-    # TODO: import and call from trading.strategy (direct call in future refactor)
+    from trading.client import HyperliquidClient
+    from trading.strategy import MacroMomentumStrategy
+
+    parsed_coins = coins.split() if coins else ["BTC", "ETH"]
+    client = HyperliquidClient(wallet_name=wallet, testnet=not mainnet)
+    strategy = MacroMomentumStrategy(
+        client,
+        coins=parsed_coins,
+        dry_run=dry_run,
+    )
+    result = strategy.run_once()
+    typer.echo(result)
+
+
+@trading_app.command("run")
+def run_trading(
+    strategy: str = typer.Option(
+        "cot-weekly",
+        "--strategy",
+        help="Strategy id to run (e.g. cot-weekly)",
+    ),
+    wallet: str = typer.Option("openfang", help="Wallet name"),
+    capital: float = typer.Option(2000.0, help="Capital for weekly COT analysis"),
+    paper: bool = typer.Option(
+        False,
+        "--paper",
+        help="Run in paper mode (recommended default path)",
+    ),
+    backtest: bool = typer.Option(
+        False,
+        "--backtest",
+        help="Run backtest mode for strategy validation",
+    ),
+    live: bool = typer.Option(
+        False,
+        "--live",
+        help="Disable dry-run safeguards (real execution path)",
+    ),
+):
+    """Run trading workflows.
+
+    Examples:
+        nave trading run --paper --strategy cot-weekly
+        nave trading run --backtest --strategy cot-weekly
+    """
     import subprocess
     import sys
+
+    if paper and backtest:
+        raise typer.BadParameter("Use either --paper or --backtest, not both.")
+
+    if strategy == "cot-weekly":
+        cmd = [sys.executable, "scripts/weekly_cot_analysis.py", f"--capital={capital}"]
+        if backtest:
+            cmd.append("--backtest")
+        else:
+            cmd.append("--paper")
+        if live:
+            cmd.append("--live")
+        typer.echo(f"Running {strategy} (paper={not backtest}, backtest={backtest})")
+        subprocess.run(cmd, check=False)
+        return
+
     cmd = [sys.executable, "-m", "trading.strategy", f"--wallet={wallet}"]
-    if dry_run:
+    if not live:
         cmd.append("--dry-run")
+    typer.echo(f"Running strategy={strategy} via trading.strategy module")
     subprocess.run(cmd, check=False)
 
 

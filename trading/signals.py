@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
+from trading.setup_learning import SetupLearner
+
 
 class Direction(str, Enum):
     LONG = "long"
@@ -137,8 +139,13 @@ class MacroSignalProducer:
       - BTC ETF net flows (positive → long BTC)
     """
 
-    def __init__(self, coins: list[str] | None = None):
+    def __init__(
+        self,
+        coins: list[str] | None = None,
+        setup_learner: SetupLearner | None = None,
+    ):
         self.coins = coins or ["BTC", "ETH"]
+        self.setup_learner = setup_learner
 
     def from_rrp_delta(self, rrp_weekly_change_bn: float) -> list[Signal]:
         """
@@ -186,14 +193,14 @@ class MacroSignalProducer:
             for c in self.coins
         ]
 
-    def from_cot(self, cot_biases: dict) -> list[Signal]:
+    def from_cot(self, cot_biases: dict, setups: list[str] | None = None) -> list[Signal]:
         """
         COT (Commitment of Traders) as primary weekly driver.
         Uses non-commercial positioning (specs vs commercials per philosophy).
         Integrates with F.I.T.S. sentiment layer.
         """
         from trading.cot.cot_analyzer import COTAnalyzer
-        analyzer = COTAnalyzer()
+        analyzer = COTAnalyzer(setups=setups, setup_learner=self.setup_learner)
         # If raw data, analyze first
         if "BTC" in cot_biases and isinstance(cot_biases["BTC"], dict) and "bias" not in cot_biases["BTC"]:
             biases = analyzer.analyze(cot_biases)
@@ -224,5 +231,8 @@ class MacroSignalProducer:
             signals.extend(self.from_vix(indicators["vix"]))
         if "cot_data" in indicators:
             # COT is the MAIN weekly driver
-            signals.extend(self.from_cot(indicators["cot_data"]))
+            signals.extend(self.from_cot(
+                indicators["cot_data"],
+                setups=indicators.get("setups"),
+            ))
         return signals

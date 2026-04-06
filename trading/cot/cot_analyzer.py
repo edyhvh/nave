@@ -6,9 +6,11 @@ Commercials (institutions/makers) move the market per technical.yaml.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import pandas as pd
 
+from trading.config import DEFAULT_SETUPS, COT_PRIMARY_WEIGHT
+from trading.setup_learning import SetupLearner
 from trading.signals import Signal, Direction
 
 
@@ -26,6 +28,22 @@ class COTBias:
 
 class COTAnalyzer:
     """Analyzes COT reports for BTC and ETH, generates Signals."""
+
+    def __init__(
+        self,
+        setups: Optional[List[str]] = None,
+        setup_learner: Optional[SetupLearner] = None,
+        regime: Optional[str] = None,
+    ):
+        candidate_setups = setups or list(DEFAULT_SETUPS)
+        self.setup_learner = setup_learner
+        self.regime = regime
+        if self.setup_learner is not None:
+            candidate_setups = self.setup_learner.rank_setups(
+                candidate_setups,
+                regime=self.regime,
+            )
+        self.setups = candidate_setups
 
     def analyze(self, cot_data: Dict[str, Any]) -> Dict[str, COTBias]:
         """Analyze COT for all assets and return biases."""
@@ -82,6 +100,8 @@ class COTAnalyzer:
             "report_date": raw.get("latest_date", "N/A"),
             "source": "cftc_cot",
             "philosophy_ref": "F.I.T.S. sentiment - commercials as makers",
+            "setups": self.setups,
+            "cot_weight": COT_PRIMARY_WEIGHT,
             "fits_weighted_score": bias_score,
             "bias_strength": "strong" if bias_score > 70 else "medium" if bias_score > 40 else "weak"
         }
@@ -116,13 +136,12 @@ class COTAnalyzer:
         return signals
 
     def generate_cot_signal(self, asset: str, cot_bias: COTBias, technical_context: dict | None = None) -> Signal:
-        """Precise signal generation with 75% retracement + IPDA (from PR #7).
+        """Precise signal generation with setup confluence + IPDA (from PR #7).
         Stubs technical confluence for 4H/1H setups per philosophy.
         """
-        # Stub for 75% retracement detection and IPDA phase (expansion/retracement)
+        # Stub for setup confluence + IPDA phase (expansion/retracement)
         technical_context = technical_context or {}
-        retracement_conf = technical_context.get(
-            "has_75_retracement", True)  # stub true for demo
+        retracement_conf = technical_context.get("has_75_retracement", True)
         ipda_phase = technical_context.get("ipda_phase", "retracement")
         overall_conf = min(
             cot_bias.confidence * (cot_bias.metadata.get("fits_weighted_score", 50) / 100), 0.95)
@@ -132,7 +151,7 @@ class COTAnalyzer:
             **cot_bias.metadata,
             "75_retracement": retracement_conf,
             "ipda_phase": ipda_phase,
-            "confluence": "order_block + FVG + institutional level",
+            "confluence": " + ".join(self.setups),
             "bias_score_100": cot_bias.metadata.get("fits_weighted_score", 50)
         }
         return Signal(

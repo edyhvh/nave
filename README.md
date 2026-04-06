@@ -138,10 +138,17 @@ COT is now the **main weekly driver** for trading setups.
 
 ```bash
 # Run weekly analysis (Sunday)
-python scripts/weekly_cot_analysis.py --capital 2000 --dry-run
+python scripts/weekly_cot_analysis.py --capital 2000 --paper
+
+# Backtest mode analysis
+python scripts/weekly_cot_analysis.py --capital 2000 --backtest
 
 # Or with live execution (careful!)
 python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet openfang
+
+# Unified CLI
+nave trading run --paper --strategy cot-weekly
+nave trading run --backtest --strategy cot-weekly
 ```
 
 **Features**:
@@ -153,6 +160,11 @@ python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet openfang
 - Dry-run by default
 
 See `docs/technical.yaml` for full philosophy and `trading/cot/` for implementation.
+
+## Roadmap after PR #8
+
+- PR #8 (merged): COT as main weekly driver + robust backtesting framework
+- Next PR: Strategy Testing Engine + Automatic Setup Learning + Paper Trading execution
 
 ### Wallets
 
