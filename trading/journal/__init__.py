@@ -39,6 +39,7 @@ from .models import (
 from .journal import TradeJournal
 from .storage import SQLiteStorage, JSONStorage
 from .integrations import StrategyJournalMixin, BacktestJournalMixin
+from .github_sync import GitHubDataRepoSync
 
 __all__ = [
     "Trade",
@@ -51,6 +52,7 @@ __all__ = [
     "TradeJournal",
     "SQLiteStorage",
     "JSONStorage",
+    "GitHubDataRepoSync",
     "StrategyJournalMixin",
     "BacktestJournalMixin",
 ]

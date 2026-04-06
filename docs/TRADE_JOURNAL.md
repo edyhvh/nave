@@ -85,11 +85,11 @@ trade = Trade(
     entry_time=datetime.now(),
     status=TradeStatus.OPEN,
     environment=TradeEnvironment.PAPER,
-    
+
     # Risk management
     stop_loss=62000,
     take_profit=70000,
-    
+
     # Context
     entry_signals={"cot_bias": "bullish"},
     tags=["reversal"],
@@ -149,6 +149,39 @@ storage = SQLiteStorage(db_path="~/.nave/trades.db")
 journal = TradeJournal(storage=storage)
 ```
 
+### GitHub Data Repo (Backup/Sync)
+
+For persistent backup without per-trade PRs, use a dedicated GitHub data repo with automated JSON exports:
+
+```python
+from trading.journal import TradeJournal
+
+journal = TradeJournal.with_github_sync_from_env(auto_github_sync=True)
+
+# Any entry/exit/review updates sync automatically when enabled.
+trade = journal.record_entry("BTC", "long", 65000, 1000)
+journal.record_exit(trade.id, 68000)
+
+# You can also force sync manually:
+journal.sync_to_github(trade_id=trade.id)
+```
+
+Configure a private repo (e.g. nave-trades-data) and set:
+
+```bash
+export NAVE_GITHUB_DATA_REPO_OWNER="your-github-user-or-org"
+export NAVE_GITHUB_DATA_REPO_NAME="nave-trades-data"
+export NAVE_GITHUB_TOKEN="ghp_xxx"
+export NAVE_GITHUB_DATA_REPO_BRANCH="main"          # optional
+export NAVE_GITHUB_DATA_BASE_PATH="trade_journal"   # optional
+export NAVE_GITHUB_AUTO_SYNC="true"                 # optional
+```
+
+When auto-sync is enabled, journal events update files in your data repo:
+
+- `trade_journal/trades/<trade_id>.json`
+- `trade_journal/latest_snapshot.json`
+
 ### JSON
 
 Simple file storage, good for development:
@@ -194,7 +227,7 @@ class COTStrategy(BaseStrategy, StrategyJournalMixin):
     def __init__(self, client, **kwargs):
         super().__init__(client, **kwargs)
         self.setup_journal(environment=TradeEnvironment.PAPER)
-    
+
     def _open(self, coin, direction, size_usd):
         # Record in journal
         self.journal_entry(
@@ -204,14 +237,14 @@ class COTStrategy(BaseStrategy, StrategyJournalMixin):
             size_usd=size_usd,
             entry_signals=self.current_signals,
         )
-        
+
         # Execute trade
         super()._open(coin, direction, size_usd)
-    
+
     def _close(self, coin):
         # Record exit in journal
         self.journal_exit(coin, exit_price=self.get_current_price(coin))
-        
+
         # Execute close
         super()._close(coin)
 ```
@@ -226,14 +259,14 @@ from trading.journal.integrations import BacktestJournalMixin
 class BacktestEngine(BacktestJournalMixin):
     def __init__(self):
         self.setup_journal()
-    
+
     def run(self, strategy):
         # ... backtest logic ...
-        
+
         # Record each trade
         for trade in trades:
             self.record_backtest_trade(trade)
-        
+
         # Compare to live/paper performance
         comparison = self.compare_to_live()
         print(f"Backtest vs Live P&L diff: {comparison['comparison']['backtest_vs_live_pnl']}")
@@ -243,18 +276,18 @@ class BacktestEngine(BacktestJournalMixin):
 
 The journal calculates key performance metrics:
 
-| Metric | Description |
-|--------|-------------|
-| `total_trades` | Number of closed trades |
-| `wins` / `losses` | Win/loss counts |
-| `win_rate` | Percentage of winning trades |
-| `total_pnl` | Total profit/loss in USD |
-| `avg_pnl` | Average P&L per trade |
-| `avg_win` / `avg_loss` | Average win/loss amounts |
-| `profit_factor` | Gross wins / gross losses |
-| `avg_return_pct` | Average return percentage |
-| `best_trade` / `worst_trade` | Best and worst trade P&L |
-| `avg_duration_hours` | Average trade duration |
+| Metric                       | Description                  |
+| ---------------------------- | ---------------------------- |
+| `total_trades`               | Number of closed trades      |
+| `wins` / `losses`            | Win/loss counts              |
+| `win_rate`                   | Percentage of winning trades |
+| `total_pnl`                  | Total profit/loss in USD     |
+| `avg_pnl`                    | Average P&L per trade        |
+| `avg_win` / `avg_loss`       | Average win/loss amounts     |
+| `profit_factor`              | Gross wins / gross losses    |
+| `avg_return_pct`             | Average return percentage    |
+| `best_trade` / `worst_trade` | Best and worst trade P&L     |
+| `avg_duration_hours`         | Average trade duration       |
 
 ## Export
 

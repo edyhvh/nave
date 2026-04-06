@@ -16,17 +16,17 @@ from .models import Trade, TradeEnvironment, TradeStatus, TradeOutcome, Position
 
 class StorageBackend(ABC):
     """Abstract base for storage backends."""
-    
+
     @abstractmethod
     def save_trade(self, trade: Trade) -> None:
         """Save or update a trade."""
         pass
-    
+
     @abstractmethod
     def get_trade(self, trade_id: str) -> Optional[Trade]:
         """Get a trade by ID."""
         pass
-    
+
     @abstractmethod
     def get_trades(
         self,
@@ -39,27 +39,27 @@ class StorageBackend(ABC):
     ) -> List[Trade]:
         """Query trades with filters."""
         pass
-    
+
     @abstractmethod
     def save_position_update(self, update: PositionUpdate) -> None:
         """Save a position update."""
         pass
-    
+
     @abstractmethod
     def get_position_updates(self, trade_id: str) -> List[PositionUpdate]:
         """Get all position updates for a trade."""
         pass
-    
+
     @abstractmethod
     def save_review(self, review: TradeReview) -> None:
         """Save a trade review."""
         pass
-    
+
     @abstractmethod
     def get_review(self, trade_id: str) -> Optional[TradeReview]:
         """Get review for a trade."""
         pass
-    
+
     @abstractmethod
     def get_performance_stats(
         self,
@@ -73,25 +73,25 @@ class StorageBackend(ABC):
 
 class SQLiteStorage(StorageBackend):
     """SQLite storage backend - recommended for production use."""
-    
+
     def __init__(self, db_path: str = "~/.nave/trades.db"):
         self.db_path = Path(db_path).expanduser()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._local = threading.local()
         self._init_db()
-    
+
     def _get_conn(self) -> sqlite3.Connection:
         """Get thread-local connection."""
         if not hasattr(self._local, 'conn') or self._local.conn is None:
             self._local.conn = sqlite3.connect(self.db_path)
             self._local.conn.row_factory = sqlite3.Row
         return self._local.conn
-    
+
     def _init_db(self):
         """Initialize database schema."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         # Trades table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS trades (
@@ -122,7 +122,7 @@ class SQLiteStorage(StorageBackend):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
+
         # Position updates table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS position_updates (
@@ -137,7 +137,7 @@ class SQLiteStorage(StorageBackend):
                 FOREIGN KEY (trade_id) REFERENCES trades(id)
             )
         """)
-        
+
         # Reviews table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS trade_reviews (
@@ -156,21 +156,26 @@ class SQLiteStorage(StorageBackend):
                 FOREIGN KEY (trade_id) REFERENCES trades(id)
             )
         """)
-        
+
         # Indexes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_env ON trades(environment)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_coin ON trades(coin)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_time ON trades(entry_time)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_updates_trade ON position_updates(trade_id)")
-        
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trades_env ON trades(environment)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trades_coin ON trades(coin)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trades_time ON trades(entry_time)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_updates_trade ON position_updates(trade_id)")
+
         conn.commit()
-    
+
     def save_trade(self, trade: Trade) -> None:
         """Save or update a trade."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         data = {
             'id': trade.id,
             'strategy_name': trade.strategy_name,
@@ -197,7 +202,7 @@ class SQLiteStorage(StorageBackend):
             'pnl_percent': trade.pnl_percent,
             'outcome': trade.outcome.value,
         }
-        
+
         cursor.execute("""
             INSERT OR REPLACE INTO trades 
             (id, strategy_name, coin, direction, size_usd, leverage, entry_price, exit_price,
@@ -210,21 +215,21 @@ class SQLiteStorage(StorageBackend):
              :stop_loss, :take_profit, :entry_signals, :exit_signals, :tags, :notes,
              :pnl_absolute, :pnl_percent, :outcome)
         """, data)
-        
+
         conn.commit()
-    
+
     def get_trade(self, trade_id: str) -> Optional[Trade]:
         """Get a trade by ID."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT * FROM trades WHERE id = ?", (trade_id,))
         row = cursor.fetchone()
-        
+
         if row:
             return self._row_to_trade(row)
         return None
-    
+
     def get_trades(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -237,10 +242,10 @@ class SQLiteStorage(StorageBackend):
         """Query trades with filters."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         conditions = []
         params = []
-        
+
         if environment:
             conditions.append("environment = ?")
             params.append(environment.value)
@@ -256,21 +261,21 @@ class SQLiteStorage(StorageBackend):
         if end_date:
             conditions.append("entry_time <= ?")
             params.append(end_date.isoformat())
-        
+
         query = "SELECT * FROM trades"
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY entry_time DESC LIMIT ?"
         params.append(limit)
-        
+
         cursor.execute(query, params)
         return [self._row_to_trade(row) for row in cursor.fetchall()]
-    
+
     def save_position_update(self, update: PositionUpdate) -> None:
         """Save a position update."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             INSERT INTO position_updates 
             (trade_id, timestamp, current_price, unrealized_pnl, funding_paid, margin_used, liquidation_price)
@@ -284,20 +289,20 @@ class SQLiteStorage(StorageBackend):
             update.margin_used,
             update.liquidation_price,
         ))
-        
+
         conn.commit()
-    
+
     def get_position_updates(self, trade_id: str) -> List[PositionUpdate]:
         """Get all position updates for a trade."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT * FROM position_updates 
             WHERE trade_id = ? 
             ORDER BY timestamp ASC
         """, (trade_id,))
-        
+
         updates = []
         for row in cursor.fetchall():
             updates.append(PositionUpdate(
@@ -310,12 +315,12 @@ class SQLiteStorage(StorageBackend):
                 liquidation_price=row['liquidation_price'],
             ))
         return updates
-    
+
     def save_review(self, review: TradeReview) -> None:
         """Save a trade review."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             INSERT OR REPLACE INTO trade_reviews
             (trade_id, reviewed_at, setup_quality, entry_quality, exit_quality, risk_management,
@@ -334,17 +339,18 @@ class SQLiteStorage(StorageBackend):
             review.would_take_again,
             review.improvements,
         ))
-        
+
         conn.commit()
-    
+
     def get_review(self, trade_id: str) -> Optional[TradeReview]:
         """Get review for a trade."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM trade_reviews WHERE trade_id = ?", (trade_id,))
+
+        cursor.execute(
+            "SELECT * FROM trade_reviews WHERE trade_id = ?", (trade_id,))
         row = cursor.fetchone()
-        
+
         if row:
             return TradeReview(
                 trade_id=row['trade_id'],
@@ -360,7 +366,7 @@ class SQLiteStorage(StorageBackend):
                 improvements=row['improvements'] or "",
             )
         return None
-    
+
     def get_performance_stats(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -370,10 +376,10 @@ class SQLiteStorage(StorageBackend):
         """Get aggregate performance statistics."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         conditions = ["status = 'closed'"]
         params = []
-        
+
         if environment:
             conditions.append("environment = ?")
             params.append(environment.value)
@@ -383,7 +389,7 @@ class SQLiteStorage(StorageBackend):
         if end_date:
             conditions.append("entry_time <= ?")
             params.append(end_date.isoformat())
-        
+
         query = f"""
             SELECT 
                 COUNT(*) as total_trades,
@@ -402,17 +408,17 @@ class SQLiteStorage(StorageBackend):
             FROM trades
             WHERE {' AND '.join(conditions)}
         """
-        
+
         cursor.execute(query, params)
         row = cursor.fetchone()
-        
+
         if not row or row['total_trades'] == 0:
             return {'total_trades': 0}
-        
+
         total = row['total_trades']
         wins = row['wins'] or 0
         losses = row['losses'] or 0
-        
+
         return {
             'total_trades': total,
             'wins': wins,
@@ -429,7 +435,7 @@ class SQLiteStorage(StorageBackend):
             'worst_trade': row['worst_trade'] or 0,
             'avg_duration_hours': row['avg_duration_hours'] or 0,
         }
-    
+
     def _row_to_trade(self, row: sqlite3.Row) -> Trade:
         """Convert database row to Trade object."""
         return Trade(
@@ -445,30 +451,34 @@ class SQLiteStorage(StorageBackend):
             exit_fee=row['exit_fee'],
             funding_fees=row['funding_fees'],
             entry_time=datetime.fromisoformat(row['entry_time']),
-            exit_time=datetime.fromisoformat(row['exit_time']) if row['exit_time'] else None,
+            exit_time=datetime.fromisoformat(
+                row['exit_time']) if row['exit_time'] else None,
             status=TradeStatus(row['status']),
             environment=TradeEnvironment(row['environment']),
             stop_loss=row['stop_loss'],
             take_profit=row['take_profit'],
-            entry_signals=json.loads(row['entry_signals']) if row['entry_signals'] else {},
-            exit_signals=json.loads(row['exit_signals']) if row['exit_signals'] else {},
+            entry_signals=json.loads(
+                row['entry_signals']) if row['entry_signals'] else {},
+            exit_signals=json.loads(
+                row['exit_signals']) if row['exit_signals'] else {},
             tags=json.loads(row['tags']) if row['tags'] else [],
             notes=row['notes'] or "",
             pnl_absolute=row['pnl_absolute'],
             pnl_percent=row['pnl_percent'],
-            outcome=TradeOutcome(row['outcome']) if row['outcome'] else TradeOutcome.UNKNOWN,
+            outcome=TradeOutcome(
+                row['outcome']) if row['outcome'] else TradeOutcome.UNKNOWN,
         )
 
 
 class JSONStorage(StorageBackend):
     """Simple JSON file storage - good for development/testing."""
-    
+
     def __init__(self, data_dir: str = "~/.nave/trades"):
         self.data_dir = Path(data_dir).expanduser()
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.trades_file = self.data_dir / "trades.jsonl"
         self._lock = threading.Lock()
-    
+
     def save_trade(self, trade: Trade) -> None:
         """Save trade to JSONL file."""
         with self._lock:
@@ -479,7 +489,7 @@ class JSONStorage(StorageBackend):
             trades.append(trade)
             # Write back
             self._save_all_trades(trades)
-    
+
     def get_trade(self, trade_id: str) -> Optional[Trade]:
         """Get trade by ID."""
         trades = self._load_all_trades()
@@ -487,7 +497,7 @@ class JSONStorage(StorageBackend):
             if trade.id == trade_id:
                 return trade
         return None
-    
+
     def get_trades(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -499,7 +509,7 @@ class JSONStorage(StorageBackend):
     ) -> List[Trade]:
         """Query trades with filters."""
         trades = self._load_all_trades()
-        
+
         if environment:
             trades = [t for t in trades if t.environment == environment]
         if status:
@@ -510,22 +520,22 @@ class JSONStorage(StorageBackend):
             trades = [t for t in trades if t.entry_time >= start_date]
         if end_date:
             trades = [t for t in trades if t.entry_time <= end_date]
-        
+
         trades.sort(key=lambda t: t.entry_time, reverse=True)
         return trades[:limit]
-    
+
     def save_position_update(self, update: PositionUpdate) -> None:
         """Save position update to separate file."""
         file_path = self.data_dir / f"updates_{update.trade_id}.jsonl"
         with open(file_path, 'a') as f:
             f.write(json.dumps(update.to_dict()) + '\n')
-    
+
     def get_position_updates(self, trade_id: str) -> List[PositionUpdate]:
         """Get position updates for a trade."""
         file_path = self.data_dir / f"updates_{trade_id}.jsonl"
         if not file_path.exists():
             return []
-        
+
         updates = []
         with open(file_path, 'r') as f:
             for line in f:
@@ -540,23 +550,23 @@ class JSONStorage(StorageBackend):
                     liquidation_price=data.get('liquidation_price'),
                 ))
         return updates
-    
+
     def save_review(self, review: TradeReview) -> None:
         """Save review to separate file."""
         file_path = self.data_dir / f"review_{review.trade_id}.json"
         with open(file_path, 'w') as f:
             json.dump(review.to_dict(), f, indent=2, default=str)
-    
+
     def get_review(self, trade_id: str) -> Optional[TradeReview]:
         """Get review for a trade."""
         file_path = self.data_dir / f"review_{trade_id}.json"
         if not file_path.exists():
             return None
-        
+
         with open(file_path, 'r') as f:
             data = json.load(f)
             return TradeReview(**data)
-    
+
     def get_performance_stats(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -570,15 +580,18 @@ class JSONStorage(StorageBackend):
             start_date=start_date,
             end_date=end_date,
         )
-        
+
         if not trades:
             return {'total_trades': 0}
-        
+
         wins = [t for t in trades if t.outcome == TradeOutcome.WIN]
         losses = [t for t in trades if t.outcome == TradeOutcome.LOSS]
-        
+        wins_pnl = [t.pnl_absolute for t in wins if t.pnl_absolute is not None]
+        losses_pnl = [
+            t.pnl_absolute for t in losses if t.pnl_absolute is not None]
+
         total_pnl = sum(t.pnl_absolute for t in trades if t.pnl_absolute)
-        
+
         return {
             'total_trades': len(trades),
             'wins': len(wins),
@@ -587,24 +600,24 @@ class JSONStorage(StorageBackend):
             'win_rate': len(wins) / len(trades) if trades else 0,
             'total_pnl': total_pnl,
             'avg_pnl': total_pnl / len(trades) if trades else 0,
-            'avg_win': sum(t.pnl_absolute for t in wins) / len(wins) if wins else 0,
-            'avg_loss': sum(t.pnl_absolute for t in losses) / len(losses) if losses else 0,
+            'avg_win': sum(wins_pnl) / len(wins_pnl) if wins_pnl else 0,
+            'avg_loss': sum(losses_pnl) / len(losses_pnl) if losses_pnl else 0,
             'best_trade': max(t.pnl_absolute for t in trades if t.pnl_absolute) if trades else 0,
             'worst_trade': min(t.pnl_absolute for t in trades if t.pnl_absolute) if trades else 0,
         }
-    
+
     def _load_all_trades(self) -> List[Trade]:
         """Load all trades from file."""
         if not self.trades_file.exists():
             return []
-        
+
         trades = []
         with open(self.trades_file, 'r') as f:
             for line in f:
                 data = json.loads(line)
                 trades.append(Trade.from_dict(data))
         return trades
-    
+
     def _save_all_trades(self, trades: List[Trade]) -> None:
         """Save all trades to file."""
         with open(self.trades_file, 'w') as f:

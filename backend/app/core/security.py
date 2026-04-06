@@ -92,7 +92,10 @@ def setup_security_middleware(app: FastAPI) -> None:
     def _handle_rate_limit(request: Request, exc: Exception) -> Response:
         if isinstance(exc, RateLimitExceeded):
             return _rate_limit_exceeded_handler(request, exc)
-        raise exc
+
+        logger.warning(
+            "Unexpected exception type in rate limit handler", exc_info=exc)
+        return Response(status_code=429, content="Rate limit exceeded")
 
     app.add_exception_handler(RateLimitExceeded, _handle_rate_limit)
     app.add_middleware(SlowAPIMiddleware)

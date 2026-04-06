@@ -3,22 +3,24 @@ Main TradeJournal class - high-level interface for trade recording.
 """
 
 from datetime import datetime, timedelta
+import os
 from typing import List, Optional, Dict, Any
 
 from .models import Trade, TradeEnvironment, TradeStatus, PositionUpdate, TradeReview, TradeOutcome
 from .storage import StorageBackend, SQLiteStorage
+from .github_sync import GitHubDataRepoSync
 
 
 class TradeJournal:
     """
     High-level interface for recording and analyzing trades.
-    
+
     Supports multiple environments (backtest, paper, live) with
     unified storage and reporting.
-    
+
     Usage:
         journal = TradeJournal()  # Uses SQLite by default
-        
+
         # Record entry
         trade = journal.record_entry(
             coin="BTC",
@@ -27,29 +29,99 @@ class TradeJournal:
             size_usd=1000,
             environment=TradeEnvironment.PAPER
         )
-        
+
         # Update position
         journal.record_position_update(trade.id, current_price=66000)
-        
+
         # Close trade
         journal.record_exit(trade.id, exit_price=68000)
-        
+
         # Review
         journal.add_review(trade.id, setup_quality=8, notes="Good setup")
-        
+
         # Get report
         stats = journal.get_stats(environment=TradeEnvironment.PAPER)
     """
-    
-    def __init__(self, storage: Optional[StorageBackend] = None):
+
+    def __init__(
+        self,
+        storage: Optional[StorageBackend] = None,
+        github_sync: Optional[GitHubDataRepoSync] = None,
+        auto_github_sync: bool = False,
+    ):
         """
         Initialize journal.
-        
+
         Args:
             storage: Storage backend (defaults to SQLite)
+            github_sync: Optional GitHub sync client for data-repo writes
+            auto_github_sync: If True, auto-sync trade changes to GitHub data repo
         """
         self.storage = storage or SQLiteStorage()
-    
+        self.github_sync = github_sync
+        self.auto_github_sync = auto_github_sync
+
+        if self.auto_github_sync and self.github_sync is None:
+            self.github_sync = GitHubDataRepoSync.from_env()
+
+    def _safe_auto_sync(self, event: str, trade: Optional[Trade] = None) -> None:
+        """Attempt GitHub sync without breaking trading flow."""
+        if not self.auto_github_sync or self.github_sync is None:
+            return
+
+        try:
+            if trade is not None:
+                self.github_sync.sync_trade(trade, event=event)
+
+            trades = self.storage.get_trades(limit=10000)
+            stats = self.get_stats()
+            metadata = {
+                "event": event,
+                "trade_id": trade.id if trade else None,
+            }
+            self.github_sync.sync_snapshot(
+                trades=trades, stats=stats, metadata=metadata)
+        except Exception:
+            # Never fail core journal operations due to sync/network issues.
+            return
+
+    def sync_to_github(self, trade_id: Optional[str] = None) -> bool:
+        """Manually sync journal data to configured GitHub data repo."""
+        if self.github_sync is None:
+            return False
+
+        trade = self.storage.get_trade(trade_id) if trade_id else None
+        try:
+            if trade is not None:
+                self.github_sync.sync_trade(trade, event="manual")
+
+            trades = self.storage.get_trades(limit=10000)
+            stats = self.get_stats()
+            self.github_sync.sync_snapshot(
+                trades=trades,
+                stats=stats,
+                metadata={
+                    "event": "manual",
+                    "trade_id": trade.id if trade else None,
+                },
+            )
+            return True
+        except Exception:
+            return False
+
+    @classmethod
+    def with_github_sync_from_env(
+        cls,
+        storage: Optional[StorageBackend] = None,
+        auto_github_sync: Optional[bool] = None,
+    ) -> "TradeJournal":
+        """Create journal with GitHub sync configured from env vars."""
+        sync = GitHubDataRepoSync.from_env()
+        if auto_github_sync is None:
+            auto_github_sync = os.getenv(
+                "NAVE_GITHUB_AUTO_SYNC", "false").lower() == "true"
+        return cls(storage=storage, github_sync=sync, auto_github_sync=auto_github_sync)
+
     def record_entry(
         self,
         coin: str,
@@ -68,7 +140,7 @@ class TradeJournal:
     ) -> Trade:
         """
         Record a new trade entry.
-        
+
         Args:
             coin: Trading pair (e.g., "BTC", "ETH")
             direction: "long" or "short"
@@ -83,7 +155,7 @@ class TradeJournal:
             entry_signals: Dict of signals that triggered entry
             tags: List of tags for categorization
             notes: Initial notes
-        
+
         Returns:
             The created Trade object
         """
@@ -103,10 +175,11 @@ class TradeJournal:
             notes=notes,
             status=TradeStatus.OPEN,
         )
-        
+
         self.storage.save_trade(trade)
+        self._safe_auto_sync(event="entry", trade=trade)
         return trade
-    
+
     def record_exit(
         self,
         trade_id: str,
@@ -117,32 +190,33 @@ class TradeJournal:
     ) -> Optional[Trade]:
         """
         Record trade exit.
-        
+
         Args:
             trade_id: Trade ID
             exit_price: Exit price
             exit_fee: Exit fee paid
             exit_signals: Dict of signals that triggered exit
             notes_addition: Additional notes to append
-        
+
         Returns:
             Updated Trade object or None if not found
         """
         trade = self.storage.get_trade(trade_id)
         if not trade:
             return None
-        
+
         # Close the trade
         trade.close(exit_price)
         trade.exit_fee = exit_fee
         trade.exit_signals = exit_signals or {}
-        
+
         if notes_addition:
             trade.notes += f"\n[Exit] {notes_addition}"
-        
+
         self.storage.save_trade(trade)
+        self._safe_auto_sync(event="exit", trade=trade)
         return trade
-    
+
     def record_position_update(
         self,
         trade_id: str,
@@ -153,7 +227,7 @@ class TradeJournal:
     ) -> None:
         """
         Record a position update (periodic snapshots).
-        
+
         Args:
             trade_id: Trade ID
             current_price: Current market price
@@ -164,9 +238,9 @@ class TradeJournal:
         trade = self.storage.get_trade(trade_id)
         if not trade:
             return
-        
+
         unrealized_pnl = trade.calculate_pnl(current_price)
-        
+
         update = PositionUpdate(
             trade_id=trade_id,
             timestamp=datetime.utcnow(),
@@ -176,13 +250,13 @@ class TradeJournal:
             margin_used=margin_used,
             liquidation_price=liquidation_price,
         )
-        
+
         self.storage.save_position_update(update)
-    
+
     def add_funding_fee(self, trade_id: str, amount: float) -> None:
         """
         Add funding fee to a trade.
-        
+
         Args:
             trade_id: Trade ID
             amount: Funding fee amount (positive = paid, negative = received)
@@ -191,7 +265,7 @@ class TradeJournal:
         if trade:
             trade.funding_fees += amount
             self.storage.save_trade(trade)
-    
+
     def add_review(
         self,
         trade_id: str,
@@ -207,7 +281,7 @@ class TradeJournal:
     ) -> TradeReview:
         """
         Add a trade review.
-        
+
         Args:
             trade_id: Trade ID
             setup_quality: 1-10 rating
@@ -219,7 +293,7 @@ class TradeJournal:
             lessons_learned: Key lessons
             would_take_again: Whether you'd take this trade again
             improvements: What to improve
-        
+
         Returns:
             The created TradeReview
         """
@@ -235,14 +309,16 @@ class TradeJournal:
             would_take_again=would_take_again,
             improvements=improvements,
         )
-        
+
         self.storage.save_review(review)
+        trade = self.storage.get_trade(trade_id)
+        self._safe_auto_sync(event="review", trade=trade)
         return review
-    
+
     def update_notes(self, trade_id: str, notes: str, append: bool = False) -> None:
         """
         Update trade notes.
-        
+
         Args:
             trade_id: Trade ID
             notes: New notes
@@ -255,11 +331,12 @@ class TradeJournal:
             else:
                 trade.notes = notes
             self.storage.save_trade(trade)
-    
+            self._safe_auto_sync(event="notes", trade=trade)
+
     def add_tags(self, trade_id: str, tags: List[str]) -> None:
         """
         Add tags to a trade.
-        
+
         Args:
             trade_id: Trade ID
             tags: Tags to add
@@ -270,11 +347,12 @@ class TradeJournal:
                 if tag not in trade.tags:
                     trade.tags.append(tag)
             self.storage.save_trade(trade)
-    
+            self._safe_auto_sync(event="tags", trade=trade)
+
     def get_trade(self, trade_id: str) -> Optional[Trade]:
         """Get a trade by ID."""
         return self.storage.get_trade(trade_id)
-    
+
     def get_open_trades(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -282,11 +360,11 @@ class TradeJournal:
     ) -> List[Trade]:
         """
         Get all open trades.
-        
+
         Args:
             environment: Filter by environment
             coin: Filter by coin
-        
+
         Returns:
             List of open trades
         """
@@ -295,7 +373,7 @@ class TradeJournal:
             status=TradeStatus.OPEN,
             coin=coin,
         )
-    
+
     def get_trade_history(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -306,14 +384,14 @@ class TradeJournal:
     ) -> List[Trade]:
         """
         Get trade history.
-        
+
         Args:
             environment: Filter by environment
             coin: Filter by coin
             start_date: Start date filter
             end_date: End date filter
             limit: Maximum number of trades
-        
+
         Returns:
             List of trades
         """
@@ -324,7 +402,7 @@ class TradeJournal:
             end_date=end_date,
             limit=limit,
         )
-    
+
     def get_stats(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -333,12 +411,12 @@ class TradeJournal:
     ) -> Dict[str, Any]:
         """
         Get performance statistics.
-        
+
         Args:
             environment: Filter by environment
             start_date: Start date filter
             end_date: End date filter
-        
+
         Returns:
             Dict with performance statistics
         """
@@ -347,7 +425,7 @@ class TradeJournal:
             start_date=start_date,
             end_date=end_date,
         )
-    
+
     def generate_report(
         self,
         environment: Optional[TradeEnvironment] = None,
@@ -355,25 +433,25 @@ class TradeJournal:
     ) -> str:
         """
         Generate a formatted performance report.
-        
+
         Args:
             environment: Filter by environment
             days: Number of days to include
-        
+
         Returns:
             Formatted report string
         """
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
-        
+
         stats = self.get_stats(
             environment=environment,
             start_date=start_date,
             end_date=end_date,
         )
-        
+
         env_str = environment.value.upper() if environment else "ALL"
-        
+
         if stats['total_trades'] == 0:
             return f"""
 ╔══════════════════════════════════════════════════════════════╗
@@ -384,7 +462,7 @@ class TradeJournal:
 ║ No trades found for this period.                             ║
 ╚══════════════════════════════════════════════════════════════╝
 """
-        
+
         return f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║           TRADE JOURNAL REPORT - {env_str:<20}           ║
@@ -413,7 +491,7 @@ class TradeJournal:
 ║ Avg Duration:     {stats.get('avg_duration_hours', 0):>8.1f} hours                         ║
 ╚══════════════════════════════════════════════════════════════╝
 """
-    
+
     def export_trades(
         self,
         filepath: str,
@@ -422,24 +500,26 @@ class TradeJournal:
     ) -> None:
         """
         Export trades to file.
-        
+
         Args:
             filepath: Output file path
             environment: Filter by environment
             format: "csv" or "json"
         """
         trades = self.storage.get_trades(environment=environment, limit=10000)
-        
+
         if format == "json":
             import json
             with open(filepath, 'w') as f:
-                json.dump([t.to_dict() for t in trades], f, indent=2, default=str)
-        
+                json.dump([t.to_dict()
+                          for t in trades], f, indent=2, default=str)
+
         elif format == "csv":
             import csv
             if trades:
                 with open(filepath, 'w', newline='') as f:
-                    writer = csv.DictWriter(f, fieldnames=trades[0].to_dict().keys())
+                    writer = csv.DictWriter(
+                        f, fieldnames=trades[0].to_dict().keys())
                     writer.writeheader()
                     for trade in trades:
                         writer.writerow(trade.to_dict())
