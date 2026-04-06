@@ -67,29 +67,35 @@ class COTAnalyzer:
             # From real DF or records
             df = pd.DataFrame(raw.get("raw", []))
             long_col = self._first_existing(
-                df, ["noncomm_positions_long_all", "Noncommercial_Positions_Long"]
+                df, ["noncomm_positions_long_all",
+                     "Noncommercial_Positions_Long"]
             )
             short_col = self._first_existing(
-                df, ["noncomm_positions_short_all", "Noncommercial_Positions_Short"]
+                df, ["noncomm_positions_short_all",
+                     "Noncommercial_Positions_Short"]
             )
-            oi_col = self._first_existing(df, ["open_interest_all", "Open_Interest_All"])
+            oi_col = self._first_existing(
+                df, ["open_interest_all", "Open_Interest_All"])
 
             if not df.empty and long_col:
                 latest_long = float(df[long_col].iloc[-1] or 0.0)
-                latest_short = float(df[short_col].iloc[-1] or 0.0) if short_col else 0.0
+                latest_short = float(
+                    df[short_col].iloc[-1] or 0.0) if short_col else 0.0
                 net = latest_long - latest_short
             else:
                 net = 0
 
             if not df.empty and oi_col:
                 total_oi = float(df[oi_col].iloc[-1] or 0.0)
-                pct = round(float(abs(net) / total_oi * 100), 2) if total_oi else 0.0
+                pct = round(float(abs(net) / total_oi * 100),
+                            2) if total_oi else 0.0
             else:
                 pct = 0.0
 
             if not df.empty and len(df) >= 2 and long_col:
                 prev_long = float(df[long_col].iloc[-2] or 0.0)
-                prev_short = float(df[short_col].iloc[-2] or 0.0) if short_col else 0.0
+                prev_short = float(df[short_col].iloc[-2]
+                                   or 0.0) if short_col else 0.0
                 prev_net = prev_long - prev_short
                 change = int(net - prev_net)
             else:
@@ -110,9 +116,21 @@ class COTAnalyzer:
         else:
             bias = "neutral"
             conf = 0.5
+
+        # Momentum direction filter: don't fight strong weekly momentum
+        if bias == "bearish" and change > 500:
+            # Momentum accelerating long — don't short into strength
+            bias = "neutral"
+            conf = 0.4
+        elif bias == "bullish" and change < -500:
+            # Momentum accelerating short — don't long into weakness
+            bias = "neutral"
+            conf = 0.4
+
         bias_score = score  # 0-100 overall
 
-        market_regime = self.regime or self._infer_market_regime(change=change, pct_oi=float(pct))
+        market_regime = self.regime or self._infer_market_regime(
+            change=change, pct_oi=float(pct))
         metadata = {
             "net_non_commercial": int(net),
             "pct_oi": round(pct, 1),

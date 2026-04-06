@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 import numpy as np
 
@@ -21,6 +21,8 @@ class MockTrade:
     pnl: Optional[float]
     fees: float
     status: str  # 'open' or 'closed'
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -64,7 +66,8 @@ class MockHyperliquidClient:
 
     def get_price(self, coin: str, date: Optional[datetime] = None) -> float:
         """Get price for a coin at a specific date."""
-        effective_date = date or self.current_date or datetime.now(timezone.utc)
+        effective_date = date or self.current_date or datetime.now(
+            timezone.utc)
 
         if self.price_data is not None:
             # Query from price data
@@ -120,6 +123,99 @@ class MockHyperliquidClient:
             return {}
         return loaded
 
+    def _calculate_atr(self, coin: str, lookback_days: int = 14) -> float:
+        """Calculate Average True Range from daily price data for stop/TP sizing."""
+        series = self.price_series.get(coin.upper())
+        if series is None or series.empty:
+            return 0.02  # fallback 2% ATR
+        effective_date = self.current_date or datetime.now(timezone.utc)
+        ts = pd.Timestamp(effective_date)
+        if ts.tzinfo is not None:
+            ts = ts.tz_convert(None)
+        ts = ts.normalize()
+        # Get last N+1 prices for N true ranges
+        mask = series.index <= ts
+        recent = series[mask].tail(lookback_days + 1)
+        if len(recent) < 2:
+            return 0.02
+        # True range approximation from close-to-close (no H/L available)
+        returns = recent.pct_change().abs().dropna()
+        return float(returns.mean()) if len(returns) > 0 else 0.02
+
+    def _compute_stop_take_profit(
+        self, coin: str, direction: str, entry_price: float,
+        atr_stop_mult: float = 2.0, atr_tp_mult: float = 3.0,
+    ) -> tuple[float, float]:
+        """Compute ATR-based stop loss and take profit levels."""
+        atr_pct = self._calculate_atr(coin)
+        # Floor at 1% to avoid stops too tight on low-vol days
+        atr_pct = max(atr_pct, 0.01)
+        stop_distance = entry_price * atr_pct * atr_stop_mult
+        tp_distance = entry_price * atr_pct * atr_tp_mult
+        if direction == "long":
+            stop_loss = entry_price - stop_distance
+            take_profit = entry_price + tp_distance
+        else:
+            stop_loss = entry_price + stop_distance
+            take_profit = entry_price - tp_distance
+        return stop_loss, take_profit
+
+    def check_stops_intraweek(self, coin: str) -> Optional[MockTrade]:
+        """Check if stop loss or take profit was hit during the week.
+
+        Simulates daily price checks between entry and current date.
+        Returns the closed MockTrade if stopped/TP'd, else None.
+        """
+        if coin not in self.positions:
+            return None
+        trade = self.positions[coin]
+        if trade.stop_loss is None and trade.take_profit is None:
+            return None
+
+        start = trade.entry_date
+        end = self.current_date or datetime.now(timezone.utc)
+        # Check each day within the week
+        check_date = start + timedelta(days=1)
+        while check_date <= end:
+            daily_price = self.get_price(coin, date=check_date)
+            hit_stop = False
+            hit_tp = False
+
+            if trade.direction == "long":
+                if trade.stop_loss is not None and daily_price <= trade.stop_loss:
+                    hit_stop = True
+                if trade.take_profit is not None and daily_price >= trade.take_profit:
+                    hit_tp = True
+            else:  # short
+                if trade.stop_loss is not None and daily_price >= trade.stop_loss:
+                    hit_stop = True
+                if trade.take_profit is not None and daily_price <= trade.take_profit:
+                    hit_tp = True
+
+            if hit_stop or hit_tp:
+                # Close at the stop/TP level (not market price)
+                exit_price = trade.stop_loss if hit_stop else trade.take_profit
+                assert exit_price is not None
+                return self._close_at_price(coin, exit_price, check_date)
+
+            check_date += timedelta(days=1)
+        return None
+
+    def _close_at_price(self, coin: str, exit_price: float, exit_date: datetime) -> MockTrade:
+        """Close a position at a specific price (for stop/TP fills)."""
+        trade = self.positions.pop(coin)
+        if trade.direction == "long":
+            pnl = (exit_price - trade.entry_price) * trade.size
+        else:
+            pnl = (trade.entry_price - exit_price) * trade.size
+
+        trade.exit_date = exit_date
+        trade.exit_price = exit_price
+        trade.pnl = pnl - trade.fees
+        trade.status = "closed"
+        self.trade_history.append(trade)
+        return trade
+
     def open_position(
         self,
         coin: str,
@@ -128,9 +224,11 @@ class MockHyperliquidClient:
         leverage: float,
         metadata: Optional[Dict[str, Any]] = None,
         stop_loss: Optional[float] = None,
-        take_profit: Optional[float] = None
+        take_profit: Optional[float] = None,
+        atr_stop_mult: float = 2.0,
+        atr_tp_mult: float = 3.0,
     ) -> MockTrade:
-        """Open a simulated position."""
+        """Open a simulated position with ATR-based stop loss and take profit."""
         current_date = self.current_date or datetime.now(timezone.utc)
         entry_price = self.get_price(coin)
 
@@ -139,6 +237,16 @@ class MockHyperliquidClient:
             entry_price *= (1 + self.slippage)
         else:
             entry_price *= (1 - self.slippage)
+
+        # Compute ATR-based stop/TP if not explicitly provided
+        if stop_loss is None or take_profit is None:
+            computed_sl, computed_tp = self._compute_stop_take_profit(
+                coin, direction, entry_price, atr_stop_mult, atr_tp_mult,
+            )
+            if stop_loss is None:
+                stop_loss = computed_sl
+            if take_profit is None:
+                take_profit = computed_tp
 
         trade = MockTrade(
             entry_date=current_date,
@@ -152,6 +260,8 @@ class MockHyperliquidClient:
             pnl=None,
             fees=size_usd * 0.0005,  # 0.05% trading fee
             status='open',
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             metadata=metadata or {},
         )
 
@@ -174,7 +284,8 @@ class MockHyperliquidClient:
             exit_price *= (1 + self.slippage)
             pnl = (trade.entry_price - exit_price) * trade.size
 
-        trade.exit_date = self.current_date if self.current_date is not None else datetime.now(timezone.utc)
+        trade.exit_date = self.current_date if self.current_date is not None else datetime.now(
+            timezone.utc)
         trade.exit_price = exit_price
         trade.pnl = pnl - trade.fees
         trade.status = 'closed'

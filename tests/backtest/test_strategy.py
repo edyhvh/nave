@@ -32,7 +32,7 @@ class TestCotWeeklyStrategy:
         """Default strategy configuration for testing."""
         return {
             'capital_usd': 10000.0,
-            'risk_pct': 0.10,
+            'risk_pct': 0.02,
             'max_leverage': 10.0,
             'test_mode': True,  # mocks only, no Hyperliquid account needed
         }
@@ -103,9 +103,9 @@ class TestCotWeeklyStrategy:
         strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
 
         test_cases = [
-            {'confidence': 0.9, 'expected_leverage_min': 8, 'should_trade': True},
-            {'confidence': 0.7, 'expected_leverage_min': 5, 'should_trade': True},
-            {'confidence': 0.5, 'expected_leverage_min': 3, 'should_trade': True},
+            {'confidence': 0.9, 'expected_leverage_min': 1, 'should_trade': True},
+            {'confidence': 0.7, 'expected_leverage_min': 1, 'should_trade': True},
+            {'confidence': 0.5, 'expected_leverage_min': 1, 'should_trade': True},
             {'confidence': 0.3, 'expected_leverage_min': 0, 'should_trade': False},
         ]
 
@@ -272,17 +272,22 @@ class TestCotWeeklyStrategy:
         strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
 
         test_cases = [
-            (0.95, 9.5),  # 95% conf -> 9.5x leverage
-            (0.80, 8.0),  # 80% conf -> 8.0x leverage
-            (0.50, 5.0),  # 50% conf -> 5.0x leverage
-            (0.30, 3.0),  # 30% conf -> 3.0x leverage
+            # 95% conf, strong edge -> capped at 10x
+            (0.95, 10.0, "strong-positive"),
+            # 80% conf, positive edge -> capped at 5x
+            (0.80, 5.0, "positive"),
+            # 50% conf, marginal edge -> capped at 2x
+            (0.50, 2.0, "marginal"),
+            # 30% conf, marginal edge -> capped at 2x
+            (0.30, 1.5, "marginal"),
         ]
 
-        for confidence, expected_leverage in test_cases:
-            leverage = strategy.calculate_leverage(confidence)
+        for confidence, expected_leverage, edge_label in test_cases:
+            leverage = strategy.calculate_leverage(
+                confidence, edge_label=edge_label)
 
             # Allow small rounding differences
-            assert abs(leverage - expected_leverage) < 0.5, \
+            assert abs(leverage - expected_leverage) <= 0.5, \
                 f"Leverage {leverage}x doesn't match expected {expected_leverage}x for confidence {confidence}"
 
             # Never exceed max

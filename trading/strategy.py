@@ -258,9 +258,9 @@ class CotWeeklyStrategy(BaseStrategy):
         self,
         client: HyperliquidClient,
         capital_usd: float = 10000.0,
-        risk_pct: float = 0.10,
+        risk_pct: float = 0.02,
         max_leverage: float = 10.0,
-        max_parallel_positions: int = 2,
+        max_parallel_positions: int = 1,
         test_mode: bool = False,
         cot_fetcher: Optional[Any] = None,
         setups: list[str] | None = None,
@@ -322,26 +322,47 @@ class CotWeeklyStrategy(BaseStrategy):
                 "COT signal computation failed: %s. Using empty.", e)
             return []
 
-    def calculate_leverage(self, confidence: float) -> float:
-        """Leverage scales with confidence (test expectation)."""
-        base = min(confidence * self.max_leverage, self.max_leverage)
+    def calculate_leverage(self, confidence: float, edge_label: str = "marginal") -> float:
+        """Dynamic leverage scaled by edge quality and confidence.
+
+        Edge-based caps prevent over-leveraging marginal setups:
+          - strong-positive: up to max_leverage
+          - positive: up to 0.5 * max_leverage
+          - marginal/negative: up to 0.2 * max_leverage
+        """
+        edge_caps = {
+            "strong-positive": self.max_leverage,
+            "positive": self.max_leverage * 0.5,
+            "marginal": self.max_leverage * 0.2,
+            "weak-negative": self.max_leverage * 0.15,
+            "negative": self.max_leverage * 0.1,
+        }
+        cap = edge_caps.get(edge_label, self.max_leverage * 0.2)
+        base = min(confidence * self.max_leverage, cap)
         volatility_multiplier = float(
             getattr(self.client, "volatility_multiplier", 1.0) or 1.0
         )
         if volatility_multiplier > 1.0:
             base = base / volatility_multiplier
-        return base
+        return max(base, 1.0)  # minimum 1x leverage
 
     def calculate_position_sizing(
-        self, confidence: float, capital: float, stop_distance: float = 0.02
+        self, confidence: float, capital: float, stop_distance: float = 0.02,
+        edge_label: str = "marginal",
     ) -> dict:
-        """Return sizing dict for tests (leverage + size)."""
+        """Return sizing dict using fixed-fractional risk model.
+
+        Size = (capital * risk_pct) / stop_distance, capped at 25% of capital.
+        This ensures worst-case loss per trade = risk_pct * capital.
+        """
         if confidence < 0.4:
             return {"leverage": 0, "size_usd": 0.0}
-        leverage = self.calculate_leverage(confidence)
-        size_usd = (capital * self.risk_pct /
-                    max(stop_distance, 0.01)) * confidence
-        size_usd = min(size_usd, capital * 0.8)
+        leverage = self.calculate_leverage(confidence, edge_label=edge_label)
+        # Fixed-fractional: risk exactly risk_pct of capital per trade
+        risk_amount = capital * self.risk_pct
+        size_usd = risk_amount / max(stop_distance, 0.01)
+        # Hard cap at 25% of capital to prevent concentration
+        size_usd = min(size_usd, capital * 0.25)
         return {"leverage": round(leverage, 1), "size_usd": round(size_usd, 2)}
 
     def select_best_asset(self, signals: list[Signal]) -> Signal | None:
@@ -353,7 +374,7 @@ class CotWeeklyStrategy(BaseStrategy):
     def record_loss(self) -> None:
         self.consecutive_losses += 1
         if self.consecutive_losses >= 3:
-            self.risk_pct = max(0.05, self.risk_pct * 0.5)
+            self.risk_pct = max(0.005, self.risk_pct * 0.5)
 
     def get_adjusted_risk(self) -> float:
         return self.risk_pct
@@ -373,18 +394,25 @@ class CotWeeklyStrategy(BaseStrategy):
         """Execute signal using client (for test compatibility with MockTrade)."""
         if client is None:
             client = self.client
-        base_size = self.position_size_usd(signal)
         if hasattr(client, "open_position"):
-            # Use mock's open_position for proper MockTrade with attrs
             metadata = dict(getattr(signal, "metadata", {}) or {})
-            setups = metadata.get("setups", self.setups)
-            if isinstance(setups, list) and setups:
-                selector = (self.current_date.isocalendar().week + len(signal.coin)) % len(setups)
-                metadata.setdefault("setup", str(setups[selector]))
-            selected_setup = str(metadata.get("setup", "75_retracement"))
+            regime = str(metadata.get("market_regime",
+                         metadata.get("regime", "all")))
+
+            # Use SetupLearner ranking instead of pseudo-random selection
+            candidates = metadata.get("setups", self.setups)
+            if isinstance(candidates, list) and candidates:
+                ranked = self.setup_learner.rank_setups(
+                    candidates, regime=regime, context=metadata,
+                )
+                selected_setup = ranked[0] if ranked else candidates[0]
+            else:
+                selected_setup = "75_retracement"
+            metadata["setup"] = selected_setup
+
             policy = self.setup_learner.recommend_setup_action(
                 setup=selected_setup,
-                regime=str(metadata.get("market_regime", metadata.get("regime", "all"))),
+                regime=regime,
                 context=metadata,
                 base_confidence=float(signal.confidence),
             )
@@ -396,7 +424,6 @@ class CotWeeklyStrategy(BaseStrategy):
                 "size_multiplier": policy["size_multiplier"],
                 "leverage_multiplier": policy["leverage_multiplier"],
             }
-            metadata["setup"] = selected_setup
             if not policy["should_trade"]:
                 logger.info(
                     "Skipping %s %s via setup learner: %s",
@@ -405,12 +432,26 @@ class CotWeeklyStrategy(BaseStrategy):
                     policy["reason"],
                 )
                 return None
-            size = min(base_size * float(policy["size_multiplier"]), self.max_position_usd)
+
+            # Fixed-fractional position sizing: risk_pct * equity / stop_distance
+            volatility = float(metadata.get("volatility", 0.03) or 0.03)
+            stop_distance = max(volatility * 2.0, 0.02)  # ATR-based stop
+            edge_label = str(policy.get("edge_label", "marginal"))
+            sizing = self.calculate_position_sizing(
+                confidence=signal.confidence,
+                capital=self.equity,
+                stop_distance=stop_distance,
+                edge_label=edge_label,
+            )
+            size = sizing["size_usd"] * float(policy["size_multiplier"])
+            size = min(size, self.equity * 0.25)  # hard cap 25% of equity
             if size <= 0:
                 return None
             leverage = min(
                 self.max_leverage,
-                self.calculate_leverage(signal.confidence) * float(policy["leverage_multiplier"]),
+                self.calculate_leverage(
+                    signal.confidence, edge_label=edge_label)
+                * float(policy["leverage_multiplier"]),
             )
             trade = client.open_position(
                 coin=signal.coin,
@@ -420,6 +461,7 @@ class CotWeeklyStrategy(BaseStrategy):
                 metadata=metadata,
             )
             return trade
+        base_size = self.position_size_usd(signal)
         self._open(signal.coin, signal.direction, base_size)
         # Minimal mock for fallback
         return type(
@@ -435,25 +477,45 @@ class CotWeeklyStrategy(BaseStrategy):
         )()
 
     def execute_signals(self, signals: list[Signal], engine=None) -> list:
-        """Override for backtest compatibility (returns list for engine.extend)."""
+        """Override for backtest compatibility (returns list for engine.extend).
+
+        Selects only the BEST asset per week (de-correlates BTC/ETH).
+        """
         if engine is not None and hasattr(engine, "current_date"):
             self.set_date(engine.current_date)
+            # Track equity from engine for position sizing
+            if hasattr(engine, "equity"):
+                self.equity = engine.equity
+
         # Backtest path: close previous positions at current timestamp (realized PnL),
-        # then open top actionable signals with market prices from mock history.
+        # then open top actionable signal with market prices from mock history.
         if engine is not None and hasattr(self.client, "close_all_positions"):
-            closed = self.client.close_all_positions()  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            closed = self.client.close_all_positions()
+            # Update equity after closing
+            for trade in closed:
+                pnl = getattr(trade, "pnl", 0.0) or 0.0
+                self.equity += pnl
+                if pnl < 0:
+                    self.record_loss()
+                else:
+                    self.consecutive_losses = 0
+
+            # Circuit breaker check
+            if self.check_circuit_breaker():
+                logger.warning(
+                    "Circuit breaker triggered: equity=$%.2f", self.equity)
+                return closed
+
             actionable = [
                 s for s in signals
                 if s.direction in {Direction.LONG, Direction.SHORT}
                 and s.confidence >= self.min_confidence
             ]
-            selected = sorted(
-                actionable,
-                key=lambda s: getattr(s, "confidence", 0.0),
-                reverse=True,
-            )[: max(1, int(self.max_parallel_positions))]
-            for signal in selected:
-                self.execute_signal(signal, self.client)
+            # Select only the BEST asset (de-correlates BTC/ETH)
+            best = self.select_best_asset(actionable)
+            if best is not None:
+                self.execute_signal(best, self.client)
             return closed
 
         if signals:
