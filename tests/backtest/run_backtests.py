@@ -15,6 +15,7 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Any
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -22,24 +23,27 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 ROOT_DIR = Path(__file__).parent.parent.parent
 
 
-def _write_timestamped_backtest_exports(journal, report_text: str, patterns: list[dict]) -> tuple[Path, Path]:
+def _write_timestamped_backtest_exports(
+    report_text: str,
+    patterns: list[dict],
+    run_trades: list[Any],
+) -> tuple[Path, Path]:
     """Persist timestamped backtest learning exports for later LLM analysis."""
-    from trading.journal import TradeEnvironment
 
     out_dir = ROOT_DIR / "trade_journal"
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
-    trades = journal.get_trade_history(environment=TradeEnvironment.BACKTEST, limit=10000)
-    stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
+    trades_payload = [t.to_dict() for t in run_trades]
+    stats = _stats_from_trade_dicts(trades_payload)
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "environment": "backtest",
-        "total_trades": len(trades),
+        "total_trades": len(trades_payload),
         "stats": stats,
         "learning_report": report_text,
         "patterns": patterns,
-        "trades": [t.to_dict() for t in trades],
+        "trades": trades_payload,
     }
     summary = {
         "generated_at": payload["generated_at"],
@@ -55,6 +59,30 @@ def _write_timestamped_backtest_exports(journal, report_text: str, patterns: lis
     snapshot_path.write_text(json.dumps(payload, indent=2))
     summary_path.write_text(json.dumps(summary, indent=2))
     return snapshot_path, summary_path
+
+
+def _stats_from_trade_dicts(trades: list[dict[str, Any]]) -> dict[str, Any]:
+    pnls = [float(t.get("pnl_absolute", 0.0) or 0.0) for t in trades]
+    wins = sum(1 for p in pnls if p > 0)
+    losses = sum(1 for p in pnls if p < 0)
+    breakevens = sum(1 for p in pnls if p == 0)
+    gross_profit = sum(p for p in pnls if p > 0)
+    gross_loss = sum(p for p in pnls if p < 0)
+    total = len(pnls)
+    return {
+        "total_trades": total,
+        "wins": wins,
+        "losses": losses,
+        "breakevens": breakevens,
+        "win_rate": (wins / total) if total else 0.0,
+        "total_pnl": sum(pnls),
+        "avg_pnl": (sum(pnls) / total) if total else 0.0,
+        "avg_win": (gross_profit / wins) if wins else 0.0,
+        "avg_loss": (gross_loss / losses) if losses else 0.0,
+        "best_trade": max(pnls) if pnls else 0.0,
+        "worst_trade": min(pnls) if pnls else 0.0,
+        "profit_factor": (gross_profit / abs(gross_loss)) if gross_loss < 0 else float("inf"),
+    }
 
 
 def run_setup_discovery():
@@ -103,7 +131,7 @@ def run_setup_learning():
     print()
 
     from trading.strategy import CotWeeklyStrategy
-    from trading.journal import TradeEnvironment, TradeJournal
+    from trading.journal import TradeJournal
     from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
     from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
     from tests.backtest.utils.backtest_engine import BacktestEngine
@@ -128,15 +156,15 @@ def run_setup_learning():
     patterns = learner.discover_new_patterns(result)
     report = learner.generate_report(regime="all", patterns=patterns)
     print(report)
+    run_trades = engine.get_journal_trades()
     snapshot_path, summary_path = _write_timestamped_backtest_exports(
-        journal=journal,
         report_text=report,
         patterns=patterns,
+        run_trades=run_trades,
     )
-    journal_stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
     db_path = getattr(journal.storage, "db_path", "n/a")
     print(
-        f"\nBacktest journal saved: trades={journal_stats.get('total_trades', 0)} "
+        f"\nBacktest journal saved: trades={len(run_trades)} "
         f"db={db_path}"
     )
     print(f"Timestamped exports: {snapshot_path} | {summary_path}")

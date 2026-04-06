@@ -1,7 +1,7 @@
 """Mock Hyperliquid client for backtesting."""
 
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
@@ -21,6 +21,7 @@ class MockTrade:
     pnl: Optional[float]
     fees: float
     status: str  # 'open' or 'closed'
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class MockHyperliquidClient:
@@ -52,6 +53,7 @@ class MockHyperliquidClient:
             self.price_data = pd.read_parquet(price_data_path)
         else:
             self.price_data = None
+            self.price_series = self._load_default_price_series()
 
         # Default markets
         self._markets = ['BTC', 'ETH', 'SOL', 'AVAX', 'ARB', 'OP']
@@ -62,13 +64,24 @@ class MockHyperliquidClient:
 
     def get_price(self, coin: str, date: Optional[datetime] = None) -> float:
         """Get price for a coin at a specific date."""
-        effective_date = date or self.current_date or datetime.utcnow()
+        effective_date = date or self.current_date or datetime.now(timezone.utc)
 
         if self.price_data is not None:
             # Query from price data
             mask = self.price_data['timestamp'] <= effective_date
             if mask.any():
                 return float(self.price_data[mask].iloc[-1]['close'])
+
+        series = self.price_series.get(coin.upper())
+        if series is not None and not series.empty:
+            ts = pd.Timestamp(effective_date)
+            if ts.tzinfo is not None:
+                ts = ts.tz_convert(None)
+            # Align to daily data precision before asof lookup.
+            ts = ts.normalize()
+            price = series.asof(ts)
+            if pd.notna(price):
+                return float(price)
 
         # Fallback: generate synthetic price
         return self._synthetic_price(coin, effective_date)
@@ -81,17 +94,44 @@ class MockHyperliquidClient:
         noise = np.random.normal(0, 0.02)  # 2% daily volatility
         return base_price * (1 + noise)
 
+    def _load_default_price_series(self) -> Dict[str, pd.Series]:
+        """Load BTC/ETH daily history for realistic backtest fills."""
+        mapping = {"BTC": "BTC-USD", "ETH": "ETH-USD"}
+        loaded: Dict[str, pd.Series] = {}
+        try:
+            import yfinance as yf
+            for coin, ticker in mapping.items():
+                frame = yf.download(
+                    ticker,
+                    period="10y",
+                    interval="1d",
+                    auto_adjust=True,
+                    progress=False,
+                )
+                if frame is None or frame.empty or "Close" not in frame.columns:
+                    continue
+                series = frame["Close"].copy()
+                if isinstance(series, pd.DataFrame):
+                    series = series.iloc[:, 0]
+                if getattr(series.index, "tz", None) is not None:
+                    series.index = series.index.tz_convert(None)
+                loaded[coin] = series
+        except Exception:
+            return {}
+        return loaded
+
     def open_position(
         self,
         coin: str,
         direction: str,
         size_usd: float,
         leverage: float,
+        metadata: Optional[Dict[str, Any]] = None,
         stop_loss: Optional[float] = None,
         take_profit: Optional[float] = None
     ) -> MockTrade:
         """Open a simulated position."""
-        current_date = self.current_date or datetime.utcnow()
+        current_date = self.current_date or datetime.now(timezone.utc)
         entry_price = self.get_price(coin)
 
         # Apply slippage
@@ -111,7 +151,8 @@ class MockHyperliquidClient:
             leverage=leverage,
             pnl=None,
             fees=size_usd * 0.0005,  # 0.05% trading fee
-            status='open'
+            status='open',
+            metadata=metadata or {},
         )
 
         self.positions[coin] = trade

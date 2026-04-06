@@ -374,11 +374,17 @@ class CotWeeklyStrategy(BaseStrategy):
         size = self.position_size_usd(signal)
         if hasattr(client, "open_position"):
             # Use mock's open_position for proper MockTrade with attrs
+            metadata = dict(getattr(signal, "metadata", {}) or {})
+            setups = metadata.get("setups", self.setups)
+            if isinstance(setups, list) and setups:
+                selector = (self.current_date.isocalendar().week + len(signal.coin)) % len(setups)
+                metadata.setdefault("setup", str(setups[selector]))
             trade = client.open_position(
                 coin=signal.coin,
                 direction="long" if signal.direction == Direction.LONG else "short",
                 size_usd=size,
                 leverage=self.calculate_leverage(signal.confidence),
+                metadata=metadata,
             )
             return trade
         self._open(signal.coin, signal.direction, size)
@@ -399,61 +405,23 @@ class CotWeeklyStrategy(BaseStrategy):
         """Override for backtest compatibility (returns list for engine.extend)."""
         if engine is not None and hasattr(engine, "current_date"):
             self.set_date(engine.current_date)
+        # Backtest path: close previous positions at current timestamp (realized PnL),
+        # then open current best signal with market price from mock price history.
+        if engine is not None and hasattr(self.client, "close_all_positions"):
+            closed = self.client.close_all_positions()  # type: ignore[attr-defined]
+            actionable = [
+                s for s in signals
+                if s.direction in {Direction.LONG, Direction.SHORT}
+                and s.confidence >= self.min_confidence
+            ]
+            selected = self.select_best_asset(actionable)
+            if selected is not None:
+                self.execute_signal(selected, self.client)
+            return closed
+
         if signals:
             super().execute_signals(signals)
-
-        # Return deterministic mock trades for backtest + setup learning.
-        trades = []
-        active = signals or [
-            Signal(
-                coin="BTC",
-                direction=Direction.NEUTRAL,
-                confidence=0.5,
-                source="cot",
-                metadata={},
-            )
-        ]
-        for signal in active:
-            confidence = float(getattr(signal, "confidence", 0.5) or 0.5)
-            metadata = dict(getattr(signal, "metadata", {}) or {})
-            fits_score = float(metadata.get("fits_weighted_score", 50.0) or 50.0)
-            momentum = float(metadata.get("weekly_change", metadata.get("momentum", 0.0)) or 0.0)
-            volatility = float(metadata.get("volatility", 0.02) or 0.02)
-
-            gross = (confidence - 0.45) * 120.0
-            gross += (fits_score - 50.0) * 0.35
-            gross += momentum * 0.004
-            gross -= volatility * 80.0
-            if signal.direction == Direction.SHORT:
-                gross *= 0.95
-            if signal.direction == Direction.NEUTRAL:
-                gross = momentum * 0.002
-            setups = metadata.get("setups", self.setups)
-            if isinstance(setups, list) and setups:
-                selector = (self.current_date.isocalendar().week + len(signal.coin)) % len(setups)
-                metadata.setdefault("setup", str(setups[selector]))
-            else:
-                metadata.setdefault("setup", "75_retracement")
-            metadata.setdefault("regime", metadata.get("market_regime", "all"))
-            metadata.setdefault("confidence", confidence)
-            metadata.setdefault("momentum", metadata.get("weekly_change", 0.0))
-            metadata.setdefault("oi_level", metadata.get("pct_oi", 0.0))
-            metadata.setdefault("volatility", metadata.get("volatility", 0.02))
-
-            trade = type(
-                "MockTrade",
-                (),
-                {
-                    "pnl": round(gross, 4),
-                    "entry_date": self.current_date,
-                    "exit_date": self.current_date,
-                    "coin": signal.coin,
-                    "direction": signal.direction.value,
-                    "metadata": metadata,
-                },
-            )()
-            trades.append(trade)
-        return trades
+        return []
 
     def get_current_positions(self) -> dict:
         """For correlation test."""

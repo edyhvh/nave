@@ -160,6 +160,14 @@ class BacktestEngine:
             # Advance time (weekly for COT reports)
             current += timedelta(weeks=1)
         
+        # Close client-side backtest positions (mock client path) at final timestamp.
+        if hasattr(strategy, "client") and hasattr(strategy.client, "close_all_positions"):
+            closed = strategy.client.close_all_positions()  # type: ignore[attr-defined]
+            self.trades.extend(closed)
+            if self.journal_enabled and self.journal is not None:
+                for trade in closed:
+                    self._record_journal_trade(trade, strategy_name=strategy.__class__.__name__)
+
         # Close any remaining positions
         self._close_all_positions()
         
@@ -214,7 +222,14 @@ class BacktestEngine:
 
             entry_price = float(getattr(trade, "entry_price", 1.0) or 1.0)
             exit_price = float(getattr(trade, "exit_price", entry_price) or entry_price)
-            size_usd = float(getattr(trade, "size_usd", self.config.initial_capital * 0.1) or 0.0)
+            explicit_size_usd = getattr(trade, "size_usd", None)
+            if explicit_size_usd is None:
+                units = float(getattr(trade, "size", 0.0) or 0.0)
+                size_usd = units * entry_price
+            else:
+                size_usd = float(explicit_size_usd or 0.0)
+            if size_usd <= 0:
+                size_usd = self.config.initial_capital * 0.1
             leverage = float(getattr(trade, "leverage", 1.0) or 1.0)
             pnl = float(getattr(trade, "pnl", 0.0) or 0.0)
             metadata = dict(getattr(trade, "metadata", {}) or {})
