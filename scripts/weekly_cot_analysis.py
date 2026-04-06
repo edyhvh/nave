@@ -15,9 +15,10 @@ Examples:
     nave trading run --backtest --strategy cot-weekly
 """
 import argparse
+import json
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any
 
@@ -37,6 +38,43 @@ from tests.backtest.utils.backtest_engine import BacktestEngine
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
+
+
+def _write_timestamped_backtest_exports(
+    journal: TradeJournal,
+    report_text: str,
+    patterns: list[dict[str, Any]],
+) -> tuple[Path, Path]:
+    """Persist timestamped learning exports for each generated backtest session."""
+    out_dir = Path(__file__).parent.parent / "trade_journal"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+    trades = journal.get_trade_history(environment=TradeEnvironment.BACKTEST, limit=10000)
+    stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "environment": "backtest",
+        "total_trades": len(trades),
+        "stats": stats,
+        "learning_report": report_text,
+        "patterns": patterns,
+        "trades": [t.to_dict() for t in trades],
+    }
+    summary = {
+        "generated_at": payload["generated_at"],
+        "total_trades": payload["total_trades"],
+        "stats": stats,
+        "learning_report": report_text,
+        "patterns": patterns[:10],
+        "sample_recent_trades": payload["trades"][:25],
+    }
+
+    snapshot_path = out_dir / f"backtest_snapshot_{stamp}.json"
+    summary_path = out_dir / f"backtest_summary_{stamp}.json"
+    snapshot_path.write_text(json.dumps(payload, indent=2))
+    summary_path.write_text(json.dumps(summary, indent=2))
+    return snapshot_path, summary_path
 
 
 def scan_hyperliquid_perps(client: HyperliquidClient) -> list:
@@ -88,8 +126,10 @@ def generate_weekly_report(
     cot_data = fetch_latest_cot()
     setup_learner = None
     learned_patterns = []
+    learning_report_text = ""
+    export_paths: tuple[Path, Path] | None = None
     if learn:
-        setup_learner, learned_patterns = run_setup_learning_pipeline(
+        setup_learner, learned_patterns, learning_report_text, export_paths = run_setup_learning_pipeline(
             model_path=Path("tests/backtest/artifacts/setup_learner.joblib"),
             setups=active_setups,
             capital_usd=capital_usd,
@@ -154,7 +194,13 @@ def generate_weekly_report(
 
     if setup_learner is not None:
         print()
-        print(setup_learner.generate_report(regime="all", setups=active_setups, patterns=learned_patterns))
+        print(learning_report_text or setup_learner.generate_report(
+            regime="all",
+            setups=active_setups,
+            patterns=learned_patterns,
+        ))
+        if export_paths is not None:
+            print(f"Timestamped exports: {export_paths[0]} | {export_paths[1]}")
 
     print("\n✅ Report complete. Run with --live for execution (use vault).")
     print("="*80)
@@ -187,10 +233,16 @@ def run_setup_learning_pipeline(
     learner = strategy.setup_learner
     learner.save_model(model_path)
     patterns = learner.discover_new_patterns(result)
+    report_text = learner.generate_report(regime="all", setups=setups, patterns=patterns)
+    snapshot_path, summary_path = _write_timestamped_backtest_exports(
+        journal=journal,
+        report_text=report_text,
+        patterns=patterns,
+    )
     stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
     db_path = getattr(journal.storage, "db_path", "n/a")
     print(f"Backtest journal saved: trades={stats.get('total_trades', 0)} db={db_path}")
-    return learner, patterns
+    return learner, patterns, report_text, (snapshot_path, summary_path)
 
 
 if __name__ == "__main__":

@@ -11,12 +11,50 @@ This script runs the backtest tests and generates reports.
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+ROOT_DIR = Path(__file__).parent.parent.parent
+
+
+def _write_timestamped_backtest_exports(journal, report_text: str, patterns: list[dict]) -> tuple[Path, Path]:
+    """Persist timestamped backtest learning exports for later LLM analysis."""
+    from trading.journal import TradeEnvironment
+
+    out_dir = ROOT_DIR / "trade_journal"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+    trades = journal.get_trade_history(environment=TradeEnvironment.BACKTEST, limit=10000)
+    stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "environment": "backtest",
+        "total_trades": len(trades),
+        "stats": stats,
+        "learning_report": report_text,
+        "patterns": patterns,
+        "trades": [t.to_dict() for t in trades],
+    }
+    summary = {
+        "generated_at": payload["generated_at"],
+        "total_trades": payload["total_trades"],
+        "stats": stats,
+        "learning_report": report_text,
+        "patterns": patterns[:10],
+        "sample_recent_trades": payload["trades"][:25],
+    }
+
+    snapshot_path = out_dir / f"backtest_snapshot_{stamp}.json"
+    summary_path = out_dir / f"backtest_summary_{stamp}.json"
+    snapshot_path.write_text(json.dumps(payload, indent=2))
+    summary_path.write_text(json.dumps(summary, indent=2))
+    return snapshot_path, summary_path
 
 
 def run_setup_discovery():
@@ -90,12 +128,18 @@ def run_setup_learning():
     patterns = learner.discover_new_patterns(result)
     report = learner.generate_report(regime="all", patterns=patterns)
     print(report)
+    snapshot_path, summary_path = _write_timestamped_backtest_exports(
+        journal=journal,
+        report_text=report,
+        patterns=patterns,
+    )
     journal_stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
     db_path = getattr(journal.storage, "db_path", "n/a")
     print(
         f"\nBacktest journal saved: trades={journal_stats.get('total_trades', 0)} "
         f"db={db_path}"
     )
+    print(f"Timestamped exports: {snapshot_path} | {summary_path}")
     print(f"\nSaved model: {model_path}")
     return 0
 
