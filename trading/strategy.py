@@ -208,7 +208,7 @@ class MacroMomentumStrategy(BaseStrategy):
 class CotWeeklyStrategy(BaseStrategy):
     """
     COT Weekly Strategy for backtesting and live trading.
-    
+
     Aligns with feat/cot_grok: uses COTAnalyzer as primary driver,
     implements position sizing/leverage by confidence, BTC/ETH selection,
     risk management. Compatible with BaseStrategy and backtest mocks/engine.
@@ -237,6 +237,12 @@ class CotWeeklyStrategy(BaseStrategy):
         self.consecutive_losses = 0
         self.cot_fetcher = None  # for backtest HistoricalCotFetcher
         self.current_date = datetime.now()
+        if test_mode:
+            try:
+                from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
+                self.cot_fetcher = HistoricalCotFetcher()
+            except ImportError:
+                self.cot_fetcher = None  # fallback for non-test env
 
     def set_date(self, date: datetime) -> None:
         """Support backtest date advancement."""
@@ -248,17 +254,24 @@ class CotWeeklyStrategy(BaseStrategy):
 
     def compute_signals(self) -> list[Signal]:
         """Compute COT-based signals (reuses feat/cot_grok analyzer)."""
-        from trading.cot.cot_fetcher import fetch_latest_cot
         from trading.cot.cot_analyzer import COTAnalyzer
-        from datetime import datetime
 
         try:
-            cot_data = fetch_latest_cot()
+            if self.test_mode and self.cot_fetcher is not None:
+                # Use historical for backtests/manual runs (no account needed)
+                cot_data = {
+                    "BTC": self.cot_fetcher.latest_btc(),
+                    "ETH": self.cot_fetcher.latest_eth(),
+                }
+            else:
+                from trading.cot.cot_fetcher import fetch_latest_cot
+                cot_data = fetch_latest_cot()
             analyzer = COTAnalyzer()
             biases = analyzer.analyze(cot_data)
             return analyzer.to_signals(biases)
         except Exception as e:
-            logger.warning("COT signal computation failed: %s. Using empty.", e)
+            logger.warning(
+                "COT signal computation failed: %s. Using empty.", e)
             return []
 
     def calculate_leverage(self, confidence: float) -> float:
@@ -272,7 +285,8 @@ class CotWeeklyStrategy(BaseStrategy):
         if confidence < 0.4:
             return {"leverage": 0, "size_usd": 0.0}
         leverage = self.calculate_leverage(confidence)
-        size_usd = (capital * self.risk_pct / max(stop_distance, 0.01)) * confidence
+        size_usd = (capital * self.risk_pct /
+                    max(stop_distance, 0.01)) * confidence
         size_usd = min(size_usd, capital * 0.8)
         return {"leverage": round(leverage, 1), "size_usd": round(size_usd, 2)}
 
