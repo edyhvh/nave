@@ -43,28 +43,62 @@ class HistoricalCotFetcher:
         self._current_date: Optional[datetime] = None
 
     def _generate_synthetic_data(self) -> pd.DataFrame:
-        """Generate synthetic COT data for tests/backtests when CSV missing."""
+        """Generate synthetic COT data for tests/backtests when CSV missing.
+
+        Generates separate columns for BTC and ETH with distinct profiles
+        to avoid the duplication bug where both assets show the same values.
+        """
         import numpy as np
         dates = pd.date_range(start='2022-01-01',
                               end='2025-03-31', freq='W-TUE')
         np.random.seed(42)
         data = []
         for i, date in enumerate(dates):
-            base_net = 15 * np.sin(i / 10) + np.random.normal(0, 5)
-            net_pct = np.clip(base_net, -30, 30)
-            change = np.random.normal(0, 1000)
-            if net_pct > 10:
-                change += 500
-            elif net_pct < -10:
-                change -= 500
+            # BTC: larger contracts, specs tend net short
+            btc_net_pct = np.clip(15 * np.sin(i / 10) +
+                                  np.random.normal(0, 5), -30, 30)
+            btc_change = np.random.normal(0, 1000)
+            if btc_net_pct > 10:
+                btc_change += 500
+            elif btc_net_pct < -10:
+                btc_change -= 500
+
+            # ETH: different cycle, smaller scale, phase-shifted
+            eth_net_pct = np.clip(
+                12 * np.sin(i / 8 + 2) + np.random.normal(0, 4), -25, 25)
+            eth_change = np.random.normal(0, 600)
+            if eth_net_pct > 8:
+                eth_change += 300
+            elif eth_net_pct < -8:
+                eth_change -= 300
+
             data.append({
                 'report_date': date,
-                'noncomm_long': 50000 + net_pct * 500,
-                'noncomm_short': 50000 - net_pct * 500,
-                'noncomm_net': net_pct * 1000,
+                # BTC columns
+                'btc_noncomm_long': 50000 + btc_net_pct * 500,
+                'btc_noncomm_short': 50000 - btc_net_pct * 500,
+                'btc_noncomm_net': btc_net_pct * 1000,
+                'btc_open_interest': 100000,
+                'btc_noncomm_pct_oi': btc_net_pct,
+                'btc_change_noncomm_net': btc_change,
+                'btc_comm_long': 30000 - btc_net_pct * 300,
+                'btc_comm_short': 30000 + btc_net_pct * 300,
+                # ETH columns
+                'eth_noncomm_long': 12000 + eth_net_pct * 200,
+                'eth_noncomm_short': 12000 - eth_net_pct * 200,
+                'eth_noncomm_net': eth_net_pct * 400,
+                'eth_open_interest': 25000,
+                'eth_noncomm_pct_oi': eth_net_pct,
+                'eth_change_noncomm_net': eth_change,
+                'eth_comm_long': 8000 - eth_net_pct * 120,
+                'eth_comm_short': 8000 + eth_net_pct * 120,
+                # Legacy fallback columns (BTC as default)
+                'noncomm_long': 50000 + btc_net_pct * 500,
+                'noncomm_short': 50000 - btc_net_pct * 500,
+                'noncomm_net': btc_net_pct * 1000,
                 'open_interest': 100000,
-                'noncomm_pct_oi': net_pct,
-                'change_noncomm_net': change,
+                'noncomm_pct_oi': btc_net_pct,
+                'change_noncomm_net': btc_change,
             })
         return pd.DataFrame(data)
 

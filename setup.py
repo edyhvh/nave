@@ -11,6 +11,10 @@ import shutil
 from pathlib import Path
 
 
+ROOT_DIR = Path(__file__).resolve().parent
+VENV_BIN_DIR = ROOT_DIR / ".venv" / "bin"
+
+
 def run_command(cmd, cwd=None, check=True):
     """Run a command and return the result"""
     try:
@@ -132,6 +136,64 @@ def setup_direnv():
             "direnv not found - install it for automatic environment activation")
 
 
+def install_nave_cli_shim():
+    """Install a deterministic nave command shim into .venv/bin."""
+    print_status("Installing nave CLI shim...")
+
+    VENV_BIN_DIR.mkdir(parents=True, exist_ok=True)
+    shim_path = VENV_BIN_DIR / "nave"
+    root = str(ROOT_DIR)
+
+    shim = f'''#!/usr/bin/env python3
+import sys
+
+# Ensure project root is importable even without editable install.
+sys.path.insert(0, {root!r})
+
+from cli.main import app
+
+if __name__ == "__main__":
+    app()
+'''
+    shim_path.write_text(shim, encoding="utf-8")
+    shim_path.chmod(0o755)
+    print_success(f"Installed nave shim at {shim_path}")
+
+
+def _target_rc_file() -> Path:
+    shell = os.environ.get("SHELL", "")
+    home = Path.home()
+    if shell.endswith("zsh"):
+        return home / ".zshrc"
+    if shell.endswith("bash"):
+        return home / ".bashrc"
+    # Conservative fallback for unknown shells.
+    return home / ".zshrc"
+
+
+def configure_shell_path():
+    """Add .venv/bin PATH automation to .zshrc or .bashrc once."""
+    print_status("Configuring shell PATH automation...")
+    rc_path = _target_rc_file()
+    export_line = f'export PATH="{VENV_BIN_DIR}:$PATH"'
+    begin_marker = "# >>> nave-path >>>"
+    end_marker = "# <<< nave-path <<<"
+
+    if rc_path.exists():
+        content = rc_path.read_text(encoding="utf-8")
+    else:
+        content = ""
+
+    if begin_marker in content and end_marker in content:
+        print_success(f"PATH automation already configured in {rc_path}")
+        return
+
+    block = f"\n{begin_marker}\n{export_line}\n{end_marker}\n"
+    rc_path.write_text(content + block, encoding="utf-8")
+    print_success(f"Added .venv PATH automation to {rc_path}")
+    print_status(f"Apply now with: source {rc_path}")
+
+
 def create_scripts():
     """Create utility scripts"""
     print_status("Creating utility scripts...")
@@ -179,6 +241,8 @@ def main():
     setup_mise()
     create_venv()
     install_dependencies()
+    install_nave_cli_shim()
+    configure_shell_path()
     setup_direnv()
     create_scripts()
 
@@ -186,10 +250,12 @@ def main():
     print_success("NAVE setup complete!")
     print("\n🎯 How to use NAVE:")
     print("1. Enter directory: cd /path/to/nave")
-    print("2. Environment activates automatically (if direnv installed)")
-    print("3. Or manually: source .venv/bin/activate")
-    print("4. Use unified CLI: nave --help")
-    print("5. Run scripts: python scripts/your_script.py or ./run.sh script_name")
+    print("2. Preferred: enable direnv once, then run `direnv allow` in this repo")
+    print("3. Reload shell config: source ~/.zshrc (or source ~/.bashrc)")
+    print("4. Fallback: run `source .venv/bin/activate`")
+    print("5. Alternative shell helper: `./scripts/dev_shell.sh`")
+    print("6. Use unified CLI: nave --help")
+    print("7. Run scripts: python scripts/your_script.py or ./run.sh script_name")
     print("\n📚 Available commands:")
     print("- nave --help                  # Unified CLI")
     print("- nave trading run-strategy    # Run strategies")

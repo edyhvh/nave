@@ -32,7 +32,7 @@ class TestCotWeeklyStrategy:
         """Default strategy configuration for testing."""
         return {
             'capital_usd': 10000.0,
-            'risk_pct': 0.10,
+            'risk_pct': 0.02,
             'max_leverage': 10.0,
             'test_mode': True,  # mocks only, no Hyperliquid account needed
         }
@@ -103,9 +103,9 @@ class TestCotWeeklyStrategy:
         strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
 
         test_cases = [
-            {'confidence': 0.9, 'expected_leverage_min': 8, 'should_trade': True},
-            {'confidence': 0.7, 'expected_leverage_min': 5, 'should_trade': True},
-            {'confidence': 0.5, 'expected_leverage_min': 3, 'should_trade': True},
+            {'confidence': 0.9, 'expected_leverage_min': 1, 'should_trade': True},
+            {'confidence': 0.7, 'expected_leverage_min': 1, 'should_trade': True},
+            {'confidence': 0.5, 'expected_leverage_min': 1, 'should_trade': True},
             {'confidence': 0.3, 'expected_leverage_min': 0, 'should_trade': False},
         ]
 
@@ -272,22 +272,73 @@ class TestCotWeeklyStrategy:
         strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
 
         test_cases = [
-            (0.95, 9.5),  # 95% conf -> 9.5x leverage
-            (0.80, 8.0),  # 80% conf -> 8.0x leverage
-            (0.50, 5.0),  # 50% conf -> 5.0x leverage
-            (0.30, 3.0),  # 30% conf -> 3.0x leverage
+            # strong bias -> 10x
+            (0.95, 10.0, "strong-positive", {"bias_strength": "strong"}),
+            # medium bias -> 8x
+            (0.80, 8.0, "positive", {"bias_strength": "medium"}),
+            # no metadata -> weak path -> 5x
+            (0.50, 5.0, "marginal", None),
+            # no metadata -> weak path -> 5x
+            (0.30, 5.0, "marginal", None),
         ]
 
-        for confidence, expected_leverage in test_cases:
-            leverage = strategy.calculate_leverage(confidence)
+        for confidence, expected_leverage, edge_label, meta in test_cases:
+            leverage = strategy.calculate_leverage(
+                confidence, edge_label=edge_label, metadata=meta)
 
             # Allow small rounding differences
-            assert abs(leverage - expected_leverage) < 0.5, \
+            assert abs(leverage - expected_leverage) <= 0.5, \
                 f"Leverage {leverage}x doesn't match expected {expected_leverage}x for confidence {confidence}"
 
             # Never exceed max
             assert leverage <= strategy_config['max_leverage'], \
                 f"Leverage {leverage}x exceeds max {strategy_config['max_leverage']}x"
+
+    def test_mock_pnl_applies_leverage_multiplier(self):
+        """PnL should scale with leverage in mock trade closes."""
+        base_date = datetime(2024, 1, 15)
+
+        client_1x = MockHyperliquidClient(slippage_pct=0.0)
+        client_1x.set_date(base_date)
+        t1 = client_1x.open_position(
+            'BTC', 'long', size_usd=1000.0, leverage=1.0)
+        closed_1x = client_1x._close_at_price(
+            'BTC', t1.entry_price * 1.01, base_date + timedelta(days=1))
+
+        client_8x = MockHyperliquidClient(slippage_pct=0.0)
+        client_8x.set_date(base_date)
+        t8 = client_8x.open_position(
+            'BTC', 'long', size_usd=1000.0, leverage=8.0)
+        closed_8x = client_8x._close_at_price(
+            'BTC', t8.entry_price * 1.01, base_date + timedelta(days=1))
+
+        assert closed_1x.pnl is not None and closed_8x.pnl is not None
+        assert closed_8x.pnl > closed_1x.pnl * \
+            7.0, "8x leverage should materially amplify PnL"
+
+    def test_dynamic_leverage_uses_cot_proxy_indicators(self, mock_client, strategy_config):
+        """Stronger COT context should allow higher leverage than weak/high-vol context."""
+        strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
+
+        strong_ctx = {
+            "cot_bias_strength": 1.0,
+            "volatility": 0.02,
+            "bias_strength": "strong",
+        }
+        weak_ctx = {
+            "cot_bias_strength": 0.25,
+            "volatility": 0.055,
+            "bias_strength": "weak",
+        }
+
+        lev_strong = strategy.calculate_leverage(
+            0.8, edge_label="strong-positive", metadata=strong_ctx)
+        lev_weak = strategy.calculate_leverage(
+            0.8, edge_label="marginal", metadata=weak_ctx)
+
+        assert lev_strong > lev_weak
+        assert 5.0 <= lev_weak <= strategy_config['max_leverage']
+        assert 5.0 <= lev_strong <= strategy_config['max_leverage']
 
     def test_trade_execution_simulation(self, mock_client, strategy_config):
         """

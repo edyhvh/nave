@@ -61,7 +61,6 @@ Thumbs.db
 *.csv
 *.xlsx
 *.xls
-*.json
 *.parquet
 *.feather
 *.pkl
@@ -153,3 +152,9 @@ conda/
 .mise/
 .direnv/
 
+# Web dependencies/build artifacts
+node_modules/
+web/node_modules/
+
+# 
+*.joblib

@@ -14,5 +14,7 @@ DEFAULT_SETUPS = [
     "breaker_block",
 ]
 
+ALL_KNOWN_SETUPS = list(DEFAULT_SETUPS)
+
 # COT is the main weekly driver; other indicators modulate entries/risk.
 COT_PRIMARY_WEIGHT = 0.75

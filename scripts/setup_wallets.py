@@ -1,6 +1,6 @@
 """
 Wallet setup script — generates BIP39 seed phrases and EVM wallets for
-ironclaw and openfang, then stores them securely in the local vault.
+ironclaw, openfang, and hermes, then stores them securely in the local vault.
 
 Run ONCE to generate wallets. If wallets already exist, it skips them.
 
@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from trading.vault import WalletVault
 
 
-WALLETS = ["ironclaw", "openfang"]
+WALLETS = ["ironclaw", "openfang", "hermes"]
 
 
 def generate_evm_wallet() -> dict:
