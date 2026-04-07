@@ -1,6 +1,6 @@
 """Mock Hyperliquid client for backtesting."""
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import pandas as pd
@@ -70,10 +70,16 @@ class MockHyperliquidClient:
             timezone.utc)
 
         if self.price_data is not None:
-            # Query from price data
-            mask = self.price_data['timestamp'] <= effective_date
-            if mask.any():
-                return float(self.price_data[mask].iloc[-1]['close'])
+            # Query from price data. If coin column exists, filter by symbol.
+            price_df = self.price_data
+            if 'coin' in price_df.columns:
+                symbol = coin.upper()
+                coin_mask = price_df['coin'].astype(str).str.upper() == symbol
+                price_df = price_df[coin_mask]
+            if not price_df.empty:
+                mask = price_df['timestamp'] <= effective_date
+                if mask.any():
+                    return float(price_df[mask].iloc[-1]['close'])
 
         series = self.price_series.get(coin.upper())
         if series is not None and not series.empty:
@@ -83,8 +89,13 @@ class MockHyperliquidClient:
             # Align to daily data precision before asof lookup.
             ts = ts.normalize()
             price = series.asof(ts)
-            if pd.notna(price):
-                return float(price)
+            if isinstance(price, pd.Series):
+                if price.empty:
+                    price = None
+                else:
+                    price = price.iloc[-1]
+            if price is not None and not pd.isna(price):
+                return float(cast(float, price))
 
         # Fallback: generate synthetic price
         return self._synthetic_price(coin, effective_date)
@@ -113,11 +124,14 @@ class MockHyperliquidClient:
                 )
                 if frame is None or frame.empty or "Close" not in frame.columns:
                     continue
-                series = frame["Close"].copy()
-                if isinstance(series, pd.DataFrame):
-                    series = series.iloc[:, 0]
-                if getattr(series.index, "tz", None) is not None:
-                    series.index = series.index.tz_convert(None)
+                close_data = frame["Close"]
+                if isinstance(close_data, pd.DataFrame):
+                    first_col = close_data.columns[0]
+                    series = close_data[first_col].copy()
+                else:
+                    series = close_data.copy()
+                if isinstance(series.index, pd.DatetimeIndex) and series.index.tz is not None:
+                    series.index = series.index.tz_localize(None)
                 loaded[coin] = series
         except Exception:
             return {}
@@ -125,7 +139,8 @@ class MockHyperliquidClient:
 
     def _calculate_atr(self, coin: str, lookback_days: int = 14) -> float:
         """Calculate Average True Range from daily price data for stop/TP sizing."""
-        series = self.price_series.get(coin.upper())
+        series_map = getattr(self, "price_series", {}) or {}
+        series = series_map.get(coin.upper())
         if series is None or series.empty:
             return 0.02  # fallback 2% ATR
         effective_date = self.current_date or datetime.now(timezone.utc)
@@ -205,13 +220,25 @@ class MockHyperliquidClient:
         """Close a position at a specific price (for stop/TP fills)."""
         trade = self.positions.pop(coin)
         if trade.direction == "long":
-            pnl = (exit_price - trade.entry_price) * trade.size
+            pnl = (exit_price - trade.entry_price) * \
+                trade.size * trade.leverage
         else:
-            pnl = (trade.entry_price - exit_price) * trade.size
+            pnl = (trade.entry_price - exit_price) * \
+                trade.size * trade.leverage
+
+        # Add exit taker fee (0.035%) and funding estimate
+        exit_notional = trade.size * exit_price * trade.leverage
+        exit_fee = exit_notional * 0.00035
+        hold_hours = max(
+            (exit_date - trade.entry_date).total_seconds() / 3600, 1)
+        funding_fee = trade.size * trade.entry_price * \
+            trade.leverage * 0.0001 * (hold_hours / 8)
+        total_fees = trade.fees + exit_fee + funding_fee
 
         trade.exit_date = exit_date
         trade.exit_price = exit_price
-        trade.pnl = pnl - trade.fees
+        trade.pnl = pnl - total_fees
+        trade.fees = total_fees
         trade.status = "closed"
         self.trade_history.append(trade)
         return trade
@@ -248,6 +275,10 @@ class MockHyperliquidClient:
             if take_profit is None:
                 take_profit = computed_tp
 
+        # Realistic Hyperliquid fees: 0.035% taker on leveraged notional
+        entry_notional = size_usd * leverage
+        entry_fee = entry_notional * 0.00035
+
         trade = MockTrade(
             entry_date=current_date,
             exit_date=None,
@@ -258,7 +289,7 @@ class MockHyperliquidClient:
             size=size_usd / entry_price,
             leverage=leverage,
             pnl=None,
-            fees=size_usd * 0.0005,  # 0.05% trading fee
+            fees=entry_fee,
             status='open',
             stop_loss=stop_loss,
             take_profit=take_profit,
@@ -275,19 +306,32 @@ class MockHyperliquidClient:
 
         trade = self.positions.pop(coin)
         exit_price = self.get_price(coin)
+        exit_date = self.current_date if self.current_date is not None else datetime.now(
+            timezone.utc)
 
         # Apply slippage
         if trade.direction == 'long':
             exit_price *= (1 - self.slippage)
-            pnl = (exit_price - trade.entry_price) * trade.size
+            pnl = (exit_price - trade.entry_price) * \
+                trade.size * trade.leverage
         else:
             exit_price *= (1 + self.slippage)
-            pnl = (trade.entry_price - exit_price) * trade.size
+            pnl = (trade.entry_price - exit_price) * \
+                trade.size * trade.leverage
 
-        trade.exit_date = self.current_date if self.current_date is not None else datetime.now(
-            timezone.utc)
+        # Add exit taker fee (0.035%) and funding estimate
+        exit_notional = trade.size * exit_price * trade.leverage
+        exit_fee = exit_notional * 0.00035
+        hold_hours = max(
+            (exit_date - trade.entry_date).total_seconds() / 3600, 1)
+        funding_fee = trade.size * trade.entry_price * \
+            trade.leverage * 0.0001 * (hold_hours / 8)
+        total_fees = trade.fees + exit_fee + funding_fee
+
+        trade.exit_date = exit_date
         trade.exit_price = exit_price
-        trade.pnl = pnl - trade.fees
+        trade.pnl = pnl - total_fees
+        trade.fees = total_fees
         trade.status = 'closed'
 
         self.trade_history.append(trade)
@@ -321,3 +365,29 @@ class MockHyperliquidClient:
         for coin in list(self.positions.keys()):
             closed.append(self.close_position(coin))
         return closed
+
+    def market_open(self, coin: str, side: str, size_usd: float) -> Dict[str, Any]:
+        """Compatibility wrapper matching live client market_open signature."""
+        trade = self.open_position(
+            coin=coin,
+            direction="long" if str(side).lower() == "long" else "short",
+            size_usd=size_usd,
+            leverage=1.0,
+        )
+        return {
+            "status": "ok",
+            "coin": trade.coin,
+            "direction": trade.direction,
+            "size_usd": size_usd,
+            "entry_price": trade.entry_price,
+        }
+
+    def market_close(self, coin: str) -> Dict[str, Any]:
+        """Compatibility wrapper matching live client market_close signature."""
+        trade = self.close_position(coin)
+        return {
+            "status": "ok",
+            "coin": trade.coin,
+            "pnl": trade.pnl,
+            "exit_price": trade.exit_price,
+        }

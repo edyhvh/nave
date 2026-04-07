@@ -51,6 +51,23 @@ class Signal:
     size_usd: float | None = None
     metadata: dict = field(default_factory=dict)
 
+    def __init__(
+        self,
+        coin: str,
+        direction: Direction | str,
+        confidence: float,
+        source: str,
+        size_usd: float | None = None,
+        metadata: dict | None = None,
+    ):
+        self.coin = coin
+        self.direction = Direction(direction) if isinstance(direction, str) else direction
+        self.confidence = confidence
+        self.source = source
+        self.size_usd = size_usd
+        self.metadata = metadata or {}
+        self.__post_init__()
+
     def __post_init__(self):
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(

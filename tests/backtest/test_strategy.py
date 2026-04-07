@@ -272,19 +272,19 @@ class TestCotWeeklyStrategy:
         strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
 
         test_cases = [
-            # 95% conf, strong edge -> capped at 10x
-            (0.95, 10.0, "strong-positive"),
-            # 80% conf, positive edge -> capped at 5x
-            (0.80, 5.0, "positive"),
-            # 50% conf, marginal edge -> capped at 2x
-            (0.50, 2.0, "marginal"),
-            # 30% conf, marginal edge -> capped at 2x
-            (0.30, 1.5, "marginal"),
+            # strong bias -> 10x
+            (0.95, 10.0, "strong-positive", {"bias_strength": "strong"}),
+            # medium bias -> 8x
+            (0.80, 8.0, "positive", {"bias_strength": "medium"}),
+            # no metadata -> weak path -> 5x
+            (0.50, 5.0, "marginal", None),
+            # no metadata -> weak path -> 5x
+            (0.30, 5.0, "marginal", None),
         ]
 
-        for confidence, expected_leverage, edge_label in test_cases:
+        for confidence, expected_leverage, edge_label, meta in test_cases:
             leverage = strategy.calculate_leverage(
-                confidence, edge_label=edge_label)
+                confidence, edge_label=edge_label, metadata=meta)
 
             # Allow small rounding differences
             assert abs(leverage - expected_leverage) <= 0.5, \
@@ -293,6 +293,52 @@ class TestCotWeeklyStrategy:
             # Never exceed max
             assert leverage <= strategy_config['max_leverage'], \
                 f"Leverage {leverage}x exceeds max {strategy_config['max_leverage']}x"
+
+    def test_mock_pnl_applies_leverage_multiplier(self):
+        """PnL should scale with leverage in mock trade closes."""
+        base_date = datetime(2024, 1, 15)
+
+        client_1x = MockHyperliquidClient(slippage_pct=0.0)
+        client_1x.set_date(base_date)
+        t1 = client_1x.open_position(
+            'BTC', 'long', size_usd=1000.0, leverage=1.0)
+        closed_1x = client_1x._close_at_price(
+            'BTC', t1.entry_price * 1.01, base_date + timedelta(days=1))
+
+        client_8x = MockHyperliquidClient(slippage_pct=0.0)
+        client_8x.set_date(base_date)
+        t8 = client_8x.open_position(
+            'BTC', 'long', size_usd=1000.0, leverage=8.0)
+        closed_8x = client_8x._close_at_price(
+            'BTC', t8.entry_price * 1.01, base_date + timedelta(days=1))
+
+        assert closed_1x.pnl is not None and closed_8x.pnl is not None
+        assert closed_8x.pnl > closed_1x.pnl * \
+            7.0, "8x leverage should materially amplify PnL"
+
+    def test_dynamic_leverage_uses_cot_proxy_indicators(self, mock_client, strategy_config):
+        """Stronger COT context should allow higher leverage than weak/high-vol context."""
+        strategy = CotWeeklyStrategy(client=mock_client, **strategy_config)
+
+        strong_ctx = {
+            "cot_bias_strength": 1.0,
+            "volatility": 0.02,
+            "bias_strength": "strong",
+        }
+        weak_ctx = {
+            "cot_bias_strength": 0.25,
+            "volatility": 0.055,
+            "bias_strength": "weak",
+        }
+
+        lev_strong = strategy.calculate_leverage(
+            0.8, edge_label="strong-positive", metadata=strong_ctx)
+        lev_weak = strategy.calculate_leverage(
+            0.8, edge_label="marginal", metadata=weak_ctx)
+
+        assert lev_strong > lev_weak
+        assert 5.0 <= lev_weak <= strategy_config['max_leverage']
+        assert 5.0 <= lev_strong <= strategy_config['max_leverage']
 
     def test_trade_execution_simulation(self, mock_client, strategy_config):
         """

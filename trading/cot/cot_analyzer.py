@@ -71,6 +71,7 @@ class COTAnalyzer:
                 pct = 0.0
             if change is None or (isinstance(change, float) and math.isnan(change)):
                 change = 0
+            change = int(change)
         else:
             # From real DF or records
             df = pd.DataFrame(raw.get("raw", []))
@@ -142,7 +143,7 @@ class COTAnalyzer:
         bias_score = score  # 0-100 overall
 
         market_regime = self.regime or self._infer_market_regime(
-            change=change, pct_oi=float(pct))
+            change=int(change), pct_oi=float(pct))
         metadata = {
             "net_non_commercial": int(net),
             "pct_oi": round(pct, 1),

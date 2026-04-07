@@ -94,7 +94,8 @@ def run_trading(
         help="Strategy id to run (e.g. cot-weekly)",
     ),
     wallet: str = typer.Option("hermes", help="Wallet name"),
-    capital: float = typer.Option(2000.0, help="Capital for weekly COT analysis"),
+    capital: float = typer.Option(
+        2000.0, help="Capital for weekly COT analysis"),
     paper: bool = typer.Option(
         False,
         "--paper",
@@ -129,7 +130,8 @@ def run_trading(
         raise typer.BadParameter("Use either --paper or --backtest, not both.")
 
     if strategy == "cot-weekly":
-        cmd = [sys.executable, "scripts/weekly_cot_analysis.py", f"--capital={capital}"]
+        cmd = [sys.executable, "scripts/weekly_cot_analysis.py",
+               f"--capital={capital}"]
         if backtest:
             cmd.append("--backtest")
         else:
@@ -138,7 +140,8 @@ def run_trading(
             cmd.append("--live")
         if learn:
             cmd.append("--learn")
-        typer.echo(f"Running {strategy} (paper={not backtest}, backtest={backtest})")
+        typer.echo(
+            f"Running {strategy} (paper={not backtest}, backtest={backtest})")
         subprocess.run(cmd, check=False)
         return
 
@@ -185,7 +188,135 @@ def analyze_cot(coins: str = typer.Option("BTC ETH", help="Coins to analyze")):
     typer.echo(f"Analyzing COT for {coins}...")
     import subprocess
     import sys
-    subprocess.run([sys.executable, "-m", "trading.cot.cot_analyzer"], check=False)
+    subprocess.run(
+        [sys.executable, "-m", "trading.cot.cot_analyzer"], check=False)
+
+
+@cot_app.command("report")
+def cot_report(
+    coins: str = typer.Option(
+        "BTC ETH", help="Coins to analyze (space-separated)"),
+    capital: float = typer.Option(2000.0, help="Available capital USD"),
+    json_out: bool = typer.Option(
+        False, "--json", help="Output as JSON instead of table"),
+):
+    """Weekly COT report with indicators for manual setup hunting.
+
+    Fetches latest CFTC COT data, computes bias/strength/regime/volatility
+    for each coin, and prints a clean summary you can use to find setups
+    on the 4H/1H chart yourself.
+
+    Examples:
+        nave cot report
+        nave cot report --coins "BTC ETH SOL"
+        nave cot report --json
+    """
+    import json as _json
+    from datetime import datetime as _dt
+
+    from trading.cot.cot_fetcher import fetch_latest_cot
+    from trading.cot.cot_analyzer import COTAnalyzer
+
+    coin_list = coins.split()
+    cot_data = fetch_latest_cot()
+
+    analyzer = COTAnalyzer()
+    biases = analyzer.analyze(cot_data)
+
+    now = _dt.now().strftime("%Y-%m-%d %H:%M")
+
+    if json_out:
+        payload = {
+            "generated_at": now,
+            "capital_usd": capital,
+            "coins": {},
+        }
+        for coin in coin_list:
+            b = biases.get(coin)
+            if not b:
+                continue
+            m = b.metadata
+            payload["coins"][coin] = {
+                "bias": b.bias,
+                "confidence": round(b.confidence, 2),
+                "net_non_commercial": b.net_non_commercial,
+                "pct_oi": m["pct_oi"],
+                "weekly_change": b.weekly_change,
+                "fits_score": m["fits_weighted_score"],
+                "bias_strength": m["bias_strength"],
+                "market_regime": m["market_regime"],
+                "momentum": m["momentum"],
+                "volatility": round(m["volatility"], 4),
+                "report_date": m.get("report_date", "N/A"),
+            }
+        typer.echo(_json.dumps(payload, indent=2))
+        return
+
+    # ── Pretty table output ──
+    header = f"NAVE WEEKLY COT REPORT — {now}"
+    typer.echo()
+    typer.echo("=" * 68)
+    typer.echo(f"  {header}")
+    typer.echo("=" * 68)
+    typer.echo(
+        f"  Capital: ${capital:,.0f}  |  Philosophy: F.I.T.S. contrarian COT")
+    typer.echo()
+
+    for coin in coin_list:
+        b = biases.get(coin)
+        if not b:
+            typer.echo(f"  {coin}: no COT data available")
+            continue
+        m = b.metadata
+
+        arrow = {"bullish": "▲", "bearish": "▼",
+                 "neutral": "–"}.get(b.bias, "?")
+
+        typer.echo(f"  ┌─ {coin} ────────────────────────────────────────────")
+        typer.echo(
+            f"  │  Bias:           {b.bias.upper()} {arrow}  (confidence {b.confidence:.0%})")
+        typer.echo(
+            f"  │  Bias Strength:  {m['bias_strength'].upper()}  (FITS score {m['fits_weighted_score']}/100)")
+        typer.echo(f"  │  Market Regime:  {m['market_regime']}")
+        typer.echo(f"  │")
+        typer.echo(f"  │  Net Non-Comm:   {b.net_non_commercial:,}")
+        typer.echo(f"  │  % of OI:        {m['pct_oi']:.1f}%")
+        typer.echo(f"  │  Weekly Δ:       {b.weekly_change:+,}")
+        typer.echo(f"  │  Momentum:       {m['momentum']:+,.0f}")
+        typer.echo(f"  │  Volatility:     {m['volatility']:.2%}")
+        typer.echo(f"  │  Report Date:    {m.get('report_date', 'N/A')}")
+        typer.echo(f"  │")
+
+        # Actionable hint
+        if b.bias == "bullish":
+            typer.echo(
+                f"  │  → Look for LONG setups on 4H/1H (OB, FVG, liq sweep)")
+        elif b.bias == "bearish":
+            typer.echo(
+                f"  │  → Look for SHORT setups on 4H/1H (OB, FVG, liq sweep)")
+        else:
+            typer.echo(f"  │  → NEUTRAL — no clear edge, wait or reduce size")
+
+        typer.echo(f"  └────────────────────────────────────────────────────")
+        typer.echo()
+
+    # Best asset
+    ranked = sorted(
+        [(c, biases[c]) for c in coin_list if c in biases],
+        key=lambda x: x[1].confidence,
+        reverse=True,
+    )
+    if ranked:
+        best_coin, best_bias = ranked[0]
+        typer.echo(f"  Best edge: {best_coin} {best_bias.bias.upper()} "
+                   f"({best_bias.confidence:.0%} confidence, "
+                   f"{best_bias.metadata['bias_strength']} strength)")
+    typer.echo()
+    typer.echo("  Use this report to find setups manually on the chart.")
+    typer.echo("  Setups to look for: 75% retracement, order block, FVG,")
+    typer.echo("  liquidity sweep, breaker block.")
+    typer.echo("=" * 68)
+    typer.echo()
 
 
 if __name__ == "__main__":

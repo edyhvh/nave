@@ -266,6 +266,10 @@ class BacktestEngine:
             pnl = float(getattr(trade, "pnl", 0.0) or 0.0)
             metadata = dict(getattr(trade, "metadata", {}) or {})
 
+            stop_loss_val = getattr(trade, "stop_loss", None)
+            take_profit_val = getattr(trade, "take_profit", None)
+            raw_fees = float(getattr(trade, "fees", 0.0) or 0.0)
+
             to_save = Trade(
                 strategy_name=strategy_name,
                 coin=coin,
@@ -274,6 +278,13 @@ class BacktestEngine:
                 leverage=leverage,
                 entry_price=entry_price,
                 environment=TradeEnvironment.BACKTEST,
+                stop_loss=float(
+                    stop_loss_val) if stop_loss_val is not None else None,
+                take_profit=float(
+                    take_profit_val) if take_profit_val is not None else None,
+                entry_fee=raw_fees * 0.4,
+                exit_fee=raw_fees * 0.4,
+                funding_fees=raw_fees * 0.2,
                 entry_signals=metadata,
                 notes="Recorded by BacktestEngine",
             )
@@ -289,6 +300,8 @@ class BacktestEngine:
                 TradeOutcome.WIN if pnl > 0 else TradeOutcome.LOSS if pnl < 0 else TradeOutcome.BREAKEVEN
             )
 
+        if self.journal is None:
+            return
         self.journal.storage.save_trade(to_save)
         self._backtest_trade_ids.append(to_save.id)
 

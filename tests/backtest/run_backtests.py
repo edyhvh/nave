@@ -18,6 +18,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
 
+import pandas as pd
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -28,6 +30,7 @@ def _write_timestamped_backtest_exports(
     report_text: str,
     patterns: list[dict],
     run_trades: list[Any],
+    run_config: dict[str, Any] | None = None,
 ) -> tuple[Path, Path]:
     """Persist timestamped backtest learning exports for later LLM analysis."""
 
@@ -42,6 +45,7 @@ def _write_timestamped_backtest_exports(
         "environment": "backtest",
         "total_trades": len(trades_payload),
         "stats": stats,
+        "run_config": run_config or {},
         "learning_report": report_text,
         "patterns": patterns,
         "trades": trades_payload,
@@ -50,6 +54,7 @@ def _write_timestamped_backtest_exports(
         "generated_at": payload["generated_at"],
         "total_trades": payload["total_trades"],
         "stats": stats,
+        "run_config": payload["run_config"],
         "learning_report": report_text,
         "patterns": patterns[:10],
         "sample_recent_trades": payload["trades"][:25],
@@ -84,6 +89,70 @@ def _stats_from_trade_dicts(trades: list[dict[str, Any]]) -> dict[str, Any]:
         "worst_trade": min(pnls) if pnls else 0.0,
         "profit_factor": (gross_profit / abs(gross_loss)) if gross_loss < 0 else float("inf"),
     }
+
+
+def _build_intraday_price_snapshot(timeframe: str, coins: list[str]) -> tuple[Path, dict[str, Any]]:
+    """Build merged coin-aware parquet for MockHyperliquidClient intraday runs."""
+    snapshots_dir = ROOT_DIR / "data" / "hyperliquid_snapshots"
+    out_path = ROOT_DIR / "tests" / "backtest" / \
+        "fixtures" / f"hyperliquid_{timeframe}_merged.parquet"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    frames: list[pd.DataFrame] = []
+    coverage: dict[str, Any] = {}
+
+    for coin in coins:
+        src = snapshots_dir / f"{coin}_{timeframe}.parquet"
+        if not src.exists():
+            raise FileNotFoundError(
+                f"Missing snapshot file: {src}. Generate snapshots first via scripts/fetch_hyperliquid_snapshots.py"
+            )
+
+        df = pd.read_parquet(src)
+        if "timestamp" not in df.columns or "close" not in df.columns:
+            raise ValueError(
+                f"Snapshot file {src} missing required columns timestamp/close")
+
+        coin_df = df.copy()
+        coin_df["coin"] = coin
+        coin_df["timestamp"] = pd.to_datetime(
+            coin_df["timestamp"], utc=True).dt.tz_localize(None)
+        coin_df = coin_df[["timestamp", "close", "coin"]].dropna(
+            subset=["timestamp", "close"])
+        coin_df = coin_df.sort_values("timestamp")
+        if coin_df.empty:
+            raise ValueError(
+                f"Snapshot file {src} is empty after normalization")
+
+        coverage[coin] = {
+            "rows": int(len(coin_df)),
+            "start": coin_df["timestamp"].iloc[0].isoformat(),
+            "end": coin_df["timestamp"].iloc[-1].isoformat(),
+        }
+        frames.append(coin_df)
+
+    merged = pd.concat(frames, ignore_index=True)
+    merged = merged.sort_values(["timestamp", "coin"]).drop_duplicates(
+        subset=["timestamp", "coin"])
+    merged.to_parquet(out_path, index=False)
+
+    starts = [pd.Timestamp(v["start"]) for v in coverage.values()]
+    ends = [pd.Timestamp(v["end"]) for v in coverage.values()]
+    overlap_start = max(starts).to_pydatetime()
+    overlap_end = min(ends).to_pydatetime()
+
+    meta = {
+        "timeframe": timeframe,
+        "source": "hyperliquid_snapshots",
+        "coins": list(coins),
+        "snapshot_file": str(out_path),
+        "coin_coverage": coverage,
+        "overlap_window": {
+            "start": overlap_start.isoformat(),
+            "end": overlap_end.isoformat(),
+        },
+    }
+    return out_path, meta
 
 
 def run_setup_discovery():
@@ -122,7 +191,7 @@ def run_strategy_validation():
     return result.returncode
 
 
-def run_setup_learning():
+def run_setup_learning(timeframe: str = "weekly", capital: float = 2000.0):
     """Run backtest → learn setups → discover patterns pipeline."""
     print("=" * 60)
     print("SETUP LEARNING PIPELINE")
@@ -139,16 +208,35 @@ def run_setup_learning():
 
     model_path = Path(__file__).parent / "artifacts" / "setup_learner.joblib"
     journal = TradeJournal()
+    price_data_path: str | None = None
+    data_source_meta: dict[str, Any] = {"mode": "default_daily_mock"}
+    start_date = datetime(2019, 1, 1)
+    end_date = datetime(2025, 12, 31)
+
+    if timeframe in {"1h", "4h"}:
+        merged_path, snapshot_meta = _build_intraday_price_snapshot(timeframe, [
+                                                                    "BTC", "ETH"])
+        price_data_path = str(merged_path)
+        data_source_meta = snapshot_meta
+        overlap_start = datetime.fromisoformat(
+            snapshot_meta["overlap_window"]["start"])
+        overlap_end = datetime.fromisoformat(
+            snapshot_meta["overlap_window"]["end"])
+        # For fair comparison across timeframes, use only the overlapping window.
+        start_date = overlap_start
+        end_date = overlap_end
+
     engine = BacktestEngine(
-        start_date=datetime(2019, 1, 1),
-        end_date=datetime(2025, 12, 31),
-        initial_capital=10000.0,
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=capital,
         journal_enabled=True,
         journal=journal,
     )
     strategy = CotWeeklyStrategy(
-        client=MockHyperliquidClient(),
+        client=MockHyperliquidClient(price_data_path=price_data_path),
         cot_fetcher=HistoricalCotFetcher(),
+        capital_usd=capital,
         test_mode=True,
     )
     result = engine.run(strategy)
@@ -162,6 +250,23 @@ def run_setup_learning():
         report_text=report,
         patterns=patterns,
         run_trades=run_trades,
+        run_config={
+            "objective": "setup-learning",
+            "timeframe": timeframe,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "initial_capital": engine.config.initial_capital,
+            "strategy": {
+                "capital_usd": strategy.capital_usd,
+                "risk_pct": strategy.risk_pct,
+                "max_leverage": strategy.max_leverage,
+                "leverage_mode": "dynamic_cot_proxy",
+                "setup_selection": "ranked",
+                "setup_policy": "neutral_data_collection",
+                "setups": strategy.setups,
+            },
+            "data_source": data_source_meta,
+        },
     )
     clean_backtest_outputs(
         output_dir=ROOT_DIR / "trade_journal",
@@ -224,6 +329,18 @@ def main():
                         help="Generate HTML report")
     parser.add_argument("--quick", action="store_true",
                         help="Run quick tests only")
+    parser.add_argument(
+        "--timeframe",
+        choices=["weekly", "1h", "4h"],
+        default="weekly",
+        help="Backtest candle source timeframe for setup-learning objective",
+    )
+    parser.add_argument(
+        "--capital",
+        type=float,
+        default=2000.0,
+        help="Initial capital for setup-learning backtest (default: 2000)",
+    )
 
     args = parser.parse_args()
 
@@ -235,7 +352,7 @@ def main():
     elif args.objective == "strategy-validation":
         return run_strategy_validation()
     elif args.objective == "setup-learning":
-        return run_setup_learning()
+        return run_setup_learning(timeframe=args.timeframe, capital=args.capital)
     elif args.all:
         return run_all()
     else:
@@ -243,7 +360,7 @@ def main():
             "No objective specified; defaulting to '--objective setup-learning' "
             "to generate backtest exports."
         )
-        return run_setup_learning()
+        return run_setup_learning(capital=args.capital if hasattr(args, 'capital') else 2000.0)
 
 
 if __name__ == "__main__":

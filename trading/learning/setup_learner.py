@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 from joblib import dump, load
@@ -296,7 +296,10 @@ class SetupLearner:
 
         vectorizer = DictVectorizer(sparse=False)
         x = vectorizer.fit_transform(rows)
-        unique_points = max(1, len(np.unique(x, axis=0)))
+        x_any = cast(Any, x)
+        x_array = np.asarray(x_any.toarray()) if hasattr(
+            x_any, "toarray") else np.asarray(x_any)
+        unique_points = max(1, len(np.unique(x_array, axis=0)))
         n_clusters = max(
             2, min(5, len(rows) // max(2, min_cluster_size), unique_points))
         if unique_points < 2:
@@ -588,17 +591,20 @@ class SetupLearner:
         if regime in self._regime_models and regime in self._regime_vectorizers:
             vec = self._regime_vectorizers[regime]
             model = self._regime_models[regime]
-            return float(model.predict(vec.transform([row]))[0])
+            transformed = cast(Any, vec).transform([row])
+            return float(model.predict(transformed)[0])
 
         if self._global_model is None or self._global_vectorizer is None:
             return None
-        return float(self._global_model.predict(self._global_vectorizer.transform([row]))[0])
+        transformed = cast(Any, self._global_vectorizer).transform([row])
+        return float(self._global_model.predict(transformed)[0])
 
     def _predict_win_probability(self, row: dict[str, Any], regime: str) -> float | None:
         if regime in self._regime_classifiers and regime in self._regime_vectorizers:
             clf = self._regime_classifiers[regime]
             vec = self._regime_vectorizers[regime]
-            proba = clf.predict_proba(vec.transform([row]))[0]
+            transformed = cast(Any, vec).transform([row])
+            proba = clf.predict_proba(transformed)[0]
             if len(proba) == 1:
                 return float(proba[0])
             return float(proba[1])
@@ -606,7 +612,7 @@ class SetupLearner:
         if self._global_classifier is None or self._global_vectorizer is None:
             return None
         proba = self._global_classifier.predict_proba(
-            self._global_vectorizer.transform([row]))[0]
+            cast(Any, self._global_vectorizer).transform([row]))[0]
         if len(proba) == 1:
             return float(proba[0])
         return float(proba[1])
@@ -627,7 +633,7 @@ class SetupLearner:
             counts[setup] += 1
         if not counts:
             return ("unknown", 0.0)
-        dominant_setup = max(counts, key=counts.get)
+        dominant_setup = max(counts, key=lambda name: counts[name])
         return dominant_setup, counts[dominant_setup] / len(setups)
 
     def _regime_distribution(self, cluster_rows: list[dict[str, Any]]) -> dict[str, float]:

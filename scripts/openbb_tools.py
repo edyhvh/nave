@@ -11,8 +11,7 @@ import sys
 import os
 import re
 from pathlib import Path
-from datetime import datetime, timedelta
-import pandas as pd
+from typing import Any, cast
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -20,21 +19,30 @@ sys.path.insert(0, str(project_root))
 
 try:
     from openbb import obb
-    from dotenv import load_dotenv
     OPENBB_AVAILABLE = True
 except ImportError:
     OPENBB_AVAILABLE = False
+    obb = None
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+obb_api: Any = cast(Any, obb) if OPENBB_AVAILABLE else None
 
 # Load environment variables
 env_file = project_root / ".env"
-if env_file.exists():
+if env_file.exists() and load_dotenv is not None:
     load_dotenv(env_file)
+
 
 def print_header(title):
     """Print a formatted header"""
     print("\n" + "="*60)
     print(f" {title}")
     print("="*60)
+
 
 def check_openbb_installation():
     """Check if OpenBB is installed and working"""
@@ -51,12 +59,14 @@ def check_openbb_installation():
 
         # Check available modules
         modules = [x for x in dir(obb) if not x.startswith('_')]
-        print(f"   Available modules ({len(modules)}): {', '.join(modules[:10])}{'...' if len(modules) > 10 else ''}")
+        print(
+            f"   Available modules ({len(modules)}): {', '.join(modules[:10])}{'...' if len(modules) > 10 else ''}")
 
         return True
     except Exception as e:
         print(f"❌ Error checking OpenBB: {e}")
         return False
+
 
 def show_openbb_capabilities():
     """Show detailed OpenBB capabilities"""
@@ -68,15 +78,15 @@ def show_openbb_capabilities():
 
     # Check key modules
     capabilities = {
-        'economy': hasattr(obb, 'economy'),
-        'crypto': hasattr(obb, 'crypto'),
-        'fixedincome': hasattr(obb, 'fixedincome'),
-        'equity': hasattr(obb, 'equity'),
-        'commodity': hasattr(obb, 'commodity'),
-        'currency': hasattr(obb, 'currency'),
-        'etf': hasattr(obb, 'etf'),
-        'regulators': hasattr(obb, 'regulators'),
-        'derivatives': hasattr(obb, 'derivatives'),
+        'economy': hasattr(obb_api, 'economy'),
+        'crypto': hasattr(obb_api, 'crypto'),
+        'fixedincome': hasattr(obb_api, 'fixedincome'),
+        'equity': hasattr(obb_api, 'equity'),
+        'commodity': hasattr(obb_api, 'commodity'),
+        'currency': hasattr(obb_api, 'currency'),
+        'etf': hasattr(obb_api, 'etf'),
+        'regulators': hasattr(obb_api, 'regulators'),
+        'derivatives': hasattr(obb_api, 'derivatives'),
     }
 
     print("Core modules:")
@@ -90,19 +100,28 @@ def show_openbb_capabilities():
     try:
         # Test equity data
         print("  Testing equity data...")
-        test = obb.equity.price.quote(symbol="AAPL")
-        print("  ✅ Equity data working"    except:
-        print("  ❌ Equity data failed"    try:
+        _ = obb_api.equity.price.quote(symbol="AAPL")
+        print("  ✅ Equity data working")
+    except Exception:
+        print("  ❌ Equity data failed")
+
+    try:
         # Test crypto data
         print("  Testing crypto data...")
-        test = obb.crypto.price(symbol="BTC")
-        print("  ✅ Crypto data working"    except:
-        print("  ❌ Crypto data failed"    try:
+        _ = obb_api.crypto.price(symbol="BTC")
+        print("  ✅ Crypto data working")
+    except Exception:
+        print("  ❌ Crypto data failed")
+
+    try:
         # Test economic data
         print("  Testing economic data...")
-        test = obb.economy.fred_series(series_id="GDP")
-        print("  ✅ Economic data working"    except:
-        print("  ❌ Economic data failed"
+        _ = obb_api.economy.fred_series(series_id="GDP")
+        print("  ✅ Economic data working")
+    except Exception:
+        print("  ❌ Economic data failed")
+
+
 def generate_coverage_summary():
     """Generate OpenBB coverage summary from fund.yaml"""
     print_header("OpenBB Coverage Summary")
@@ -141,6 +160,7 @@ def generate_coverage_summary():
         for indicator in stats['Partial']:
             print(f"  - {indicator}")
 
+
 def verify_partial_indicators():
     """Verify what data is actually available for Partial indicators"""
     print_header("Verifying Partial Indicators")
@@ -153,9 +173,9 @@ def verify_partial_indicators():
 
     # Test some key partial indicators
     tests = [
-        ("US Treasury yields", lambda: obb.fixedincome.rate(symbol="DGS10")),
-        ("ETF flows", lambda: obb.crypto.etf.symbols()),
-        ("Capital flows", lambda: obb.economy.balance_of_payments(country="US")),
+        ("US Treasury yields", lambda: obb_api.fixedincome.rate(symbol="DGS10")),
+        ("ETF flows", lambda: obb_api.crypto.etf.symbols()),
+        ("Capital flows", lambda: obb_api.economy.balance_of_payments(country="US")),
     ]
 
     for name, test_func in tests:
@@ -168,6 +188,7 @@ def verify_partial_indicators():
                 print(f"  ⚠️  {name}: No data returned")
         except Exception as e:
             print(f"  ❌ {name}: Error - {str(e)[:100]}")
+
 
 def setup_api_keys():
     """Setup API keys for OpenBB"""
@@ -185,6 +206,7 @@ def setup_api_keys():
     else:
         print("\n❌ OpenBB not available - install first")
 
+
 def run_mstr_proxy():
     """Run MSTR proxy analysis"""
     print_header("MSTR Proxy Analysis")
@@ -196,6 +218,7 @@ def run_mstr_proxy():
     print("⚠️  MSTR proxy analysis not yet implemented")
     print("   This feature requires additional development")
 
+
 def run_treasury_yields():
     """Run Treasury Yields analysis"""
     print_header("Treasury Yields Analysis")
@@ -206,6 +229,7 @@ def run_treasury_yields():
 
     print("⚠️  Treasury yields analysis not yet implemented")
     print("   This feature requires additional development")
+
 
 def main():
     """Main menu"""
@@ -252,6 +276,7 @@ def main():
         except Exception as e:
             print(f"❌ Error: {e}")
             input("\nPress Enter to continue...")
+
 
 if __name__ == "__main__":
     main()
