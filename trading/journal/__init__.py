@@ -40,6 +40,8 @@ from .journal import TradeJournal
 from .storage import SQLiteStorage, JSONStorage
 from .integrations import StrategyJournalMixin, BacktestJournalMixin
 from .github_sync import GitHubDataRepoSync
+from .manual_trade import ManualTrade, ManualTradeStore
+from .manual_wiki_sync import ManualTradeWikiSync
 
 __all__ = [
     "Trade",
@@ -53,6 +55,9 @@ __all__ = [
     "SQLiteStorage",
     "JSONStorage",
     "GitHubDataRepoSync",
+    "ManualTrade",
+    "ManualTradeStore",
+    "ManualTradeWikiSync",
     "StrategyJournalMixin",
     "BacktestJournalMixin",
 ]

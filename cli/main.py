@@ -7,6 +7,7 @@ Orchestrates existing components without removing integrations.
 import typer
 from typing import Any, Optional
 from pathlib import Path
+import json
 
 app = typer.Typer(
     name="nave",
@@ -20,12 +21,250 @@ trading_app = typer.Typer(help="Trading and strategy commands")
 api_app = typer.Typer(help="Backend API commands")
 mcp_app = typer.Typer(help="MCP server commands")
 cot_app = typer.Typer(help="COT specific commands")
+journal_app = typer.Typer(help="Manual trade journal commands")
 
 app.add_typer(data_app, name="data")
 app.add_typer(trading_app, name="trading")
 app.add_typer(api_app, name="api")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(cot_app, name="cot")
+trading_app.add_typer(journal_app, name="journal")
+
+
+def _select_option(label: str, choices: list[str], default: Optional[str] = None) -> str:
+    """Use arrow-key menu when available; fallback to typed selection."""
+    try:
+        import questionary
+
+        prompt = questionary.select(
+            label,
+            choices=choices,
+            default=default,
+            qmark=">",
+            pointer=">",
+        )
+        answer = prompt.ask()
+        if answer:
+            return str(answer)
+    except Exception:
+        pass
+
+    typer.echo(label)
+    for idx, value in enumerate(choices, start=1):
+        typer.echo(f"  {idx}. {value}")
+    selected = typer.prompt("Choose option", default="1")
+    try:
+        index = int(selected) - 1
+    except ValueError as exc:
+        raise typer.BadParameter("Selection must be a number") from exc
+    if index < 0 or index >= len(choices):
+        raise typer.BadParameter("Invalid selection")
+    return choices[index]
+
+
+def _prompt_float(label: str, default: Optional[float] = None, min_value: float = 0.0) -> float:
+    while True:
+        value = typer.prompt(label, default=default)
+        try:
+            result = float(value)
+        except (TypeError, ValueError):
+            typer.echo("Please provide a numeric value.")
+            continue
+        if result < min_value:
+            typer.echo(f"Value must be >= {min_value}")
+            continue
+        return result
+
+
+@journal_app.command("create")
+def journal_create():
+    """Create a manual trade record with interactive prompts."""
+    from trading.journal.manual_trade import (
+        ManualTrade,
+        ManualTradeStore,
+        fetch_cot_insight,
+        MARKET_TYPES,
+        SIDES,
+        TRADING_MODES,
+    )
+
+    store = ManualTradeStore()
+    asset = typer.prompt("Asset", default="BTC").strip().upper()
+    platform = typer.prompt("Platform", default="binance").strip().lower()
+    side = _select_option("Select side", list(SIDES), default="long")
+    market_type = _select_option(
+        "Select market type", list(MARKET_TYPES), default="futures")
+    trading_mode = _select_option(
+        "Select trading mode", list(TRADING_MODES), default="demo")
+
+    entry_price = _prompt_float("Entry price", min_value=0.000001)
+    target_price = _prompt_float("Target price", min_value=0.000001)
+    stop_loss_price = _prompt_float("Stop loss price", min_value=0.000001)
+    fees = _prompt_float("Fees", default=0.0, min_value=0.0)
+    size = _prompt_float("Position size (USD/contracts)", min_value=0.0)
+    leverage = _prompt_float("Leverage", default=1.0, min_value=1.0)
+    setup = typer.prompt("Setup (optional)", default="")
+    notes = typer.prompt("Notes (optional)", default="")
+
+    cot_insight = None
+    cot_warning = None
+    try:
+        cot_insight = fetch_cot_insight(asset)
+    except Exception as exc:
+        typer.echo(f"COT fetch failed: {exc}")
+        retry = typer.confirm("Retry COT fetch once?", default=True)
+        if retry:
+            try:
+                cot_insight = fetch_cot_insight(asset)
+            except Exception as second_exc:
+                cot_warning = f"COT unavailable after retry: {second_exc}"
+        else:
+            cot_warning = "COT fetch skipped by user"
+
+    trade = ManualTrade(
+        asset=asset,
+        platform=platform,
+        side=side,
+        market_type=market_type,
+        trading_mode=trading_mode,
+        entry_price=entry_price,
+        target_price=target_price,
+        stop_loss_price=stop_loss_price,
+        fees=fees,
+        size=size,
+        leverage=leverage,
+        setup=setup,
+        notes=notes,
+        cot_insight=cot_insight,
+        cot_warning=cot_warning,
+    )
+    store.create_trade(trade)
+    typer.echo(f"Created manual trade: {trade.trade_id}")
+    typer.echo("Next: nave trading journal update --id <TRADE_ID>")
+
+
+@journal_app.command("update")
+def journal_update(
+    id: str = typer.Option(..., "--id", help="Trade ID to update"),
+):
+    """Update an existing manual trade with guided actions."""
+    from trading.journal.manual_trade import ManualTradeStore
+
+    store = ManualTradeStore()
+    trade = store.get_trade(id)
+    if trade is None:
+        raise typer.BadParameter(f"Trade not found: {id}")
+
+    action = _select_option(
+        "Select update action",
+        [
+            "take_profit_price_1",
+            "take_profit_price_2",
+            "take_profit_final_price",
+            "stop_loss adjustment",
+            "fees adjustment",
+            "notes update",
+        ],
+        default="take_profit_price_1",
+    )
+
+    if action == "notes update":
+        value = typer.prompt("New notes")
+    else:
+        value = _prompt_float("New value", min_value=0.0)
+
+    updated = store.apply_update(id, action, value)
+    typer.echo(f"Updated trade: {updated.trade_id}")
+    typer.echo(f"Status: {updated.status}")
+    if action == "take_profit_price_1" and updated.tp1_progress_percent is not None:
+        typer.echo(f"TP1 progress: {updated.tp1_progress_percent:.2f}%")
+    if action == "take_profit_price_2" and updated.tp2_progress_percent is not None:
+        typer.echo(f"TP2 progress: {updated.tp2_progress_percent:.2f}%")
+
+
+@journal_app.command("list")
+def journal_list(
+    status: Optional[str] = typer.Option(
+        None, help="Filter by status (open/closed)"),
+):
+    """List manual journal trades."""
+    from trading.journal.manual_trade import ManualTradeStore
+
+    store = ManualTradeStore()
+    trades = store.list_trades(status=status)
+    if not trades:
+        typer.echo("No manual trades found.")
+        return
+
+    for trade in trades:
+        synced = "yes" if trade.sync.get("wiki_synced_at") else "no"
+        typer.echo(
+            f"{trade.trade_id} | {trade.asset} {trade.side} | {trade.trading_mode} | "
+            f"status={trade.status} | synced={synced}"
+        )
+
+
+@journal_app.command("show")
+def journal_show(
+    id: str = typer.Option(..., "--id", help="Trade ID"),
+):
+    """Show full manual trade JSON."""
+    from trading.journal.manual_trade import ManualTradeStore
+
+    store = ManualTradeStore()
+    trade = store.get_trade(id)
+    if trade is None:
+        raise typer.BadParameter(f"Trade not found: {id}")
+    typer.echo(json.dumps(trade.to_dict(), indent=2))
+
+
+@journal_app.command("sync-wiki")
+def journal_sync_wiki(
+    owner: str = typer.Option("edyhvh", help="GitHub owner"),
+    repo: str = typer.Option("nave", help="GitHub repository name"),
+    token: Optional[str] = typer.Option(
+        None, help="GitHub token; defaults to NAVE_GITHUB_TOKEN"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview unsynced trades only"),
+):
+    """Sync unsynced manual trades to monthly GitHub wiki pages."""
+    import os
+    from trading.journal.manual_trade import ManualTradeStore
+    from trading.journal.manual_wiki_sync import ManualTradeWikiSync
+
+    store = ManualTradeStore()
+    rows = store.unsynced_trades()
+    if not rows:
+        typer.echo("No unsynced trades found.")
+        return
+
+    typer.echo(f"Unsynced trades: {len(rows)}")
+    if dry_run:
+        for trade in rows:
+            typer.echo(f"- {trade.trade_id} ({trade.date_created[:7]})")
+        return
+
+    github_token = token or os.getenv("NAVE_GITHUB_TOKEN", "")
+    if not github_token:
+        raise typer.BadParameter(
+            "Missing token: use --token or set NAVE_GITHUB_TOKEN")
+
+    if not typer.confirm("Proceed with wiki sync?", default=False):
+        typer.echo("Sync cancelled.")
+        return
+
+    syncer = ManualTradeWikiSync(owner=owner, repo=repo, token=github_token)
+    result = syncer.sync(rows)
+    if result["synced"] == 0:
+        typer.echo("No new entries were synced.")
+        return
+
+    month_pages = sorted({f"Journal-{t.date_created[:7]}" for t in rows})
+    for page in month_pages:
+        ids = [t.trade_id for t in rows if page.endswith(t.date_created[:7])]
+        store.mark_synced(ids, page)
+    typer.echo(
+        f"Synced {result['synced']} trades across {result['pages']} page(s).")
 
 
 @app.command()
