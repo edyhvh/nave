@@ -23,7 +23,7 @@ from trading.journal import TradeJournal
 from trading.client import HyperliquidClient
 from trading.signals import MacroSignalProducer, SignalAggregator
 from trading.cot.cot_analyzer import COTAnalyzer
-from trading.cot.cot_fetcher import fetch_latest_cot
+from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
 from trading.config import DEFAULT_SETUPS
 import argparse
 import json
@@ -141,6 +141,42 @@ def generate_weekly_report(
     if debug_cot:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    def _fmt_signed(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        return f"{int(value):+,}"
+
+    def _fmt_int(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        return f"{int(value):,}"
+
+    def _fmt_pct(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        return f"{float(value):.1f}%"
+
+    def _print_section_block(title: str, section: dict[str, Any] | None) -> None:
+        print(f"    {title}")
+        if not section:
+            print("      Net Non-Comm: N/A (Δ N/A)     | % of OI: N/A")
+            print("      Net Commercial: N/A (Δ N/A)")
+            print("      Open Interest: N/A (Δ N/A)")
+            print("      # Traders: Non-Comm: N/A | Commercial: N/A")
+            return
+        print(
+            f"      Net Non-Comm: {_fmt_signed(section.get('net_non_commercial'))} (Δ {_fmt_signed(section.get('net_non_commercial_delta'))})     | % of OI: {_fmt_pct(section.get('pct_oi'))}"
+        )
+        print(
+            f"      Net Commercial: {_fmt_signed(section.get('net_commercial'))} (Δ {_fmt_signed(section.get('net_commercial_delta'))})"
+        )
+        print(
+            f"      Open Interest: {_fmt_int(section.get('open_interest'))} (Δ {_fmt_signed(section.get('open_interest_delta'))})"
+        )
+        print(
+            f"      # Traders: Non-Comm: {_fmt_int(section.get('traders_non_commercial'))} | Commercial: {_fmt_int(section.get('traders_commercial'))}"
+        )
+
     print("\n" + "="*80)
     print("🚀 NAVE WEEKLY COT ANALYSIS")
     print("="*80)
@@ -152,9 +188,19 @@ def generate_weekly_report(
     print()
 
     # Fetch and analyze COT
-    cot_data = fetch_latest_cot(
+    cot_data_futures_only = fetch_latest_cot(
+        report_type="futures_only",
         debug=debug_cot,
         include_micro=include_micro,
+    )
+    cot_data = fetch_latest_cot(
+        report_type="futures_and_options",
+        debug=debug_cot,
+        include_micro=include_micro,
+    )
+    cot_sections = build_cot_sections_from_datasets(
+        futures_only_data=cot_data_futures_only,
+        combined_data=cot_data,
     )
     setup_learner = None
     learned_patterns = []
@@ -185,6 +231,8 @@ def generate_weekly_report(
         arrow = {"bullish": "▲", "bearish": "▼",
                  "neutral": "–"}.get(b.bias, "?")
         m = b.metadata
+        section_info = cot_sections.get(asset, {})
+        options_validation = section_info.get("options_validation", {})
         print(
             f"  {asset}: {b.bias.upper()} {arrow} (conf={b.confidence:.0%}, FITS={m['fits_weighted_score']}/100)")
         print(
@@ -194,6 +242,15 @@ def generate_weekly_report(
         print(
             f"    Weekly Δ: {b.weekly_change:+,} | Percentile: {b.historical_percentile}")
         print(f"    → {m.get('percentile_interpretation', 'N/A')}")
+        _print_section_block("FUTURES ONLY", section_info.get("futures_only"))
+        if section_info.get("options"):
+            _print_section_block("OPTIONS", section_info.get("options"))
+        else:
+            print(
+                f"    OPTIONS\n      Options component unavailable ({options_validation.get('reason', 'invalid_derived_options')})"
+            )
+        _print_section_block(
+            "COMBINED (Futures + Options)", section_info.get("combined"))
 
     print(f"\n🏆 BEST SETUP: {best_asset} (confidence {best_conf:.0%})")
     print("Recommendation: Allocate 100% capital to best setup on 4H/1H timeframe.")

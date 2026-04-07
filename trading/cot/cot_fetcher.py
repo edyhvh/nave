@@ -60,6 +60,75 @@ CFTC_REPORT_URLS: dict[ReportType, str] = {
     "legacy_combined": "https://www.cftc.gov/dea/options/deacmelof.htm",
 }
 
+NONCOMM_LONG_COLUMNS = [
+    "noncomm_positions_long_all",
+    "Noncommercial_Positions_Long",
+]
+NONCOMM_SHORT_COLUMNS = [
+    "noncomm_positions_short_all",
+    "Noncommercial_Positions_Short",
+]
+COMM_LONG_COLUMNS = [
+    "comm_positions_long_all",
+    "Commercial_Positions_Long",
+]
+COMM_SHORT_COLUMNS = [
+    "comm_positions_short_all",
+    "Commercial_Positions_Short",
+]
+OI_COLUMNS = [
+    "open_interest_all",
+    "Open_Interest_All",
+]
+TRADERS_NONCOMM_COLUMNS = [
+    "number_of_traders_noncommercial_all",
+    "Number_of_Traders_Noncommercial_All",
+    "number_traders_noncommercial_all",
+]
+TRADERS_COMM_COLUMNS = [
+    "number_of_traders_commercial_all",
+    "Number_of_Traders_Commercial_All",
+    "number_traders_commercial_all",
+]
+TRADERS_NONCOMM_LONG_COLUMNS = [
+    "traders_noncomm_long_all",
+    "traders_noncomm_long_old",
+    "traders_noncomm_long_other",
+]
+TRADERS_NONCOMM_SHORT_COLUMNS = [
+    "traders_noncomm_short_all",
+    "traders_noncomm_short_old",
+    "traders_noncomm_short_other",
+]
+TRADERS_COMM_LONG_COLUMNS = [
+    "traders_comm_long_all",
+    "traders_comm_long_old",
+    "traders_comm_long_other",
+]
+TRADERS_COMM_SHORT_COLUMNS = [
+    "traders_comm_short_all",
+    "traders_comm_short_old",
+    "traders_comm_short_other",
+]
+TRADERS_FIN_NONCOMM_COLUMNS = [
+    "traders_asset_mgr_long_all",
+    "traders_lev_money_long_all",
+    "traders_other_rept_long_all",
+]
+TRADERS_FIN_COMM_COLUMNS = [
+    "traders_dealer_long_all",
+]
+FIN_SPEC_LONG_COLUMNS = [
+    "asset_mgr_positions_long",
+    "lev_money_positions_long",
+    "other_rept_positions_long",
+]
+FIN_SPEC_SHORT_COLUMNS = [
+    "asset_mgr_positions_short",
+    "lev_money_positions_short",
+    "other_rept_positions_short",
+]
+
 
 def fetch_latest_cot(
     *,
@@ -859,6 +928,375 @@ def _persist_history_rows(
     history[key] = _dedupe_and_sort_rows(history.get(
         key, []) + list(rows), max_points=TARGET_PERCENTILE_HISTORY_WEEKS)
     _save_history_cache(history)
+
+
+def fetch_cot_sections(
+    *,
+    include_micro: bool = False,
+    debug: bool = False,
+) -> dict[str, dict[str, Any]]:
+    """Fetch Futures Only + Futures and Options and derive section snapshots.
+
+    Returns a per-asset mapping with `futures_only`, `combined`, and optional
+    `options` metrics (derived by subtraction when valid).
+    """
+    futures_only_data = fetch_latest_cot(
+        report_type="futures_only",
+        include_micro=include_micro,
+        debug=debug,
+    )
+    combined_data = fetch_latest_cot(
+        report_type="futures_and_options",
+        include_micro=include_micro,
+        debug=debug,
+    )
+
+    return build_cot_sections_from_datasets(
+        futures_only_data=futures_only_data,
+        combined_data=combined_data,
+    )
+
+
+def build_cot_sections_from_datasets(
+    *,
+    futures_only_data: dict[str, Any],
+    combined_data: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Build per-asset section metrics from already-fetched COT datasets."""
+    assets = sorted(set(futures_only_data.keys()) | set(combined_data.keys()))
+    out: dict[str, dict[str, Any]] = {}
+    for asset in assets:
+        fo_asset = futures_only_data.get(asset, {})
+        co_asset = combined_data.get(asset, {})
+
+        futures_only_metrics = _extract_section_metrics(
+            fo_asset.get("raw", []))
+        combined_metrics = _extract_section_metrics(co_asset.get("raw", []))
+        options_metrics, options_validation = _derive_options_metrics(
+            futures_only_metrics,
+            combined_metrics,
+        )
+
+        out[asset] = {
+            "asset": asset,
+            "as_of_date": co_asset.get("as_of_date", co_asset.get("latest_date", "N/A")),
+            "release_date": co_asset.get("release_date", "N/A"),
+            "cached_futures_only": bool(fo_asset.get("cached", False)),
+            "cached_combined": bool(co_asset.get("cached", False)),
+            "futures_only": futures_only_metrics,
+            "combined": combined_metrics,
+            "options": options_metrics if options_validation["valid"] else None,
+            "options_validation": options_validation,
+            "raw": {
+                "futures_only": fo_asset.get("raw", []),
+                "combined": co_asset.get("raw", []),
+            },
+        }
+    return out
+
+
+def _derive_options_metrics(
+    futures_only: dict[str, Any] | None,
+    combined: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    if not futures_only or not combined:
+        return None, {
+            "valid": False,
+            "reason": "missing_futures_or_combined",
+        }
+
+    required_keys = [
+        "net_non_commercial",
+        "net_non_commercial_delta",
+        "net_commercial",
+        "net_commercial_delta",
+        "open_interest",
+        "open_interest_delta",
+        "traders_non_commercial",
+        "traders_commercial",
+    ]
+    missing = [
+        key for key in required_keys
+        if key not in futures_only or key not in combined
+    ]
+    if missing:
+        return None, {
+            "valid": False,
+            "reason": "missing_required_keys",
+            "missing": missing,
+        }
+
+    if any(futures_only.get(key) is None or combined.get(key) is None for key in required_keys):
+        return None, {
+            "valid": False,
+            "reason": "missing_required_values",
+        }
+
+    options: dict[str, Any] = {
+        "net_non_commercial": int(combined["net_non_commercial"] - futures_only["net_non_commercial"]),
+        "net_non_commercial_delta": int(combined["net_non_commercial_delta"] - futures_only["net_non_commercial_delta"]),
+        "net_commercial": int(combined["net_commercial"] - futures_only["net_commercial"]),
+        "net_commercial_delta": int(combined["net_commercial_delta"] - futures_only["net_commercial_delta"]),
+        "open_interest": int(combined["open_interest"] - futures_only["open_interest"]),
+        "open_interest_delta": int(combined["open_interest_delta"] - futures_only["open_interest_delta"]),
+        "traders_non_commercial": int(combined["traders_non_commercial"] - futures_only["traders_non_commercial"]),
+        "traders_commercial": int(combined["traders_commercial"] - futures_only["traders_commercial"]),
+    }
+
+    if options["open_interest"] < 0:
+        return None, {
+            "valid": False,
+            "reason": "negative_open_interest",
+            "value": options["open_interest"],
+        }
+    if options["traders_non_commercial"] < 0 or options["traders_commercial"] < 0:
+        return None, {
+            "valid": False,
+            "reason": "negative_trader_count",
+            "non_commercial": options["traders_non_commercial"],
+            "commercial": options["traders_commercial"],
+        }
+
+    oi = options["open_interest"]
+    options["pct_oi"] = round((options["net_non_commercial"] / oi) * 100,
+                              1) if oi else None
+
+    return options, {
+        "valid": True,
+        "reason": "ok",
+    }
+
+
+def _extract_section_metrics(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+
+    df = pd.DataFrame(_dedupe_and_sort_rows(rows, max_points=500))
+    if df.empty:
+        return None
+
+    latest_noncomm, prev_noncomm = _extract_net_pair(
+        df,
+        NONCOMM_LONG_COLUMNS,
+        NONCOMM_SHORT_COLUMNS,
+        FIN_SPEC_LONG_COLUMNS,
+        FIN_SPEC_SHORT_COLUMNS,
+    )
+    latest_comm, prev_comm = _extract_net_pair(
+        df,
+        COMM_LONG_COLUMNS,
+        COMM_SHORT_COLUMNS,
+        [],
+        [],
+    )
+    latest_oi, prev_oi = _extract_single_pair(df, OI_COLUMNS)
+
+    if latest_noncomm is None:
+        latest_noncomm = 0.0
+    if latest_comm is None:
+        latest_comm = 0.0
+    if latest_oi is None:
+        latest_oi = 0.0
+
+    delta_noncomm = _resolve_net_delta(
+        latest_noncomm,
+        prev_noncomm,
+        df,
+        "change_in_noncomm_long_all",
+        "change_in_noncomm_short_all",
+        (
+            "change_in_asset_mgr_long",
+            "change_in_lev_money_long",
+            "change_in_other_rept_long",
+        ),
+        (
+            "change_in_asset_mgr_short",
+            "change_in_lev_money_short",
+            "change_in_other_rept_short",
+        ),
+    )
+    delta_comm = _resolve_net_delta(
+        latest_comm,
+        prev_comm,
+        df,
+        "change_in_comm_long_all",
+        "change_in_comm_short_all",
+        (),
+        (),
+    )
+    delta_oi = _resolve_value_delta(
+        latest_oi,
+        prev_oi,
+        df,
+        "change_in_open_interest_all",
+    )
+
+    traders_noncomm = _extract_trader_all_count(
+        df,
+        direct_aliases=TRADERS_NONCOMM_COLUMNS,
+        long_aliases=TRADERS_NONCOMM_LONG_COLUMNS,
+        short_aliases=TRADERS_NONCOMM_SHORT_COLUMNS,
+        fallback_sum_aliases=TRADERS_FIN_NONCOMM_COLUMNS,
+    )
+    traders_comm = _extract_trader_all_count(
+        df,
+        direct_aliases=TRADERS_COMM_COLUMNS,
+        long_aliases=TRADERS_COMM_LONG_COLUMNS,
+        short_aliases=TRADERS_COMM_SHORT_COLUMNS,
+        fallback_sum_aliases=TRADERS_FIN_COMM_COLUMNS,
+    )
+
+    oi_for_pct = float(latest_oi)
+    pct_oi = round((float(latest_noncomm) / oi_for_pct) * 100,
+                   1) if oi_for_pct else None
+
+    return {
+        "net_non_commercial": int(round(latest_noncomm)),
+        "net_non_commercial_delta": int(round(delta_noncomm)),
+        "net_commercial": int(round(latest_comm)),
+        "net_commercial_delta": int(round(delta_comm)),
+        "open_interest": int(round(latest_oi)),
+        "open_interest_delta": int(round(delta_oi)),
+        "pct_oi": pct_oi,
+        "traders_non_commercial": traders_noncomm,
+        "traders_commercial": traders_comm,
+    }
+
+
+def _extract_net_pair(
+    df: pd.DataFrame,
+    long_aliases: list[str],
+    short_aliases: list[str],
+    fallback_long_cols: list[str],
+    fallback_short_cols: list[str],
+) -> tuple[float | None, float | None]:
+    long_col = _first_existing_from_df(df, long_aliases)
+    short_col = _first_existing_from_df(df, short_aliases)
+    if long_col:
+        latest_long, prev_long = _extract_single_pair(df, [long_col])
+        latest_short, prev_short = _extract_single_pair(
+            df, [short_col] if short_col else [])
+        latest_net = (latest_long or 0.0) - (latest_short or 0.0)
+        prev_net = None
+        if prev_long is not None or prev_short is not None:
+            prev_net = (prev_long or 0.0) - (prev_short or 0.0)
+        return latest_net, prev_net
+
+    if fallback_long_cols and fallback_short_cols:
+        existing_longs = [c for c in fallback_long_cols if c in df.columns]
+        existing_shorts = [c for c in fallback_short_cols if c in df.columns]
+        if existing_longs and existing_shorts:
+            latest_long = sum(_safe_float(df[c].iloc[-1])
+                              for c in existing_longs)
+            latest_short = sum(_safe_float(df[c].iloc[-1])
+                               for c in existing_shorts)
+            latest_net = latest_long - latest_short
+            prev_net = None
+            if len(df) >= 2:
+                prev_long = sum(_safe_float(df[c].iloc[-2])
+                                for c in existing_longs)
+                prev_short = sum(_safe_float(df[c].iloc[-2])
+                                 for c in existing_shorts)
+                prev_net = prev_long - prev_short
+            return latest_net, prev_net
+
+    return None, None
+
+
+def _extract_single_pair(df: pd.DataFrame, aliases: list[str]) -> tuple[float | None, float | None]:
+    col = _first_existing_from_df(df, aliases)
+    if not col:
+        return None, None
+    latest = _safe_float(df[col].iloc[-1])
+    prev = _safe_float(df[col].iloc[-2]) if len(df) >= 2 else None
+    return latest, prev
+
+
+def _resolve_net_delta(
+    latest_net: float,
+    prev_net: float | None,
+    df: pd.DataFrame,
+    long_change_col: str,
+    short_change_col: str,
+    long_change_group: tuple[str, ...],
+    short_change_group: tuple[str, ...],
+) -> float:
+    if prev_net is not None:
+        return latest_net - prev_net
+    if long_change_col in df.columns and short_change_col in df.columns:
+        return _safe_float(df[long_change_col].iloc[-1]) - _safe_float(df[short_change_col].iloc[-1])
+    if long_change_group and short_change_group:
+        if all(col in df.columns for col in long_change_group) and all(col in df.columns for col in short_change_group):
+            long_total = sum(_safe_float(df[col].iloc[-1])
+                             for col in long_change_group)
+            short_total = sum(_safe_float(df[col].iloc[-1])
+                              for col in short_change_group)
+            return long_total - short_total
+    return 0.0
+
+
+def _resolve_value_delta(latest_value: float, prev_value: float | None, df: pd.DataFrame, delta_col: str) -> float:
+    if prev_value is not None:
+        return latest_value - prev_value
+    if delta_col in df.columns:
+        return _safe_float(df[delta_col].iloc[-1])
+    return 0.0
+
+
+def _extract_latest_int(df: pd.DataFrame, aliases: list[str]) -> int | None:
+    col = _first_existing_from_df(df, aliases)
+    if not col:
+        return None
+    val = _safe_float(df[col].iloc[-1], default=float("nan"))
+    if pd.isna(val):
+        return None
+    return int(round(val))
+
+
+def _extract_trader_all_count(
+    df: pd.DataFrame,
+    *,
+    direct_aliases: list[str],
+    long_aliases: list[str],
+    short_aliases: list[str],
+    fallback_sum_aliases: list[str],
+) -> int | None:
+    direct = _extract_latest_int(df, direct_aliases)
+    if direct is not None:
+        return direct
+
+    long_val = _extract_latest_int(df, long_aliases)
+    short_val = _extract_latest_int(df, short_aliases)
+    if long_val is not None or short_val is not None:
+        # Trader categories are typically reported by side; take max(long, short)
+        # as a stable proxy for category-level participation (All).
+        return max(long_val or 0, short_val or 0)
+
+    fallback_values = [
+        _extract_latest_int(df, [col]) for col in fallback_sum_aliases
+    ]
+    fallback_values = [v for v in fallback_values if v is not None]
+    if fallback_values:
+        return int(sum(fallback_values))
+
+    return None
+
+
+def _first_existing_from_df(df: pd.DataFrame, aliases: list[str]) -> str | None:
+    for col in aliases:
+        if col in df.columns:
+            return col
+    return None
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        out = float(value)
+        return default if pd.isna(out) else out
+    except (TypeError, ValueError):
+        return default
 
 
 if __name__ == "__main__":

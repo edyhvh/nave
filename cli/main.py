@@ -231,7 +231,7 @@ def cot_report(
     from datetime import timezone as _timezone
 
     from trading.client import HyperliquidClient
-    from trading.cot.cot_fetcher import fetch_latest_cot
+    from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
     from trading.cot.cot_analyzer import COTAnalyzer
 
     def _parse_date(value: str) -> _date | None:
@@ -375,23 +375,40 @@ def cot_report(
     now = _dt.now().strftime("%Y-%m-%d")
     now_full = _dt.now().strftime("%Y-%m-%d %H:%M")
 
-    def _metric_snapshot(coin: str, bias_map: dict[str, Any]) -> dict[str, Any] | None:
-        b = bias_map.get(coin)
-        if b is None:
-            return None
-        meta = b.metadata
-        return {
-            "net_non_commercial": b.net_non_commercial,
-            "pct_oi": float(meta.get("pct_oi", 0.0)),
-            "pct_oi_side": str(meta.get("pct_oi_position_side", "net long")),
-            "weekly_change": b.weekly_change,
-            "net_commercial": b.net_commercial,
-            "open_interest": b.open_interest,
-            "oi_change_pct": b.oi_change_pct,
-            "as_of_date": meta.get("as_of_date", meta.get("report_date", "N/A")),
-            "release_date": meta.get("release_date", "N/A"),
-            "cached": bool(meta.get("cached", False)),
-        }
+    cot_sections = build_cot_sections_from_datasets(
+        futures_only_data=cot_data_futures_only,
+        combined_data=cot_data_futures_and_options,
+    )
+
+    def _fmt_signed(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        return f"{int(value):+,}"
+
+    def _fmt_int(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        return f"{int(value):,}"
+
+    def _fmt_pct(value: Any) -> str:
+        if value is None:
+            return "N/A"
+        return f"{float(value):.1f}%"
+
+    def _fmt_section_lines(section: dict[str, Any] | None) -> list[str]:
+        if not section:
+            return [
+                "Net Non-Comm: N/A (Δ N/A)     | % of OI: N/A",
+                "Net Commercial: N/A (Δ N/A)",
+                "Open Interest: N/A (Δ N/A)",
+                "# Traders: Non-Comm: N/A | Commercial: N/A",
+            ]
+        return [
+            f"Net Non-Comm: {_fmt_signed(section.get('net_non_commercial'))} (Δ {_fmt_signed(section.get('net_non_commercial_delta'))})     | % of OI: {_fmt_pct(section.get('pct_oi'))}",
+            f"Net Commercial: {_fmt_signed(section.get('net_commercial'))} (Δ {_fmt_signed(section.get('net_commercial_delta'))})",
+            f"Open Interest: {_fmt_int(section.get('open_interest'))} (Δ {_fmt_signed(section.get('open_interest_delta'))})",
+            f"# Traders: Non-Comm: {_fmt_int(section.get('traders_non_commercial'))} | Commercial: {_fmt_int(section.get('traders_commercial'))}",
+        ]
 
     # Debug: print raw DataFrame rows per asset
     if debug:
@@ -480,8 +497,10 @@ def cot_report(
                     str(price_context.get(coin, {}).get("trend_4h", "unknown")),
                 ),
                 "cached": m.get("cached", False),
-                "futures_only": _metric_snapshot(coin, biases_futures_only),
-                "futures_and_options": _metric_snapshot(coin, biases_futures_and_options),
+                "futures_only": cot_sections.get(coin, {}).get("futures_only"),
+                "options": cot_sections.get(coin, {}).get("options"),
+                "futures_and_options": cot_sections.get(coin, {}).get("combined"),
+                "options_validation": cot_sections.get(coin, {}).get("options_validation"),
             }
         typer.echo(_json.dumps(payload, indent=2))
         return
@@ -568,26 +587,17 @@ def cot_report(
         net_side = "net long" if b.net_non_commercial >= 0 else "net short"
         net_label = f"speculators {_position_intensity(pct_oi_abs)} {net_side}"
         pct_side = m.get("pct_oi_position_side", "net long")
-        futures_only_metrics = _metric_snapshot(coin, biases_futures_only)
-        futures_and_options_metrics = _metric_snapshot(
-            coin, biases_futures_and_options)
+        section_info = cot_sections.get(coin, {})
+        futures_only_metrics = section_info.get("futures_only")
+        options_metrics = section_info.get("options")
+        combined_metrics = section_info.get("combined")
+        options_validation = section_info.get("options_validation", {})
         price_line = "N/A"
         if isinstance(price_close, (int, float)):
             if isinstance(weekly_delta, (int, float)):
                 price_line = f"~${float(price_close):,.0f} | Weekly Price Δ: {float(weekly_delta):+.1f}%"
             else:
                 price_line = f"~${float(price_close):,.0f} | Weekly Price Δ: N/A"
-
-        def _fmt_breakdown_line(label: str, metrics: dict[str, Any] | None) -> str:
-            if not metrics:
-                return f"{label}: no data"
-            side = str(metrics["pct_oi_side"])
-            return (
-                f"{label}: Net {int(metrics['net_non_commercial']):+,} | "
-                f"%OI {float(metrics['pct_oi']):.1f}% ({side}) | "
-                f"Δ {int(metrics['weekly_change']):+,} | "
-                f"OI {int(metrics['open_interest']):,} (Δ {float(metrics['oi_change_pct']):+.1f}%)"
-            )
 
         typer.echo(f"┌─ {coin} {'─' * (50 - len(coin))}")
         typer.echo(
@@ -604,17 +614,33 @@ def cot_report(
         typer.echo(f"│ Net Commercial: {b.net_commercial:+,}")
         typer.echo(
             f"│ Open Interest: {b.open_interest:,} (Δ {b.oi_change_pct:+.1f}%)")
-        typer.echo(f"│ COT Breakdown (Futures Only vs Futures+Options):")
-        typer.echo(
-            f"│   {_fmt_breakdown_line('Futures Only', futures_only_metrics)}")
-        typer.echo(
-            f"│   {_fmt_breakdown_line('Futures+Options', futures_and_options_metrics)}")
+        typer.echo(f"│")
+        typer.echo("│ FUTURES ONLY")
+        for line in _fmt_section_lines(futures_only_metrics):
+            typer.echo(f"│ {line}")
+        typer.echo("│")
+        typer.echo("│ OPTIONS")
+        if options_metrics:
+            for line in _fmt_section_lines(options_metrics):
+                typer.echo(f"│ {line}")
+        else:
+            reason = options_validation.get(
+                "reason", "invalid_derived_options")
+            typer.echo(f"│ Options component unavailable ({reason})")
+        typer.echo("│")
+        typer.echo("│ COMBINED (Futures + Options)")
+        for line in _fmt_section_lines(combined_metrics):
+            typer.echo(f"│ {line}")
         typer.echo(f"│ Price at report close: {price_line}")
         typer.echo(
             f"│ Historical Context: {m.get('percentile_interpretation', 'N/A')}")
         pct_warn = str(m.get("percentile_warning", "")).strip()
         if pct_warn:
             typer.echo(f"│ Percentile Warning: {pct_warn}")
+        if debug:
+            typer.echo(
+                f"│ Debug Sections: options_valid={bool(options_validation.get('valid', False))} reason={options_validation.get('reason', 'N/A')}"
+            )
         typer.echo(f"│")
         typer.echo(
             f"│ COT Interpretation: {m.get('cot_interpretation', 'N/A')}")
