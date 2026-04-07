@@ -14,6 +14,17 @@ Examples:
     nave trading run --paper --strategy cot-weekly
     nave trading run --backtest --strategy cot-weekly
 """
+from tests.backtest.utils.backtest_engine import BacktestEngine
+from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
+from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
+from trading.utils.clean_backtest_files import clean_backtest_outputs
+from trading.strategy import CotWeeklyStrategy
+from trading.journal import TradeJournal
+from trading.client import HyperliquidClient
+from trading.signals import MacroSignalProducer, SignalAggregator
+from trading.cot.cot_analyzer import COTAnalyzer
+from trading.cot.cot_fetcher import fetch_latest_cot
+from trading.config import DEFAULT_SETUPS
 import argparse
 import json
 import logging
@@ -24,18 +35,6 @@ from typing import Dict, Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from trading.config import DEFAULT_SETUPS
-from trading.cot.cot_fetcher import fetch_latest_cot
-from trading.cot.cot_analyzer import COTAnalyzer
-from trading.signals import MacroSignalProducer, SignalAggregator
-from trading.client import HyperliquidClient
-from trading.journal import TradeJournal
-from trading.strategy import CotWeeklyStrategy
-from trading.utils.clean_backtest_files import clean_backtest_outputs
-
-from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
-from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
-from tests.backtest.utils.backtest_engine import BacktestEngine
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -133,9 +132,14 @@ def generate_weekly_report(
     wallet: str = "hermes",
     learn: bool = False,
     setups: list[str] | None = None,
+    debug_cot: bool = False,
+    include_micro: bool = False,
 ) -> Dict:
     """Main weekly COT analysis and recommendation."""
     active_setups = setups or list(DEFAULT_SETUPS)
+
+    if debug_cot:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     print("\n" + "="*80)
     print("🚀 NAVE WEEKLY COT ANALYSIS")
@@ -148,7 +152,10 @@ def generate_weekly_report(
     print()
 
     # Fetch and analyze COT
-    cot_data = fetch_latest_cot()
+    cot_data = fetch_latest_cot(
+        debug=debug_cot,
+        include_micro=include_micro,
+    )
     setup_learner = None
     learned_patterns = []
     learning_report_text = ""
@@ -175,10 +182,20 @@ def generate_weekly_report(
 
     print("COT Bias Summary:")
     for asset, b in biases.items():
+        arrow = {"bullish": "▲", "bearish": "▼",
+                 "neutral": "–"}.get(b.bias, "?")
+        m = b.metadata
         print(
-            f"  {asset}: {b.bias.upper()} (net={b.net_non_commercial}, conf={b.confidence:.2f})")
+            f"  {asset}: {b.bias.upper()} {arrow} (conf={b.confidence:.0%}, FITS={m['fits_weighted_score']}/100)")
+        print(
+            f"    Net Non-Comm: {b.net_non_commercial:+,} | Net Comm: {b.net_commercial:+,}")
+        print(
+            f"    OI: {b.open_interest:,} (Δ {b.oi_change_pct:+.1f}%) | %OI: {m['pct_oi']:+.1f}%")
+        print(
+            f"    Weekly Δ: {b.weekly_change:+,} | Percentile: {b.historical_percentile}")
+        print(f"    → {m.get('percentile_interpretation', 'N/A')}")
 
-    print(f"\n🏆 BEST SETUP: {best_asset} (confidence {best_conf:.2f})")
+    print(f"\n🏆 BEST SETUP: {best_asset} (confidence {best_conf:.0%})")
     print("Recommendation: Allocate 100% capital to best setup on 4H/1H timeframe.")
 
     # Risk & sizing per philosophy
@@ -225,7 +242,8 @@ def generate_weekly_report(
             patterns=learned_patterns,
         ))
         if export_paths is not None:
-            print(f"Timestamped exports: {export_paths[0]} | {export_paths[1]}")
+            print(
+                f"Timestamped exports: {export_paths[0]} | {export_paths[1]}")
 
     print("\n✅ Report complete. Run with --live for execution (use vault).")
     print("="*80)
@@ -258,7 +276,8 @@ def run_setup_learning_pipeline(
     learner = strategy.setup_learner
     learner.save_model(model_path)
     patterns = learner.discover_new_patterns(result)
-    report_text = learner.generate_report(regime="all", setups=setups, patterns=patterns)
+    report_text = learner.generate_report(
+        regime="all", setups=setups, patterns=patterns)
     run_trades = engine.get_journal_trades()
     snapshot_path, summary_path = _write_timestamped_backtest_exports(
         report_text=report_text,
@@ -267,7 +286,8 @@ def run_setup_learning_pipeline(
     )
     clean_backtest_outputs(
         output_dir=Path(__file__).parent.parent / "trade_journal",
-        archive_dir=Path(__file__).parent.parent / "backtest_archive" / "invalid",
+        archive_dir=Path(__file__).parent.parent /
+        "backtest_archive" / "invalid",
         delete=False,
         verbose=True,
     )
@@ -307,6 +327,16 @@ if __name__ == "__main__":
         default=None,
         help="Override setup list (defaults to trading.config.DEFAULT_SETUPS)",
     )
+    parser.add_argument(
+        "--debug-cot",
+        action="store_true",
+        help="Print raw filtered DataFrame rows and debug COT data",
+    )
+    parser.add_argument(
+        "--include-micro",
+        action="store_true",
+        help="Include MICRO contracts in COT filter",
+    )
     args = parser.parse_args()
 
     mode = "paper"
@@ -326,6 +356,8 @@ if __name__ == "__main__":
         wallet=args.wallet,
         learn=args.learn,
         setups=args.setups,
+        debug_cot=args.debug_cot,
+        include_micro=args.include_micro,
     )
     print(
         f"\nFinal recommendation: Allocate to {report['best_asset']} with {report['leverage']}x leverage.")

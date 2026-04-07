@@ -106,7 +106,12 @@ nave cot analyze --coins "BTC ETH"
 nave cot report
 nave cot report --coins "BTC ETH" --capital 2000
 nave cot report --json
+nave cot report --report-type futures_only
 ```
+
+Note: `nave cot report` now prints both `Futures Only` and `Futures+Options`
+metrics for each asset. The `--report-type` option controls which dataset is
+used as the primary bias source.
 
 ## 3) Python Module CLIs
 
