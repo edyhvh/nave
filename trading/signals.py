@@ -61,7 +61,8 @@ class Signal:
         metadata: dict | None = None,
     ):
         self.coin = coin
-        self.direction = Direction(direction) if isinstance(direction, str) else direction
+        self.direction = Direction(direction) if isinstance(
+            direction, str) else direction
         self.confidence = confidence
         self.source = source
         self.size_usd = size_usd
@@ -221,7 +222,8 @@ class MacroSignalProducer:
         # If data isn't already COTBias objects, analyze raw dict payload first.
         is_bias_object_map = all(hasattr(v, "bias") and hasattr(v, "confidence")
                                  for v in cot_biases.values())
-        biases = cot_biases if is_bias_object_map else analyzer.analyze(cot_biases)
+        biases = cot_biases if is_bias_object_map else analyzer.analyze(
+            cot_biases)
         return analyzer.to_signals(biases)
 
     def produce(self, indicators: dict) -> list[Signal]:
