@@ -10,6 +10,21 @@ Run all commands from the repository root unless stated otherwise.
 python setup.py
 ```
 
+What setup now automates:
+
+- Creates `.venv`
+- Installs dependencies
+- Installs a `nave` shim at `.venv/bin/nave`
+- Adds `.venv/bin` to your shell rc (`~/.zshrc` or `~/.bashrc`)
+
+After setup, reload shell config once:
+
+```bash
+source ~/.zshrc
+# or
+source ~/.bashrc
+```
+
 Manual setup:
 
 ```bash
@@ -35,6 +50,15 @@ If `nave` is not available in your shell, use:
 
 ```bash
 PYTHONPATH=. python cli/main.py --help
+```
+
+Troubleshooting sequence:
+
+```bash
+python setup.py
+source ~/.zshrc   # or source ~/.bashrc
+which nave
+nave --help
 ```
 
 Main help/version:

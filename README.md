@@ -31,6 +31,8 @@ That's it! The setup script will:
 - Create a virtual environment
 - Install all dependencies (OpenBB + extensions)
 - Configure the environment
+- Install a reliable `nave` CLI shim into `.venv/bin`
+- Add `.venv/bin` PATH automation to your active shell rc (`.zshrc` or `.bashrc`)
 
 ### Manual Setup (If needed)
 
@@ -46,6 +48,31 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Optional: make nave command available in this shell
+export PATH="$(pwd)/.venv/bin:$PATH"
+```
+
+## CLI Troubleshooting
+
+If `nave --help` returns `command not found`:
+
+```bash
+# Ensure setup completed at least once
+python setup.py
+
+# Reload shell config where setup added PATH automation
+source ~/.zshrc   # or: source ~/.bashrc
+
+# Verify command resolution
+which nave
+nave --help
+```
+
+Quick fallback (always works from repo root):
+
+```bash
+PYTHONPATH=. python cli/main.py --help
 ```
 
 ## API Key Setup
@@ -207,10 +234,10 @@ See `docs/technical.yaml` for full philosophy and `trading/cot/` for implementat
 
 Two EVM wallets are pre-generated for the trading agents:
 
-| Agent      | Address                                      |
-| ---------- | -------------------------------------------- |
-| `openfang` | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51` |
-| `ironclaw` | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F` |
+| Agent      | Address                                                 |
+| ---------- | ------------------------------------------------------- |
+| `openfang` | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51`            |
+| `ironclaw` | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F`            |
 | `hermes`   | Generated locally via `python scripts/setup_wallets.py` |
 
 Private keys and seed phrases are encrypted in `~/.secrets/nave-wallets/`
