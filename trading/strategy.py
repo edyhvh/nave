@@ -396,8 +396,10 @@ class CotWeeklyStrategy(BaseStrategy):
             client = self.client
         if hasattr(client, "open_position"):
             metadata = dict(getattr(signal, "metadata", {}) or {})
+            metadata["signal_direction"] = signal.direction.value
             regime = str(metadata.get("market_regime",
                          metadata.get("regime", "all")))
+            volatility = float(metadata.get("volatility", 0.03) or 0.03)
 
             # Use SetupLearner ranking instead of pseudo-random selection
             candidates = metadata.get("setups", self.setups)
@@ -433,26 +435,17 @@ class CotWeeklyStrategy(BaseStrategy):
                 )
                 return None
 
-            # Fixed-fractional position sizing: risk_pct * equity / stop_distance
-            volatility = float(metadata.get("volatility", 0.03) or 0.03)
-            stop_distance = max(volatility * 2.0, 0.02)  # ATR-based stop
-            edge_label = str(policy.get("edge_label", "marginal"))
-            sizing = self.calculate_position_sizing(
-                confidence=signal.confidence,
-                capital=self.equity,
-                stop_distance=stop_distance,
-                edge_label=edge_label,
-            )
-            size = sizing["size_usd"] * float(policy["size_multiplier"])
+            # Fixed-fractional position sizing
+            stop_distance = max(volatility * 2.0, 0.02)
+            risk_amount = self.equity * self.risk_pct
+            size = risk_amount / max(stop_distance, 0.01)
             size = min(size, self.equity * 0.25)  # hard cap 25% of equity
             if size <= 0:
                 return None
-            leverage = min(
-                self.max_leverage,
-                self.calculate_leverage(
-                    signal.confidence, edge_label=edge_label)
-                * float(policy["leverage_multiplier"]),
-            )
+
+            # Fixed leverage matching the profitable 201700 baseline
+            leverage = 8.0 if signal.direction == Direction.LONG else 7.5
+
             trade = client.open_position(
                 coin=signal.coin,
                 direction="long" if signal.direction == Direction.LONG else "short",

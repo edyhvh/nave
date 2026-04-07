@@ -151,3 +151,10 @@ conda/
 # Tools and utilities
 .mise/
 .direnv/
+
+# Web dependencies/build artifacts
+node_modules/
+web/node_modules/
+
+# 
+*.joblib

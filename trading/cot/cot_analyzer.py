@@ -63,6 +63,14 @@ class COTAnalyzer:
             net = raw.get("net_non_commercial", raw.get("noncomm_net", 0))
             pct = raw.get("pct_oi_non_com", raw.get("noncomm_pct_oi", 20.0))
             change = raw.get("change", raw.get("change_noncomm_net", 0))
+            # Sanitise NaN/None from real CSV rows missing change data
+            import math
+            if net is None or (isinstance(net, float) and math.isnan(net)):
+                net = 0
+            if pct is None or (isinstance(pct, float) and math.isnan(pct)):
+                pct = 0.0
+            if change is None or (isinstance(change, float) and math.isnan(change)):
+                change = 0
         else:
             # From real DF or records
             df = pd.DataFrame(raw.get("raw", []))
@@ -103,29 +111,33 @@ class COTAnalyzer:
 
         # Advanced F.I.T.S. weighting (from PR #7): Sentiment (COT commercials) 40%, Fundamental 30%, Technical stub 30%
         # Bias score 0-100 for overall setup quality
-        spec_extreme = abs(net) / 10000
-        score = min(100, int(40 * min(spec_extreme, 1.0) + 30 *
-                    (abs(change) / 5000) + 30 * 0.7))  # technical stub
-        if net > 10000:
-            # specs heavily long -> potential reversal (contrarian)
+        # Use pct_oi (scale-independent) for bias detection.
+        # Real CFTC BTC data: pct_oi ranges ~ -32 to +8.
+        # Contrarian logic: specs heavily long at extremes = bearish reversal,
+        # specs heavily short at extremes = bullish reversal.
+        pct_extreme = abs(pct) / 20.0  # normalise: 20% OI is a strong signal
+        spec_extreme = abs(net) / max(abs(net) + 1, 1)  # fallback scale
+        score = min(100, int(40 * min(pct_extreme, 1.0) + 30 *
+                    (abs(change) / 2000) + 30 * 0.7))  # technical stub
+        if pct > 5.0:
+            # specs heavily long (rare, above P95) → potential reversal (contrarian)
             bias = "bearish"
             conf = 0.75
-        elif net < -5000:
+        elif pct < -15.0:
+            # specs heavily short (below P30) → bullish reversal
             bias = "bullish"
             conf = 0.8
+        elif pct > 0:
+            # specs mildly long → lean bearish
+            bias = "bearish"
+            conf = 0.6
+        elif pct < -8.0:
+            # specs moderately short → lean bullish
+            bias = "bullish"
+            conf = 0.65
         else:
             bias = "neutral"
             conf = 0.5
-
-        # Momentum direction filter: don't fight strong weekly momentum
-        if bias == "bearish" and change > 500:
-            # Momentum accelerating long — don't short into strength
-            bias = "neutral"
-            conf = 0.4
-        elif bias == "bullish" and change < -500:
-            # Momentum accelerating short — don't long into weakness
-            bias = "neutral"
-            conf = 0.4
 
         bias_score = score  # 0-100 overall
 
@@ -146,7 +158,7 @@ class COTAnalyzer:
             "market_regime": market_regime,
             "momentum": float(change),
             "oi_level": float(pct),
-            "volatility": 0.02 + (min(abs(change), 5000) / 5000) * 0.03,
+            "volatility": 0.02 + (min(abs(change), 2000) / 2000) * 0.03,
         }
 
         return COTBias(

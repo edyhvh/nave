@@ -133,8 +133,8 @@ class BacktestEngine:
         self.trades = []
         self.positions = {}
 
-        # Walk-forward ML: collect trades for incremental training
-        warmup_trades = 20  # minimum trades before ML gating activates
+        # Walk-forward ML: activate model gating earlier to reduce warmup bleed.
+        warmup_trades = 8  # minimum trades before ML gating activates
 
         # Iterate through time (weekly for COT)
         current = self.config.start_date
