@@ -134,6 +134,7 @@ def generate_weekly_report(
     setups: list[str] | None = None,
     debug_cot: bool = False,
     include_micro: bool = False,
+    cot_history: int | None = None,
 ) -> Dict:
     """Main weekly COT analysis and recommendation."""
     active_setups = setups or list(DEFAULT_SETUPS)
@@ -176,6 +177,37 @@ def generate_weekly_report(
         print(
             f"      # Traders: Non-Comm: {_fmt_int(section.get('traders_non_commercial'))} | Commercial: {_fmt_int(section.get('traders_commercial'))}"
         )
+
+    def _history_weeks_for_months(months: int) -> int:
+        # Keep enough weekly points to cover month windows plus delta context.
+        return max(16, months * 6 + 4)
+
+    if cot_history is not None:
+        if not (1 <= cot_history <= 12):
+            raise ValueError("cot_history must be between 1 and 12")
+        analyzer = COTAnalyzer(setups=active_setups)
+        historical_data = fetch_latest_cot(
+            report_type="futures_and_options",
+            debug=debug_cot,
+            include_micro=include_micro,
+            history_weeks=_history_weeks_for_months(cot_history),
+        )
+        historical = analyzer.generate_historical_variation_report(
+            months=cot_history,
+            cot_data={k: v for k, v in historical_data.items() if k in {
+                "BTC", "ETH"}},
+        )
+        print()
+        print(historical.get("markdown", "No historical report output available."))
+        print()
+        return {
+            "report_type": "cot_historical_variation",
+            "months": cot_history,
+            "as_of_date": historical.get("as_of_date", "N/A"),
+            "assets": historical.get("assets", {}),
+            "observations": historical.get("observations", []),
+            "timestamp": datetime.now().isoformat(),
+        }
 
     print("\n" + "="*80)
     print("🚀 NAVE WEEKLY COT ANALYSIS")
@@ -394,6 +426,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Include MICRO contracts in COT filter",
     )
+    parser.add_argument(
+        "--cot-history",
+        type=int,
+        default=None,
+        help="Generate historical variation report for the last N calendar months (1-12)",
+    )
     args = parser.parse_args()
 
     mode = "paper"
@@ -415,6 +453,12 @@ if __name__ == "__main__":
         setups=args.setups,
         debug_cot=args.debug_cot,
         include_micro=args.include_micro,
+        cot_history=args.cot_history,
     )
-    print(
-        f"\nFinal recommendation: Allocate to {report['best_asset']} with {report['leverage']}x leverage.")
+    if report.get("report_type") == "cot_historical_variation":
+        print(
+            f"\nHistorical report complete (last {report.get('months')} months, as-of {report.get('as_of_date')})."
+        )
+    else:
+        print(
+            f"\nFinal recommendation: Allocate to {report['best_asset']} with {report['leverage']}x leverage.")

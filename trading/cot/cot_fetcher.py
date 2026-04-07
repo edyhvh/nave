@@ -135,6 +135,7 @@ def fetch_latest_cot(
     report_type: ReportType = "futures_and_options",
     include_micro: bool = False,
     debug: bool = False,
+    history_weeks: int | None = None,
 ) -> Dict[str, Any]:
     """Fetch latest COT for BTC and ETH, with 7-day caching.
 
@@ -142,6 +143,8 @@ def fetch_latest_cot(
         report_type: 'futures_only' (deacmelf) or 'futures_and_options' (deacmelof).
         include_micro: If True, include MICRO contracts in the filter.
         debug: If True, log raw DataFrame columns and unique market names.
+        history_weeks: Optional number of trailing weekly rows to return per asset.
+            This only affects returned payload size; full cache history remains persisted.
 
     Returns:
         Dict mapping asset name -> {raw: list[dict], latest_date: str, symbol: str, cached: bool}
@@ -180,7 +183,7 @@ def fetch_latest_cot(
                     )
                     if rows:
                         v["raw"] = rows
-                return data
+                return _limit_history_payload(data, history_weeks)
         except (json.JSONDecodeError, KeyError) as exc:
             logger.warning("Cache file corrupt (%s), re-fetching", exc)
 
@@ -301,7 +304,31 @@ def fetch_latest_cot(
     except OSError as exc:
         logger.warning("Failed to write cache: %s", exc)
 
-    return data
+    return _limit_history_payload(data, history_weeks)
+
+
+def _limit_history_payload(data: dict[str, Any], history_weeks: int | None) -> dict[str, Any]:
+    """Return a payload view with trailing row limits per asset when requested.
+
+    We intentionally keep persisted cache depth untouched so follow-up analyses can
+    request longer windows without re-fetching.
+    """
+    if history_weeks is None:
+        return data
+
+    max_points = max(
+        2, min(int(history_weeks), TARGET_PERCENTILE_HISTORY_WEEKS))
+    limited: dict[str, Any] = {}
+    for asset, payload in data.items():
+        if not isinstance(payload, dict):
+            limited[asset] = payload
+            continue
+        out = dict(payload)
+        rows = payload.get("raw", [])
+        if isinstance(rows, list):
+            out["raw"] = _dedupe_and_sort_rows(rows, max_points=max_points)
+        limited[asset] = out
+    return limited
 
 
 def _fetch_openbb_cot(obb: Any, asset: str, report_type: ReportType, *, debug: bool = False) -> pd.DataFrame:

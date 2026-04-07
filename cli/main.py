@@ -206,6 +206,11 @@ def cot_report(
     report_type: str = typer.Option(
         "futures_and_options", "--report-type",
         help="CFTC report type: futures_only or futures_and_options (legacy_combined alias supported)"),
+    cot_history: int | None = typer.Option(
+        None,
+        "--cot-history",
+        help="Generate historical COT variation report for the last N calendar months (1-12)",
+    ),
 ):
     """Weekly COT report with indicators for manual setup hunting.
 
@@ -335,6 +340,10 @@ def cot_report(
             return "slightly"
         return "near-neutral"
 
+    def _history_weeks_for_months(months: int) -> int:
+        # 6 weeks/month cushion preserves enough Tuesday snapshots for calendar windows.
+        return max(16, months * 6 + 4)
+
     if debug:
         _logging.basicConfig(level=_logging.DEBUG,
                              format="%(levelname)s: %(message)s")
@@ -346,10 +355,54 @@ def cot_report(
             "--report-type must be futures_only or futures_and_options (legacy_combined alias supported)"
         )
 
+    if cot_history is not None and not (1 <= cot_history <= 12):
+        raise typer.BadParameter("--cot-history must be between 1 and 12")
+
     primary_report_type = "futures_only" if report_type == "futures_only" else "futures_and_options"
     primary_report_label = "Futures Only" if primary_report_type == "futures_only" else "Futures + Options"
 
     coin_list = coins.split()
+    cot_data_futures_only = {}
+    cot_data_futures_and_options = {}
+
+    analyzer = COTAnalyzer()
+
+    if cot_history is not None:
+        history_weeks = _history_weeks_for_months(cot_history)
+        historical_data = fetch_latest_cot(
+            report_type=primary_report_type,
+            include_micro=include_micro,
+            debug=debug,
+            history_weeks=history_weeks,
+        )
+        historical_data = {
+            coin: historical_data[coin]
+            for coin in coin_list
+            if coin in historical_data
+        }
+        historical = analyzer.generate_historical_variation_report(
+            months=cot_history,
+            cot_data=historical_data,
+        )
+
+        if json_out:
+            payload = {
+                "generated_at": _dt.now().strftime("%Y-%m-%d %H:%M"),
+                "report_type": "cot_historical_variation",
+                "bias_source": primary_report_type,
+                "months": cot_history,
+                "as_of_date": historical.get("as_of_date", "N/A"),
+                "coins": historical.get("assets", {}),
+                "observations": historical.get("observations", []),
+            }
+            typer.echo(_json.dumps(payload, indent=2))
+            return
+
+        typer.echo()
+        typer.echo(historical.get(
+            "markdown", "No historical report output available."))
+        return
+
     cot_data_futures_only = fetch_latest_cot(
         report_type="futures_only",
         include_micro=include_micro,
@@ -361,7 +414,6 @@ def cot_report(
         debug=debug,
     )
 
-    analyzer = COTAnalyzer()
     biases_futures_only = analyzer.analyze(cot_data_futures_only)
     biases_futures_and_options = analyzer.analyze(cot_data_futures_and_options)
 
