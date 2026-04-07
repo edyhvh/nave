@@ -11,6 +11,7 @@ Exact CFTC market names used for filtering:
 
 Supports both Legacy Combined (deacmelof) and Futures Only (deacmesf) reports.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,8 +21,6 @@ from datetime import date, datetime, timedelta
 from html import unescape
 from pathlib import Path
 from typing import Any, Dict, Literal
-
-import numpy as np
 import pandas as pd
 import requests
 
@@ -161,17 +160,15 @@ def fetch_latest_cot(
                 cached = json.load(f)
             cached_version = int(cached.get("cache_version", 0))
             cached_key = str(cached.get("cache_key", ""))
-            cache_date = datetime.fromisoformat(
-                cached.get("fetch_date", "2000-01-01"))
+            cache_date = datetime.fromisoformat(cached.get("fetch_date", "2000-01-01"))
             if cached_version != CACHE_VERSION:
                 logger.debug(
-                    "Ignoring stale COT cache: version %s != %s", cached_version, CACHE_VERSION)
+                    "Ignoring stale COT cache: version %s != %s", cached_version, CACHE_VERSION
+                )
             elif cached_key != cache_key:
-                logger.debug(
-                    "Ignoring stale COT cache: key %s != %s", cached_key, cache_key)
+                logger.debug("Ignoring stale COT cache: key %s != %s", cached_key, cache_key)
             elif (today - cache_date).days < 7:
-                logger.debug("Using cached COT data (fetched %s)",
-                             cache_date.date())
+                logger.debug("Using cached COT data (fetched %s)", cache_date.date())
                 data = cached["data"]
                 for asset_name, v in data.items():
                     v["cached"] = True
@@ -201,8 +198,7 @@ def fetch_latest_cot(
                 if debug:
                     _log_debug_info(df, asset)
 
-                filtered = _filter_asset_rows(
-                    df, asset, include_micro=include_micro, debug=debug)
+                filtered = _filter_asset_rows(df, asset, include_micro=include_micro, debug=debug)
 
                 if filtered.empty:
                     direct_df, direct_as_of = _fetch_cftc_direct_asset_rows(
@@ -243,14 +239,10 @@ def fetch_latest_cot(
                         )
                         continue
 
-                    if debug:
-                        logger.info(
-                            "No rows matched for %s after filtering — falling back to mock data. "
-                            "Check market_and_exchange_names values with --debug-cot.",
-                            asset,
-                        )
-                    data[asset] = _mock_cot_data(asset)
-                    continue
+                    raise RuntimeError(
+                        f"No real COT rows matched for {asset}. "
+                        "Check market filters and source availability with --debug-cot."
+                    )
 
                 latest_date = _extract_latest_date(filtered, today)
                 filtered = _slice_to_as_of(filtered, latest_date)
@@ -278,18 +270,17 @@ def fetch_latest_cot(
                 )
                 logger.debug(
                     "Fetched COT for %s: %d rows, as-of %s, released %s",
-                    asset, len(filtered), latest_date, release_date,
+                    asset,
+                    len(filtered),
+                    latest_date,
+                    release_date,
                 )
 
             except Exception as e_asset:
-                logger.warning(
-                    "COT fetch for %s failed: %s — using mock data", asset, e_asset)
-                data[asset] = _mock_cot_data(asset)
+                raise RuntimeError(f"COT fetch for {asset} failed: {e_asset}") from e_asset
 
     except Exception as e:
-        logger.warning(
-            "OpenBB COT fetch failed: %s — using mock data for all assets", e)
-        data = {a: _mock_cot_data(a) for a in ["BTC", "ETH"]}
+        raise RuntimeError(f"OpenBB COT fetch failed: {e}") from e
 
     # Cache result
     cache_data = {
@@ -316,8 +307,7 @@ def _limit_history_payload(data: dict[str, Any], history_weeks: int | None) -> d
     if history_weeks is None:
         return data
 
-    max_points = max(
-        2, min(int(history_weeks), TARGET_PERCENTILE_HISTORY_WEEKS))
+    max_points = max(2, min(int(history_weeks), TARGET_PERCENTILE_HISTORY_WEEKS))
     limited: dict[str, Any] = {}
     for asset, payload in data.items():
         if not isinstance(payload, dict):
@@ -331,7 +321,9 @@ def _limit_history_payload(data: dict[str, Any], history_weeks: int | None) -> d
     return limited
 
 
-def _fetch_openbb_cot(obb: Any, asset: str, report_type: ReportType, *, debug: bool = False) -> pd.DataFrame:
+def _fetch_openbb_cot(
+    obb: Any, asset: str, report_type: ReportType, *, debug: bool = False
+) -> pd.DataFrame:
     """Call OpenBB CFTC COT endpoint and return a DataFrame."""
     regulators = getattr(obb, "regulators", None)
     cftc = getattr(regulators, "cftc", None) if regulators else None
@@ -346,13 +338,16 @@ def _fetch_openbb_cot(obb: Any, asset: str, report_type: ReportType, *, debug: b
     report_value = "financial" if normalized_report == "futures_only" else "legacy"
     cftc_code = CFTC_CODES.get(asset)
     market_main_name = MARKET_NAMES.get(asset, {}).get("main", "")
-    history_start = (datetime.now(
-    ) - timedelta(weeks=TARGET_PERCENTILE_HISTORY_WEEKS + 52)).date().isoformat()
+    history_start = (
+        (datetime.now() - timedelta(weeks=TARGET_PERCENTILE_HISTORY_WEEKS + 52)).date().isoformat()
+    )
     attempts = [
-        {"id": cftc_code, "report_type": report_value,
-            "start_date": history_start} if cftc_code else None,
-        {"id": market_main_name, "report_type": report_value,
-            "start_date": history_start} if market_main_name else None,
+        {"id": cftc_code, "report_type": report_value, "start_date": history_start}
+        if cftc_code
+        else None,
+        {"id": market_main_name, "report_type": report_value, "start_date": history_start}
+        if market_main_name
+        else None,
         {"id": cftc_code, "report_type": report_value} if cftc_code else None,
         {"id": market_main_name, "report_type": report_value} if market_main_name else None,
     ]
@@ -363,8 +358,7 @@ def _fetch_openbb_cot(obb: Any, asset: str, report_type: ReportType, *, debug: b
         try:
             result = cot_fn(**kwargs)
             if debug:
-                logger.info(
-                    "OpenBB COT call succeeded for %s with args: %s", asset, kwargs)
+                logger.info("OpenBB COT call succeeded for %s with args: %s", asset, kwargs)
             df = _openbb_result_to_df(result)
             if df.empty:
                 continue
@@ -429,12 +423,11 @@ def _filter_asset_rows(
         return df
 
     # Find the market name column (case varies between OpenBB versions)
-    market_col = _find_column(
-        df, ["market_and_exchange_names", "Market_and_Exchange_Names"])
+    market_col = _find_column(df, ["market_and_exchange_names", "Market_and_Exchange_Names"])
     if market_col is None:
         logger.warning(
-            "No market_and_exchange_names column found in COT data. "
-            "Available columns: %s", list(df.columns),
+            "No market_and_exchange_names column found in COT data. Available columns: %s",
+            list(df.columns),
         )
         return pd.DataFrame()
 
@@ -449,18 +442,15 @@ def _filter_asset_rows(
     # Log all unique market names for debugging
     unique_names = names_upper.unique().tolist()
     if debug:
-        logger.info("Unique market names in DataFrame (%d): %s",
-                    len(unique_names), unique_names)
+        logger.info("Unique market names in DataFrame (%d): %s", len(unique_names), unique_names)
 
     # --- Strategy 1: Exact match on known CFTC market names ---
     main_name = names_cfg["main"].upper()
     micro_name = names_cfg["micro"].upper()
 
-    main_mask = names_upper.str.contains(
-        re.escape(main_name), na=False, regex=True)
+    main_mask = names_upper.str.contains(re.escape(main_name), na=False, regex=True)
     if include_micro:
-        micro_mask = names_upper.str.contains(
-            re.escape(micro_name), na=False, regex=True)
+        micro_mask = names_upper.str.contains(re.escape(micro_name), na=False, regex=True)
         mask = main_mask | micro_mask
     else:
         mask = main_mask
@@ -473,17 +463,23 @@ def _filter_asset_rows(
         if debug:
             logger.info(
                 "Exact match for %s: %d rows (include_micro=%s)",
-                asset, len(filtered), include_micro,
+                asset,
+                len(filtered),
+                include_micro,
             )
-            logger.info("Filtered market names for %s: %s", asset,
-                        filtered[market_col].astype(str).unique().tolist())
+            logger.info(
+                "Filtered market names for %s: %s",
+                asset,
+                filtered[market_col].astype(str).unique().tolist(),
+            )
         return filtered
 
     # --- No match: return empty, do NOT fall back to full DataFrame ---
     if debug:
         logger.info(
             "No COT rows matched for %s. Unique market names in data: %s",
-            asset, unique_names[:20],
+            asset,
+            unique_names[:20],
         )
     return pd.DataFrame()
 
@@ -504,8 +500,7 @@ def _extract_latest_date(df: pd.DataFrame, fallback: datetime) -> str:
             if not series.empty:
                 dates = sorted({d.date() for d in series.tolist()})
                 for d in dates:
-                    rel = pd.to_datetime(_derive_release_date(
-                        d.isoformat()), errors="coerce")
+                    rel = pd.to_datetime(_derive_release_date(d.isoformat()), errors="coerce")
                     if pd.notna(rel) and rel.date() <= fallback.date():
                         latest_released = d
                 if latest_released is not None:
@@ -521,8 +516,7 @@ def _extract_latest_date(df: pd.DataFrame, fallback: datetime) -> str:
             m = re.match(r"^(\d{6})", raw_id)
             if not m:
                 continue
-            parsed = pd.to_datetime(
-                m.group(1), format="%y%m%d", errors="coerce")
+            parsed = pd.to_datetime(m.group(1), format="%y%m%d", errors="coerce")
             if pd.notna(parsed):
                 parsed_dates.append(parsed.date())
         if parsed_dates:
@@ -587,15 +581,12 @@ def _fetch_cftc_direct_asset_rows(
         resp = requests.get(url, timeout=30)
         resp.raise_for_status()
     except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "Direct CFTC fetch failed for %s (%s): %s", asset, url, exc)
+        logger.warning("Direct CFTC fetch failed for %s (%s): %s", asset, url, exc)
         return pd.DataFrame(), "N/A"
 
-    m = re.search(r"<pre[^>]*>(.*?)</pre>", resp.text,
-                  re.IGNORECASE | re.DOTALL)
+    m = re.search(r"<pre[^>]*>(.*?)</pre>", resp.text, re.IGNORECASE | re.DOTALL)
     if not m:
-        logger.warning(
-            "Direct CFTC parser could not find <pre> section in %s", url)
+        logger.warning("Direct CFTC parser could not find <pre> section in %s", url)
         return pd.DataFrame(), "N/A"
 
     pre_text = unescape(m.group(1))
@@ -609,8 +600,7 @@ def _fetch_cftc_direct_asset_rows(
         all_market_headers = [
             ln.strip() for ln in lines if "CODE-" in ln.upper() and "CHICAGO" in ln.upper()
         ]
-        logger.info("Direct CFTC available market headers (%d)",
-                    len(all_market_headers))
+        logger.info("Direct CFTC available market headers (%d)", len(all_market_headers))
         for ln in all_market_headers:
             logger.info("  - %s", ln)
 
@@ -663,10 +653,10 @@ def _parse_cftc_market_block(lines: list[str], market_name: str) -> tuple[pd.Dat
             break
     block = lines[header_idx:next_header]
 
-    all_line = next(
-        (ln for ln in block if ln.strip().startswith("All  :")), "")
-    change_hdr_idx = next((idx for idx, ln in enumerate(
-        block) if "CHANGES IN COMMITMENTS FROM" in ln.upper()), -1)
+    all_line = next((ln for ln in block if ln.strip().startswith("All  :")), "")
+    change_hdr_idx = next(
+        (idx for idx, ln in enumerate(block) if "CHANGES IN COMMITMENTS FROM" in ln.upper()), -1
+    )
     change_line = ""
     if change_hdr_idx >= 0 and change_hdr_idx + 1 < len(block):
         change_line = block[change_hdr_idx + 1]
@@ -725,12 +715,10 @@ def _validate_filtered_rows(df: pd.DataFrame, asset: str, market_col: str) -> pd
     has_eth = any("ETHER" in n for n in names)
 
     if asset.upper() == "BTC" and (has_eth or not has_btc):
-        logger.debug(
-            "Filtered BTC rows contain invalid market names: %s", sorted(set(names))[:10])
+        logger.debug("Filtered BTC rows contain invalid market names: %s", sorted(set(names))[:10])
         return pd.DataFrame()
     if asset.upper() == "ETH" and (has_btc or not has_eth):
-        logger.debug(
-            "Filtered ETH rows contain invalid market names: %s", sorted(set(names))[:10])
+        logger.debug("Filtered ETH rows contain invalid market names: %s", sorted(set(names))[:10])
         return pd.DataFrame()
     return df
 
@@ -759,8 +747,7 @@ def _log_debug_info(df: pd.DataFrame, asset: str) -> None:
     logger.info("DataFrame shape: %s", df.shape)
     logger.info("Columns: %s", list(df.columns))
 
-    market_col = _find_column(
-        df, ["market_and_exchange_names", "Market_and_Exchange_Names"])
+    market_col = _find_column(df, ["market_and_exchange_names", "Market_and_Exchange_Names"])
     if market_col:
         unique = df[market_col].unique().tolist()
         logger.info("Unique market_and_exchange_names (%d):", len(unique))
@@ -773,88 +760,6 @@ def _log_debug_info(df: pd.DataFrame, asset: str) -> None:
         logger.info("First row sample: %s", dict(df.iloc[0]))
         logger.info("Last row sample: %s", dict(df.iloc[-1]))
     logger.info("=== END DEBUG COT: %s ===", asset)
-
-
-def _mock_cot_data(asset: str) -> Dict[str, Any]:
-    """Generate realistic mock COT data for development/demo when API fails.
-
-    Produces distinct values for BTC vs ETH to avoid the duplication bug.
-    Uses deterministic seeds per asset for reproducibility.
-    """
-    seed = 42 if asset == "BTC" else 99
-    rng = np.random.default_rng(seed)
-    today = datetime.now()
-
-    # Generate ~52 weeks of synthetic data with distinct profiles per asset
-    dates = pd.date_range(end=today, periods=52, freq="W-TUE")
-
-    if asset == "BTC":
-        # BTC: larger contracts, specs tend net short, higher OI
-        base_oi = 55_000
-        base_long = 22_000
-        base_short = 28_000
-        comm_long_base = 18_000
-        comm_short_base = 14_000
-    else:
-        # ETH: smaller contracts, different positioning
-        base_oi = 12_000
-        base_long = 5_500
-        base_short = 4_200
-        comm_long_base = 3_800
-        comm_short_base = 4_500
-
-    records = []
-    for i, date in enumerate(dates):
-        cycle = np.sin(i / 8) * 0.15
-        noise = rng.normal(0, 0.05)
-        factor = 1.0 + cycle + noise
-
-        noncomm_long = int(base_long * factor)
-        noncomm_short = int(base_short * (1.0 + rng.normal(0, 0.08)))
-        comm_long = int(comm_long_base * (1.0 + rng.normal(0, 0.06)))
-        comm_short = int(comm_short_base * (1.0 + rng.normal(0, 0.06)))
-        oi = int(base_oi * (1.0 + rng.normal(0, 0.04)))
-
-        records.append({
-            "report_date": str(date.date()),
-            "noncomm_positions_long_all": noncomm_long,
-            "noncomm_positions_short_all": noncomm_short,
-            "comm_positions_long_all": comm_long,
-            "comm_positions_short_all": comm_short,
-            "open_interest_all": oi,
-            "market_and_exchange_names": MARKET_NAMES[asset]["main"],
-        })
-
-    all_dates = pd.DataFrame(records)
-    as_of = _extract_latest_date(all_dates, today)
-    records = [r for r in records if pd.to_datetime(
-        r["report_date"], errors="coerce").date() <= pd.to_datetime(as_of).date()]
-    latest = records[-1]
-    net = latest["noncomm_positions_long_all"] - \
-        latest["noncomm_positions_short_all"]
-    net_comm = latest["comm_positions_long_all"] - \
-        latest["comm_positions_short_all"]
-    oi = latest["open_interest_all"]
-    pct = round(abs(net) / oi * 100, 2) if oi else 0.0
-    prev = records[-2] if len(records) >= 2 else records[-1]
-    prev_net = prev["noncomm_positions_long_all"] - \
-        prev["noncomm_positions_short_all"]
-    change = net - prev_net
-
-    return {
-        "raw": records,
-        "latest_date": as_of,
-        "as_of_date": as_of,
-        "release_date": _derive_release_date(as_of),
-        "symbol": asset,
-        "cached": False,
-        # Pre-computed fields for fallback (also computed by analyzer from raw)
-        "net_non_commercial": net,
-        "net_commercial": net_comm,
-        "pct_oi_non_com": pct,
-        "change": change,
-        "open_interest": oi,
-    }
 
 
 def _history_cache_key(asset: str, report_type: ReportType, include_micro: bool) -> str:
@@ -896,8 +801,7 @@ def _row_date_value(row: dict[str, Any]) -> str:
     raw_id = str(row.get("id", ""))
     m_id = re.match(r"^(\d{6})", raw_id)
     if m_id:
-        parsed = pd.to_datetime(m_id.group(
-            1), format="%y%m%d", errors="coerce")
+        parsed = pd.to_datetime(m_id.group(1), format="%y%m%d", errors="coerce")
         if pd.notna(parsed):
             return parsed.date().isoformat()
 
@@ -919,7 +823,9 @@ def _row_dedupe_key(row: dict[str, Any]) -> tuple[str, str]:
     return (_row_date_value(row), market_name)
 
 
-def _dedupe_and_sort_rows(rows: list[dict[str, Any]], *, max_points: int = TARGET_PERCENTILE_HISTORY_WEEKS) -> list[dict[str, Any]]:
+def _dedupe_and_sort_rows(
+    rows: list[dict[str, Any]], *, max_points: int = TARGET_PERCENTILE_HISTORY_WEEKS
+) -> list[dict[str, Any]]:
     deduped: dict[tuple[str, str], dict[str, Any]] = {}
     for row in rows:
         if isinstance(row, dict):
@@ -952,8 +858,9 @@ def _persist_history_rows(
 ) -> None:
     history = _load_history_cache()
     key = _history_cache_key(asset, report_type, include_micro)
-    history[key] = _dedupe_and_sort_rows(history.get(
-        key, []) + list(rows), max_points=TARGET_PERCENTILE_HISTORY_WEEKS)
+    history[key] = _dedupe_and_sort_rows(
+        history.get(key, []) + list(rows), max_points=TARGET_PERCENTILE_HISTORY_WEEKS
+    )
     _save_history_cache(history)
 
 
@@ -996,8 +903,7 @@ def build_cot_sections_from_datasets(
         fo_asset = futures_only_data.get(asset, {})
         co_asset = combined_data.get(asset, {})
 
-        futures_only_metrics = _extract_section_metrics(
-            fo_asset.get("raw", []))
+        futures_only_metrics = _extract_section_metrics(fo_asset.get("raw", []))
         combined_metrics = _extract_section_metrics(co_asset.get("raw", []))
         options_metrics, options_validation = _derive_options_metrics(
             futures_only_metrics,
@@ -1042,10 +948,7 @@ def _derive_options_metrics(
         "traders_non_commercial",
         "traders_commercial",
     ]
-    missing = [
-        key for key in required_keys
-        if key not in futures_only or key not in combined
-    ]
+    missing = [key for key in required_keys if key not in futures_only or key not in combined]
     if missing:
         return None, {
             "valid": False,
@@ -1060,14 +963,26 @@ def _derive_options_metrics(
         }
 
     options: dict[str, Any] = {
-        "net_non_commercial": int(combined["net_non_commercial"] - futures_only["net_non_commercial"]),
-        "net_non_commercial_delta": int(combined["net_non_commercial_delta"] - futures_only["net_non_commercial_delta"]),
+        "net_non_commercial": int(
+            combined["net_non_commercial"] - futures_only["net_non_commercial"]
+        ),
+        "net_non_commercial_delta": int(
+            combined["net_non_commercial_delta"] - futures_only["net_non_commercial_delta"]
+        ),
         "net_commercial": int(combined["net_commercial"] - futures_only["net_commercial"]),
-        "net_commercial_delta": int(combined["net_commercial_delta"] - futures_only["net_commercial_delta"]),
+        "net_commercial_delta": int(
+            combined["net_commercial_delta"] - futures_only["net_commercial_delta"]
+        ),
         "open_interest": int(combined["open_interest"] - futures_only["open_interest"]),
-        "open_interest_delta": int(combined["open_interest_delta"] - futures_only["open_interest_delta"]),
-        "traders_non_commercial": int(combined["traders_non_commercial"] - futures_only["traders_non_commercial"]),
-        "traders_commercial": int(combined["traders_commercial"] - futures_only["traders_commercial"]),
+        "open_interest_delta": int(
+            combined["open_interest_delta"] - futures_only["open_interest_delta"]
+        ),
+        "traders_non_commercial": int(
+            combined["traders_non_commercial"] - futures_only["traders_non_commercial"]
+        ),
+        "traders_commercial": int(
+            combined["traders_commercial"] - futures_only["traders_commercial"]
+        ),
     }
 
     if options["open_interest"] < 0:
@@ -1085,8 +1000,7 @@ def _derive_options_metrics(
         }
 
     oi = options["open_interest"]
-    options["pct_oi"] = round((options["net_non_commercial"] / oi) * 100,
-                              1) if oi else None
+    options["pct_oi"] = round((options["net_non_commercial"] / oi) * 100, 1) if oi else None
 
     return options, {
         "valid": True,
@@ -1174,8 +1088,7 @@ def _extract_section_metrics(rows: list[dict[str, Any]]) -> dict[str, Any] | Non
     )
 
     oi_for_pct = float(latest_oi)
-    pct_oi = round((float(latest_noncomm) / oi_for_pct) * 100,
-                   1) if oi_for_pct else None
+    pct_oi = round((float(latest_noncomm) / oi_for_pct) * 100, 1) if oi_for_pct else None
 
     return {
         "net_non_commercial": int(round(latest_noncomm)),
@@ -1201,8 +1114,7 @@ def _extract_net_pair(
     short_col = _first_existing_from_df(df, short_aliases)
     if long_col:
         latest_long, prev_long = _extract_single_pair(df, [long_col])
-        latest_short, prev_short = _extract_single_pair(
-            df, [short_col] if short_col else [])
+        latest_short, prev_short = _extract_single_pair(df, [short_col] if short_col else [])
         latest_net = (latest_long or 0.0) - (latest_short or 0.0)
         prev_net = None
         if prev_long is not None or prev_short is not None:
@@ -1213,17 +1125,13 @@ def _extract_net_pair(
         existing_longs = [c for c in fallback_long_cols if c in df.columns]
         existing_shorts = [c for c in fallback_short_cols if c in df.columns]
         if existing_longs and existing_shorts:
-            latest_long = sum(_safe_float(df[c].iloc[-1])
-                              for c in existing_longs)
-            latest_short = sum(_safe_float(df[c].iloc[-1])
-                               for c in existing_shorts)
+            latest_long = sum(_safe_float(df[c].iloc[-1]) for c in existing_longs)
+            latest_short = sum(_safe_float(df[c].iloc[-1]) for c in existing_shorts)
             latest_net = latest_long - latest_short
             prev_net = None
             if len(df) >= 2:
-                prev_long = sum(_safe_float(df[c].iloc[-2])
-                                for c in existing_longs)
-                prev_short = sum(_safe_float(df[c].iloc[-2])
-                                 for c in existing_shorts)
+                prev_long = sum(_safe_float(df[c].iloc[-2]) for c in existing_longs)
+                prev_short = sum(_safe_float(df[c].iloc[-2]) for c in existing_shorts)
                 prev_net = prev_long - prev_short
             return latest_net, prev_net
 
@@ -1251,18 +1159,22 @@ def _resolve_net_delta(
     if prev_net is not None:
         return latest_net - prev_net
     if long_change_col in df.columns and short_change_col in df.columns:
-        return _safe_float(df[long_change_col].iloc[-1]) - _safe_float(df[short_change_col].iloc[-1])
+        return _safe_float(df[long_change_col].iloc[-1]) - _safe_float(
+            df[short_change_col].iloc[-1]
+        )
     if long_change_group and short_change_group:
-        if all(col in df.columns for col in long_change_group) and all(col in df.columns for col in short_change_group):
-            long_total = sum(_safe_float(df[col].iloc[-1])
-                             for col in long_change_group)
-            short_total = sum(_safe_float(df[col].iloc[-1])
-                              for col in short_change_group)
+        if all(col in df.columns for col in long_change_group) and all(
+            col in df.columns for col in short_change_group
+        ):
+            long_total = sum(_safe_float(df[col].iloc[-1]) for col in long_change_group)
+            short_total = sum(_safe_float(df[col].iloc[-1]) for col in short_change_group)
             return long_total - short_total
     return 0.0
 
 
-def _resolve_value_delta(latest_value: float, prev_value: float | None, df: pd.DataFrame, delta_col: str) -> float:
+def _resolve_value_delta(
+    latest_value: float, prev_value: float | None, df: pd.DataFrame, delta_col: str
+) -> float:
     if prev_value is not None:
         return latest_value - prev_value
     if delta_col in df.columns:
@@ -1299,9 +1211,7 @@ def _extract_trader_all_count(
         # as a stable proxy for category-level participation (All).
         return max(long_val or 0, short_val or 0)
 
-    fallback_values = [
-        _extract_latest_int(df, [col]) for col in fallback_sum_aliases
-    ]
+    fallback_values = [_extract_latest_int(df, [col]) for col in fallback_sum_aliases]
     fallback_values = [v for v in fallback_values if v is not None]
     if fallback_values:
         return int(sum(fallback_values))
@@ -1327,8 +1237,7 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG,
-                        format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
     data = fetch_latest_cot(debug=True)
     print("\nCOT Data keys:", list(data.keys()))
     for k, v in data.items():
@@ -1339,7 +1248,7 @@ if __name__ == "__main__":
             short_val = latest.get("noncomm_positions_short_all", 0)
             net = long_val - short_val
             print(
-                f"{k}: net_non_commercial={net:+,} ({len(raw)} rows, date={v.get('latest_date')})")
+                f"{k}: net_non_commercial={net:+,} ({len(raw)} rows, date={v.get('latest_date')})"
+            )
         else:
-            print(
-                f"{k}: net={v.get('net_non_commercial', 'N/A')} (mock/pre-computed)")
+            print(f"{k}: net={v.get('net_non_commercial', 'N/A')} (mock/pre-computed)")

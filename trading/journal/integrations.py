@@ -3,11 +3,9 @@ Integrations for trade journaling with strategy and backtest systems.
 """
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta, timezone
 
 from .journal import TradeJournal
-from .models import Trade, TradeEnvironment, PositionUpdate, TradeReview
-from .storage import StorageBackend
+from .models import Trade, TradeEnvironment, TradeReview
 
 
 class StrategyJournalMixin:
@@ -89,7 +87,7 @@ class StrategyJournalMixin:
             entry_price=entry_price,
             size_usd=size_usd,
             environment=self.journal_env,
-            strategy_name=getattr(self, 'name', self.__class__.__name__),
+            strategy_name=getattr(self, "name", self.__class__.__name__),
             leverage=leverage,
             entry_signals=entry_signals,
             tags=tags,
@@ -129,12 +127,7 @@ class StrategyJournalMixin:
             notes_addition=notes,
         )
 
-    def journal_position_update(
-        self,
-        coin: str,
-        current_price: float,
-        **kwargs
-    ) -> None:
+    def journal_position_update(self, coin: str, current_price: float, **kwargs) -> None:
         """
         Record position update in journal.
 
@@ -148,9 +141,7 @@ class StrategyJournalMixin:
 
         trade_id = self._open_trades[coin]
         self.journal.record_position_update(
-            trade_id=trade_id,
-            current_price=current_price,
-            **kwargs
+            trade_id=trade_id, current_price=current_price, **kwargs
         )
 
     def get_journal_trade_id(self, coin: str) -> Optional[str]:
@@ -163,11 +154,7 @@ class StrategyJournalMixin:
             return []
         return self.journal.get_open_trades(environment=self.journal_env)
 
-    def review_trade(
-        self,
-        trade_id: str,
-        **review_kwargs
-    ) -> Optional[TradeReview]:
+    def review_trade(self, trade_id: str, **review_kwargs) -> Optional[TradeReview]:
         """
         Add a review to a trade.
 
@@ -181,118 +168,3 @@ class StrategyJournalMixin:
         if not self.journal:
             return None
         return self.journal.add_review(trade_id, **review_kwargs)
-
-
-class BacktestJournalMixin:
-    """
-    Mixin to add journaling to backtest engine.
-
-    Records all backtest trades for analysis and comparison.
-
-    Usage:
-        engine = BacktestEngine(...)
-        engine.setup_journal()  # Auto-records all trades
-        result = engine.run(strategy)
-
-        # Get backtest trades
-        trades = engine.get_journal_trades()
-    """
-
-    journal: Optional[TradeJournal] = None
-    _journal_storage: Optional[StorageBackend] = None
-    _backtest_trade_ids: List[str]
-
-    def setup_journal(self, journal: Optional[TradeJournal] = None) -> None:
-        """
-        Setup journal for backtest recording.
-
-        Args:
-            journal: Custom journal instance
-        """
-        self.journal = journal or TradeJournal()
-        self._journal_storage = self.journal.storage
-        self._backtest_trade_ids = []
-
-    def record_backtest_trade(self, trade: Trade) -> None:
-        """
-        Record a trade from backtest.
-
-        Args:
-            trade: Trade object to record
-        """
-        if not self.journal:
-            return
-
-        # Ensure it's marked as backtest
-        trade.environment = TradeEnvironment.BACKTEST
-
-        if self._journal_storage:
-            self._journal_storage.save_trade(trade)
-        self._backtest_trade_ids.append(trade.id)
-
-    def get_backtest_trades(self) -> List[Trade]:
-        """Get all trades recorded during backtest."""
-        if not self.journal:
-            return []
-
-        trades = []
-        for trade_id in self._backtest_trade_ids:
-            trade = self.journal.get_trade(trade_id)
-            if trade:
-                trades.append(trade)
-        return trades
-
-    def compare_to_live(
-        self,
-        coin: Optional[str] = None,
-        days: int = 30
-    ) -> Dict[str, Any]:
-        """
-        Compare backtest performance to live/paper trading.
-
-        Args:
-            coin: Filter by coin
-            days: Number of days to compare
-
-        Returns:
-            Comparison statistics
-        """
-        if not self.journal:
-            return {}
-
-        end_date = datetime.now(timezone.utc).replace(tzinfo=None)
-        start_date = end_date - timedelta(days=days)
-
-        backtest_stats = self.journal.get_stats(
-            environment=TradeEnvironment.BACKTEST,
-            start_date=start_date,
-            end_date=end_date,
-        )
-
-        live_stats = self.journal.get_stats(
-            environment=TradeEnvironment.LIVE,
-            start_date=start_date,
-            end_date=end_date,
-        )
-
-        paper_stats = self.journal.get_stats(
-            environment=TradeEnvironment.PAPER,
-            start_date=start_date,
-            end_date=end_date,
-        )
-
-        return {
-            'backtest': backtest_stats,
-            'paper': paper_stats,
-            'live': live_stats,
-            'comparison': {
-                'backtest_vs_live_pnl': (
-                    backtest_stats.get('total_pnl', 0) -
-                    live_stats.get('total_pnl', 0)
-                ),
-                'backtest_vs_paper_pnl': (
-                    backtest_stats.get('total_pnl', 0) -
-                    paper_stats.get('total_pnl', 0)
-                ),
-            }
-        }

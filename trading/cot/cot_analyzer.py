@@ -28,6 +28,7 @@ Historical Percentile:
   Net Non-Commercial ranked within all available history (0=extreme short, 100=extreme long).
   Used for context: "Specs at P85 → historically crowded long → watch for reversal".
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -40,7 +41,8 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from trading.config import DEFAULT_SETUPS, COT_PRIMARY_WEIGHT
-from trading.setup_learning import SetupLearner
+from trading.cot.cot_historical_analyzer import COTHistoricalAnalyzer
+from trading.cot.cot_report_generator import COTReportGenerator
 from trading.signals import Signal, Direction
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,7 @@ class COTBias:
         historical_percentile: Current net non-comm ranked 0-100 in available history.
         metadata: Additional diagnostic context.
     """
+
     asset: str
     net_non_commercial: int
     pct_oi_non_com: float
@@ -86,18 +89,10 @@ class COTAnalyzer:
     def __init__(
         self,
         setups: Optional[List[str]] = None,
-        setup_learner: Optional[SetupLearner] = None,
         regime: Optional[str] = None,
     ):
         candidate_setups = setups or list(DEFAULT_SETUPS)
-        self.setup_learner = setup_learner
         self.regime = regime
-        if self.setup_learner is not None:
-            candidate_setups = self.setup_learner.rank_setups(
-                candidate_setups,
-                regime=self.regime,
-                context={"market_regime": self.regime or "all"},
-            )
         self.setups = candidate_setups
 
     def analyze(self, cot_data: Dict[str, Any]) -> Dict[str, COTBias]:
@@ -120,52 +115,19 @@ class COTAnalyzer:
         - Last Week (previous report date -> latest report date)
         - Last 1..N Months (calendar-month anchor to latest report date)
         """
-        if months < 1:
-            raise ValueError("months must be >= 1")
-
-        asset_frames: dict[str, pd.DataFrame] = {}
-        for asset, raw in cot_data.items():
-            rows = raw.get("raw", []) if isinstance(raw, dict) else []
-            frame = self._build_history_frame(rows)
-            if not frame.empty:
-                asset_frames[asset] = frame
-
-        if not asset_frames:
-            return {
-                "months": months,
-                "as_of_date": as_of_date or "N/A",
-                "assets": {},
-                "observations": ["No historical COT rows available for report generation."],
-                "markdown": "No historical COT rows available for report generation.",
-            }
-
-        as_of = self._resolve_report_as_of_date(
-            cot_data=cot_data,
-            asset_frames=asset_frames,
-            override=as_of_date,
-        )
-
-        per_asset: dict[str, list[dict[str, Any]]] = {}
-        for asset in sorted(asset_frames.keys()):
-            periods = self._build_asset_period_rows(
-                asset_frames[asset], months, as_of)
-            if periods:
-                per_asset[asset] = periods
-
-        observations = self._generate_historical_observations(
-            per_asset, months)
-        markdown = self._render_historical_variation_markdown(
+        historical = COTHistoricalAnalyzer().generate_historical_variation(
             months=months,
-            as_of=as_of,
-            per_asset=per_asset,
-            observations=observations,
+            cot_data=cot_data,
+            as_of_date=as_of_date,
         )
-
+        markdown = COTReportGenerator().render_historical_markdown(
+            months=months,
+            as_of=historical.get("as_of_date", "N/A"),
+            per_asset=historical.get("assets", {}),
+            observations=historical.get("observations", []),
+        )
         return {
-            "months": months,
-            "as_of_date": as_of.isoformat(),
-            "assets": per_asset,
-            "observations": observations,
+            **historical,
             "markdown": markdown,
         }
 
@@ -206,7 +168,16 @@ class COTAnalyzer:
             ) = self._extract_from_precomputed(raw)
         else:
             logger.warning("No COT data available for %s", asset)
-            net, pct_signed, change, net_comm, oi, oi_change_pct, percentile, history_points = 0, 0.0, 0, 0, 0, 0.0, 50, 0
+            net, pct_signed, change, net_comm, oi, oi_change_pct, percentile, history_points = (
+                0,
+                0.0,
+                0,
+                0,
+                0,
+                0.0,
+                50,
+                0,
+            )
 
         pct_abs = abs(pct_signed)
 
@@ -219,11 +190,10 @@ class COTAnalyzer:
         # 30% Technical: stub — manual chart confluence (OBs, FVGs, etc.)
         technical_stub = 0.7
 
-        score = min(100, int(
-            40 * min(pct_extreme, 1.0)
-            + 30 * min(change_signal, 1.0)
-            + 30 * technical_stub
-        ))
+        score = min(
+            100,
+            int(40 * min(pct_extreme, 1.0) + 30 * min(change_signal, 1.0) + 30 * technical_stub),
+        )
 
         # ── Contrarian Bias Logic ──
         # Specs heavily positioned one way → expect reversal the other way
@@ -251,8 +221,7 @@ class COTAnalyzer:
             conf = 0.50
         else:
             crowding_premium = 0.03 if pct_abs >= 15.0 else 0.0
-            conf = min(0.90, max(0.50, 0.45 + 0.45 *
-                       (score / 100.0) + crowding_premium))
+            conf = min(0.90, max(0.50, 0.45 + 0.45 * (score / 100.0) + crowding_premium))
 
         side = "net long" if pct_signed >= 0 else "net short"
         intensity = self._position_intensity(pct_abs)
@@ -276,7 +245,8 @@ class COTAnalyzer:
             )
 
         market_regime = self.regime or self._infer_market_regime(
-            change=int(change), pct_oi=float(pct_signed))
+            change=int(change), pct_oi=float(pct_signed)
+        )
 
         bias_strength = "strong" if score > 70 else "medium" if score > 40 else "weak"
 
@@ -342,12 +312,11 @@ class COTAnalyzer:
         if df.empty:
             return pd.DataFrame()
 
-        metrics = df.apply(self._extract_row_metrics,
-                           axis=1, result_type="expand")
-        out = pd.concat([df[["report_date"]].reset_index(
-            drop=True), metrics.reset_index(drop=True)], axis=1)
-        out = out.drop_duplicates(
-            subset=["report_date"], keep="last").reset_index(drop=True)
+        metrics = df.apply(self._extract_row_metrics, axis=1, result_type="expand")
+        out = pd.concat(
+            [df[["report_date"]].reset_index(drop=True), metrics.reset_index(drop=True)], axis=1
+        )
+        out = out.drop_duplicates(subset=["report_date"], keep="last").reset_index(drop=True)
         return out
 
     def _resolve_report_as_of_date(
@@ -371,16 +340,16 @@ class COTAnalyzer:
                 if parsed is not None:
                     return parsed
 
-        latest = max(frame["report_date"].max()
-                     for frame in asset_frames.values())
+        latest = max(frame["report_date"].max() for frame in asset_frames.values())
         return latest.date() if isinstance(latest, pd.Timestamp) else latest
 
-    def _build_asset_period_rows(self, frame: pd.DataFrame, months: int, as_of: date) -> list[dict[str, Any]]:
+    def _build_asset_period_rows(
+        self, frame: pd.DataFrame, months: int, as_of: date
+    ) -> list[dict[str, Any]]:
         if frame.empty:
             return []
 
-        df = frame[frame["report_date"].dt.date <=
-                   as_of].reset_index(drop=True)
+        df = frame[frame["report_date"].dt.date <= as_of].reset_index(drop=True)
         if df.empty:
             return []
 
@@ -388,32 +357,37 @@ class COTAnalyzer:
         periods: list[dict[str, Any]] = []
 
         if end_idx >= 1:
-            periods.append(self._compose_period_row(
-                df=df,
-                label="Last Week",
-                start_idx=end_idx - 1,
-                end_idx=end_idx,
-            ))
+            periods.append(
+                self._compose_period_row(
+                    df=df,
+                    label="Last Week",
+                    start_idx=end_idx - 1,
+                    end_idx=end_idx,
+                )
+            )
 
         end_date = df.iloc[end_idx]["report_date"].date()
         for month in range(1, months + 1):
             target_start = self._subtract_calendar_months(end_date, month)
-            start_candidates = df.index[df["report_date"].dt.date >= target_start].tolist(
-            )
+            start_candidates = df.index[df["report_date"].dt.date >= target_start].tolist()
             if start_candidates:
                 start_idx = start_candidates[0]
             else:
                 start_idx = 0
-            periods.append(self._compose_period_row(
-                df=df,
-                label=f"Last {month} Month" if month == 1 else f"Last {month} Months",
-                start_idx=start_idx,
-                end_idx=end_idx,
-            ))
+            periods.append(
+                self._compose_period_row(
+                    df=df,
+                    label=f"Last {month} Month" if month == 1 else f"Last {month} Months",
+                    start_idx=start_idx,
+                    end_idx=end_idx,
+                )
+            )
 
         return periods
 
-    def _compose_period_row(self, *, df: pd.DataFrame, label: str, start_idx: int, end_idx: int) -> dict[str, Any]:
+    def _compose_period_row(
+        self, *, df: pd.DataFrame, label: str, start_idx: int, end_idx: int
+    ) -> dict[str, Any]:
         start_row = df.iloc[start_idx]
         end_row = df.iloc[end_idx]
 
@@ -425,7 +399,9 @@ class COTAnalyzer:
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
             "net_non_commercial": int(end_row["net_non_commercial"]),
-            "net_non_commercial_delta": int(end_row["net_non_commercial"] - start_row["net_non_commercial"]),
+            "net_non_commercial_delta": int(
+                end_row["net_non_commercial"] - start_row["net_non_commercial"]
+            ),
             "net_commercial": int(end_row["net_commercial"]),
             "net_commercial_delta": int(end_row["net_commercial"] - start_row["net_commercial"]),
             "open_interest": int(end_row["open_interest"]),
@@ -433,7 +409,9 @@ class COTAnalyzer:
             "pct_oi": round(float(end_row["pct_oi"]), 1),
             "pct_oi_delta": round(float(end_row["pct_oi"] - start_row["pct_oi"]), 1),
             "traders_non_commercial": self._optional_int(end_row.get("traders_non_commercial")),
-            "traders_non_commercial_start": self._optional_int(start_row.get("traders_non_commercial")),
+            "traders_non_commercial_start": self._optional_int(
+                start_row.get("traders_non_commercial")
+            ),
             "traders_commercial": self._optional_int(end_row.get("traders_commercial")),
             "traders_commercial_start": self._optional_int(start_row.get("traders_commercial")),
         }
@@ -454,7 +432,8 @@ class COTAnalyzer:
         for asset, rows in per_asset.items():
             lines.append(f"[{asset}]")
             lines.append(
-                "| Period | Dates | Net Non-Comm (Delta) | Net Commercial (Delta) | OI (Delta) | %OI (Delta) | # Traders Non-Comm | # Traders Comm |")
+                "| Period | Dates | Net Non-Comm (Delta) | Net Commercial (Delta) | OI (Delta) | %OI (Delta) | # Traders Non-Comm | # Traders Comm |"
+            )
             lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
             for row in rows:
                 lines.append(
@@ -486,8 +465,7 @@ class COTAnalyzer:
         target_label = f"Last {months} Month" if months == 1 else f"Last {months} Months"
 
         for asset, rows in per_asset.items():
-            period_row = next(
-                (r for r in rows if r["period"] == target_label), None)
+            period_row = next((r for r in rows if r["period"] == target_label), None)
             if period_row is None:
                 continue
 
@@ -497,24 +475,28 @@ class COTAnalyzer:
 
             if non_comm_delta > 0:
                 observations.append(
-                    f"{asset}: Non-Commercial net exposure increased over the last {months} month(s) (bullish crowding build-up).")
+                    f"{asset}: Non-Commercial net exposure increased over the last {months} month(s) (bullish crowding build-up)."
+                )
             elif non_comm_delta < 0:
                 observations.append(
-                    f"{asset}: Non-Commercial net exposure decreased over the last {months} month(s) (spec positioning unwind).")
+                    f"{asset}: Non-Commercial net exposure decreased over the last {months} month(s) (spec positioning unwind)."
+                )
 
             if comm_delta > 0:
                 observations.append(
-                    f"{asset}: Commercial net exposure increased over the last {months} month(s).")
+                    f"{asset}: Commercial net exposure increased over the last {months} month(s)."
+                )
             elif comm_delta < 0:
                 observations.append(
-                    f"{asset}: Commercial net exposure decreased over the last {months} month(s).")
+                    f"{asset}: Commercial net exposure decreased over the last {months} month(s)."
+                )
 
             if oi_delta > 0:
-                observations.append(
-                    f"{asset}: Open Interest expanded across the selected horizon.")
+                observations.append(f"{asset}: Open Interest expanded across the selected horizon.")
             elif oi_delta < 0:
                 observations.append(
-                    f"{asset}: Open Interest contracted across the selected horizon.")
+                    f"{asset}: Open Interest contracted across the selected horizon."
+                )
 
         return observations
 
@@ -526,21 +508,23 @@ class COTAnalyzer:
         while month <= 0:
             month += 12
             year -= 1
-        day = min(anchor.day, [
-            31,
-            29 if year % 4 == 0 and (
-                year % 100 != 0 or year % 400 == 0) else 28,
-            31,
-            30,
-            31,
-            30,
-            31,
-            31,
-            30,
-            31,
-            30,
-            31,
-        ][month - 1])
+        day = min(
+            anchor.day,
+            [
+                31,
+                29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                31,
+                30,
+                31,
+                30,
+                31,
+                31,
+                30,
+                31,
+                30,
+                31,
+            ][month - 1],
+        )
         return date(year, month, day)
 
     @staticmethod
@@ -572,8 +556,7 @@ class COTAnalyzer:
 
         raw_id = str(row.get("id", ""))
         if len(raw_id) >= 6 and raw_id[:6].isdigit():
-            parsed = pd.to_datetime(
-                raw_id[:6], format="%y%m%d", errors="coerce")
+            parsed = pd.to_datetime(raw_id[:6], format="%y%m%d", errors="coerce")
             if pd.notna(parsed):
                 return parsed
 
@@ -591,36 +574,44 @@ class COTAnalyzer:
 
     def _extract_row_metrics(self, row: pd.Series) -> pd.Series:
         noncomm_long = self._first_numeric_from_row(
-            row, ["noncomm_positions_long_all", "Noncommercial_Positions_Long"])
+            row, ["noncomm_positions_long_all", "Noncommercial_Positions_Long"]
+        )
         noncomm_short = self._first_numeric_from_row(
-            row, ["noncomm_positions_short_all", "Noncommercial_Positions_Short"])
+            row, ["noncomm_positions_short_all", "Noncommercial_Positions_Short"]
+        )
 
         if noncomm_long is None:
-            noncomm_long = sum(self._first_numeric_from_row(row, [name]) or 0.0 for name in [
-                "asset_mgr_positions_long",
-                "lev_money_positions_long",
-                "other_rept_positions_long",
-            ])
-            noncomm_short = sum(self._first_numeric_from_row(row, [name]) or 0.0 for name in [
-                "asset_mgr_positions_short",
-                "lev_money_positions_short",
-                "other_rept_positions_short",
-            ])
+            noncomm_long = sum(
+                self._first_numeric_from_row(row, [name]) or 0.0
+                for name in [
+                    "asset_mgr_positions_long",
+                    "lev_money_positions_long",
+                    "other_rept_positions_long",
+                ]
+            )
+            noncomm_short = sum(
+                self._first_numeric_from_row(row, [name]) or 0.0
+                for name in [
+                    "asset_mgr_positions_short",
+                    "lev_money_positions_short",
+                    "other_rept_positions_short",
+                ]
+            )
 
         net_noncomm = (noncomm_long or 0.0) - (noncomm_short or 0.0)
 
         comm_long = self._first_numeric_from_row(
-            row, ["comm_positions_long_all", "Commercial_Positions_Long"])
+            row, ["comm_positions_long_all", "Commercial_Positions_Long"]
+        )
         comm_short = self._first_numeric_from_row(
-            row, ["comm_positions_short_all", "Commercial_Positions_Short"])
+            row, ["comm_positions_short_all", "Commercial_Positions_Short"]
+        )
         if comm_long is None and "dealer_positions_long_all" in row:
             comm_long = self._safe_float(row.get("dealer_positions_long_all"))
-            comm_short = self._safe_float(
-                row.get("dealer_positions_short_all"))
+            comm_short = self._safe_float(row.get("dealer_positions_short_all"))
         net_comm = (comm_long or 0.0) - (comm_short or 0.0)
 
-        oi = self._first_numeric_from_row(
-            row, ["open_interest_all", "Open_Interest_All"]) or 0.0
+        oi = self._first_numeric_from_row(row, ["open_interest_all", "Open_Interest_All"]) or 0.0
         pct_oi = (net_noncomm / oi * 100) if oi else 0.0
 
         traders_noncomm = self._extract_trader_count(
@@ -695,8 +686,9 @@ class COTAnalyzer:
         if long_val is not None or short_val is not None:
             return int(round(max(long_val or 0.0, short_val or 0.0)))
 
-        fallback_values = [self._first_numeric_from_row(
-            row, [name]) for name in fallback_sum_aliases]
+        fallback_values = [
+            self._first_numeric_from_row(row, [name]) for name in fallback_sum_aliases
+        ]
         fallback_values = [v for v in fallback_values if v is not None]
         if fallback_values:
             return int(round(sum(fallback_values)))
@@ -749,36 +741,46 @@ class COTAnalyzer:
     def _extract_from_dataframe(self, df: pd.DataFrame):
         """Extract all metrics from a DataFrame of COT records."""
         long_col = self._first_existing(
-            df, ["noncomm_positions_long_all", "Noncommercial_Positions_Long"])
+            df, ["noncomm_positions_long_all", "Noncommercial_Positions_Long"]
+        )
         short_col = self._first_existing(
-            df, ["noncomm_positions_short_all", "Noncommercial_Positions_Short"])
-        oi_col = self._first_existing(
-            df, ["open_interest_all", "Open_Interest_All"])
+            df, ["noncomm_positions_short_all", "Noncommercial_Positions_Short"]
+        )
+        oi_col = self._first_existing(df, ["open_interest_all", "Open_Interest_All"])
         comm_long_col = self._first_existing(
-            df, ["comm_positions_long_all", "Commercial_Positions_Long"])
+            df, ["comm_positions_long_all", "Commercial_Positions_Long"]
+        )
         comm_short_col = self._first_existing(
-            df, ["comm_positions_short_all", "Commercial_Positions_Short"])
+            df, ["comm_positions_short_all", "Commercial_Positions_Short"]
+        )
 
         fin_spec_long_cols = [
-            c for c in ["asset_mgr_positions_long", "lev_money_positions_long", "other_rept_positions_long"]
+            c
+            for c in [
+                "asset_mgr_positions_long",
+                "lev_money_positions_long",
+                "other_rept_positions_long",
+            ]
             if c in df.columns
         ]
         fin_spec_short_cols = [
-            c for c in ["asset_mgr_positions_short", "lev_money_positions_short", "other_rept_positions_short"]
+            c
+            for c in [
+                "asset_mgr_positions_short",
+                "lev_money_positions_short",
+                "other_rept_positions_short",
+            ]
             if c in df.columns
         ]
 
         # Net Non-Commercial
         if long_col:
             latest_long = self._safe_float(df[long_col].iloc[-1])
-            latest_short = self._safe_float(
-                df[short_col].iloc[-1]) if short_col else 0.0
+            latest_short = self._safe_float(df[short_col].iloc[-1]) if short_col else 0.0
             net = latest_long - latest_short
         elif fin_spec_long_cols and fin_spec_short_cols:
-            latest_long = sum(self._safe_float(
-                df[c].iloc[-1]) for c in fin_spec_long_cols)
-            latest_short = sum(self._safe_float(
-                df[c].iloc[-1]) for c in fin_spec_short_cols)
+            latest_long = sum(self._safe_float(df[c].iloc[-1]) for c in fin_spec_long_cols)
+            latest_short = sum(self._safe_float(df[c].iloc[-1]) for c in fin_spec_short_cols)
             net = latest_long - latest_short
         else:
             net = 0.0
@@ -793,14 +795,11 @@ class COTAnalyzer:
         if len(df) >= 2 and (long_col or (fin_spec_long_cols and fin_spec_short_cols)):
             if long_col:
                 prev_long = self._safe_float(df[long_col].iloc[-2])
-                prev_short = self._safe_float(
-                    df[short_col].iloc[-2]) if short_col else 0.0
+                prev_short = self._safe_float(df[short_col].iloc[-2]) if short_col else 0.0
                 prev_net = prev_long - prev_short
             else:
-                prev_long = sum(self._safe_float(
-                    df[c].iloc[-2]) for c in fin_spec_long_cols)
-                prev_short = sum(self._safe_float(
-                    df[c].iloc[-2]) for c in fin_spec_short_cols)
+                prev_long = sum(self._safe_float(df[c].iloc[-2]) for c in fin_spec_long_cols)
+                prev_short = sum(self._safe_float(df[c].iloc[-2]) for c in fin_spec_short_cols)
                 prev_net = prev_long - prev_short
             change = int(net - prev_net)
         elif (
@@ -826,10 +825,8 @@ class COTAnalyzer:
             "change_in_noncomm_long_all" in df.columns
             and "change_in_noncomm_short_all" in df.columns
         ):
-            d_long = self._safe_float(
-                df["change_in_noncomm_long_all"].iloc[-1])
-            d_short = self._safe_float(
-                df["change_in_noncomm_short_all"].iloc[-1])
+            d_long = self._safe_float(df["change_in_noncomm_long_all"].iloc[-1])
+            d_short = self._safe_float(df["change_in_noncomm_short_all"].iloc[-1])
             change = int(d_long - d_short)
         else:
             change = 0
@@ -837,14 +834,13 @@ class COTAnalyzer:
         # Net Commercial
         if comm_long_col:
             comm_long = self._safe_float(df[comm_long_col].iloc[-1])
-            comm_short = self._safe_float(
-                df[comm_short_col].iloc[-1]) if comm_short_col else 0.0
+            comm_short = self._safe_float(df[comm_short_col].iloc[-1]) if comm_short_col else 0.0
             net_comm = comm_long - comm_short
-        elif "dealer_positions_long_all" in df.columns and "dealer_positions_short_all" in df.columns:
-            comm_long = self._safe_float(
-                df["dealer_positions_long_all"].iloc[-1])
-            comm_short = self._safe_float(
-                df["dealer_positions_short_all"].iloc[-1])
+        elif (
+            "dealer_positions_long_all" in df.columns and "dealer_positions_short_all" in df.columns
+        ):
+            comm_long = self._safe_float(df["dealer_positions_long_all"].iloc[-1])
+            comm_short = self._safe_float(df["dealer_positions_short_all"].iloc[-1])
             net_comm = comm_long - comm_short
         else:
             net_comm = 0.0
@@ -852,13 +848,11 @@ class COTAnalyzer:
         # OI weekly change %
         if len(df) >= 2 and oi_col:
             prev_oi = self._safe_float(df[oi_col].iloc[-2])
-            oi_change_pct = ((oi - prev_oi) / prev_oi *
-                             100) if prev_oi else 0.0
+            oi_change_pct = ((oi - prev_oi) / prev_oi * 100) if prev_oi else 0.0
         elif "change_in_open_interest_all" in df.columns:
             d_oi = self._safe_float(df["change_in_open_interest_all"].iloc[-1])
             prev_oi = oi - d_oi
-            oi_change_pct = ((oi - prev_oi) / prev_oi *
-                             100) if prev_oi else 0.0
+            oi_change_pct = ((oi - prev_oi) / prev_oi * 100) if prev_oi else 0.0
         else:
             oi_change_pct = 0.0
 
@@ -869,13 +863,18 @@ class COTAnalyzer:
         if (long_col or (fin_spec_long_cols and fin_spec_short_cols)) and len(df) >= 2:
             if long_col:
                 all_longs = df[long_col].apply(self._safe_float)
-                all_shorts = df[short_col].apply(
-                    self._safe_float) if short_col else pd.Series(0.0, index=df.index)
+                all_shorts = (
+                    df[short_col].apply(self._safe_float)
+                    if short_col
+                    else pd.Series(0.0, index=df.index)
+                )
             else:
-                all_longs = df[fin_spec_long_cols].apply(
-                    lambda col: col.map(self._safe_float)).sum(axis=1)
-                all_shorts = df[fin_spec_short_cols].apply(
-                    lambda col: col.map(self._safe_float)).sum(axis=1)
+                all_longs = (
+                    df[fin_spec_long_cols].apply(lambda col: col.map(self._safe_float)).sum(axis=1)
+                )
+                all_shorts = (
+                    df[fin_spec_short_cols].apply(lambda col: col.map(self._safe_float)).sum(axis=1)
+                )
             all_nets = all_longs - all_shorts
             all_nets = all_nets.tail(TARGET_PERCENTILE_HISTORY_WEEKS)
             history_points = len(all_nets)
@@ -914,8 +913,10 @@ class COTAnalyzer:
         """Convert COT biases to trading Signals for aggregator."""
         signals = []
         for bias in biases.values():
-            direction = Direction.LONG if bias.bias == "bullish" else (
-                Direction.SHORT if bias.bias == "bearish" else Direction.NEUTRAL
+            direction = (
+                Direction.LONG
+                if bias.bias == "bullish"
+                else (Direction.SHORT if bias.bias == "bearish" else Direction.NEUTRAL)
             )
             if direction != Direction.NEUTRAL:
                 signals.append(
@@ -924,12 +925,14 @@ class COTAnalyzer:
                         direction=direction,
                         confidence=bias.confidence,
                         source="macro/cot",
-                        metadata=bias.metadata
+                        metadata=bias.metadata,
                     )
                 )
         return signals
 
-    def generate_cot_signal(self, asset: str, cot_bias: COTBias, technical_context: dict | None = None) -> Signal:
+    def generate_cot_signal(
+        self, asset: str, cot_bias: COTBias, technical_context: dict | None = None
+    ) -> Signal:
         """Precise signal generation with setup confluence + IPDA (from PR #7).
         Stubs technical confluence for 4H/1H setups per philosophy.
         """
@@ -937,7 +940,8 @@ class COTAnalyzer:
         retracement_conf = technical_context.get("has_75_retracement", True)
         ipda_phase = technical_context.get("ipda_phase", "retracement")
         overall_conf = min(
-            cot_bias.confidence * (cot_bias.metadata.get("fits_weighted_score", 50) / 100), 0.95)
+            cot_bias.confidence * (cot_bias.metadata.get("fits_weighted_score", 50) / 100), 0.95
+        )
 
         direction = Direction.LONG if cot_bias.bias == "bullish" else Direction.SHORT
         metadata = {
@@ -945,14 +949,14 @@ class COTAnalyzer:
             "75_retracement": retracement_conf,
             "ipda_phase": ipda_phase,
             "confluence": " + ".join(self.setups),
-            "bias_score_100": cot_bias.metadata.get("fits_weighted_score", 50)
+            "bias_score_100": cot_bias.metadata.get("fits_weighted_score", 50),
         }
         return Signal(
             coin=asset,
             direction=direction,
             confidence=overall_conf,
             source="macro/cot_75_retrace",
-            metadata=metadata
+            metadata=metadata,
         )
 
     # ── Internal helpers ─────────────────────────────────────────────────
@@ -1015,9 +1019,10 @@ class COTAnalyzer:
 
 if __name__ == "__main__":
     import logging as _logging
-    _logging.basicConfig(level=_logging.DEBUG,
-                         format="%(levelname)s: %(message)s")
+
+    _logging.basicConfig(level=_logging.DEBUG, format="%(levelname)s: %(message)s")
     from trading.cot.cot_fetcher import fetch_latest_cot
+
     data = fetch_latest_cot(debug=True)
     analyzer = COTAnalyzer()
     biases = analyzer.analyze(data)

@@ -19,15 +19,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
-
-from trading.setup_learning import SetupLearner
 
 
 class Direction(str, Enum):
     LONG = "long"
     SHORT = "short"
-    CLOSE = "close"    # close any existing position
+    CLOSE = "close"  # close any existing position
     NEUTRAL = "neutral"  # no action
 
 
@@ -44,6 +41,7 @@ class Signal:
         size_usd:   Optional suggested notional size. Strategy may override.
         metadata:   Optional dict for diagnostic context (never contains secrets).
     """
+
     coin: str
     direction: Direction
     confidence: float  # 0..1
@@ -61,8 +59,7 @@ class Signal:
         metadata: dict | None = None,
     ):
         self.coin = coin
-        self.direction = Direction(direction) if isinstance(
-            direction, str) else direction
+        self.direction = Direction(direction) if isinstance(direction, str) else direction
         self.confidence = confidence
         self.source = source
         self.size_usd = size_usd
@@ -71,8 +68,7 @@ class Signal:
 
     def __post_init__(self):
         if not 0.0 <= self.confidence <= 1.0:
-            raise ValueError(
-                f"confidence must be in [0, 1], got {self.confidence}")
+            raise ValueError(f"confidence must be in [0, 1], got {self.confidence}")
         if isinstance(self.direction, str):
             self.direction = Direction(self.direction)
 
@@ -81,8 +77,10 @@ class Signal:
         return self.direction not in (Direction.NEUTRAL,)
 
     def __repr__(self) -> str:
-        return (f"Signal({self.coin} {self.direction.value} "
-                f"conf={self.confidence:.2f} src={self.source!r})")
+        return (
+            f"Signal({self.coin} {self.direction.value} "
+            f"conf={self.confidence:.2f} src={self.source!r})"
+        )
 
 
 class SignalAggregator:
@@ -137,11 +135,11 @@ class SignalAggregator:
             net = self.net_direction(coin)
             print(f"  {coin:<8} net={net.value:<8} ({len(sigs)} signal(s)):")
             for s in sorted(sigs, key=lambda x: -x.confidence):
-                print(
-                    f"           {s.direction.value:<8} conf={s.confidence:.2f}  [{s.source}]")
+                print(f"           {s.direction.value:<8} conf={s.confidence:.2f}  [{s.source}]")
 
 
 # ── Macro signal producers ────────────────────────────────────────────────────
+
 
 class MacroSignalProducer:
     """
@@ -160,10 +158,8 @@ class MacroSignalProducer:
     def __init__(
         self,
         coins: list[str] | None = None,
-        setup_learner: SetupLearner | None = None,
     ):
         self.coins = coins or ["BTC", "ETH"]
-        self.setup_learner = setup_learner
 
     def from_rrp_delta(self, rrp_weekly_change_bn: float) -> list[Signal]:
         """
@@ -176,9 +172,13 @@ class MacroSignalProducer:
         confidence = min(abs(rrp_weekly_change_bn) / 100, 0.9)
         direction = Direction.SHORT if rrp_weekly_change_bn > 0 else Direction.LONG
         return [
-            Signal(coin=c, direction=direction, confidence=confidence,
-                   source="macro/rrp",
-                   metadata={"rrp_change_bn": rrp_weekly_change_bn})
+            Signal(
+                coin=c,
+                direction=direction,
+                confidence=confidence,
+                source="macro/rrp",
+                metadata={"rrp_change_bn": rrp_weekly_change_bn},
+            )
             for c in self.coins
         ]
 
@@ -194,9 +194,13 @@ class MacroSignalProducer:
         # Contrarian: extreme bears → long, extreme bulls → short
         direction = Direction.LONG if spread < -15 else Direction.SHORT
         return [
-            Signal(coin=c, direction=direction, confidence=confidence,
-                   source="sentiment/aaii",
-                   metadata={"bull_pct": bull_pct, "bear_pct": bear_pct})
+            Signal(
+                coin=c,
+                direction=direction,
+                confidence=confidence,
+                source="sentiment/aaii",
+                metadata={"bull_pct": bull_pct, "bear_pct": bear_pct},
+            )
             for c in self.coins
         ]
 
@@ -206,8 +210,13 @@ class MacroSignalProducer:
             return []
         confidence = min((vix - 25) / 30, 0.9)
         return [
-            Signal(coin=c, direction=Direction.CLOSE, confidence=confidence,
-                   source="risk/vix", metadata={"vix": vix})
+            Signal(
+                coin=c,
+                direction=Direction.CLOSE,
+                confidence=confidence,
+                source="risk/vix",
+                metadata={"vix": vix},
+            )
             for c in self.coins
         ]
 
@@ -218,12 +227,13 @@ class MacroSignalProducer:
         Integrates with F.I.T.S. sentiment layer.
         """
         from trading.cot.cot_analyzer import COTAnalyzer
-        analyzer = COTAnalyzer(setups=setups, setup_learner=self.setup_learner)
+
+        analyzer = COTAnalyzer(setups=setups)
         # If data isn't already COTBias objects, analyze raw dict payload first.
-        is_bias_object_map = all(hasattr(v, "bias") and hasattr(v, "confidence")
-                                 for v in cot_biases.values())
-        biases = cot_biases if is_bias_object_map else analyzer.analyze(
-            cot_biases)
+        is_bias_object_map = all(
+            hasattr(v, "bias") and hasattr(v, "confidence") for v in cot_biases.values()
+        )
+        biases = cot_biases if is_bias_object_map else analyzer.analyze(cot_biases)
         return analyzer.to_signals(biases)
 
     def produce(self, indicators: dict) -> list[Signal]:
@@ -239,18 +249,19 @@ class MacroSignalProducer:
         """
         signals: list[Signal] = []
         if "rrp_weekly_change_bn" in indicators:
-            signals.extend(self.from_rrp_delta(
-                indicators["rrp_weekly_change_bn"]))
+            signals.extend(self.from_rrp_delta(indicators["rrp_weekly_change_bn"]))
         if "aaii_bull_pct" in indicators and "aaii_bear_pct" in indicators:
-            signals.extend(self.from_aaii_sentiment(
-                indicators["aaii_bull_pct"], indicators["aaii_bear_pct"]
-            ))
+            signals.extend(
+                self.from_aaii_sentiment(indicators["aaii_bull_pct"], indicators["aaii_bear_pct"])
+            )
         if "vix" in indicators:
             signals.extend(self.from_vix(indicators["vix"]))
         if "cot_data" in indicators:
             # COT is the MAIN weekly driver
-            signals.extend(self.from_cot(
-                indicators["cot_data"],
-                setups=indicators.get("setups"),
-            ))
+            signals.extend(
+                self.from_cot(
+                    indicators["cot_data"],
+                    setups=indicators.get("setups"),
+                )
+            )
         return signals

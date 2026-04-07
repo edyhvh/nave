@@ -6,10 +6,10 @@ Provides systematic tracking, performance analysis, and trade reviews.
 
 Usage:
     from trading.journal import TradeJournal, Trade, TradeEnvironment
-    
+
     # Initialize journal
     journal = TradeJournal()
-    
+
     # Record a trade
     trade = Trade(
         coin="BTC",
@@ -19,10 +19,10 @@ Usage:
         environment=TradeEnvironment.PAPER
     )
     journal.record_entry(trade)
-    
+
     # Close the trade
     journal.record_exit(trade_id, exit_price=68000)
-    
+
     # Get performance report
     report = journal.get_performance_report()
 """
@@ -38,7 +38,7 @@ from .models import (
 )
 from .journal import TradeJournal
 from .storage import SQLiteStorage, JSONStorage
-from .integrations import StrategyJournalMixin, BacktestJournalMixin
+from .integrations import StrategyJournalMixin
 from .github_sync import GitHubDataRepoSync
 from .manual_trade import ManualTrade, ManualTradeStore
 from .manual_wiki_sync import ManualTradeWikiSync
@@ -59,5 +59,4 @@ __all__ = [
     "ManualTradeStore",
     "ManualTradeWikiSync",
     "StrategyJournalMixin",
-    "BacktestJournalMixin",
 ]

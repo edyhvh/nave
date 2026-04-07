@@ -3,7 +3,7 @@ Tests for the trade journaling system.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import tempfile
 
@@ -24,10 +24,11 @@ from trading.journal.manual_trade import ManualTrade, ManualTradeStore
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def temp_db():
     """Create a temporary database for testing."""
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         path = f.name
     yield path
     Path(path).unlink(missing_ok=True)
@@ -61,6 +62,7 @@ def journal(sqlite_storage):
 # ─────────────────────────────────────────────────────────────────────────────
 # Trade Model Tests
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestTrade:
     """Tests for Trade model."""
@@ -96,8 +98,8 @@ class TestTrade:
 
         assert trade.notional_size == 5000  # 500 * 10
         assert trade.position_value == 5000
-        assert trade.is_long == False
-        assert trade.is_closed == False
+        assert not trade.is_long
+        assert not trade.is_closed
 
     def test_calculate_pnl_long_winner(self):
         """Test P&L calculation for winning long."""
@@ -179,6 +181,7 @@ class TestTrade:
 # Storage Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSQLiteStorage:
     """Tests for SQLite storage backend."""
 
@@ -223,7 +226,9 @@ class TestSQLiteStorage:
     def test_get_trades_with_filters(self, sqlite_storage):
         """Test querying trades with filters."""
         # Create trades in different environments
-        for i, env in enumerate([TradeEnvironment.BACKTEST, TradeEnvironment.PAPER, TradeEnvironment.LIVE]):
+        for i, env in enumerate(
+            [TradeEnvironment.BACKTEST, TradeEnvironment.PAPER, TradeEnvironment.LIVE]
+        ):
             trade = Trade(
                 coin=["BTC", "ETH", "SOL"][i],
                 direction="long",
@@ -235,8 +240,7 @@ class TestSQLiteStorage:
             sqlite_storage.save_trade(trade)
 
         # Query by environment
-        paper_trades = sqlite_storage.get_trades(
-            environment=TradeEnvironment.PAPER)
+        paper_trades = sqlite_storage.get_trades(environment=TradeEnvironment.PAPER)
         assert len(paper_trades) == 1
         assert paper_trades[0].coin == "ETH"
 
@@ -305,13 +309,12 @@ class TestSQLiteStorage:
                 trade.close(exit_price=50000)
             sqlite_storage.save_trade(trade)
 
-        stats = sqlite_storage.get_performance_stats(
-            environment=TradeEnvironment.PAPER)
+        stats = sqlite_storage.get_performance_stats(environment=TradeEnvironment.PAPER)
 
-        assert stats['total_trades'] == 5
-        assert stats['wins'] == 2
-        assert stats['losses'] == 2
-        assert stats['breakevens'] == 1
+        assert stats["total_trades"] == 5
+        assert stats["wins"] == 2
+        assert stats["losses"] == 2
+        assert stats["breakevens"] == 1
 
 
 class TestJSONStorage:
@@ -336,6 +339,7 @@ class TestJSONStorage:
 # ─────────────────────────────────────────────────────────────────────────────
 # Journal Tests
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestTradeJournal:
     """Tests for TradeJournal high-level interface."""
@@ -429,15 +433,14 @@ class TestTradeJournal:
             )
             journal.record_exit(trade.id, exit_price=50000 + pnl)
 
-        backtest_stats = journal.get_stats(
-            environment=TradeEnvironment.BACKTEST)
-        assert backtest_stats['total_trades'] == 2
+        backtest_stats = journal.get_stats(environment=TradeEnvironment.BACKTEST)
+        assert backtest_stats["total_trades"] == 2
 
     def test_get_open_trades(self, journal):
         """Test getting open trades."""
         # Open trades
         t1 = journal.record_entry("BTC", "long", 50000, 1000)
-        t2 = journal.record_entry("ETH", "long", 3000, 500)
+        journal.record_entry("ETH", "long", 3000, 500)
 
         # Closed trade
         t3 = journal.record_entry("SOL", "long", 100, 200)
@@ -473,8 +476,9 @@ class TestTradeJournal:
 # Integration Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestIntegrations:
-    """Tests for strategy and backtest integrations."""
+    """Tests for strategy journaling integrations."""
 
     def test_strategy_journal_mixin(self, journal):
         """Test StrategyJournalMixin functionality."""
@@ -506,29 +510,6 @@ class TestIntegrations:
         closed = strategy.journal_exit("BTC", exit_price=55000)
         assert closed is not None
         assert closed.is_closed
-
-    def test_backtest_journal_mixin(self, journal):
-        """Test BacktestJournalMixin functionality."""
-        from trading.journal.integrations import BacktestJournalMixin
-
-        class MockBacktestEngine(BacktestJournalMixin):
-            pass
-
-        engine = MockBacktestEngine()
-        engine.setup_journal(journal=journal)
-
-        # Record backtest trade
-        trade = Trade(
-            coin="ETH",
-            direction="long",
-            entry_price=3000,
-            size_usd=500,
-        )
-        engine.record_backtest_trade(trade)
-
-        trades = engine.get_backtest_trades()
-        assert len(trades) == 1
-        assert trades[0].environment == TradeEnvironment.BACKTEST
 
 
 class TestManualTradeStore:
@@ -595,7 +576,7 @@ class TestManualTradeStore:
             asset="ETH",
             side="short",
             market_type="spot",
-            trading_mode="backtest",
+            trading_mode="demo",
             entry_price=3000,
             target_price=2600,
             stop_loss_price=3200,
