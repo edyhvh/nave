@@ -140,6 +140,16 @@ source .venv/bin/activate
 
 ```
 nave/
+├── cli/                 # Unified Typer CLI
+│   ├── main.py          # Entrypoint and command group registration
+│   ├── commands/        # Modular command groups
+│   └── utils.py         # Shared CLI prompt helpers
+├── core/                # Cross-cutting app primitives
+│   ├── config.py        # Typed defaults and shared configuration
+│   ├── exceptions.py    # Domain-level exceptions
+│   └── logger.py        # Logger bootstrap helpers
+├── hermes/              # Hermes Agent integration contracts
+│   └── integration.py   # Tool registry + dispatch + gateway payload handling
 ├── trading/             # Trading integration package
 │   ├── vault.py         # Encrypted wallet storage (Fernet/AES)
 │   ├── client.py        # Hyperliquid REST + SDK client
@@ -237,9 +247,50 @@ nave api start --reload
 nave mcp
 nave cot analyze --coins BTC ETH
 nave data fetch aaii
+nave hermes tools
+nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
 ```
 
 This unifies all previous scripts, strategies, MCP, and backend. Legacy `./run.sh` and `python -m trading.*` still work.
+
+## Hermes Agent Integration
+
+Nave now exposes a dedicated Hermes integration layer designed for MCP and
+gateway workflows with structured JSON outputs.
+
+### Skill/Tool Discovery
+
+```bash
+nave hermes tools
+```
+
+### Direct Tool Calls
+
+```bash
+# Latest COT report (JSON)
+nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
+
+# Historical COT variation (last 3 months)
+nave hermes call --tool cot_history --args-json '{"months": 3, "coins": "BTC ETH"}'
+
+# Weekly execution plan
+nave hermes call --tool weekly_plan --args-json '{"capital": 2000, "wallet": "hermes"}'
+```
+
+### Gateway-Compatible Invocation Payload
+
+```bash
+nave hermes gateway-invoke '{"tool": "cot_report", "arguments": {"coins": "BTC ETH"}}'
+```
+
+### MCP Server Tools Available to Hermes
+
+`trading/mcp_server.py` now includes COT and weekly-plan oriented tools:
+
+- `cot_report`
+- `cot_history`
+- `weekly_plan`
+- plus existing account and execution tools (`account_summary`, `open_position`, etc.)
 
 ## Troubleshooting
 

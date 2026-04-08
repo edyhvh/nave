@@ -38,7 +38,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Literal
 
-from .models import Confluence, TradeSetup, WeeklyAssetPlan
+from .models import Bias, Confluence, TradeSetup, WeeklyAssetPlan
 
 # Hard confidence cap — COT is lagging context; high conviction is dishonest.
 MAX_CONFIDENCE = 0.65
@@ -175,7 +175,7 @@ class COTPositionGenerator:
     # ── Bias derivation ──────────────────────────────────────────────────
 
     @staticmethod
-    def _derive_commercial_bias(net_comm: int, net_comm_delta: int) -> str:
+    def _derive_commercial_bias(net_comm: int, net_comm_delta: int) -> Bias:
         """Derive directional context from commercial hedging activity alone.
 
         Positive net commercial + positive delta → commercials are
@@ -198,7 +198,7 @@ class COTPositionGenerator:
     @staticmethod
     def _assess_confluence(
         *,
-        bias: str,
+        bias: Bias,
         trend: str,
         price: float,
         swing_high: float,
@@ -236,7 +236,7 @@ class COTPositionGenerator:
     @staticmethod
     def _compute_confidence(
         *,
-        bias: str,
+        bias: Bias,
         confluence: Confluence,
         net_non_comm: int,
         net_non_comm_delta: int,
@@ -271,7 +271,7 @@ class COTPositionGenerator:
     @staticmethod
     def _build_bias_explanation(
         *,
-        bias: str,
+        bias: Bias,
         confluence: Confluence,
         net_comm: int,
         net_comm_delta: int,
@@ -329,7 +329,7 @@ class COTPositionGenerator:
         self,
         *,
         asset: str,
-        bias: str,
+        bias: Bias,
         confluence: Confluence,
         price: float,
         swing_high: float,

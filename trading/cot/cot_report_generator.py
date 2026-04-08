@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from typing import Any, cast
+from typing import Any
 
 
 class COTReportGenerator:
@@ -165,11 +165,8 @@ class COTReportGenerator:
 
     def normalize_payload(self, value: Any) -> Any:
         """Convert dataclass payloads into plain Python structures for JSON output."""
-        if is_dataclass(value):
-            try:
-                return asdict(cast(Any, value))
-            except TypeError:
-                return value
+        if is_dataclass(value) and not isinstance(value, type):
+            return self.normalize_payload(asdict(value))
         if isinstance(value, dict):
             return {k: self.normalize_payload(v) for k, v in value.items()}
         if isinstance(value, list):

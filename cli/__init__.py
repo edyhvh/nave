@@ -1,0 +1,1 @@
+"""Nave CLI package."""
