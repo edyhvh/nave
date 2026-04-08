@@ -18,7 +18,8 @@ if str(root_path) not in sys.path:
 
 
 # TODO: import routers from app.api when implemented
-from app.api.indicators import router as indicators_router
+from app.api.indicators import router as indicators_router  # noqa: E402
+from app.api.cot import router as cot_router  # noqa: E402
 
 app = FastAPI(
     title=settings.app_name,
@@ -42,6 +43,7 @@ setup_security_middleware(app)
 
 # Include routers
 app.include_router(indicators_router, prefix="/api/v1", tags=["indicators"])
+app.include_router(cot_router, prefix="/api/v1", tags=["cot"])
 
 
 @app.get("/health")
@@ -63,8 +65,10 @@ async def root():
         "version": settings.app_version,
     }
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "backend.app.main:app",
         host=settings.host,

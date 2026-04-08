@@ -22,6 +22,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from trading.client import HyperliquidClient
 from trading.signals import MacroSignalProducer, SignalAggregator
 from trading.cot.cot_analyzer import COTAnalyzer
@@ -30,8 +32,6 @@ from trading.cot.cot_position_generator import COTPositionGenerator
 from trading.cot.cot_report_generator import COTReportGenerator
 from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
 from trading.config import DEFAULT_SETUPS
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -268,7 +268,13 @@ def generate_weekly_report(
     weekly_plan = position_generator.generate_weekly_plan(
         cot_data=cot_sections,
         market_data_4h=market_data_4h,
+        capital_usd=capital_usd,
+        leverage=10.0,
     )
+    weekly_plan_markdown = reporter.render_weekly_plan_markdown(weekly_plan)
+    print()
+    print(weekly_plan_markdown)
+    print()
 
     report: dict[str, Any] = {
         "best_asset": best_asset,
@@ -278,6 +284,7 @@ def generate_weekly_report(
         "signals": len(signals),
         "dry_run": dry_run,
         "weekly_plan": weekly_plan,
+        "weekly_plan_markdown": weekly_plan_markdown,
         "timestamp": datetime.now().isoformat(),
     }
 

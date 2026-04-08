@@ -85,6 +85,84 @@ class COTReportGenerator:
 
         return "\n".join(lines).strip()
 
+    def render_weekly_plan_markdown(self, weekly_plan: dict[str, Any]) -> str:
+        """Render a humble, operator-friendly weekly context and execution plan."""
+        lines: list[str] = [
+            "NAVE WEEKLY COT CONTEXT & CONDITIONAL EXECUTION PLAN",
+            "",
+            "⚠ DISCLAIMER: COT is a lagging report of past trader positioning",
+            "  (released with a 3-day delay). It is NOT a predictive signal.",
+            "  All setups below require live 4H price structure confirmation",
+            "  before execution. Never trade COT in isolation.",
+            "",
+        ]
+        generated_at = str(weekly_plan.get("generated_at", "N/A"))
+        lines.append(f"Generated At: {generated_at}")
+        lines.append("")
+
+        assets = weekly_plan.get("assets", {})
+        for asset, plan in assets.items():
+            confluence = plan.get("structure_confluence", "none")
+            lines.append(f"[{asset}]")
+            lines.append(
+                f"Directional Context: {str(plan.get('bias', 'neutral')).upper()} | "
+                f"Confidence: {float(plan.get('confidence', 0.0)):.0%} | "
+                f"Structure Confluence: {confluence.upper()}"
+            )
+            lines.append(f"Context: {plan.get('bias_explanation', 'N/A')}")
+
+            levels = plan.get("key_levels", {})
+            lines.append(
+                "Key Levels: "
+                f"S: {levels.get('swing_low', 'N/A')} | "
+                f"EQ: {levels.get('equilibrium', 'N/A')} | "
+                f"R: {levels.get('swing_high', 'N/A')}"
+            )
+
+            setups = plan.get("setups", [])
+            if not setups:
+                lines.append(
+                    "Setups: None — 4H structure does not confirm COT context. "
+                    "Wait for alignment before taking any position."
+                )
+            else:
+                lines.append("Conditional Setups (require 4H confirmation):")
+                for setup in setups:
+                    entry_zone = setup.get("entry_zone", {})
+                    tp_levels = setup.get("take_profit_levels", [])
+                    tp_line = ", ".join(
+                        [
+                            f"{tp.get('label')}: {tp.get('price')} ({tp.get('rr')}R)"
+                            for tp in tp_levels
+                        ]
+                    )
+                    lines.append(
+                        f"- {setup.get('name')}: {str(setup.get('direction', 'long')).upper()} | "
+                        f"Entry Zone {entry_zone.get('low')} - {entry_zone.get('high')} | "
+                        f"SL {setup.get('stop_loss')} | TPs {tp_line}"
+                    )
+                    lines.append(
+                        f"  Risk {float(setup.get('recommended_risk_pct', 0.0)) * 100:.2f}% | "
+                        f"Risk Budget ${float(setup.get('position_size_usd', 0.0)):.2f} | "
+                        f"Size {setup.get('position_size_coin')} | Notional@10x ${float(setup.get('notional_usd_10x', 0.0)):.2f}"
+                    )
+                    lines.append(f"  Rationale: {setup.get('rationale', 'N/A')}")
+
+            notes = plan.get("risk_management_notes", [])
+            if notes:
+                lines.append("Risk Notes:")
+                for note in notes:
+                    lines.append(f"- {note}")
+            lines.append("")
+
+        lines.append("─" * 72)
+        lines.append(
+            "Remember: The COT report describes where traders WERE positioned, "
+            "not where the market WILL go. Use it as context, not conviction."
+        )
+
+        return "\n".join(lines).strip()
+
     def normalize_payload(self, value: Any) -> Any:
         """Convert dataclass payloads into plain Python structures for JSON output."""
         if is_dataclass(value) and not isinstance(value, type):
