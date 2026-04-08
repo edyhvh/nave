@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import json
 from mcp.server.fastmcp import FastMCP
+from hermes.integration import HermesNaveIntegration
 from trading.client import HyperliquidClient
 from trading.vault import WalletVault
 
@@ -51,6 +52,7 @@ mcp = FastMCP(
 )
 
 vault = WalletVault()
+hermes = HermesNaveIntegration()
 
 
 def _client(wallet: str = "openfang", testnet: bool = True) -> HyperliquidClient:
@@ -58,6 +60,7 @@ def _client(wallet: str = "openfang", testnet: bool = True) -> HyperliquidClient
 
 
 # ── Read-only tools ───────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def account_summary(wallet: str = "openfang", testnet: bool = True) -> str:
@@ -134,8 +137,7 @@ def list_positions(wallet: str = "openfang", testnet: bool = True) -> str:
         p = pos.get("position", {})
         pnl = float(p.get("unrealizedPnl", 0))
         lines.append(
-            f"  {p.get('coin'):>6}  size={p.get('szi')}  "
-            f"entry={p.get('entryPx')}  uPnL=${pnl:+.2f}"
+            f"  {p.get('coin'):>6}  size={p.get('szi')}  entry={p.get('entryPx')}  uPnL=${pnl:+.2f}"
         )
     return "\n".join(lines)
 
@@ -157,6 +159,7 @@ def list_orders(wallet: str = "openfang", testnet: bool = True) -> str:
 
 
 # ── Trading tools (default dry_run=True) ─────────────────────────────────────
+
 
 @mcp.tool()
 def open_position(
@@ -239,6 +242,55 @@ def close_position(
 
     result = client.market_close(coin)
     return f"Close order submitted [{env}]:\n{json.dumps(result, indent=2)}"
+
+
+@mcp.tool()
+def cot_report(
+    coins: str = "BTC ETH",
+    include_micro: bool = False,
+    report_type: str = "futures_and_options",
+) -> str:
+    """Return structured COT report JSON for Hermes and other MCP clients."""
+    payload = hermes.cot_report(
+        coins=coins,
+        include_micro=include_micro,
+        report_type=report_type,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def cot_history(
+    months: int,
+    coins: str = "BTC ETH",
+    include_micro: bool = False,
+    report_type: str = "futures_and_options",
+) -> str:
+    """Return historical COT variation JSON for requested month window."""
+    payload = hermes.cot_history(
+        months=months,
+        coins=coins,
+        include_micro=include_micro,
+        report_type=report_type,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def weekly_plan(
+    capital: float = 2000.0,
+    wallet: str = "hermes",
+    coins: str = "BTC ETH",
+    include_micro: bool = False,
+) -> str:
+    """Return structured weekly trading plan JSON from real COT and 4H data."""
+    payload = hermes.weekly_plan(
+        capital=capital,
+        wallet=wallet,
+        coins=coins,
+        include_micro=include_micro,
+    )
+    return json.dumps(payload, indent=2)
 
 
 if __name__ == "__main__":
