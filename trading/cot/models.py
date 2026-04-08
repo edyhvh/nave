@@ -29,11 +29,14 @@ class TradeSetup:
 
     name: str
     direction: Literal["long", "short"]
-    entry: float
+    entry_zone: dict[str, float]
+    entry_reference: float
     stop_loss: float
-    take_profit: float
-    risk_reward: float
-    risk_pct: float
+    take_profit_levels: list[dict[str, float | str]]
+    recommended_risk_pct: float
+    position_size_usd: float
+    position_size_coin: float
+    notional_usd_10x: float
     rationale: str
 
 
@@ -44,7 +47,8 @@ class WeeklyAssetPlan:
     asset: str
     bias: Bias
     confidence: float
+    bias_explanation: str
     key_levels: dict[str, float] = field(default_factory=dict)
     setups: list[TradeSetup] = field(default_factory=list)
     cot_summary: dict[str, Any] = field(default_factory=dict)
-    notes: list[str] = field(default_factory=list)
+    risk_management_notes: list[str] = field(default_factory=list)

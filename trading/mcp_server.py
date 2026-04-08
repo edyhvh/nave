@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import json
 from mcp.server.fastmcp import FastMCP
 from trading.client import HyperliquidClient
+from trading.services import COTService
 from trading.vault import WalletVault
 
 mcp = FastMCP(
@@ -51,6 +52,7 @@ mcp = FastMCP(
 )
 
 vault = WalletVault()
+cot_service = COTService()
 
 
 def _client(wallet: str = "openfang", testnet: bool = True) -> HyperliquidClient:
@@ -58,6 +60,7 @@ def _client(wallet: str = "openfang", testnet: bool = True) -> HyperliquidClient
 
 
 # ── Read-only tools ───────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def account_summary(wallet: str = "openfang", testnet: bool = True) -> str:
@@ -134,8 +137,7 @@ def list_positions(wallet: str = "openfang", testnet: bool = True) -> str:
         p = pos.get("position", {})
         pnl = float(p.get("unrealizedPnl", 0))
         lines.append(
-            f"  {p.get('coin'):>6}  size={p.get('szi')}  "
-            f"entry={p.get('entryPx')}  uPnL=${pnl:+.2f}"
+            f"  {p.get('coin'):>6}  size={p.get('szi')}  entry={p.get('entryPx')}  uPnL=${pnl:+.2f}"
         )
     return "\n".join(lines)
 
@@ -156,7 +158,63 @@ def list_orders(wallet: str = "openfang", testnet: bool = True) -> str:
     return f"Open orders for {wallet}:\n" + json.dumps(orders, indent=2)
 
 
+@mcp.tool()
+def cot_summary(
+    coins: str = "BTC ETH",
+    report_type: str = "futures_and_options",
+    include_micro: bool = False,
+    include_price_context: bool = True,
+) -> str:
+    """Return the latest structured COT summary as JSON."""
+    payload = cot_service.get_latest_summary(
+        coins=coins,
+        report_type=report_type,
+        include_micro=include_micro,
+        include_price_context=include_price_context,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def cot_weekly_plan(
+    coins: str = "BTC ETH",
+    capital_usd: float = 2000.0,
+    leverage: float = 10.0,
+    wallet: str = "openfang",
+    testnet: bool = True,
+    include_micro: bool = False,
+) -> str:
+    """Return a structured weekly execution plan generated from live COT + 4H structure."""
+    payload = cot_service.get_weekly_plan(
+        coins=coins,
+        capital_usd=capital_usd,
+        leverage=leverage,
+        wallet=wallet,
+        testnet=testnet,
+        include_micro=include_micro,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def cot_history(
+    months: int = 3,
+    coins: str = "BTC ETH",
+    report_type: str = "futures_and_options",
+    include_micro: bool = False,
+) -> str:
+    """Return historical COT variation report (structured JSON + markdown)."""
+    payload = cot_service.get_historical_variation(
+        months=months,
+        coins=coins,
+        report_type=report_type,
+        include_micro=include_micro,
+    )
+    return json.dumps(payload, indent=2)
+
+
 # ── Trading tools (default dry_run=True) ─────────────────────────────────────
+
 
 @mcp.tool()
 def open_position(

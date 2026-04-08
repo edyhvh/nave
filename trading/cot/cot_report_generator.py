@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from typing import Any
+from typing import Any, cast
 
 
 class COTReportGenerator:
@@ -85,10 +85,64 @@ class COTReportGenerator:
 
         return "\n".join(lines).strip()
 
+    def render_weekly_plan_markdown(self, weekly_plan: dict[str, Any]) -> str:
+        """Render a detailed, operator-friendly weekly execution plan."""
+        lines: list[str] = ["NAVE WEEKLY COT EXECUTION PLAN", ""]
+        generated_at = str(weekly_plan.get("generated_at", "N/A"))
+        lines.append(f"Generated At: {generated_at}")
+        lines.append("")
+
+        assets = weekly_plan.get("assets", {})
+        for asset, plan in assets.items():
+            lines.append(f"[{asset}]")
+            lines.append(
+                f"Bias: {str(plan.get('bias', 'neutral')).upper()} | Confidence: {float(plan.get('confidence', 0.0)):.0%}"
+            )
+            lines.append(f"Explanation: {plan.get('bias_explanation', 'N/A')}")
+
+            levels = plan.get("key_levels", {})
+            lines.append(
+                "Key Levels: "
+                f"S: {levels.get('swing_low', 'N/A')} | "
+                f"EQ: {levels.get('equilibrium', 'N/A')} | "
+                f"R: {levels.get('swing_high', 'N/A')}"
+            )
+
+            lines.append("Setups:")
+            for setup in plan.get("setups", []):
+                entry_zone = setup.get("entry_zone", {})
+                tp_levels = setup.get("take_profit_levels", [])
+                tp_line = ", ".join(
+                    [f"{tp.get('label')}: {tp.get('price')} ({tp.get('rr')}R)" for tp in tp_levels]
+                )
+                lines.append(
+                    f"- {setup.get('name')}: {str(setup.get('direction', 'long')).upper()} | "
+                    f"Entry Zone {entry_zone.get('low')} - {entry_zone.get('high')} | "
+                    f"SL {setup.get('stop_loss')} | TPs {tp_line}"
+                )
+                lines.append(
+                    f"  Risk {float(setup.get('recommended_risk_pct', 0.0)) * 100:.2f}% | "
+                    f"Risk Budget ${float(setup.get('position_size_usd', 0.0)):.2f} | "
+                    f"Size {setup.get('position_size_coin')} | Notional@10x ${float(setup.get('notional_usd_10x', 0.0)):.2f}"
+                )
+                lines.append(f"  Rationale: {setup.get('rationale', 'N/A')}")
+
+            notes = plan.get("risk_management_notes", [])
+            if notes:
+                lines.append("Risk Notes:")
+                for note in notes:
+                    lines.append(f"- {note}")
+            lines.append("")
+
+        return "\n".join(lines).strip()
+
     def normalize_payload(self, value: Any) -> Any:
         """Convert dataclass payloads into plain Python structures for JSON output."""
         if is_dataclass(value):
-            return asdict(value)
+            try:
+                return asdict(cast(Any, value))
+            except TypeError:
+                return value
         if isinstance(value, dict):
             return {k: self.normalize_payload(v) for k, v in value.items()}
         if isinstance(value, list):
