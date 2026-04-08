@@ -115,13 +115,14 @@ class COTPositionGenerator:
         if price <= 0:
             return []
 
-        long_bias = bias == "bullish"
-        direction = "long" if long_bias else "short"
         if bias == "neutral":
-            direction = "long"
+            return []
 
-        eq = (swing_high + swing_low) / 2.0
-        retrace_entry = eq if direction == "long" else eq
+        direction = "long" if bias == "bullish" else "short"
+
+        range_ = swing_high - swing_low
+        # 75% retracement: long enters near the lower quarter; short near the upper quarter.
+        retrace_entry = swing_low + range_ * 0.25 if direction == "long" else swing_high - range_ * 0.25
         breakout_entry = swing_high + atr * 0.15 if direction == "long" else swing_low - atr * 0.15
         continuation_entry = price
 
