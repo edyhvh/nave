@@ -38,11 +38,14 @@ def call_tool(
         arguments = json.loads(args_json)
         if not isinstance(arguments, dict):
             raise typer.BadParameter("--args-json must decode to an object")
-        payload = integration.dispatch_tool_call(tool, arguments)
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"Invalid JSON for --args-json: {exc}") from exc
+
+    try:
+        payload = integration.dispatch_tool_call(tool, arguments)
     except HermesIntegrationError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
 
     typer.echo(json.dumps(payload, indent=2))
 
@@ -59,6 +62,7 @@ def gateway_invoke(payload_json: str = typer.Argument(..., help="Gateway payload
     try:
         result = integration.gateway_invoke(payload)
     except HermesIntegrationError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
 
     typer.echo(json.dumps(result, indent=2))

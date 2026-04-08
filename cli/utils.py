@@ -21,7 +21,7 @@ def select_option(label: str, choices: list[str], default: Optional[str] = None)
         ).ask()
         if answer:
             return str(answer)
-    except Exception:
+    except ImportError:
         pass
 
     typer.echo(label)

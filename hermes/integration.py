@@ -24,11 +24,13 @@ logger = configure_logger(__name__)
 def _to_jsonable(value: Any) -> Any:
     """Convert dataclasses and nested objects into JSON-serializable values."""
     if is_dataclass(value):
-        return asdict(value)
+        return _to_jsonable(asdict(value))
     if isinstance(value, dict):
         return {key: _to_jsonable(item) for key, item in value.items()}
     if isinstance(value, list):
         return [_to_jsonable(item) for item in value]
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
     return value
 
 
