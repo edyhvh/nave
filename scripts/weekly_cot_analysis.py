@@ -8,103 +8,81 @@ other Hyperliquid perps.
 
 Usage:
     python scripts/weekly_cot_analysis.py --capital 2000 --paper
-    python scripts/weekly_cot_analysis.py --capital 2000 --backtest
 
 Examples:
     nave trading run --paper --strategy cot-weekly
-    nave trading run --backtest --strategy cot-weekly
 """
-from tests.backtest.utils.backtest_engine import BacktestEngine
-from tests.backtest.mocks.mock_hyperliquid import MockHyperliquidClient
-from tests.backtest.mocks.mock_cot_fetcher import HistoricalCotFetcher
-from trading.utils.clean_backtest_files import clean_backtest_outputs
-from trading.strategy import CotWeeklyStrategy
-from trading.journal import TradeJournal
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from trading.client import HyperliquidClient
 from trading.signals import MacroSignalProducer, SignalAggregator
 from trading.cot.cot_analyzer import COTAnalyzer
+from trading.cot.cot_historical_analyzer import COTHistoricalAnalyzer
+from trading.cot.cot_position_generator import COTPositionGenerator
+from trading.cot.cot_report_generator import COTReportGenerator
 from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
 from trading.config import DEFAULT_SETUPS
-import argparse
-import json
-import logging
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, Any
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
-def _write_timestamped_backtest_exports(
-    report_text: str,
-    patterns: list[dict[str, Any]],
-    run_trades: list[Any],
-) -> tuple[Path, Path]:
-    """Persist timestamped learning exports for each generated backtest session."""
-    out_dir = Path(__file__).parent.parent / "trade_journal"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+def _market_structure_4h(
+    client: HyperliquidClient,
+    coin: str,
+    as_of_date: str,
+) -> dict[str, Any]:
+    """Build a lightweight 4H structure snapshot from real Hyperliquid candles."""
+    as_of = datetime.fromisoformat(as_of_date).replace(tzinfo=timezone.utc)
+    end_dt = as_of + timedelta(days=1)
+    start_dt = end_dt - timedelta(days=10)
+    candles = client.get_historical_candles(
+        coin=coin,
+        interval="4h",
+        start_time_ms=int(start_dt.timestamp() * 1000),
+        end_time_ms=int(end_dt.timestamp() * 1000),
+        max_pages=32,
+        throttle_seconds=0,
+    )
+    if not candles:
+        return {
+            "trend": "unknown",
+            "price": 0.0,
+            "swing_high": 0.0,
+            "swing_low": 0.0,
+            "atr": 1.0,
+        }
 
-    trades_payload = [t.to_dict() for t in run_trades]
-    stats = _stats_from_trade_dicts(trades_payload)
-    payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "environment": "backtest",
-        "total_trades": len(trades_payload),
-        "stats": stats,
-        "learning_report": report_text,
-        "patterns": patterns,
-        "trades": trades_payload,
-    }
-    summary = {
-        "generated_at": payload["generated_at"],
-        "total_trades": payload["total_trades"],
-        "stats": stats,
-        "learning_report": report_text,
-        "patterns": patterns[:10],
-        "sample_recent_trades": payload["trades"][:25],
-    }
-
-    snapshot_path = out_dir / f"backtest_snapshot_{stamp}.json"
-    summary_path = out_dir / f"backtest_summary_{stamp}.json"
-    snapshot_path.write_text(json.dumps(payload, indent=2))
-    summary_path.write_text(json.dumps(summary, indent=2))
-    return snapshot_path, summary_path
-
-
-def _stats_from_trade_dicts(trades: list[dict[str, Any]]) -> dict[str, Any]:
-    pnls = [float(t.get("pnl_absolute", 0.0) or 0.0) for t in trades]
-    wins = sum(1 for p in pnls if p > 0)
-    losses = sum(1 for p in pnls if p < 0)
-    breakevens = sum(1 for p in pnls if p == 0)
-    gross_profit = sum(p for p in pnls if p > 0)
-    gross_loss = sum(p for p in pnls if p < 0)
-    total = len(pnls)
+    closes = [float(c["close"]) for c in candles]
+    highs = [float(c["high"]) for c in candles]
+    lows = [float(c["low"]) for c in candles]
+    trend = "bullish" if closes[-1] >= closes[0] else "bearish"
+    atr_window = list(zip(highs[-14:], lows[-14:]))
+    atr = sum((high_val - low_val) for high_val, low_val in atr_window) / max(1, len(atr_window))
     return {
-        "total_trades": total,
-        "wins": wins,
-        "losses": losses,
-        "breakevens": breakevens,
-        "win_rate": (wins / total) if total else 0.0,
-        "total_pnl": sum(pnls),
-        "avg_pnl": (sum(pnls) / total) if total else 0.0,
-        "avg_win": (gross_profit / wins) if wins else 0.0,
-        "avg_loss": (gross_loss / losses) if losses else 0.0,
-        "best_trade": max(pnls) if pnls else 0.0,
-        "worst_trade": min(pnls) if pnls else 0.0,
-        "profit_factor": (gross_profit / abs(gross_loss)) if gross_loss < 0 else float("inf"),
+        "trend": trend,
+        "price": closes[-1],
+        "swing_high": max(highs[-18:]),
+        "swing_low": min(lows[-18:]),
+        "atr": atr,
     }
 
 
 def scan_hyperliquid_perps(client: HyperliquidClient) -> list:
     """Scan other promising Hyperliquid perps for liquidity, funding, etc."""
     try:
-        meta = client.get_meta()
+        client.get_meta()
         mids = client.get_all_mids()
         # Simple filter for good opportunities (extensible)
         opportunities = []
@@ -116,7 +94,7 @@ def scan_hyperliquid_perps(client: HyperliquidClient) -> list:
                 "mid": float(mids.get(asset, 0)),
                 "liquidity_score": 0.7,  # stub
                 "funding_rate": 0.001,  # stub
-                "recommend": asset in ["SOL", "XRP"]  # example
+                "recommend": asset in ["SOL", "XRP"],  # example
             }
             opportunities.append(opp)
         return opportunities
@@ -130,53 +108,23 @@ def generate_weekly_report(
     dry_run: bool = True,
     mode: str = "paper",
     wallet: str = "hermes",
-    learn: bool = False,
     setups: list[str] | None = None,
     debug_cot: bool = False,
     include_micro: bool = False,
     cot_history: int | None = None,
-) -> Dict:
+) -> dict[str, Any]:
     """Main weekly COT analysis and recommendation."""
     active_setups = setups or list(DEFAULT_SETUPS)
 
     if debug_cot:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    def _fmt_signed(value: Any) -> str:
-        if value is None:
-            return "N/A"
-        return f"{int(value):+,}"
-
-    def _fmt_int(value: Any) -> str:
-        if value is None:
-            return "N/A"
-        return f"{int(value):,}"
-
-    def _fmt_pct(value: Any) -> str:
-        if value is None:
-            return "N/A"
-        return f"{float(value):.1f}%"
+    reporter = COTReportGenerator()
 
     def _print_section_block(title: str, section: dict[str, Any] | None) -> None:
         print(f"    {title}")
-        if not section:
-            print("      Net Non-Comm: N/A (Δ N/A)     | % of OI: N/A")
-            print("      Net Commercial: N/A (Δ N/A)")
-            print("      Open Interest: N/A (Δ N/A)")
-            print("      # Traders: Non-Comm: N/A | Commercial: N/A")
-            return
-        print(
-            f"      Net Non-Comm: {_fmt_signed(section.get('net_non_commercial'))} (Δ {_fmt_signed(section.get('net_non_commercial_delta'))})     | % of OI: {_fmt_pct(section.get('pct_oi'))}"
-        )
-        print(
-            f"      Net Commercial: {_fmt_signed(section.get('net_commercial'))} (Δ {_fmt_signed(section.get('net_commercial_delta'))})"
-        )
-        print(
-            f"      Open Interest: {_fmt_int(section.get('open_interest'))} (Δ {_fmt_signed(section.get('open_interest_delta'))})"
-        )
-        print(
-            f"      # Traders: Non-Comm: {_fmt_int(section.get('traders_non_commercial'))} | Commercial: {_fmt_int(section.get('traders_commercial'))}"
-        )
+        for line in reporter.format_section_lines(section):
+            print(f"      {line}")
 
     def _history_weeks_for_months(months: int) -> int:
         # Keep enough weekly points to cover month windows plus delta context.
@@ -185,20 +133,24 @@ def generate_weekly_report(
     if cot_history is not None:
         if not (1 <= cot_history <= 12):
             raise ValueError("cot_history must be between 1 and 12")
-        analyzer = COTAnalyzer(setups=active_setups)
         historical_data = fetch_latest_cot(
             report_type="futures_and_options",
             debug=debug_cot,
             include_micro=include_micro,
             history_weeks=_history_weeks_for_months(cot_history),
         )
-        historical = analyzer.generate_historical_variation_report(
+        historical = COTHistoricalAnalyzer().generate_historical_variation(
             months=cot_history,
-            cot_data={k: v for k, v in historical_data.items() if k in {
-                "BTC", "ETH"}},
+            cot_data={k: v for k, v in historical_data.items() if k in {"BTC", "ETH"}},
+        )
+        historical_markdown = reporter.render_historical_markdown(
+            months=cot_history,
+            as_of=historical.get("as_of_date", "N/A"),
+            per_asset=historical.get("assets", {}),
+            observations=historical.get("observations", []),
         )
         print()
-        print(historical.get("markdown", "No historical report output available."))
+        print(historical_markdown)
         print()
         return {
             "report_type": "cot_historical_variation",
@@ -209,11 +161,10 @@ def generate_weekly_report(
             "timestamp": datetime.now().isoformat(),
         }
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🚀 NAVE WEEKLY COT ANALYSIS")
-    print("="*80)
-    print(
-        f"Date: {datetime.now().strftime('%Y-%m-%d')} (Sunday analysis of Friday COT)")
+    print("=" * 80)
+    print(f"Date: {datetime.now().strftime('%Y-%m-%d')} (Sunday analysis of Friday COT)")
     print("Philosophy: F.I.T.S. + IPDA | Commercials move the market | COT-led setup stack")
     print(f"Mode: {mode} | Dry-run: {dry_run}")
     print(f"Configured setups: {', '.join(active_setups)}")
@@ -234,45 +185,31 @@ def generate_weekly_report(
         futures_only_data=cot_data_futures_only,
         combined_data=cot_data,
     )
-    setup_learner = None
-    learned_patterns = []
-    learning_report_text = ""
-    export_paths: tuple[Path, Path] | None = None
-    if learn:
-        setup_learner, learned_patterns, learning_report_text, export_paths = run_setup_learning_pipeline(
-            model_path=Path("tests/backtest/artifacts/setup_learner.joblib"),
-            setups=active_setups,
-            capital_usd=capital_usd,
-        )
-
-    analyzer = COTAnalyzer(setups=active_setups, setup_learner=setup_learner)
+    analyzer = COTAnalyzer(setups=active_setups)
     biases = analyzer.analyze(cot_data)
-    producer = MacroSignalProducer(setup_learner=setup_learner)
+    producer = MacroSignalProducer()
     signals = producer.produce({"cot_data": cot_data})
 
     # Compare BTC vs ETH
     btc_bias = biases.get("BTC")
     eth_bias = biases.get("ETH")
-    best_asset = "ETH" if getattr(eth_bias, "confidence", 0) > getattr(
-        btc_bias, "confidence", 0) else "BTC"
-    best_conf = max(getattr(btc_bias, "confidence", 0.5),
-                    getattr(eth_bias, "confidence", 0.5))
+    best_asset = (
+        "ETH" if getattr(eth_bias, "confidence", 0) > getattr(btc_bias, "confidence", 0) else "BTC"
+    )
+    best_conf = max(getattr(btc_bias, "confidence", 0.5), getattr(eth_bias, "confidence", 0.5))
 
     print("COT Bias Summary:")
     for asset, b in biases.items():
-        arrow = {"bullish": "▲", "bearish": "▼",
-                 "neutral": "–"}.get(b.bias, "?")
+        arrow = {"bullish": "▲", "bearish": "▼", "neutral": "–"}.get(b.bias, "?")
         m = b.metadata
         section_info = cot_sections.get(asset, {})
         options_validation = section_info.get("options_validation", {})
         print(
-            f"  {asset}: {b.bias.upper()} {arrow} (conf={b.confidence:.0%}, FITS={m['fits_weighted_score']}/100)")
-        print(
-            f"    Net Non-Comm: {b.net_non_commercial:+,} | Net Comm: {b.net_commercial:+,}")
-        print(
-            f"    OI: {b.open_interest:,} (Δ {b.oi_change_pct:+.1f}%) | %OI: {m['pct_oi']:+.1f}%")
-        print(
-            f"    Weekly Δ: {b.weekly_change:+,} | Percentile: {b.historical_percentile}")
+            f"  {asset}: {b.bias.upper()} {arrow} (conf={b.confidence:.0%}, FITS={m['fits_weighted_score']}/100)"
+        )
+        print(f"    Net Non-Comm: {b.net_non_commercial:+,} | Net Comm: {b.net_commercial:+,}")
+        print(f"    OI: {b.open_interest:,} (Δ {b.oi_change_pct:+.1f}%) | %OI: {m['pct_oi']:+.1f}%")
+        print(f"    Weekly Δ: {b.weekly_change:+,} | Percentile: {b.historical_percentile}")
         print(f"    → {m.get('percentile_interpretation', 'N/A')}")
         _print_section_block("FUTURES ONLY", section_info.get("futures_only"))
         if section_info.get("options"):
@@ -281,10 +218,9 @@ def generate_weekly_report(
             print(
                 f"    OPTIONS\n      Options component unavailable ({options_validation.get('reason', 'invalid_derived_options')})"
             )
-        _print_section_block(
-            "COMBINED (Futures + Options)", section_info.get("combined"))
+        _print_section_block("COMBINED (Futures + Options)", section_info.get("combined"))
 
-    print(f"\n🏆 BEST SETUP: {best_asset} (confidence {best_conf:.0%})")
+    print(f"\nBEST SETUP: {best_asset} (confidence {best_conf:.0%})")
     print("Recommendation: Allocate 100% capital to best setup on 4H/1H timeframe.")
 
     # Risk & sizing per philosophy
@@ -292,97 +228,69 @@ def generate_weekly_report(
     position_size = capital_usd * 0.8  # example
     leverage = 10 if best_asset == "ETH" else 5
     print(
-        f"Capital: ${capital_usd:,} | Risk/trade: {risk_per_trade*100}% | Leverage: {leverage}x")
+        f"Capital: ${capital_usd:,} | Risk/trade: {risk_per_trade * 100}% | Leverage: {leverage}x"
+    )
     print("SL: at invalidation (IPDA mitigation block or FVG)")
     print("TP: confluence zones (00/50 levels + setup confluence)")
     print(f"Setups: {', '.join(active_setups)}")
 
     # Perps scan
-    print("\n🔍 Other Hyperliquid Opportunities:")
+    print("\nOther Hyperliquid Opportunities:")
     try:
         client = HyperliquidClient(wallet_name=wallet, testnet=True)
         perps = scan_hyperliquid_perps(client)
         for p in perps[:3]:
             print(
-                f"  {p['coin']}: mid~${p['mid']:.2f} | liq={p['liquidity_score']:.1f} | funding={p['funding_rate']:.4f}")
+                f"  {p['coin']}: mid~${p['mid']:.2f} | liq={p['liquidity_score']:.1f} | funding={p['funding_rate']:.4f}"
+            )
     except Exception:
         print("  (Hyperliquid client stub - connect wallet for live scan)")
 
     agg = SignalAggregator(signals)
     agg.summary()
 
-    report = {
+    position_generator = COTPositionGenerator(default_risk_pct=0.01)
+    market_client = HyperliquidClient(wallet_name=wallet, testnet=True)
+    market_data_4h: dict[str, dict[str, Any]] = {}
+    for asset, bias in biases.items():
+        as_of_date = str(bias.metadata.get("as_of_date") or datetime.now().date().isoformat())
+        try:
+            market_data_4h[asset] = _market_structure_4h(market_client, asset, as_of_date)
+        except Exception as exc:
+            logger.warning("4H structure fetch failed for %s: %s", asset, exc)
+            market_data_4h[asset] = {
+                "trend": "unknown",
+                "price": 0.0,
+                "swing_high": 0.0,
+                "swing_low": 0.0,
+                "atr": 1.0,
+            }
+    weekly_plan = position_generator.generate_weekly_plan(
+        cot_data=cot_sections,
+        market_data_4h=market_data_4h,
+        capital_usd=capital_usd,
+        leverage=10.0,
+    )
+    weekly_plan_markdown = reporter.render_weekly_plan_markdown(weekly_plan)
+    print()
+    print(weekly_plan_markdown)
+    print()
+
+    report: dict[str, Any] = {
         "best_asset": best_asset,
         "capital_usd": capital_usd,
         "leverage": leverage,
         "recommended_size_usd": position_size,
         "signals": len(signals),
         "dry_run": dry_run,
-        "learned_patterns": learned_patterns[:5],
-        "learning_enabled": learn,
+        "weekly_plan": weekly_plan,
+        "weekly_plan_markdown": weekly_plan_markdown,
         "timestamp": datetime.now().isoformat(),
     }
 
-    if setup_learner is not None:
-        print()
-        print(learning_report_text or setup_learner.generate_report(
-            regime="all",
-            setups=active_setups,
-            patterns=learned_patterns,
-        ))
-        if export_paths is not None:
-            print(
-                f"Timestamped exports: {export_paths[0]} | {export_paths[1]}")
-
     print("\n✅ Report complete. Run with --live for execution (use vault).")
-    print("="*80)
+    print("=" * 80)
     return report
-
-
-def run_setup_learning_pipeline(
-    model_path: Path,
-    setups: list[str],
-    capital_usd: float,
-):
-    """Run the full setup-learning pipeline from a lightweight backtest."""
-    model_path.parent.mkdir(parents=True, exist_ok=True)
-    journal = TradeJournal()
-    strategy = CotWeeklyStrategy(
-        client=MockHyperliquidClient(),
-        cot_fetcher=HistoricalCotFetcher(),
-        capital_usd=capital_usd,
-        test_mode=True,
-        setups=setups,
-    )
-    engine = BacktestEngine(
-        start_date=datetime(2019, 1, 1),
-        end_date=datetime(2025, 12, 31),
-        initial_capital=capital_usd,
-        journal_enabled=True,
-        journal=journal,
-    )
-    result = engine.run(strategy)
-    learner = strategy.setup_learner
-    learner.save_model(model_path)
-    patterns = learner.discover_new_patterns(result)
-    report_text = learner.generate_report(
-        regime="all", setups=setups, patterns=patterns)
-    run_trades = engine.get_journal_trades()
-    snapshot_path, summary_path = _write_timestamped_backtest_exports(
-        report_text=report_text,
-        patterns=patterns,
-        run_trades=run_trades,
-    )
-    clean_backtest_outputs(
-        output_dir=Path(__file__).parent.parent / "trade_journal",
-        archive_dir=Path(__file__).parent.parent /
-        "backtest_archive" / "invalid",
-        delete=False,
-        verbose=True,
-    )
-    db_path = getattr(journal.storage, "db_path", "n/a")
-    print(f"Backtest journal saved: trades={len(run_trades)} db={db_path}")
-    return learner, patterns, report_text, (snapshot_path, summary_path)
 
 
 if __name__ == "__main__":
@@ -391,25 +299,18 @@ if __name__ == "__main__":
         epilog=(
             "Examples:\n"
             "  nave trading run --paper --strategy cot-weekly\n"
-            "  nave trading run --backtest --strategy cot-weekly --learn\n"
             "  python scripts/weekly_cot_analysis.py --paper --capital 2000\n"
-            "  python scripts/weekly_cot_analysis.py --backtest --learn --capital 2000"
+            "  python scripts/weekly_cot_analysis.py --paper --capital 2000 --cot-history 3"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--capital", type=float,
-                        default=2000.0, help="Available capital USD")
-    parser.add_argument("--paper", action="store_true",
-                        help="Run paper mode analysis (default)")
-    parser.add_argument("--backtest", action="store_true",
-                        help="Run backtest mode analysis")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Force dry-run output mode")
-    parser.add_argument("--live", action="store_true",
-                        help="Disable dry-run (execution path, use with care)")
+    parser.add_argument("--capital", type=float, default=2000.0, help="Available capital USD")
+    parser.add_argument("--paper", action="store_true", help="Run paper mode analysis (default)")
+    parser.add_argument("--dry-run", action="store_true", help="Force dry-run output mode")
+    parser.add_argument(
+        "--live", action="store_true", help="Disable dry-run (execution path, use with care)"
+    )
     parser.add_argument("--wallet", default="hermes")
-    parser.add_argument("--learn", action="store_true",
-                        help="Run setup learning from backtest and apply learned setups")
     parser.add_argument(
         "--setups",
         nargs="+",
@@ -435,8 +336,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     mode = "paper"
-    if args.backtest:
-        mode = "backtest"
 
     dry_run = True
     if args.live:
@@ -449,7 +348,6 @@ if __name__ == "__main__":
         dry_run=dry_run,
         mode=mode,
         wallet=args.wallet,
-        learn=args.learn,
         setups=args.setups,
         debug_cot=args.debug_cot,
         include_micro=args.include_micro,
@@ -461,4 +359,5 @@ if __name__ == "__main__":
         )
     else:
         print(
-            f"\nFinal recommendation: Allocate to {report['best_asset']} with {report['leverage']}x leverage.")
+            f"\nFinal recommendation: Allocate to {report['best_asset']} with {report['leverage']}x leverage."
+        )

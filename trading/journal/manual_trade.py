@@ -13,7 +13,7 @@ from trading.cot.cot_analyzer import COTAnalyzer
 from trading.cot.cot_fetcher import fetch_latest_cot
 
 
-TRADING_MODES = ("live", "demo", "backtest")
+TRADING_MODES = ("live", "demo")
 MARKET_TYPES = ("futures", "options", "spot")
 SIDES = ("long", "short")
 
@@ -45,12 +45,10 @@ class ManualTrade:
     tp2_progress_percent: Optional[float] = None
     status: str = "open"
     date_created: str = field(
-        default_factory=lambda: datetime.now(
-            timezone.utc).replace(tzinfo=None).isoformat()
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     )
     date_updated: str = field(
-        default_factory=lambda: datetime.now(
-            timezone.utc).replace(tzinfo=None).isoformat()
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     )
     event_history: List[Dict[str, Any]] = field(default_factory=list)
     sync: Dict[str, Any] = field(default_factory=dict)
@@ -101,8 +99,7 @@ class ManualTradeStore:
         return self.data_dir / f"{trade_id}.json"
 
     def _write_trade(self, trade: ManualTrade) -> None:
-        trade.date_updated = datetime.now(
-            timezone.utc).replace(tzinfo=None).isoformat()
+        trade.date_updated = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         target = self._trade_file(trade.trade_id)
         tmp = target.with_suffix(".json.tmp")
         with open(tmp, "w", encoding="utf-8") as handle:
@@ -135,7 +132,9 @@ class ManualTradeStore:
 
     def list_trades(self, status: Optional[str] = None, limit: int = 200) -> List[ManualTrade]:
         rows: List[ManualTrade] = []
-        for path in sorted(self.data_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for path in sorted(
+            self.data_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             with open(path, "r", encoding="utf-8") as handle:
                 row = ManualTrade.from_dict(json.load(handle))
                 if status and row.status != status:
@@ -165,11 +164,9 @@ class ManualTradeStore:
         setattr(trade, field_name, value)
 
         if action == "take_profit_price_1":
-            trade.tp1_progress_percent = round(
-                self._tp_progress_pct(trade, float(value)), 2)
+            trade.tp1_progress_percent = round(self._tp_progress_pct(trade, float(value)), 2)
         elif action == "take_profit_price_2":
-            trade.tp2_progress_percent = round(
-                self._tp_progress_pct(trade, float(value)), 2)
+            trade.tp2_progress_percent = round(self._tp_progress_pct(trade, float(value)), 2)
         elif action == "take_profit_final_price":
             trade.status = "closed"
 

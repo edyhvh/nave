@@ -1,7 +1,7 @@
 """Shared trading configuration constants.
 
-Keep COT setup defaults centralized so strategy/backtest/CLI paths read the
-same source of truth before Setup Learning is introduced.
+Keep COT setup defaults centralized so strategy and CLI paths read the
+same source of truth.
 """
 
 from __future__ import annotations

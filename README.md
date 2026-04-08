@@ -140,6 +140,16 @@ source .venv/bin/activate
 
 ```
 nave/
+├── cli/                 # Unified Typer CLI
+│   ├── main.py          # Entrypoint and command group registration
+│   ├── commands/        # Modular command groups
+│   └── utils.py         # Shared CLI prompt helpers
+├── core/                # Cross-cutting app primitives
+│   ├── config.py        # Typed defaults and shared configuration
+│   ├── exceptions.py    # Domain-level exceptions
+│   └── logger.py        # Logger bootstrap helpers
+├── hermes/              # Hermes Agent integration contracts
+│   └── integration.py   # Tool registry + dispatch + gateway payload handling
 ├── trading/             # Trading integration package
 │   ├── vault.py         # Encrypted wallet storage (Fernet/AES)
 │   ├── client.py        # Hyperliquid REST + SDK client
@@ -185,34 +195,14 @@ COT is now the **main weekly driver** for trading setups.
 # Run weekly analysis (Sunday)
 python scripts/weekly_cot_analysis.py --capital 2000 --paper
 
-# Backtest mode analysis
-python scripts/weekly_cot_analysis.py --capital 2000 --backtest
+# Historical variation report (last 3 calendar months)
+python scripts/weekly_cot_analysis.py --capital 2000 --cot-history 3
 
 # Or with live execution (careful!)
 python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet hermes
 
-# Learn setups from backtest and apply them to selection/ranking
-python scripts/weekly_cot_analysis.py --capital 2000 --backtest --learn
-
 # Unified CLI
 nave trading run --paper --strategy cot-weekly
-nave trading run --backtest --strategy cot-weekly
-nave trading run --backtest --strategy cot-weekly --learn
-```
-
-Backtest trades are now persisted in the journal DB (`~/.nave/trades.db`) and can
-be analyzed after each run.
-
-```bash
-python - <<'PY'
-import sqlite3, pathlib
-db = pathlib.Path.home()/'.nave'/'trades.db'
-con = sqlite3.connect(db)
-rows = con.execute("select environment, coin, direction, pnl_absolute, entry_time from trades where environment='backtest' order by entry_time desc limit 10").fetchall()
-print("db:", db)
-for row in rows:
-    print(row)
-PY
 ```
 
 **Features**:
@@ -227,8 +217,8 @@ See `docs/technical.yaml` for full philosophy and `trading/cot/` for implementat
 
 ## Roadmap after PR #8
 
-- PR #8 (merged): COT as main weekly driver + robust backtesting framework
-- PR #9 (this branch): Strategy Testing + Setup Learning (ML) + Paper Trading execution
+- PR #8 (merged): COT as main weekly driver
+- PR #9 (this branch): modular COT pipeline with real-data-only execution planning
 
 ### Wallets
 
@@ -257,9 +247,50 @@ nave api start --reload
 nave mcp
 nave cot analyze --coins BTC ETH
 nave data fetch aaii
+nave hermes tools
+nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
 ```
 
 This unifies all previous scripts, strategies, MCP, and backend. Legacy `./run.sh` and `python -m trading.*` still work.
+
+## Hermes Agent Integration
+
+Nave now exposes a dedicated Hermes integration layer designed for MCP and
+gateway workflows with structured JSON outputs.
+
+### Skill/Tool Discovery
+
+```bash
+nave hermes tools
+```
+
+### Direct Tool Calls
+
+```bash
+# Latest COT report (JSON)
+nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
+
+# Historical COT variation (last 3 months)
+nave hermes call --tool cot_history --args-json '{"months": 3, "coins": "BTC ETH"}'
+
+# Weekly execution plan
+nave hermes call --tool weekly_plan --args-json '{"capital": 2000, "wallet": "hermes"}'
+```
+
+### Gateway-Compatible Invocation Payload
+
+```bash
+nave hermes gateway-invoke '{"tool": "cot_report", "arguments": {"coins": "BTC ETH"}}'
+```
+
+### MCP Server Tools Available to Hermes
+
+`trading/mcp_server.py` now includes COT and weekly-plan oriented tools:
+
+- `cot_report`
+- `cot_history`
+- `weekly_plan`
+- plus existing account and execution tools (`account_summary`, `open_position`, etc.)
 
 ## Troubleshooting
 
