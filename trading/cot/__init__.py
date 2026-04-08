@@ -11,7 +11,7 @@ from .cot_analyzer import COTAnalyzer, COTBias
 from .cot_position_generator import COTPositionGenerator
 from .cot_report_generator import COTReportGenerator
 from .cot_historical_analyzer import COTHistoricalAnalyzer
-from .models import COTSectionMetrics, TradeSetup, WeeklyAssetPlan
+from .models import COT_DISCLAIMER, COTSectionMetrics, Confluence, TradeSetup, WeeklyAssetPlan
 
 __all__ = [
     "fetch_latest_cot",
@@ -24,7 +24,9 @@ __all__ = [
     "COTPositionGenerator",
     "COTReportGenerator",
     "COTHistoricalAnalyzer",
+    "COT_DISCLAIMER",
     "COTSectionMetrics",
+    "Confluence",
     "TradeSetup",
     "WeeklyAssetPlan",
 ]

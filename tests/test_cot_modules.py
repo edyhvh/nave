@@ -1,25 +1,40 @@
 from __future__ import annotations
 
 from trading.cot.cot_historical_analyzer import COTHistoricalAnalyzer
-from trading.cot.cot_position_generator import COTPositionGenerator
+from trading.cot.cot_position_generator import COTPositionGenerator, MAX_CONFIDENCE
 from trading.cot.cot_report_generator import COTReportGenerator
 from trading.services.cot_service import COTService
 
 
 def _sample_sections() -> dict:
+    """Commercial-bearish context: net_comm negative, delta negative."""
     return {
         "BTC": {
             "combined": {
-                "net_commercial": 12000,
-                "net_commercial_delta": 2400,
-                "net_non_commercial": -9000,
-                "net_non_commercial_delta": -600,
+                "net_commercial": -5000,
+                "net_commercial_delta": -1200,
+                "net_non_commercial": 9000,
+                "net_non_commercial_delta": 600,
             }
         }
     }
 
 
-def _sample_market() -> dict:
+def _aligned_bearish_market() -> dict:
+    """4H structure aligns with bearish context, price near swing high."""
+    return {
+        "BTC": {
+            "trend": "bearish",
+            "price": 71500.0,
+            "swing_high": 72000.0,
+            "swing_low": 68000.0,
+            "atr": 900.0,
+        }
+    }
+
+
+def _opposing_bullish_market() -> dict:
+    """4H structure opposes bearish COT context."""
     return {
         "BTC": {
             "trend": "bullish",
@@ -31,9 +46,13 @@ def _sample_market() -> dict:
     }
 
 
-def test_position_generator_uses_commercials_as_primary_bias() -> None:
+def test_bias_derived_from_commercials_alone() -> None:
+    """Bias should come from commercial hedging, not blended with non-commercial."""
     generator = COTPositionGenerator(default_risk_pct=0.01)
-    weekly_plan = generator.generate_weekly_plan(
+
+    # Commercials bullish, non-commercials also bullish → bias must be bullish
+    # (driven by commercials, not influenced by non-comm direction).
+    plan = generator.generate_weekly_plan(
         cot_data={
             "BTC": {
                 "combined": {
@@ -44,20 +63,106 @@ def test_position_generator_uses_commercials_as_primary_bias() -> None:
                 }
             }
         },
-        market_data_4h=_sample_market(),
+        market_data_4h=_aligned_bearish_market(),  # trend won't affect bias
+    )
+    assert plan["assets"]["BTC"]["bias"] == "bullish"
+
+    # Commercials bearish → bias must be bearish regardless of non-comm
+    plan2 = generator.generate_weekly_plan(
+        cot_data={
+            "BTC": {
+                "combined": {
+                    "net_commercial": -8000,
+                    "net_commercial_delta": -2000,
+                    "net_non_commercial": -5000,
+                    "net_non_commercial_delta": -800,
+                }
+            }
+        },
+        market_data_4h=_aligned_bearish_market(),
+    )
+    assert plan2["assets"]["BTC"]["bias"] == "bearish"
+
+
+def test_no_setups_when_structure_opposes_cot() -> None:
+    """When 4H trend opposes COT context, no setups should be generated."""
+    generator = COTPositionGenerator(default_risk_pct=0.01)
+    plan = generator.generate_weekly_plan(
+        cot_data=_sample_sections(),
+        market_data_4h=_opposing_bullish_market(),
     )
 
-    plan = weekly_plan["assets"]["BTC"]
-    assert plan["bias"] == "bullish"
-    assert "Commercials are net supportive" in plan["bias_explanation"]
-    assert len(plan["setups"]) == 3
+    btc = plan["assets"]["BTC"]
+    assert btc["bias"] == "bearish"
+    assert btc["structure_confluence"] == "none"
+    assert btc["setups"] == []
 
 
-def test_position_generator_setup_payload_contains_actionable_fields() -> None:
+def test_confidence_never_exceeds_cap() -> None:
+    """No generated plan should have confidence above MAX_CONFIDENCE (0.65)."""
+    generator = COTPositionGenerator(default_risk_pct=0.01)
+
+    # Strong commercial signal with aligned structure.
+    plan = generator.generate_weekly_plan(
+        cot_data={
+            "BTC": {
+                "combined": {
+                    "net_commercial": -50000,
+                    "net_commercial_delta": -10000,
+                    "net_non_commercial": 30000,
+                    "net_non_commercial_delta": 5000,
+                }
+            }
+        },
+        market_data_4h=_aligned_bearish_market(),
+    )
+    confidence = plan["assets"]["BTC"]["confidence"]
+    assert confidence <= MAX_CONFIDENCE
+
+
+def test_disclaimer_present_in_plan() -> None:
+    """Every plan must carry the COT disclaimer."""
+    generator = COTPositionGenerator(default_risk_pct=0.01)
+    plan = generator.generate_weekly_plan(
+        cot_data=_sample_sections(),
+        market_data_4h=_aligned_bearish_market(),
+    )
+    btc = plan["assets"]["BTC"]
+    assert "disclaimer" in btc
+    assert "lagging" in btc["disclaimer"].lower()
+    assert "not" in btc["disclaimer"].lower() and "predictive" in btc["disclaimer"].lower()
+
+
+def test_strong_confluence_generates_multiple_setups() -> None:
+    """Strong confluence should produce 2-3 setups."""
+    generator = COTPositionGenerator(default_risk_pct=0.01)
+    plan = generator.generate_weekly_plan(
+        cot_data=_sample_sections(),
+        market_data_4h=_aligned_bearish_market(),
+    )
+    btc = plan["assets"]["BTC"]
+    assert btc["structure_confluence"] == "strong"
+    assert len(btc["setups"]) == 3
+
+
+def test_setup_rationale_includes_invalidation() -> None:
+    """Each setup rationale should explain the invalidation reason."""
+    generator = COTPositionGenerator(default_risk_pct=0.01)
+    plan = generator.generate_weekly_plan(
+        cot_data=_sample_sections(),
+        market_data_4h=_aligned_bearish_market(),
+    )
+    for setup in plan["assets"]["BTC"]["setups"]:
+        rationale = setup["rationale"].lower()
+        assert "invalidation" in rationale or "invalid" in rationale
+
+
+def test_setup_payload_contains_actionable_fields() -> None:
+    """Each setup must have entry zone, SL, TPs, risk pct, and notional."""
     generator = COTPositionGenerator(default_risk_pct=0.01)
     weekly_plan = generator.generate_weekly_plan(
         cot_data=_sample_sections(),
-        market_data_4h=_sample_market(),
+        market_data_4h=_aligned_bearish_market(),
         capital_usd=2000.0,
         leverage=10.0,
     )
@@ -206,3 +311,9 @@ def test_cot_service_weekly_plan_json_contract(monkeypatch) -> None:
     assert "assets" in payload
     assert "BTC" in payload["assets"]
     assert "report_markdown" in payload
+    btc = payload["assets"]["BTC"]
+    assert "structure_confluence" in btc
+    assert btc["structure_confluence"] in {"strong", "partial", "none"}
+    assert "disclaimer" in btc
+    assert "lagging" in btc["disclaimer"].lower()
+    assert btc["confidence"] <= MAX_CONFIDENCE
