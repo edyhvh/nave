@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timezone
+from typing import Literal
 
 from .models import TradeSetup, WeeklyAssetPlan
 
@@ -115,10 +116,9 @@ class COTPositionGenerator:
         if price <= 0:
             return []
 
-        long_bias = bias == "bullish"
-        direction = "long" if long_bias else "short"
-        if bias == "neutral":
-            direction = "long"
+        direction: Literal["long", "short"] = "long"
+        if bias == "bearish":
+            direction = "short"
 
         eq = (swing_high + swing_low) / 2.0
         retrace_entry = eq if direction == "long" else eq
@@ -157,7 +157,7 @@ class COTPositionGenerator:
         self,
         *,
         name: str,
-        direction: str,
+        direction: Literal["long", "short"],
         entry: float,
         stop: float,
         target: float,

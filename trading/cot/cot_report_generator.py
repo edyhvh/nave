@@ -87,8 +87,8 @@ class COTReportGenerator:
 
     def normalize_payload(self, value: Any) -> Any:
         """Convert dataclass payloads into plain Python structures for JSON output."""
-        if is_dataclass(value):
-            return asdict(value)
+        if is_dataclass(value) and not isinstance(value, type):
+            return self.normalize_payload(asdict(value))
         if isinstance(value, dict):
             return {k: self.normalize_payload(v) for k, v in value.items()}
         if isinstance(value, list):
