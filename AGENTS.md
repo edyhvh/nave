@@ -187,6 +187,41 @@ claude  # then: "Resume the theory refinement loop from where it left off"
 
 ---
 
+## Codex execution mode
+
+Codex must operate in continuous loop mode.
+
+### Entry point
+
+Run:
+
+```bash
+python scripts/run_theory_loop.py
+```
+
+### After each execution
+
+Codex must:
+
+1. Read latest output from `scripts/theory_backtest.py`
+2. Analyze failures
+3. Modify ONE of:
+   - `docs/technical.yaml`
+   - `docs/cot_integration.yaml`
+   - `docs/terms.yaml`
+4. Write iteration file:
+   - `docs/analysis/iterations/iter_N.md`
+5. Commit changes
+6. Re-run the loop
+
+### Goal
+
+Continue iterating autonomously until convergence criteria is met.
+
+**Do NOT stop after one iteration.**
+
+---
+
 Then commit it:
 git add AGENTS.md
 git commit -m "chore: add AGENTS.md for theory refinement workflow"
