@@ -1,0 +1,1022 @@
+{
+  "period": "2020-recovery+2021-ATH",
+  "start_date": "2020-07-01",
+  "end_date": "2021-12-31",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {
+      "1W": "78 rows 2020-07-06\u21922021-12-27",
+      "1D": "549 rows 2020-07-01\u21922021-12-31",
+      "4H": "3289 rows 2020-07-01\u21922021-12-31",
+      "1H": "13134 rows 2020-07-01\u21922021-12-31"
+    },
+    "ETH": {
+      "1W": "78 rows 2020-07-06\u21922021-12-27",
+      "1D": "549 rows 2020-07-01\u21922021-12-31",
+      "4H": "3289 rows 2020-07-01\u21922021-12-31",
+      "1H": "13134 rows 2020-07-01\u21922021-12-31"
+    }
+  },
+  "per_coin": {
+    "BTC": {
+      "weekly": {
+        "signals": 78,
+        "correct": 14,
+        "incorrect": 15,
+        "accuracy": 0.4828,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 78,
+        "correct": 54,
+        "incorrect": 14,
+        "accuracy": 0.7941,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 54,
+        "correct": 14,
+        "incorrect": 40,
+        "accuracy": 0.2593,
+        "entry_examples": [
+          {
+            "setup_date": "2020-10-05",
+            "direction": "long",
+            "entry_price_1H": 10703.62,
+            "SL": 10517.99,
+            "TP": 11074.88,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-11-09",
+            "direction": "long",
+            "entry_price_1H": 15549.62,
+            "SL": 14832.65,
+            "TP": 16983.56,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-11-30",
+            "direction": "long",
+            "entry_price_1H": 18430.33,
+            "SL": 17520.0,
+            "TP": 20250.99,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-12-07",
+            "direction": "long",
+            "entry_price_1H": 19318.56,
+            "SL": 18857.0,
+            "TP": 20241.68,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-12-14",
+            "direction": "long",
+            "entry_price_1H": 19057.19,
+            "SL": 18711.57,
+            "TP": 19748.43,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-12-21",
+            "direction": "long",
+            "entry_price_1H": 23679.55,
+            "SL": 23060.0,
+            "TP": 24918.65,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-12-28",
+            "direction": "long",
+            "entry_price_1H": 26877.7,
+            "SL": 25700.0,
+            "TP": 29233.1,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-01-04",
+            "direction": "long",
+            "entry_price_1H": 32843.88,
+            "SL": 32201.0,
+            "TP": 34129.64,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-03-08",
+            "direction": "long",
+            "entry_price_1H": 51491.1,
+            "SL": 48982.17,
+            "TP": 56508.96,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-03-15",
+            "direction": "long",
+            "entry_price_1H": 59404.48,
+            "SL": 58705.47,
+            "TP": 60802.5,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-04-12",
+            "direction": "long",
+            "entry_price_1H": 59830.28,
+            "SL": 59232.52,
+            "TP": 61025.8,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-04-19",
+            "direction": "short",
+            "entry_price_1H": 56771.94,
+            "SL": 59737.31,
+            "TP": 50841.2,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-03",
+            "direction": "long",
+            "entry_price_1H": 57407.86,
+            "SL": 56035.25,
+            "TP": 60153.08,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-17",
+            "direction": "short",
+            "entry_price_1H": 45551.72,
+            "SL": 49795.89,
+            "TP": 37063.38,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-24",
+            "direction": "short",
+            "entry_price_1H": 35191.4,
+            "SL": 38222.96,
+            "TP": 29128.28,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-31",
+            "direction": "short",
+            "entry_price_1H": 35312.83,
+            "SL": 36488.0,
+            "TP": 32962.49,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-06-21",
+            "direction": "short",
+            "entry_price_1H": 35575.15,
+            "SL": 36137.72,
+            "TP": 34450.01,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-07-05",
+            "direction": "short",
+            "entry_price_1H": 34841.07,
+            "SL": 35967.85,
+            "TP": 32587.51,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-07-26",
+            "direction": "long",
+            "entry_price_1H": 36767.47,
+            "SL": 33851.12,
+            "TP": 42600.17,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-08-16",
+            "direction": "long",
+            "entry_price_1H": 47546.67,
+            "SL": 45500.0,
+            "TP": 51640.01,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-08-23",
+            "direction": "long",
+            "entry_price_1H": 49418.77,
+            "SL": 48050.0,
+            "TP": 52156.31,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-09-06",
+            "direction": "long",
+            "entry_price_1H": 51741.29,
+            "SL": 49450.0,
+            "TP": 56323.87,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-09-20",
+            "direction": "short",
+            "entry_price_1H": 46977.98,
+            "SL": 48333.0,
+            "TP": 44267.94,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-10-11",
+            "direction": "long",
+            "entry_price_1H": 55159.93,
+            "SL": 54080.0,
+            "TP": 57319.79,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-10-18",
+            "direction": "long",
+            "entry_price_1H": 62460.75,
+            "SL": 58963.0,
+            "TP": 69456.25,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-10-25",
+            "direction": "long",
+            "entry_price_1H": 61813.4,
+            "SL": 59510.63,
+            "TP": 66418.94,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-08",
+            "direction": "long",
+            "entry_price_1H": 64999.68,
+            "SL": 61468.48,
+            "TP": 72062.08,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-22",
+            "direction": "short",
+            "entry_price_1H": 58118.54,
+            "SL": 60029.76,
+            "TP": 54296.1,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-12-20",
+            "direction": "short",
+            "entry_price_1H": 46880.83,
+            "SL": 48300.01,
+            "TP": 44042.47,
+            "outcome": "incorrect"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 29,
+        "correct": 14,
+        "incorrect": 15,
+        "accuracy": 0.4828,
+        "entry_examples": [
+          {
+            "setup_date": "2020-10-05",
+            "direction": "long",
+            "entry_price_1H": 10703.62,
+            "SL": 10517.99,
+            "TP": 11074.88,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-11-09",
+            "direction": "long",
+            "entry_price_1H": 15549.62,
+            "SL": 14832.65,
+            "TP": 16983.56,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-11-30",
+            "direction": "long",
+            "entry_price_1H": 18430.33,
+            "SL": 17520.0,
+            "TP": 20250.99,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-12-07",
+            "direction": "long",
+            "entry_price_1H": 19318.56,
+            "SL": 18857.0,
+            "TP": 20241.68,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-12-14",
+            "direction": "long",
+            "entry_price_1H": 19057.19,
+            "SL": 18711.57,
+            "TP": 19748.43,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-12-21",
+            "direction": "long",
+            "entry_price_1H": 23679.55,
+            "SL": 23060.0,
+            "TP": 24918.65,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-12-28",
+            "direction": "long",
+            "entry_price_1H": 26877.7,
+            "SL": 25700.0,
+            "TP": 29233.1,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-01-04",
+            "direction": "long",
+            "entry_price_1H": 32843.88,
+            "SL": 32201.0,
+            "TP": 34129.64,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-03-08",
+            "direction": "long",
+            "entry_price_1H": 51491.1,
+            "SL": 48982.17,
+            "TP": 56508.96,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-03-15",
+            "direction": "long",
+            "entry_price_1H": 59404.48,
+            "SL": 58705.47,
+            "TP": 60802.5,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-04-12",
+            "direction": "long",
+            "entry_price_1H": 59830.28,
+            "SL": 59232.52,
+            "TP": 61025.8,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-04-19",
+            "direction": "short",
+            "entry_price_1H": 56771.94,
+            "SL": 59737.31,
+            "TP": 50841.2,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-03",
+            "direction": "long",
+            "entry_price_1H": 57407.86,
+            "SL": 56035.25,
+            "TP": 60153.08,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-17",
+            "direction": "short",
+            "entry_price_1H": 45551.72,
+            "SL": 49795.89,
+            "TP": 37063.38,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-24",
+            "direction": "short",
+            "entry_price_1H": 35191.4,
+            "SL": 38222.96,
+            "TP": 29128.28,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-31",
+            "direction": "short",
+            "entry_price_1H": 35312.83,
+            "SL": 36488.0,
+            "TP": 32962.49,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-06-21",
+            "direction": "short",
+            "entry_price_1H": 35575.15,
+            "SL": 36137.72,
+            "TP": 34450.01,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-07-05",
+            "direction": "short",
+            "entry_price_1H": 34841.07,
+            "SL": 35967.85,
+            "TP": 32587.51,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-07-26",
+            "direction": "long",
+            "entry_price_1H": 36767.47,
+            "SL": 33851.12,
+            "TP": 42600.17,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-08-16",
+            "direction": "long",
+            "entry_price_1H": 47546.67,
+            "SL": 45500.0,
+            "TP": 51640.01,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-08-23",
+            "direction": "long",
+            "entry_price_1H": 49418.77,
+            "SL": 48050.0,
+            "TP": 52156.31,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-09-06",
+            "direction": "long",
+            "entry_price_1H": 51741.29,
+            "SL": 49450.0,
+            "TP": 56323.87,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-09-20",
+            "direction": "short",
+            "entry_price_1H": 46977.98,
+            "SL": 48333.0,
+            "TP": 44267.94,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-10-11",
+            "direction": "long",
+            "entry_price_1H": 55159.93,
+            "SL": 54080.0,
+            "TP": 57319.79,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-10-18",
+            "direction": "long",
+            "entry_price_1H": 62460.75,
+            "SL": 58963.0,
+            "TP": 69456.25,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-10-25",
+            "direction": "long",
+            "entry_price_1H": 61813.4,
+            "SL": 59510.63,
+            "TP": 66418.94,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-08",
+            "direction": "long",
+            "entry_price_1H": 64999.68,
+            "SL": 61468.48,
+            "TP": 72062.08,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-22",
+            "direction": "short",
+            "entry_price_1H": 58118.54,
+            "SL": 60029.76,
+            "TP": 54296.1,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-12-20",
+            "direction": "short",
+            "entry_price_1H": 46880.83,
+            "SL": 48300.01,
+            "TP": 44042.47,
+            "outcome": "incorrect"
+          }
+        ]
+      }
+    },
+    "ETH": {
+      "weekly": {
+        "signals": 78,
+        "correct": 14,
+        "incorrect": 14,
+        "accuracy": 0.5,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 78,
+        "correct": 55,
+        "incorrect": 14,
+        "accuracy": 0.7971,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 55,
+        "correct": 14,
+        "incorrect": 40,
+        "accuracy": 0.2593,
+        "entry_examples": [
+          {
+            "setup_date": "2020-09-14",
+            "direction": "short",
+            "entry_price_1H": 358.03,
+            "SL": 390.43,
+            "TP": 293.23,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-09-21",
+            "direction": "short",
+            "entry_price_1H": 374.45,
+            "SL": 383.75,
+            "TP": 355.85,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-11-09",
+            "direction": "long",
+            "entry_price_1H": 456.7,
+            "SL": 434.58,
+            "TP": 500.94,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-11-23",
+            "direction": "long",
+            "entry_price_1H": 552.99,
+            "SL": 511.28,
+            "TP": 636.41,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-11-30",
+            "direction": "long",
+            "entry_price_1H": 587.22,
+            "SL": 530.32,
+            "TP": 701.02,
+            "outcome": "unresolved"
+          },
+          {
+            "setup_date": "2020-12-14",
+            "direction": "long",
+            "entry_price_1H": 584.48,
+            "SL": 563.22,
+            "TP": 627.0,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-12-28",
+            "direction": "long",
+            "entry_price_1H": 707.87,
+            "SL": 625.0,
+            "TP": 873.61,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-01-04",
+            "direction": "long",
+            "entry_price_1H": 975.8,
+            "SL": 768.71,
+            "TP": 1389.98,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-01-25",
+            "direction": "long",
+            "entry_price_1H": 1456.96,
+            "SL": 1228.0,
+            "TP": 1914.88,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-03-08",
+            "direction": "long",
+            "entry_price_1H": 1742.21,
+            "SL": 1630.35,
+            "TP": 1965.93,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-03-22",
+            "direction": "short",
+            "entry_price_1H": 1757.44,
+            "SL": 1810.9,
+            "TP": 1650.52,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-04-26",
+            "direction": "long",
+            "entry_price_1H": 2414.43,
+            "SL": 2168.0,
+            "TP": 2907.29,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-03",
+            "direction": "long",
+            "entry_price_1H": 2994.06,
+            "SL": 2852.26,
+            "TP": 3277.66,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-10",
+            "direction": "long",
+            "entry_price_1H": 3909.44,
+            "SL": 3726.08,
+            "TP": 4276.16,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-17",
+            "direction": "short",
+            "entry_price_1H": 3465.98,
+            "SL": 3879.0,
+            "TP": 2639.94,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-24",
+            "direction": "short",
+            "entry_price_1H": 2133.24,
+            "SL": 2381.57,
+            "TP": 1636.58,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-31",
+            "direction": "short",
+            "entry_price_1H": 2354.01,
+            "SL": 2476.42,
+            "TP": 2109.19,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-06-21",
+            "direction": "short",
+            "entry_price_1H": 2238.38,
+            "SL": 2280.01,
+            "TP": 2155.12,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-07-19",
+            "direction": "short",
+            "entry_price_1H": 1885.01,
+            "SL": 1993.79,
+            "TP": 1667.45,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-07-26",
+            "direction": "long",
+            "entry_price_1H": 2259.73,
+            "SL": 2105.93,
+            "TP": 2567.33,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-08-02",
+            "direction": "long",
+            "entry_price_1H": 2518.67,
+            "SL": 2507.0,
+            "TP": 2542.01,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-08-16",
+            "direction": "long",
+            "entry_price_1H": 3311.85,
+            "SL": 3111.13,
+            "TP": 3713.29,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-08-23",
+            "direction": "long",
+            "entry_price_1H": 3248.84,
+            "SL": 3126.42,
+            "TP": 3493.68,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-09-20",
+            "direction": "short",
+            "entry_price_1H": 3284.26,
+            "SL": 3456.53,
+            "TP": 2939.72,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-10-25",
+            "direction": "long",
+            "entry_price_1H": 4131.97,
+            "SL": 3961.5,
+            "TP": 4472.91,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-08",
+            "direction": "long",
+            "entry_price_1H": 4688.29,
+            "SL": 4518.61,
+            "TP": 5027.65,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-15",
+            "direction": "long",
+            "entry_price_1H": 4674.44,
+            "SL": 4514.12,
+            "TP": 4995.08,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-12-13",
+            "direction": "short",
+            "entry_price_1H": 4067.36,
+            "SL": 4173.63,
+            "TP": 3854.82,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-12-20",
+            "direction": "short",
+            "entry_price_1H": 3947.41,
+            "SL": 4032.43,
+            "TP": 3777.37,
+            "outcome": "correct"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 29,
+        "correct": 14,
+        "incorrect": 14,
+        "accuracy": 0.5,
+        "entry_examples": [
+          {
+            "setup_date": "2020-09-14",
+            "direction": "short",
+            "entry_price_1H": 358.03,
+            "SL": 390.43,
+            "TP": 293.23,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-09-21",
+            "direction": "short",
+            "entry_price_1H": 374.45,
+            "SL": 383.75,
+            "TP": 355.85,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-11-09",
+            "direction": "long",
+            "entry_price_1H": 456.7,
+            "SL": 434.58,
+            "TP": 500.94,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-11-23",
+            "direction": "long",
+            "entry_price_1H": 552.99,
+            "SL": 511.28,
+            "TP": 636.41,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-11-30",
+            "direction": "long",
+            "entry_price_1H": 587.22,
+            "SL": 530.32,
+            "TP": 701.02,
+            "outcome": "unresolved"
+          },
+          {
+            "setup_date": "2020-12-14",
+            "direction": "long",
+            "entry_price_1H": 584.48,
+            "SL": 563.22,
+            "TP": 627.0,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-12-28",
+            "direction": "long",
+            "entry_price_1H": 707.87,
+            "SL": 625.0,
+            "TP": 873.61,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-01-04",
+            "direction": "long",
+            "entry_price_1H": 975.8,
+            "SL": 768.71,
+            "TP": 1389.98,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-01-25",
+            "direction": "long",
+            "entry_price_1H": 1456.96,
+            "SL": 1228.0,
+            "TP": 1914.88,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-03-08",
+            "direction": "long",
+            "entry_price_1H": 1742.21,
+            "SL": 1630.35,
+            "TP": 1965.93,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-03-22",
+            "direction": "short",
+            "entry_price_1H": 1757.44,
+            "SL": 1810.9,
+            "TP": 1650.52,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-04-26",
+            "direction": "long",
+            "entry_price_1H": 2414.43,
+            "SL": 2168.0,
+            "TP": 2907.29,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-03",
+            "direction": "long",
+            "entry_price_1H": 2994.06,
+            "SL": 2852.26,
+            "TP": 3277.66,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-10",
+            "direction": "long",
+            "entry_price_1H": 3909.44,
+            "SL": 3726.08,
+            "TP": 4276.16,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-17",
+            "direction": "short",
+            "entry_price_1H": 3465.98,
+            "SL": 3879.0,
+            "TP": 2639.94,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-05-24",
+            "direction": "short",
+            "entry_price_1H": 2133.24,
+            "SL": 2381.57,
+            "TP": 1636.58,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-05-31",
+            "direction": "short",
+            "entry_price_1H": 2354.01,
+            "SL": 2476.42,
+            "TP": 2109.19,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-06-21",
+            "direction": "short",
+            "entry_price_1H": 2238.38,
+            "SL": 2280.01,
+            "TP": 2155.12,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-07-19",
+            "direction": "short",
+            "entry_price_1H": 1885.01,
+            "SL": 1993.79,
+            "TP": 1667.45,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-07-26",
+            "direction": "long",
+            "entry_price_1H": 2259.73,
+            "SL": 2105.93,
+            "TP": 2567.33,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-08-02",
+            "direction": "long",
+            "entry_price_1H": 2518.67,
+            "SL": 2507.0,
+            "TP": 2542.01,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-08-16",
+            "direction": "long",
+            "entry_price_1H": 3311.85,
+            "SL": 3111.13,
+            "TP": 3713.29,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-08-23",
+            "direction": "long",
+            "entry_price_1H": 3248.84,
+            "SL": 3126.42,
+            "TP": 3493.68,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-09-20",
+            "direction": "short",
+            "entry_price_1H": 3284.26,
+            "SL": 3456.53,
+            "TP": 2939.72,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-10-25",
+            "direction": "long",
+            "entry_price_1H": 4131.97,
+            "SL": 3961.5,
+            "TP": 4472.91,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-08",
+            "direction": "long",
+            "entry_price_1H": 4688.29,
+            "SL": 4518.61,
+            "TP": 5027.65,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-11-15",
+            "direction": "long",
+            "entry_price_1H": 4674.44,
+            "SL": 4514.12,
+            "TP": 4995.08,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2021-12-13",
+            "direction": "short",
+            "entry_price_1H": 4067.36,
+            "SL": 4173.63,
+            "TP": 3854.82,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2021-12-20",
+            "direction": "short",
+            "entry_price_1H": 3947.41,
+            "SL": 4032.43,
+            "TP": 3777.37,
+            "outcome": "correct"
+          }
+        ]
+      }
+    }
+  },
+  "top_failure_patterns": [
+    "4H setup invalid after daily confirm (x51)",
+    "entry triggered but TP not reached (x29)"
+  ],
+  "data_gaps": []
+}

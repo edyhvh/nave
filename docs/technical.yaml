@@ -931,6 +931,92 @@ technical_philosophy:
         50% is explicitly NOT an entry. Many retail patterns teach this and
         it is a trap — it is only a heads-up that the retracement has started.
 
+    impulse_leg_identification:
+      description: >
+        The retracement percentages above are meaningless without an explicit
+        definition of the impulse leg they are measured against. Without
+        leg identification, an engine can re-anchor the leg every week and
+        always find a "fresh 75% retracement" — which is exactly the
+        chase-entry pathology.
+      rule: >
+        The CURRENT IMPULSE LEG is the leg between the most recent
+        confirmed daily swing low and daily swing high (or vice versa
+        for shorts) that bracket the most recent break of structure on
+        the daily timeframe. A swing point is "confirmed" only after at
+        least three daily candles have closed without violating it.
+      lock_until_invalidated: >
+        Once the current impulse leg is identified, it remains the
+        anchor for retracement measurement until EITHER (a) a new daily
+        BOS in the direction of bias prints a higher high (for longs)
+        or lower low (for shorts), at which point the leg extends, OR
+        (b) a daily BOS against the bias prints, at which point the leg
+        is invalidated and a new one must be identified before any
+        further entry.
+      do_not_re_anchor_per_week: >
+        Re-anchoring the impulse leg every week is the engine bug that
+        produces "fresh 75% retracement" signals at every cycle high.
+        The leg lifetime is measured in months for trends and weeks
+        for ranges, not in single weekly walks.
+
+    chase_prevention_rule:
+      rule: >
+        A fresh entry is allowed ONLY when current price is inside the
+        75-86-90 retracement zone of the CURRENT IMPULSE LEG (as defined
+        above). If current price is in the 0-50 retracement zone of the
+        impulse leg in the direction of bias — i.e., still extended near
+        the impulse high (for longs) or low (for shorts) — NO fresh
+        entry is allowed regardless of any other signal.
+      rationale: >
+        The 2020-recovery+2021-ATH backtest is the textbook case. BTC
+        produced fifteen losing entries in this period, of which nine
+        were chase longs at progressively higher prices ($15549 in
+        2020-11, $19318 in 2020-12, $23679 by year-end, $32843 in 2021-01,
+        $59404 in 2021-03, $57407 in 2021-05, $47546 / $49418 / $51741
+        in 2021-08-09, $61813 / $64999 in 2021-10-11). Each of those
+        entries was at less than 30% retracement of the prior impulse
+        leg — i.e., price was still extended near the recent high. ETH
+        repeated the pattern with $456 / $552 / $1456 / $1742 / $3909 /
+        $3311 / $4131 / $4688 / $4674 longs.
+      how_to_apply:
+        - >
+          Compute the current impulse leg per coin per direction
+          (separately for longs and shorts) and persist it across the
+          weekly walk.
+        - >
+          On every weekly bias check, before evaluating the 4H setup,
+          test the chase-prevention rule. If price is in the 0-50 zone
+          of the impulse leg in the direction of bias, return "no
+          entry — extended" and continue.
+        - >
+          If price is in the 50-75 zone, return "wait — retracement in
+          progress, watch for confluence" but still no entry.
+        - >
+          Only when price reaches 75% or deeper does the existing 4H
+          setup / 1H trigger pipeline activate.
+      relationship_to_existing_rules:
+        - >
+          Tighter version of market_phase_discipline.rules's "never enter
+          during momentum" — gives "during momentum" a measurable,
+          impulse-leg-anchored definition.
+        - >
+          Compatible with re_entry_discipline (iter 3) and
+          post_climax_cooldown (iter 4). Climax cooldown still dominates
+          when both fire; chase prevention is the slower-grind cousin
+          for trends that don't trigger a single-candle climax flag.
+        - >
+          Anchored on the existing 75/86/90 zones — does not introduce
+          new percentages, only specifies which leg the percentages are
+          measured against.
+      note_for_engines: >
+        The current scripts/theory_backtest.py weekly walk has no
+        impulse-leg state. Implementation requires per-coin per-direction
+        impulse_leg = (origin_swing_price, origin_swing_date,
+        terminal_swing_price, terminal_swing_date), updated only on
+        confirmed daily BOS events, NEVER per week. The chase-prevention
+        check then computes (current_price - origin) / (terminal - origin)
+        and rejects entries below 0.75 in the direction of bias. Lands
+        in the Phase 2-final trading/ refactor.
+
   confluence_zones:
     description: >
       A confluence zone is a PRICE RANGE (not a line) where multiple factors
