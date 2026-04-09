@@ -30,17 +30,24 @@ PERIOD_ORDER = [
     "2024-2025-bull",
     "TODAY",
 ]
-PERIOD_RE = re.compile(r"^\> \*\*Command:\*\* `python scripts/theory_backtest\.py --period (?P<period>[^ ]+) ")
+PERIOD_PATTERNS = [
+    re.compile(r"^\> \*\*Command:\*\* `python scripts/theory_backtest\.py --period (?P<period>[^ ]+) "),
+    re.compile(r"^\> \*\*Backtest command:\*\* `python scripts/theory_backtest\.py --period (?P<period>[^ ]+) "),
+]
 
 
 def completed_periods() -> list[str]:
     periods: list[str] = []
     for path in sorted(ITERATIONS_DIR.glob("iter_*.md")):
         for line in path.read_text(encoding="utf-8").splitlines():
-            match = PERIOD_RE.match(line)
-            if match:
-                periods.append(match.group("period"))
-                break
+            for pattern in PERIOD_PATTERNS:
+                match = pattern.match(line)
+                if match:
+                    periods.append(match.group("period"))
+                    break
+            else:
+                continue
+            break
     return periods
 
 
