@@ -804,6 +804,70 @@ technical_philosophy:
         Never enter on 1H momentum alone. The 1H trigger is confirmation of
         a pre-existing 4H setup, not a discovery of a new idea.
 
+    re_entry_discipline:
+      rule: >
+        One active entry per 4H confluence zone touch. After a setup in
+        direction D has been entered (whether the 1H entry hit TP or SL),
+        no new entry in direction D is allowed until BOTH of the following
+        have happened:
+          (a) price has traded back to a counter-direction confluence zone
+              (i.e., a meaningful retracement against D that reaches at
+              least the 50% alert level of the move that produced the
+              original entry), AND
+          (b) a new 4H structural element has formed at a NEW confluence
+              zone — not the same zone the original entry came from.
+        Until both conditions are met, treat the original setup as still
+        active or as recently invalidated; the next bar in direction D
+        is pyramiding on top of the same idea, not a new idea.
+      rationale: >
+        2019-recovery backtest produced three consecutive weekly long
+        entries on BTC (2019-04-01, 04-08, 04-15) and on ETH (same dates),
+        in the same direction, from progressively higher prices in the
+        same impulse leg. The first entry was correct; the second and
+        third were stopped when the inevitable pullback came, turning a
+        winning setup into a net loss. Same pattern repeated in 2019-05
+        (longs at $7907 and $8777) and 2019-09/10 (shorts at $8009 and
+        $7818). The system was generating one entry per week regardless
+        of whether an active setup already existed, amplifying losses on
+        every chop.
+      how_to_apply:
+        - >
+          Maintain a per-direction "last entry zone" reference. While an
+          entry from that zone is open or its premise has not yet been
+          invalidated by a counter-zone touch, reject all further entries
+          in the same direction.
+        - >
+          A losing entry does NOT immediately re-arm the direction.
+          A stopped-out long is still a long idea — wait for the
+          counter-zone touch and a new structural element before the
+          next long.
+        - >
+          A winning entry that has hit TP is also not an immediate
+          re-arm. The fact that TP was reached confirms the impulse —
+          the next entry must come from a fresh pullback, not a
+          continuation chase.
+        - >
+          This rule applies independently per coin. BTC pyramiding does
+          not block ETH entries.
+      relationship_to_existing_rules:
+        - >
+          This is a STRICTER version of pro_trader_mindset's "wait for
+          the exact setup" — it makes the wait condition explicit and
+          testable so an engine can implement it.
+        - >
+          It does NOT replace position sizing in risk_management — it
+          replaces the implicit assumption that "one signal per week is
+          one trade per week".
+      note_for_engines: >
+        A backtest engine reading this section must track per-coin and
+        per-direction state across the iteration loop. The default
+        weekly walk in scripts/theory_backtest.py currently treats every
+        week independently — that is the bug. State must persist:
+        last_entry_zone[coin][direction], last_entry_outcome, and a
+        flag for "counter-zone touched since last entry". Until that
+        flag flips True AND a new zone is reached, no further entry
+        in the same direction.
+
   stop_loss_placement_rules:
     description: >
       Stop-loss is not a "get me out" mechanism — it is the price at which

@@ -1,0 +1,478 @@
+{
+  "period": "2019-recovery",
+  "start_date": "2019-01-01",
+  "end_date": "2019-12-31",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {
+      "1W": "52 rows 2019-01-07\u21922019-12-30",
+      "1D": "365 rows 2019-01-01\u21922019-12-31",
+      "4H": "2181 rows 2019-01-01\u21922019-12-31",
+      "1H": "8709 rows 2019-01-01\u21922019-12-31"
+    },
+    "ETH": {
+      "1W": "52 rows 2019-01-07\u21922019-12-30",
+      "1D": "365 rows 2019-01-01\u21922019-12-31",
+      "4H": "2181 rows 2019-01-01\u21922019-12-31",
+      "1H": "8709 rows 2019-01-01\u21922019-12-31"
+    }
+  },
+  "per_coin": {
+    "BTC": {
+      "weekly": {
+        "signals": 52,
+        "correct": 3,
+        "incorrect": 8,
+        "accuracy": 0.2727,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 52,
+        "correct": 27,
+        "incorrect": 16,
+        "accuracy": 0.6279,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 27,
+        "correct": 3,
+        "incorrect": 23,
+        "accuracy": 0.1154,
+        "entry_examples": [
+          {
+            "setup_date": "2019-04-01",
+            "direction": "long",
+            "entry_price_1H": 4121.69,
+            "SL": 4067.0,
+            "TP": 4231.07,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-04-08",
+            "direction": "long",
+            "entry_price_1H": 5244.83,
+            "SL": 5035.2,
+            "TP": 5664.09,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-04-15",
+            "direction": "long",
+            "entry_price_1H": 5135.0,
+            "SL": 5000.0,
+            "TP": 5405.0,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-05-20",
+            "direction": "long",
+            "entry_price_1H": 7907.18,
+            "SL": 7292.54,
+            "TP": 9136.46,
+            "outcome": "unresolved"
+          },
+          {
+            "setup_date": "2019-05-27",
+            "direction": "long",
+            "entry_price_1H": 8777.16,
+            "SL": 7833.42,
+            "TP": 10664.64,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-06-17",
+            "direction": "long",
+            "entry_price_1H": 9151.17,
+            "SL": 8775.55,
+            "TP": 9902.41,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-08-05",
+            "direction": "long",
+            "entry_price_1H": 11177.15,
+            "SL": 10552.0,
+            "TP": 12427.45,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-09-30",
+            "direction": "short",
+            "entry_price_1H": 8008.59,
+            "SL": 8204.97,
+            "TP": 7615.83,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-10-07",
+            "direction": "short",
+            "entry_price_1H": 7817.71,
+            "SL": 8140.0,
+            "TP": 7173.13,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-10-28",
+            "direction": "long",
+            "entry_price_1H": 9696.1,
+            "SL": 9074.34,
+            "TP": 10939.62,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-11-25",
+            "direction": "short",
+            "entry_price_1H": 6879.96,
+            "SL": 7275.0,
+            "TP": 6089.88,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-12-02",
+            "direction": "short",
+            "entry_price_1H": 7367.44,
+            "SL": 7489.0,
+            "TP": 7124.32,
+            "outcome": "correct"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 12,
+        "correct": 3,
+        "incorrect": 8,
+        "accuracy": 0.2727,
+        "entry_examples": [
+          {
+            "setup_date": "2019-04-01",
+            "direction": "long",
+            "entry_price_1H": 4121.69,
+            "SL": 4067.0,
+            "TP": 4231.07,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-04-08",
+            "direction": "long",
+            "entry_price_1H": 5244.83,
+            "SL": 5035.2,
+            "TP": 5664.09,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-04-15",
+            "direction": "long",
+            "entry_price_1H": 5135.0,
+            "SL": 5000.0,
+            "TP": 5405.0,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-05-20",
+            "direction": "long",
+            "entry_price_1H": 7907.18,
+            "SL": 7292.54,
+            "TP": 9136.46,
+            "outcome": "unresolved"
+          },
+          {
+            "setup_date": "2019-05-27",
+            "direction": "long",
+            "entry_price_1H": 8777.16,
+            "SL": 7833.42,
+            "TP": 10664.64,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-06-17",
+            "direction": "long",
+            "entry_price_1H": 9151.17,
+            "SL": 8775.55,
+            "TP": 9902.41,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-08-05",
+            "direction": "long",
+            "entry_price_1H": 11177.15,
+            "SL": 10552.0,
+            "TP": 12427.45,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-09-30",
+            "direction": "short",
+            "entry_price_1H": 8008.59,
+            "SL": 8204.97,
+            "TP": 7615.83,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-10-07",
+            "direction": "short",
+            "entry_price_1H": 7817.71,
+            "SL": 8140.0,
+            "TP": 7173.13,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-10-28",
+            "direction": "long",
+            "entry_price_1H": 9696.1,
+            "SL": 9074.34,
+            "TP": 10939.62,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-11-25",
+            "direction": "short",
+            "entry_price_1H": 6879.96,
+            "SL": 7275.0,
+            "TP": 6089.88,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-12-02",
+            "direction": "short",
+            "entry_price_1H": 7367.44,
+            "SL": 7489.0,
+            "TP": 7124.32,
+            "outcome": "correct"
+          }
+        ]
+      }
+    },
+    "ETH": {
+      "weekly": {
+        "signals": 52,
+        "correct": 3,
+        "incorrect": 8,
+        "accuracy": 0.2727,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 52,
+        "correct": 31,
+        "incorrect": 13,
+        "accuracy": 0.7045,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 31,
+        "correct": 3,
+        "incorrect": 27,
+        "accuracy": 0.1,
+        "entry_examples": [
+          {
+            "setup_date": "2019-04-01",
+            "direction": "long",
+            "entry_price_1H": 141.9,
+            "SL": 139.57,
+            "TP": 146.56,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-04-08",
+            "direction": "long",
+            "entry_price_1H": 183.72,
+            "SL": 164.63,
+            "TP": 221.9,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-04-15",
+            "direction": "long",
+            "entry_price_1H": 166.99,
+            "SL": 161.2,
+            "TP": 178.57,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-05-20",
+            "direction": "long",
+            "entry_price_1H": 249.43,
+            "SL": 235.04,
+            "TP": 278.21,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-05-27",
+            "direction": "long",
+            "entry_price_1H": 267.09,
+            "SL": 245.11,
+            "TP": 311.05,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-07-15",
+            "direction": "short",
+            "entry_price_1H": 211.43,
+            "SL": 269.41,
+            "TP": 95.47,
+            "outcome": "unresolved"
+          },
+          {
+            "setup_date": "2019-09-16",
+            "direction": "long",
+            "entry_price_1H": 192.51,
+            "SL": 185.76,
+            "TP": 206.01,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-09-30",
+            "direction": "short",
+            "entry_price_1H": 169.25,
+            "SL": 173.9,
+            "TP": 159.95,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-10-07",
+            "direction": "short",
+            "entry_price_1H": 170.0,
+            "SL": 176.5,
+            "TP": 157.0,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-11-11",
+            "direction": "long",
+            "entry_price_1H": 189.38,
+            "SL": 183.3,
+            "TP": 201.54,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-11-25",
+            "direction": "short",
+            "entry_price_1H": 140.26,
+            "SL": 151.71,
+            "TP": 117.36,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-12-16",
+            "direction": "short",
+            "entry_price_1H": 142.11,
+            "SL": 144.12,
+            "TP": 138.09,
+            "outcome": "correct"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 12,
+        "correct": 3,
+        "incorrect": 8,
+        "accuracy": 0.2727,
+        "entry_examples": [
+          {
+            "setup_date": "2019-04-01",
+            "direction": "long",
+            "entry_price_1H": 141.9,
+            "SL": 139.57,
+            "TP": 146.56,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-04-08",
+            "direction": "long",
+            "entry_price_1H": 183.72,
+            "SL": 164.63,
+            "TP": 221.9,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-04-15",
+            "direction": "long",
+            "entry_price_1H": 166.99,
+            "SL": 161.2,
+            "TP": 178.57,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-05-20",
+            "direction": "long",
+            "entry_price_1H": 249.43,
+            "SL": 235.04,
+            "TP": 278.21,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-05-27",
+            "direction": "long",
+            "entry_price_1H": 267.09,
+            "SL": 245.11,
+            "TP": 311.05,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-07-15",
+            "direction": "short",
+            "entry_price_1H": 211.43,
+            "SL": 269.41,
+            "TP": 95.47,
+            "outcome": "unresolved"
+          },
+          {
+            "setup_date": "2019-09-16",
+            "direction": "long",
+            "entry_price_1H": 192.51,
+            "SL": 185.76,
+            "TP": 206.01,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2019-09-30",
+            "direction": "short",
+            "entry_price_1H": 169.25,
+            "SL": 173.9,
+            "TP": 159.95,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-10-07",
+            "direction": "short",
+            "entry_price_1H": 170.0,
+            "SL": 176.5,
+            "TP": 157.0,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-11-11",
+            "direction": "long",
+            "entry_price_1H": 189.38,
+            "SL": 183.3,
+            "TP": 201.54,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-11-25",
+            "direction": "short",
+            "entry_price_1H": 140.26,
+            "SL": 151.71,
+            "TP": 117.36,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2019-12-16",
+            "direction": "short",
+            "entry_price_1H": 142.11,
+            "SL": 144.12,
+            "TP": 138.09,
+            "outcome": "correct"
+          }
+        ]
+      }
+    }
+  },
+  "top_failure_patterns": [
+    "4H setup invalid after daily confirm (x34)",
+    "entry triggered but TP not reached (x16)"
+  ],
+  "data_gaps": []
+}
