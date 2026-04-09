@@ -679,6 +679,50 @@ technical_philosophy:
         notes:
           - 4H is where the SETUP is born, not where you trigger the order.
           - If no valid 4H setup is present, there is no 1H trigger to look for.
+        counter_move_is_the_setup:
+          rule: >
+            After the daily bias is confirmed, a 4H move AGAINST the daily bias is
+            the EXPECTED condition for a setup to form — it is the pullback, not
+            an invalidation. The 4H leg that "looks wrong" is the one we are waiting
+            for; the impulse leg in the direction of the daily bias has already
+            happened and is not a fresh entry.
+          rationale: >
+            This resolves the single biggest source of rejected setups in the
+            2017-bull+2018-bear backtest (53 of 94 daily-confirmed weeks): a
+            naive "4H trend must match daily trend" check rejects every pullback
+            and leaves only chase-entries into exhausted impulses. The refined
+            theory is the opposite — we wait for the retracement, then enter
+            when a 4H structural element (block rejection, PFQ fractálico,
+            BOS against the pullback) prints inside a confluence zone.
+          how_to_apply:
+            - If daily bias is LONG and 4H is pulling back (lower lows on the
+              4H), do NOT reject the week — mark it as a candidate for
+              retroceso_75_setup, block_rejection_plus_bos, or pfq_fractalico.
+            - If daily bias is LONG and 4H is extending in the long direction
+              without a pullback, the week is in the impulse phase, not a setup.
+              Stand aside and wait — this is also NOT an entry.
+            - If daily bias is LONG and 4H has broken structure against the
+              daily (BOS down on 4H by more than one swing), the daily bias
+              itself is at risk. Demote to neutral and wait for daily to
+              re-confirm. This is the only scenario where "4H opposes daily"
+              is a true invalidation, not just a pullback.
+            - Mirror all three rules for SHORT bias.
+          invalidation_vs_pullback:
+            pullback_criterion: >
+              A counter-daily 4H move that stays inside the last confluence zone
+              and does not break more than one prior 4H swing in the counter
+              direction.
+            invalidation_criterion: >
+              A counter-daily 4H move that breaks two or more prior 4H swings
+              in the counter direction AND closes beyond the last daily
+              confluence level.
+          note_for_engines: >
+            Any backtest engine reading this section must not implement the 4H
+            validity check as "4H trend MA matches daily trend MA". That
+            heuristic rejects the very pullbacks that constitute the setup.
+            Implement it instead as "4H is inside a confluence zone AND a
+            structural element has printed" — direction-of-trend on the 4H
+            itself is irrelevant once daily is confirmed.
       one_hour:
         role: Precise entry trigger and execution timing.
         required_conditions:
