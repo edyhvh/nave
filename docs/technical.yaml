@@ -629,3 +629,340 @@ technical_philosophy:
       - Last bearish candle before a strong bullish expansion (for bullish mitigation).
       - Last bullish candle before a strong bearish expansion (for bearish mitigation).
       - Must occur at or near an institutional price level for maximum confluence.
+
+  # ==========================================================================
+  # PHASE 1 ADDITIONS — derived from docs/elcriptopanavideos.md
+  # ==========================================================================
+
+  top_down_timeframe_execution:
+    description: >
+      Explicit multi-timeframe execution pipeline. Direction is decided on the HTF;
+      execution is routed through 4H and 1H. A pattern valid on 4H is not
+      automatically valid on 1H — each timeframe has its own job.
+    pipeline:
+      weekly:
+        role: Macro bias and COT reference.
+        inputs:
+          - Rates (FED / BCE / BoJ policy direction).
+          - Monetary mass (TGA, RRP, balance sheet).
+          - COT extremes and zero-line crossings for BTC.
+          - IPDA phase (consolidation / expansion / retracement / regression).
+        output: long / short / neutral weekly bias.
+        rule: >
+          If rates direction and COT direction disagree, the resolution is
+          neutral — we do not take trades against macro rates on that coin.
+      daily:
+        role: Trend confirmation and key level identification.
+        inputs:
+          - Swing structure (higher highs / lower lows on daily candles).
+          - Institutional price levels (ending in 00, 20, 50, 80).
+          - Daily/weekly/monthly open and close reference lines.
+          - Block rejection test (monthly block rejected on daily).
+        output: >
+          confirmed / unconfirmed daily trend + marked key levels
+          (supports, resistances, mitigation blocks).
+        rule: >
+          Daily must confirm the weekly bias. If daily structure contradicts
+          the weekly bias, stand down for the week — wait for the daily to
+          either flip or align.
+      four_hour:
+        role: Setup formation and entry zone identification.
+        required_conditions:
+          - Price has reached a valid 4H confluence zone (see confluence_zones).
+          - A structural element (block rejection, BOS, PFQ fractálico, mitigation)
+            formed within that zone in the direction of the daily bias.
+          - Retracement has reached at least the 75% zone of the impulse, not the 50% alert.
+          - The 4H candle shows the expected shape for the phase (see candle_shape_to_phase).
+        output: >
+          valid 4H setup with direction, entry zone (price range),
+          invalidation level (opposite side of the confluence zone), and
+          target (next primary or secondary confluence zone).
+        notes:
+          - 4H is where the SETUP is born, not where you trigger the order.
+          - If no valid 4H setup is present, there is no 1H trigger to look for.
+      one_hour:
+        role: Precise entry trigger and execution timing.
+        required_conditions:
+          - A valid 4H setup is active and its invalidation has not been touched.
+          - A 1H entry pattern has printed inside the 4H entry zone (see entry_triggers_1h).
+          - Liquidity has been taken (sweep of a 1H swing) before the trigger fires —
+            this is the "stop hunt / PFQ" that precedes real institutional entries.
+          - Broker spread is acceptable (otherwise, rprice risk eats the edge).
+        output: >
+          entry price, stop-loss price, take-profit levels (TP1 = first confluence zone,
+          TP2 = second confluence zone), position size in R.
+        notes:
+          - 1H trigger without a 4H setup is noise, not signal. Skip it.
+          - The trigger closes the loop — after this the trade is committed.
+
+  entry_triggers_4h:
+    description: >
+      The 4H level is where a setup *forms*. These are the recognized 4H setup
+      patterns; all of them require that the higher-timeframe bias is already
+      established.
+    patterns:
+      block_rejection_plus_bos:
+        trigger: >
+          Price taps a monthly or weekly block on the 4H, rejects it with a
+          strong wick/body, and breaks the last 4H swing in the direction of
+          the bias.
+        invalidation: 4H close beyond the tapped block's far edge.
+      pfq_fractalico:
+        trigger: >
+          A 4H candle that sweeps a prior 4H swing (stop hunt / false
+          breakout) and closes back inside the range. The sweep must
+          coincide with an institutional level (00/20/50/80).
+        invalidation: 4H close beyond the swept level.
+      retroceso_75_setup:
+        trigger: >
+          After a confirmed 4H impulse in the direction of bias, wait for a
+          retracement into the 75–86% zone of that impulse, landing in a
+          confluence zone.
+        invalidation: 4H close beyond the origin of the impulse (100%+).
+      flip_plus_ben:
+        trigger: >
+          Prior 4H support becomes resistance (or vice versa) after a break,
+          and the flip occurs within a BEN (block-between-levels) — the zone
+          between the true swing and the nearest institutional level.
+        invalidation: 4H close back through the flipped level.
+
+  entry_triggers_1h:
+    description: >
+      1H is the execution layer. These triggers fire only when a valid 4H
+      setup is already active and price has entered the 4H entry zone.
+    patterns:
+      flip_confirmation:
+        trigger: >
+          A 1H candle closes above a prior 1H resistance that has flipped into
+          support (for longs), or closes below a prior 1H support that has
+          flipped into resistance (for shorts), inside the 4H entry zone.
+        entry: on the close of the flip candle.
+        sl: beyond the last 1H swing that formed before the flip.
+      zc2_sweep_reversal:
+        trigger: >
+          1H sweeps the "second zone of confluence" (ZC2) — a deeper
+          liquidity pool below/above the first confluence zone — and reverses
+          with a strong wick back into the 4H entry zone.
+        entry: on the reversal candle close.
+        sl: 1–2 ticks beyond the sweep wick.
+      micro_pfq_on_institutional:
+        trigger: >
+          A 1H PFQ (stop hunt) at an institutional level (00/20/50/80) that
+          aligns with the 4H entry zone, followed by a break of the micro
+          structure in the direction of bias.
+        entry: on the break of the micro structure.
+        sl: on the far side of the PFQ sweep.
+    discipline:
+      - >
+        If no 1H trigger prints within the 4H entry zone while the zone is
+        still valid, pass the trade. Do not force an entry because "it
+        should have happened".
+      - >
+        Never enter on 1H momentum alone. The 1H trigger is confirmation of
+        a pre-existing 4H setup, not a discovery of a new idea.
+
+  stop_loss_placement_rules:
+    description: >
+      Stop-loss is not a "get me out" mechanism — it is the price at which
+      the premise is proven wrong. If the SL is hit, it means the analysis
+      was incorrect and you should be looking the other way.
+    by_timeframe:
+      weekly_bias_sl:
+        placement: >
+          Weekly SL is conceptual — it is the macro invalidation, not an
+          order-level stop. Example: "if rates flip hawkish, weekly long bias
+          is dead".
+      daily_sl:
+        placement: >
+          At the opposite side of the daily swing that created the trend
+          confirmation, beyond the nearest obvious liquidity pool.
+      four_hour_sl:
+        placement: >
+          At the far edge of the 4H confluence zone (the "outside" of the
+          BEN / block). This is the invalidation of the setup itself —
+          if price closes beyond it, the 4H setup no longer exists.
+      one_hour_sl:
+        placement: >
+          Beyond the last 1H swing that formed before the entry trigger,
+          plus a small buffer for broker spread. Never inside the swing.
+    anti_patterns:
+      - Do not place SL at round numbers or obvious equal highs/lows — these are liquidity magnets.
+      - Do not place SL right at the confluence zone edge — allow for spread-driven overshoot (~10–35 pips equivalent).
+      - Do not place SL based on a fixed percentage of account; base it on invalidation and then size the position to match your risk.
+      - Do not move SL to break-even reflexively; move it only when the next structural level confirms in your favor.
+
+  retracement_entry_zones:
+    description: >
+      Replacement for the single-value "75% retracement" idea. The retracement
+      zone is a band, not a point, and the exact target depends on the broker
+      spread, the institutional-money withdrawal percentage, and the IPDA
+      phase.
+    zones:
+      alert_50:
+        meaning: 50% of the impulse — only an alert, never an entry.
+        use: Start watching for a confluence setup; do NOT open a position here.
+      minimum_75:
+        meaning: 75% of the impulse — minimum acceptable entry zone.
+        use: First acceptable entry level for setups that also satisfy the 4H/1H rules above.
+      optimal_86:
+        meaning: >
+          86% of the impulse — corresponds to the BIS-estimated 86%
+          institutional share of interbank flow. The idea: once the
+          institutional 86% has withdrawn, the remaining 14% retail flow
+          is insufficient to hold price, so we expect continuation if we
+          enter here.
+        use: Preferred entry zone for high-conviction 4H setups.
+      deep_90:
+        meaning: 90%+ — extreme retracement near origin.
+        use: Acceptable only when broker spread is high (wide stops) or the HTF bias is extremely strong.
+    important:
+      - >
+        Broker spread adds 10–35 pips of overshoot beyond the theoretical
+        retracement level. Always set the SL *beyond* the spread-adjusted
+        zone, not at the zone edge.
+      - >
+        50% is explicitly NOT an entry. Many retail patterns teach this and
+        it is a trap — it is only a heads-up that the retracement has started.
+
+  confluence_zones:
+    description: >
+      A confluence zone is a PRICE RANGE (not a line) where multiple factors
+      align to create a high-probability rejection. Confluence zones are the
+      only places we take entries. The more factors stacked, the higher the
+      quality of the zone.
+    required_factors_at_least_three:
+      - Institutional level (00, 20, 50, 80).
+      - True swing high or swing low (explicit, not implicit).
+      - Block (order / rejection / mitigation / suspension).
+      - Daily / weekly / monthly open or close.
+      - Fair value gap inside the zone.
+      - Prior touches (2+ touches = critical).
+      - Vertical time line (session open, NY close, London open, Asia open).
+    zc1_vs_zc2:
+      zc1:
+        name: Primera zona de confluencia (First confluence zone / ZC1).
+        role: >
+          First target and first profit-taking level. Typically the
+          nearest opposing structure after the setup zone.
+        action_on_touch: Take 80% of position profit on first touch.
+      zc2:
+        name: Segunda zona de confluencia (Second confluence zone / ZC2).
+        role: >
+          Deeper liquidity pool beyond ZC1. Used as extended target when
+          ZC1 breaks cleanly, or as a sweep-and-reverse entry area.
+        action_on_touch: Take additional 10% on touch; trail remaining 10%.
+
+  ben_block_between_levels:
+    description: >
+      BEN (Bloque Entre Niveles, Block Between Levels) is the price range
+      between a true swing point and the nearest institutional level
+      (00/20/50/80). It is the primary construction used to turn fuzzy S/R
+      into a usable entry zone.
+    construction_steps:
+      - Identify the true swing (not the implicit one — wait for the wick).
+      - Find the nearest institutional level on the opposite side of the swing.
+      - The price range between those two is the BEN.
+      - Score the BEN by counting how many confluence factors fall inside it.
+    usage_in_setup:
+      - The 4H entry zone is usually a BEN with at least three confluence factors.
+      - The SL sits on the far side of the BEN (outside the institutional level).
+      - The entry sits inside the BEN, typically at the 75–86% retracement point.
+
+  candle_shape_to_phase:
+    description: >
+      Candle body and wick structure is the fastest read on what phase of the
+      market we are in. Use this as a visual first-pass before drawing anything.
+    mappings:
+      small_body_long_wick:
+        phase: Volatility / regression / consolidation.
+        meaning: Liquidity hunt, indecision, equilibrium.
+        action: Do not chase — wait for the next momentum candle.
+      large_body_short_wick:
+        phase: Momentum / expansion.
+        meaning: Clear directionality, cash flow engaged.
+        action: Trade in the direction of the body only if post-volatility pre-momentum.
+      equal_body_equal_wick:
+        phase: Transition.
+        meaning: Market searching for a new model.
+        action: Stand down until one side dominates.
+
+  spread_range_as_market:
+    description: >
+      The bid/ask spread IS the market. The market maker runs their P/L from
+      the spread, and the spread defines the zone where the market maker
+      WANTS price to stay. Movement outside the spread range is where we,
+      the takers, make money.
+    implications:
+      - Before entering, check whether price has left the market-maker comfort zone (the spread range) in the direction of bias.
+      - Entries inside the spread range are arbitrage territory — leave that to the makers.
+      - Post-news moves that explode through the spread range are signals that the market maker model has broken and a new one is forming (rprice event).
+      - When the spread widens on a venue, liquidity is fleeing — do not enter until it normalizes.
+
+  interbank_reality:
+    description: >
+      Clarification of what "interbank price delivery algorithm" actually means,
+      based on the transcripts. This is a correction of the common misconception
+      that there is a single IPDA algorithm connecting all banks.
+    there_is_no_single_algorithm:
+      - Each bank, dealer, and market maker runs their own trading software.
+      - Aggregators (Fortex, eSpeed, NEX, etc.) gather quotes from many venues and publish a composite.
+      - "IPDA / ebitda" is an EXPLANATORY model for how correlated behavior emerges — not a literal unified algorithm.
+      - Correlation between venues comes from shared incentives (liquidate in USD, maintain balance sheets, respond to central bank flows), not central coordination.
+    why_this_matters:
+      - Do not assume "the banks know where price is going". They don't — they react.
+      - Do not assume a crossing of some level triggers a coordinated response. Each algorithm decides locally.
+      - The 86% institutional share is the aggregate result of many uncoordinated-but-correlated decisions.
+    institutional_retail_ratio:
+      source: Bank for International Settlements (BIS) interbank study.
+      ratio: 86% institutional / 14% retail of interbank flow.
+      caveat_for_crypto: >
+        The 86/14 figure is derived from forex markets. Crypto markets,
+        particularly below BTC and ETH, are significantly more retail-dominated.
+        Use this ratio as a prior for BTC/ETH setups only, and verify
+        empirically in backtests.
+
+  pro_trader_mindset:
+    description: >
+      The institutional / pro trader operates under a fundamentally different
+      set of incentives than the retail trader. Internalizing these is part of
+      the theory, not optional.
+    traits:
+      - Fixed percentage return target (typically 15–25% annual), not "beat the market".
+      - Client-focused: the trader is paid by clients, not by the market; this constrains risk-taking.
+      - 80% fundamental, 20% technical — charting is the execution layer, not the decision layer.
+      - Time decay (theta) awareness: the longer you are in the market, the more exposure you have. Minimize screen time.
+      - Certifications (FINRA Series 57) and institutional risk management require a formal process, not intuition.
+      - Diversification across instruments and markets (hedging spot with futures, carry trades, etc.).
+    common_retail_mistakes_to_unlearn:
+      - "I need to beat the market."
+      - "The market is manipulated against me."
+      - "There's one indicator / one setup that always works."
+      - "The chart IS the market."
+      - "If I don't close, I don't lose."
+
+  market_phase_discipline:
+    description: >
+      We are post-volatility, pre-momentum traders. The entire framework is
+      built around identifying the transition between volatility and momentum
+      and positioning just before momentum begins.
+    rules:
+      - Never enter during momentum — you are buying the top of the impulse.
+      - Wait for post-momentum volatility (the pullback / consolidation after a move).
+      - Position in the pullback, take profit into the next momentum phase.
+      - If you miss the setup, skip the trade. The next pullback will come.
+    why:
+      - Volatility is accumulative (liquidity gathers).
+      - Momentum is distributive (liquidity releases).
+      - Entering during momentum means you are providing exit liquidity to someone else.
+
+  semantics_note:
+    description: >
+      The transcripts make a strict semantic distinction: "the market does not
+      go up or down — the PRICE does". The market is a marketplace with a bid
+      and ask; price is what moves between them. For practical purposes in this
+      codebase, "price" and "market direction" are treated as equivalent, but
+      any documentation should use "price" when referring to movement.
+    practical_impact:
+      - Diagonal trendlines are downgraded to "visual context" — they are not standalone signals because price moves vertically, and the diagonal is an artifact of the time axis.
+      - Horizontal levels (institutional, opens/closes, swings) are the primary structure.
+      - Trendlines may still be drawn but must never be the sole reason for an entry.

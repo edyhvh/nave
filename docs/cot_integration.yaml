@@ -1,34 +1,173 @@
 # COT Integration with Nave Philosophy
-# How Commitment of Traders influences weekly setups
+# How Commitment of Traders informs the weekly reference — NOT drives it.
+#
+# PHASE 1 refinement (2026-04-08): based on docs/elcriptopanavideos.md COT video
+# the prior framing of "COT as weekly driver" was corrected. See
+# docs/analysis/contradictions.md §4 for the rationale.
 
-cot_as_weekly_driver:
-  frequency: "Weekly (Friday release, Sunday analysis)"
-  assets: ["BTC (code 133741)", "ETH (CME Ether futures)"]
+cot_as_weekly_reference:
+  frequency: "Weekly (CFTC Friday release, Sunday analysis)"
+  nature: >
+    The COT is a REPORT. It is not a chart, not an indicator, not a signal.
+    It reports last week's positioning in futures contracts by category of
+    trader. Any directional conclusion drawn from it is a personal belief
+    about what the data means — not an output of the data itself.
+  assets:
+    - "BTC (CFTC code 133741 — bitcoin futures on CME)"
+    - "ETH (CME Ether futures — see eth_cot_caveat below)"
   key_metrics:
     - net_non_commercial_positions
     - percent_of_open_interest
-    - week-over-week_changes
-    - commercials_vs_specs_positioning
+    - week_over_week_changes
+    - commercials_vs_non_commercials_positioning
+    - distance_from_zero_line
+    - zero_line_crossings
+
+  eth_cot_caveat: >
+    CME Ether futures do report to the CFTC but COT data for ETH is less
+    deep than BTC. Treat ETH COT as a weaker reference than BTC COT and
+    do not weight it equally. For Phase 2 backtests pre-2022, ETH COT is
+    unavailable anyway.
+
+what_cot_actually_is:
+  - A weekly snapshot of open contracts by trader category at a CFTC-regulated exchange.
+  - Categories relevant to nave: commercials (hedgers), non-commercials (speculators/trend followers), and dealers.
+  - Commercials are DEFENSIVE. They are hedging underlying exposure, they liquidate at USD, they move AGAINST the trend at extremes. Do not confuse "commercials move the market" with "commercials drive direction" — they provide liquidity, they do not drive direction.
+  - Non-commercials are OFFENSIVE. They follow trends. They are the closest analog to what we do, only with larger capital.
+  - The same entity can be classified as a commercial in one commodity and a non-commercial in another. Do not read identity into the category label.
+
+what_cot_is_not:
+  - Not a directional signal. "More longs than shorts" does not imply "price will go up".
+  - Not real-time. Data is a week old at release.
+  - Not a substitute for macro (rates, monetary mass, PIB, inflation).
+  - Not a stand-alone system. Reducing a multi-variable market to COT alone is reductionist.
+
+how_to_use_cot:
+  for_trend_confirmation:
+    rule: >
+      If non-commercials are increasing net-long in the direction of the
+      macro bias, that is confirmation the trend still has institutional
+      interest. Use as a secondary check, not as the primary driver.
+  for_reversal_warning:
+    rule: >
+      Extreme positioning (non-commercials at multi-year highs of net-long
+      or net-short) warns of potential reversal. Combine with price
+      structure — do not short just because COT is extreme.
+  for_model_transition:
+    rule: >
+      A crossing of the zero line (net positioning flipping between long
+      and short) signals a change in the market-maker model (from MMBM
+      to MMSM or vice versa). Document the crossing in the weekly
+      journal; do not trade it in isolation.
+  distance_from_zero:
+    rule: >
+      The further from zero, the more defined the trend. Distance alone
+      is not a signal but it tells you how much room the trend still has
+      before it runs out of steam.
+
+weekly_decision_order:
+  description: >
+    Strict precedence for weekly bias decisions. Phase 1 sets this order
+    explicitly to resolve the ambiguity between "macro-first" and
+    "COT-first" framings in the transcripts (see contradictions.md §12).
+  order:
+    1_rates: >
+      Central bank policy direction (FED primarily, then BCE, BoJ, PBoC).
+      This is the highest-weight input. Rates direction that disagrees
+      with the intended trade wins — we do not take trades against rates.
+    2_monetary_mass: >
+      TGA, RRP, balance sheet, liquidity injection/withdrawal operations.
+      Second-highest weight. Use to detect regime changes (QE → QT).
+    3_macro_data: >
+      PIB / inflation / employment / DXY. Third-level input — gives
+      context but should not override rates.
+    4_cot: >
+      COT positioning. FOURTH, not first. Used to confirm or warn, never
+      to drive. If COT strongly contradicts rates + macro, the signal is
+      NEUTRAL — do not trade.
+    5_price_structure: >
+      Weekly swing structure, IPDA phase, key levels. Used for entry
+      zone construction, not direction.
 
 influence_on:
-  momentum: "Extreme spec positioning signals potential reversals (contrarian)"
-  volatility: "High COT imbalance → higher expected vol for setups"
-  risk_sizing: "Adjust position size based on COT confidence (8-12% risk max)"
-  asset_selection: "Compare BTC vs ETH COT bias to allocate 100% capital to best"
-  option_usage: "In ranges with neutral COT, prefer options for defined risk"
+  momentum: >
+    Extreme non-commercial positioning warns of momentum exhaustion.
+    A non-commercial net-long at historical highs means the trend is
+    mature — reduce position size on new longs, tighten stops.
+  volatility: >
+    A COT reading far from zero combined with a recent macro surprise
+    suggests incoming volatility. Widen stops, reduce size.
+  risk_sizing: >
+    Adjust position size based on COT alignment with rates and price.
+    Full alignment (rates + COT + price) → up to 12% risk.
+    Partial alignment → 5–8% risk.
+    Any misalignment → 0–3% risk or no trade.
+  asset_selection: >
+    Compare BTC COT bias to ETH COT bias (with ETH caveat applied).
+    Allocate preferentially to the coin with stronger COT + rates +
+    price alignment.
+  option_usage: >
+    In ranges with neutral COT, prefer options for defined risk. When
+    COT is extreme, options provide asymmetric exposure for
+    reversal plays.
+
+how_weekly_bias_filters_to_4h_and_1h:
+  description: >
+    The weekly COT bias is not an execution signal — it is a permission
+    slip for the lower timeframes. Explicit top-down flow:
+  pipeline:
+    step_1_weekly: >
+      Weekly COT (combined with rates + macro) produces a bias:
+      LONG, SHORT, or NEUTRAL.
+    step_2_daily: >
+      Daily structure must confirm the weekly bias. If daily is making
+      lower highs while weekly COT bias is LONG, stand down.
+    step_3_4h: >
+      4H setups are only taken in the direction of the confirmed
+      weekly bias. A 4H long setup is ignored if weekly bias is SHORT.
+    step_4_1h: >
+      1H triggers are only taken if a valid 4H setup is active in the
+      same direction as the weekly bias.
+  rule: >
+    At any layer, if the signal is NEUTRAL, do nothing. Neutral weeks
+    are the majority of weeks — accept it.
+
+contrarian_usage:
+  description: >
+    COT can be used contrarian at extremes, but only with strict guardrails.
+  rules:
+    - Non-commercials at historical extremes (>85th percentile) = warn of reversal, do not act yet.
+    - Wait for a 4H PFQ or block rejection at a confluence zone to confirm reversal.
+    - Contrarian trades must still respect macro — do not go against rates.
+    - Contrarian trades use half the normal position size.
 
 alignment_with:
-  fits_framework: "Primarily Sentiment + Fundamental layers"
-  ipda: "Use COT bias to confirm IPDA phase (expansion/retracement)"
-  setups: "Use configured setup stack from trading.config.DEFAULT_SETUPS in direction of COT bias"
-  risk_management: "SL at IPDA invalidation points; asymmetric R:R"
+  fits_framework: >
+    COT lives primarily in the Sentiment and Fundamental layers of F.I.T.S.
+    It is not a technical input.
+  ipda: >
+    COT positioning helps identify the IPDA phase (expansion /
+    retracement / regression) but does not determine it.
+  setups: >
+    Use configured setup stack from trading.config.DEFAULT_SETUPS in
+    direction of COT bias, filtered by weekly_decision_order above.
+  risk_management: >
+    SL at IPDA invalidation points (see technical.yaml
+    stop_loss_placement_rules); asymmetric R:R; position size scaled by
+    alignment strength (see risk_sizing above).
 
 usage:
   command: "python scripts/weekly_cot_analysis.py"
-  report_includes: "COT tables, best asset, sizing, perps scan, philosophy references"
-  extensible: "Add more Hyperliquid perps via client.get_meta()"
+  report_includes: >
+    COT tables, distance from zero, crossings, week-over-week deltas,
+    best asset by alignment score, sizing recommendation, perps scan,
+    philosophy references.
+  extensible: "Add more Hyperliquid perps via client.get_meta()."
 
 notes:
-  - "Commercials/institutions are makers and move the market (technical.yaml)"
-  - "Do not use indicators in isolation - combine with technical confluence"
+  - "COT is a REPORT, not a signal. Corrections to the prior framing are documented in docs/analysis/contradictions.md §4."
+  - "Commercials are defensive hedgers, not market movers. They provide liquidity; they do not drive direction."
+  - "Do not use indicators in isolation — combine with technical confluence (technical.yaml) and macro (rates, monetary mass)."
   - "Dry-run first. Integrate with vault for execution."
+  - "For pre-2022 backtests, COT is unavailable for crypto — substitute with AAII sentiment and price-macro confluence."
+  - "Historical BTC COT data is available from ~2022 onward (CFTC started reporting bitcoin futures in late 2017 but weekly net positioning series are only reliable from ~2022)."
