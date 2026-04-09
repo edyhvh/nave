@@ -1,0 +1,19 @@
+{
+  "period": "2024-ETF-approval",
+  "start_date": "2024-01-01",
+  "end_date": "2024-06-30",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {},
+    "ETH": {}
+  },
+  "per_coin": {},
+  "top_failure_patterns": [],
+  "data_gaps": [
+    "BTC 1W: local file data/binance_cache/BTC_1w.parquet did not cover 2024-01-01 \u2192 2024-06-30 and remote gap-fill returned nothing",
+    "ETH 1W: local file data/binance_cache/ETH_1w.parquet did not cover 2024-01-01 \u2192 2024-06-30 and remote gap-fill returned nothing"
+  ]
+}
