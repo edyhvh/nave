@@ -428,8 +428,7 @@ technical_philosophy:
           - Contrarian use of AAII (spike in bulls may indicate continuation).
           - VIX for risk appetite gauge.
           - Fear and greed indices for crypto.
-          - COT (Commitment of Traders): tracks commercials (makers/institutions) vs speculators.
-            Weekly driver for BTC/ETH bias. Commercials move the market.
+          - "COT (Commitment of Traders): weekly reference (not driver). Tracks commercials (defensive hedgers who liquidate at USD and move against the trend at extremes) vs non-commercials (trend-following speculators). Commercials PROVIDE liquidity, they do NOT drive direction. See cot_integration.yaml for the full usage contract and weekly_decision_order precedence."
 
   institutional_narrative:
     description: >
@@ -906,7 +905,7 @@ technical_philosophy:
     there_is_no_single_algorithm:
       - Each bank, dealer, and market maker runs their own trading software.
       - Aggregators (Fortex, eSpeed, NEX, etc.) gather quotes from many venues and publish a composite.
-      - "IPDA / ebitda" is an EXPLANATORY model for how correlated behavior emerges — not a literal unified algorithm.
+      - IPDA / ebitda is an EXPLANATORY model for how correlated behavior emerges — not a literal unified algorithm.
       - Correlation between venues comes from shared incentives (liquidate in USD, maintain balance sheets, respond to central bank flows), not central coordination.
     why_this_matters:
       - Do not assume "the banks know where price is going". They don't — they react.
