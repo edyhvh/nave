@@ -1062,6 +1062,79 @@ technical_philosophy:
       - Momentum is distributive (liquidity releases).
       - Entering during momentum means you are providing exit liquidity to someone else.
 
+    post_climax_cooldown:
+      rule: >
+        After a CLIMAX EVENT — defined as a single daily candle whose true
+        range exceeds 3× the trailing 20-day ATR, OR a weekly true range
+        that exceeds 2× the trailing 20-week ATR — all entries in the
+        direction of the climax (i.e., continuation entries) are SUSPENDED
+        until a new structural reset has occurred. The reset is one of:
+          (a) a higher-low (or lower-high) on the daily timeframe formed
+              after the climax candle, AND a daily close back inside the
+              pre-climax 20-day range, OR
+          (b) at least 10 trading days have elapsed since the climax candle
+              AND the daily candle structure is back to "normal" (no
+              candle in the last 10 days exceeds 2× ATR), OR
+          (c) the weekly bias has been re-confirmed by a NEW weekly close
+              against the climax direction.
+        Counter-climax entries (i.e., entering AGAINST the climax in
+        anticipation of mean-reversion) are also suspended until (a), (b),
+        or (c) holds — picking the bottom of a crash or the top of a
+        squeeze is not the nave model.
+      rationale: >
+        The 2020-covid-crash backtest is the textbook example. After the
+        BTC March 12-13 climax (single daily candle low ~$3850 from a
+        $7900 prior close, range > 4× the 20-day ATR), the system kept
+        printing short entries on 2020-03-16 ($5254) and 2020-03-23
+        ($5903) — both stopped out as price reverted into the pre-climax
+        range within days. ETH followed the identical pattern: shorts on
+        03-16 and 03-23 stopped out. The weekly/daily MA-based bias was
+        still pointing down because MAs are lagging — but the regime had
+        already inverted on the climax candle itself.
+      how_to_apply:
+        - >
+          Compute a rolling 20-day ATR and a 20-week ATR per coin
+          alongside the existing macro and COT inputs.
+        - >
+          Flag any daily candle whose true range exceeds 3× the trailing
+          20-day ATR as a daily climax. Flag any weekly candle whose true
+          range exceeds 2× the trailing 20-week ATR as a weekly climax.
+        - >
+          On flag, freeze the directional re-arm: continuation entries in
+          the climax direction are blocked AND counter-climax entries are
+          also blocked. Both classes of entry are out of the model.
+        - >
+          The freeze ends only when one of the three reset conditions
+          (a), (b), or (c) is met. Document the reset event in the trade
+          log with the date and the condition that triggered it.
+        - >
+          During the freeze, the system may still observe and mark up
+          structure — it just may not enter. This is the "francotirador
+          patience" rule made testable.
+      relationship_to_existing_rules:
+        - >
+          Strictly tighter than the generic "never enter during momentum"
+          rule above. The momentum rule is qualitative; this one is a
+          measurable, dated suspension with explicit reset criteria.
+        - >
+          Compatible with re_entry_discipline (iter 3): a climax event
+          freezes BOTH directions even if re_entry_discipline would
+          otherwise allow a fresh trade in the opposite direction.
+          The climax rule is the more conservative of the two and
+          dominates when both apply.
+        - >
+          Aligned with volatility_deep_dive's "ATR-based filter" note,
+          which previously only existed as a one-line orientation hint.
+          This block makes the filter into an actual rule.
+      note_for_engines: >
+        The current scripts/theory_backtest.py weekly walk has no concept
+        of climax detection. Implementation requires a per-coin running
+        ATR and a freeze flag whose state survives the weekly walk. The
+        freeze flag must dominate both the weekly bias call and the 4H
+        setup check — i.e., even if all other conditions pass, the freeze
+        forces a "no entry" outcome. Like re_entry_discipline, this lands
+        in the Phase 2-final trading/ refactor.
+
   semantics_note:
     description: >
       The transcripts make a strict semantic distinction: "the market does not
