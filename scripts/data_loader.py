@@ -329,6 +329,172 @@ def _openbb_interval(timeframe: str) -> str:
     return {"1H": "1h", "4H": "4h", "1D": "1d", "1W": "1W"}[timeframe]
 
 
+# --------------------------------------------------------------------------- #
+# Binance REST fetcher (native 4H and 1H support, history from ~2017-08)
+# --------------------------------------------------------------------------- #
+
+
+BINANCE_URL = "https://api.binance.com/api/v3/klines"
+BINANCE_INTERVAL: dict[str, str] = {"1H": "1h", "4H": "4h", "1D": "1d", "1W": "1w"}
+
+
+def _binance_symbol(coin: str) -> str:
+    return {"BTC": "BTCUSDT", "ETH": "ETHUSDT"}.get(coin, f"{coin}USDT")
+
+
+def _cache_dir() -> Path:
+    return DATA_DIR / "binance_cache"
+
+
+def _cache_path(coin: str, timeframe: str) -> Path:
+    return _cache_dir() / f"{coin}_{timeframe.lower()}.parquet"
+
+
+def _write_binance_cache(coin: str, timeframe: str, df: pd.DataFrame) -> None:
+    """Append fetched klines into a persistent parquet cache."""
+    if df.empty:
+        return
+    cache_dir = _cache_dir()
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[data_loader] cache dir create failed: {exc}")
+        return
+    path = _cache_path(coin, timeframe)
+    merged = df
+    if path.exists():
+        try:
+            existing = pd.read_parquet(path)
+            merged = (
+                pd.concat([existing, df], ignore_index=True)
+                .drop_duplicates("timestamp")
+                .sort_values("timestamp")
+                .reset_index(drop=True)
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[data_loader] cache merge failed, overwriting: {exc}")
+    try:
+        merged.to_parquet(path, index=False)
+        rel = path.relative_to(PROJECT_ROOT)
+        print(
+            f"[data_loader] cached {len(merged)} rows for {coin} {timeframe} → {rel}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[data_loader] cache write failed: {exc}")
+
+
+def _fetch_binance(
+    coin: str, timeframe: str, start: pd.Timestamp, end: pd.Timestamp
+) -> pd.DataFrame | None:
+    """Fetch klines from Binance REST with pagination. Returns normalized OHLCV."""
+    if timeframe not in BINANCE_INTERVAL:
+        return None
+    try:
+        import requests  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        print(f"[data_loader] 'requests' unavailable: {exc}")
+        return None
+
+    symbol = _binance_symbol(coin)
+    interval = BINANCE_INTERVAL[timeframe]
+    cursor_ms = int(start.timestamp() * 1000)
+    end_ms = int(end.timestamp() * 1000)
+
+    all_rows: list[list[Any]] = []
+    max_requests = 500  # safety limit — 500 * 1000 klines is plenty for any period
+    requests_made = 0
+
+    session = requests.Session()
+    while requests_made < max_requests and cursor_ms <= end_ms:
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+            "startTime": cursor_ms,
+            "endTime": end_ms,
+            "limit": 1000,
+        }
+        try:
+            resp = session.get(BINANCE_URL, params=params, timeout=30)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[data_loader] Binance fetch failed for {coin} {timeframe}: {exc}")
+            return None
+        requests_made += 1
+
+        if resp.status_code != 200:
+            snippet = resp.text[:200].replace("\n", " ")
+            print(
+                f"[data_loader] Binance {coin} {timeframe} HTTP {resp.status_code}: "
+                f"{snippet}"
+            )
+            return None
+
+        try:
+            batch = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[data_loader] Binance JSON decode failed: {exc}")
+            return None
+
+        if not isinstance(batch, list) or not batch:
+            break
+
+        all_rows.extend(batch)
+        last_open_ms = int(batch[-1][0])
+        if len(batch) < 1000:
+            break
+        cursor_ms = last_open_ms + 1
+
+    if not all_rows:
+        return None
+
+    df = pd.DataFrame(
+        all_rows,
+        columns=[
+            "open_time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "close_time",
+            "quote_volume",
+            "trades",
+            "taker_buy_base",
+            "taker_buy_quote",
+            "ignore",
+        ],
+    )
+    df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
+    df = df[["timestamp", "open", "high", "low", "close", "volume"]].copy()
+    for col in ("open", "high", "low", "close", "volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = (
+        df.dropna(subset=["open", "high", "low", "close"])
+        .sort_values("timestamp")
+        .drop_duplicates("timestamp")
+        .reset_index(drop=True)
+    )
+    if df.empty:
+        return None
+
+    print(
+        f"[data_loader] Binance returned {len(df)} rows for {coin} {timeframe} "
+        f"({df['timestamp'].iloc[0].date()} → {df['timestamp'].iloc[-1].date()}) "
+        f"after {requests_made} request(s)"
+    )
+    _write_binance_cache(coin, timeframe, df)
+    return df
+
+
+def _fetch_remote(
+    coin: str, timeframe: str, start: pd.Timestamp, end: pd.Timestamp
+) -> pd.DataFrame | None:
+    """Try Binance first (native 4H, long history), then OpenBB."""
+    df = _fetch_binance(coin, timeframe, start, end)
+    if df is not None and not df.empty:
+        return df
+    return _fetch_openbb(coin, timeframe, start, end)
+
+
 def _fetch_openbb(
     coin: str, timeframe: str, start: pd.Timestamp, end: pd.Timestamp
 ) -> pd.DataFrame | None:
@@ -483,7 +649,7 @@ def load(
             gap_start = start_ts
             gap_end = min(end_ts, local_start - pd.Timedelta(minutes=1))
             if gap_end >= gap_start:
-                fetched = _fetch_openbb(coin, timeframe, gap_start, gap_end)
+                fetched = _fetch_remote(coin, timeframe, gap_start, gap_end)
                 if fetched is not None and not fetched.empty:
                     gap_frames.append(fetched)
                     gap_notes.append(
@@ -497,7 +663,7 @@ def load(
             gap_start = max(start_ts, local_end + pd.Timedelta(minutes=1))
             gap_end = end_ts
             if gap_end >= gap_start:
-                fetched = _fetch_openbb(coin, timeframe, gap_start, gap_end)
+                fetched = _fetch_remote(coin, timeframe, gap_start, gap_end)
                 if fetched is not None and not fetched.empty:
                     gap_frames.append(fetched)
                     gap_notes.append(
@@ -514,27 +680,27 @@ def load(
         if merged.empty:
             raise DataNotFoundError(
                 f"local file {local_label} did not cover {start_ts.date()} → "
-                f"{end_ts.date()} and OpenBB gap-fill returned nothing"
+                f"{end_ts.date()} and remote gap-fill returned nothing"
             )
 
         if gap_notes:
             print(
                 f"[{coin} {timeframe}] source: local ({local_label}) + "
-                f"OpenBB gap-fill ({'; '.join(gap_notes)})"
+                f"remote gap-fill ({'; '.join(gap_notes)})"
             )
         else:
             print(
                 f"[{coin} {timeframe}] source: local — {local_label} "
-                f"(partial; OpenBB gap-fill unavailable)"
+                f"(partial; remote gap-fill unavailable)"
             )
         return _slice(merged, start_ts, end_ts)
 
     # ------------------------------------------------------------------ #
-    # Case 3: no local file — OpenBB only
+    # Case 3: no local file — remote only (Binance → OpenBB)
     # ------------------------------------------------------------------ #
-    fetched = _fetch_openbb(coin, timeframe, start_ts, end_ts)
+    fetched = _fetch_remote(coin, timeframe, start_ts, end_ts)
     if fetched is not None and not fetched.empty:
-        print(f"[{coin} {timeframe}] source: OpenBB (no local file found)")
+        print(f"[{coin} {timeframe}] source: remote (no local file found)")
         return _slice(fetched, start_ts, end_ts)
 
     raise DataNotFoundError(
