@@ -113,31 +113,111 @@ class LocalFile:
 
 @dataclass
 class Inventory:
-    # { coin: { timeframe: LocalFile } }
-    files: dict[str, dict[str, LocalFile]] = field(default_factory=dict)
+    # { coin: { timeframe: [LocalFile, ...] } }
+    files: dict[str, dict[str, list[LocalFile]]] = field(default_factory=dict)
 
     def add(self, entry: LocalFile) -> None:
         self.files.setdefault(entry.coin, {})
-        # Prefer the file with the longest coverage if duplicates exist.
-        existing = self.files[entry.coin].get(entry.timeframe)
-        if existing is None or (entry.end - entry.start) > (existing.end - existing.start):
-            self.files[entry.coin][entry.timeframe] = entry
+        tf_entries = self.files[entry.coin].setdefault(entry.timeframe, [])
+        tf_entries.append(entry)
+        tf_entries.sort(key=lambda e: (e.start, e.end, e.rows))
 
-    def get(self, coin: str, timeframe: str) -> LocalFile | None:
-        return self.files.get(coin, {}).get(timeframe)
+    def candidates(self, coin: str, timeframe: str) -> list[LocalFile]:
+        return list(self.files.get(coin, {}).get(timeframe, []))
 
-    def lowest_available(self, coin: str, target_tf: str) -> LocalFile | None:
-        """Return the highest-resolution local file that can resample to target_tf."""
-        target_minutes = TIMEFRAME_MINUTES[target_tf]
-        candidates = [
-            f
-            for tf, f in self.files.get(coin, {}).items()
-            if TIMEFRAME_MINUTES[tf] < target_minutes
-        ]
+    def best_covering(
+        self,
+        coin: str,
+        timeframe: str,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+    ) -> LocalFile | None:
+        candidates = self.candidates(coin, timeframe)
         if not candidates:
             return None
-        # Pick the closest lower timeframe to avoid oversampling.
-        candidates.sort(key=lambda f: TIMEFRAME_MINUTES[f.timeframe], reverse=True)
+
+        def overlap(entry: LocalFile) -> pd.Timedelta:
+            overlap_start = max(entry.start, start)
+            overlap_end = min(entry.end, end)
+            if overlap_end < overlap_start:
+                return pd.Timedelta(0)
+            return overlap_end - overlap_start
+
+        full = [
+            entry
+            for entry in candidates
+            if entry.start <= start and entry.end >= end
+        ]
+        if full:
+            return min(full, key=lambda entry: (entry.end - entry.start, -entry.rows))
+
+        overlapped = [entry for entry in candidates if overlap(entry) > pd.Timedelta(0)]
+        if overlapped:
+            return max(
+                overlapped,
+                key=lambda entry: (
+                    overlap(entry),
+                    entry.end,
+                    -TIMEFRAME_MINUTES[entry.timeframe],
+                    entry.rows,
+                ),
+            )
+
+        return max(candidates, key=lambda entry: (entry.end, entry.rows))
+
+    def lowest_available(
+        self,
+        coin: str,
+        target_tf: str,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+    ) -> LocalFile | None:
+        """Return the highest-resolution local file that can resample to target_tf."""
+        target_minutes = TIMEFRAME_MINUTES[target_tf]
+        candidates: list[LocalFile] = []
+        for tf, entries in self.files.get(coin, {}).items():
+            if TIMEFRAME_MINUTES[tf] < target_minutes:
+                candidates.extend(entries)
+        if not candidates:
+            return None
+        exact_cover = [
+            entry
+            for entry in candidates
+            if entry.start <= start and entry.end >= end
+        ]
+        if exact_cover:
+            exact_cover.sort(
+                key=lambda entry: (
+                    TIMEFRAME_MINUTES[entry.timeframe],
+                    entry.end - entry.start,
+                    -entry.rows,
+                )
+            )
+            return exact_cover[0]
+
+        overlapping = [
+            entry
+            for entry in candidates
+            if min(entry.end, end) >= max(entry.start, start)
+        ]
+        if overlapping:
+            overlapping.sort(
+                key=lambda entry: (
+                    -TIMEFRAME_MINUTES[entry.timeframe],
+                    -(min(entry.end, end) - max(entry.start, start)).total_seconds(),
+                    -entry.end.timestamp(),
+                    -entry.rows,
+                )
+            )
+            return overlapping[0]
+
+        candidates.sort(
+            key=lambda entry: (
+                -TIMEFRAME_MINUTES[entry.timeframe],
+                -entry.end.timestamp(),
+                -entry.rows,
+            )
+        )
         return candidates[0]
 
 
@@ -266,21 +346,26 @@ def _print_inventory(inventory: Inventory) -> None:
     for coin in sorted(inventory.files):
         tf_map = inventory.files[coin]
         for tf in sorted(tf_map, key=lambda t: TIMEFRAME_MINUTES[t]):
-            entry = tf_map[tf]
-            rel = entry.path.relative_to(PROJECT_ROOT)
-            start_s = entry.start.strftime("%Y-%m-%d")
-            end_s = entry.end.strftime("%Y-%m-%d")
-            print(
-                f"[data_loader] found: {coin} {tf} — {rel} "
-                f"({start_s} → {end_s}, {entry.rows} rows)"
-            )
+            for entry in tf_map[tf]:
+                rel = entry.path.relative_to(PROJECT_ROOT)
+                start_s = entry.start.strftime("%Y-%m-%d")
+                end_s = entry.end.strftime("%Y-%m-%d")
+                print(
+                    f"[data_loader] found: {coin} {tf} — {rel} "
+                    f"({start_s} → {end_s}, {entry.rows} rows)"
+                )
         # Note which higher timeframes will be resampled.
         available_tfs = set(tf_map.keys())
         for tf in TIMEFRAME_MINUTES:
             if tf in available_tfs:
                 continue
-            if inventory.lowest_available(coin, tf) is not None:
-                source = inventory.lowest_available(coin, tf)
+            source = inventory.lowest_available(
+                coin,
+                tf,
+                pd.Timestamp.min.tz_localize("UTC"),
+                pd.Timestamp.max.tz_localize("UTC"),
+            )
+            if source is not None:
                 assert source is not None
                 print(
                     f"[data_loader] note: {coin} {tf} will be resampled "
@@ -553,15 +638,34 @@ def _slice(df: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataF
     return df.loc[mask].reset_index(drop=True)
 
 
+def _coverage_score(
+    df: pd.DataFrame,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> tuple[int, float, float]:
+    if df.empty:
+        return (0, 0.0, float("-inf"))
+    local_start = df["timestamp"].iloc[0]
+    local_end = df["timestamp"].iloc[-1]
+    overlap_start = max(local_start, start)
+    overlap_end = min(local_end, end)
+    overlap_seconds = 0.0
+    if overlap_end >= overlap_start:
+        overlap_seconds = (overlap_end - overlap_start).total_seconds()
+    full_cover = int(local_start <= start and local_end >= end)
+    return (full_cover, overlap_seconds, local_end.timestamp())
+
+
 def _available_files_summary() -> str:
     inv = _get_inventory()
     if not inv.files:
         return "  (none)"
     lines = []
     for coin, tf_map in inv.files.items():
-        for tf, entry in tf_map.items():
-            rel = entry.path.relative_to(PROJECT_ROOT)
-            lines.append(f"  - {coin} {tf}: {rel}")
+        for tf, entries in tf_map.items():
+            for entry in entries:
+                rel = entry.path.relative_to(PROJECT_ROOT)
+                lines.append(f"  - {coin} {tf}: {rel}")
     return "\n".join(lines)
 
 
@@ -611,21 +715,33 @@ def load(
     # ------------------------------------------------------------------ #
     # Find a local source for the requested timeframe (native or resampled)
     # ------------------------------------------------------------------ #
+    native = inventory.best_covering(coin, timeframe, start_ts, end_ts)
+    source = inventory.lowest_available(coin, timeframe, start_ts, end_ts)
+
+    local_options: list[tuple[pd.DataFrame, str]] = []
+    if native is not None:
+        local_options.append(
+            (
+                _load_local(native),
+                str(native.path.relative_to(PROJECT_ROOT)),
+            )
+        )
+    if source is not None:
+        local_options.append(
+            (
+                _resample(_load_local(source), timeframe),
+                f"{source.path.relative_to(PROJECT_ROOT)} "
+                f"(resampled {source.timeframe}→{timeframe})",
+            )
+        )
+
     local_df: pd.DataFrame | None = None
     local_label: str | None = None
-    native = inventory.get(coin, timeframe)
-    if native is not None:
-        local_df = _load_local(native)
-        local_label = str(native.path.relative_to(PROJECT_ROOT))
-    else:
-        source = inventory.lowest_available(coin, timeframe)
-        if source is not None:
-            base = _load_local(source)
-            local_df = _resample(base, timeframe)
-            local_label = (
-                f"{source.path.relative_to(PROJECT_ROOT)} "
-                f"(resampled {source.timeframe}→{timeframe})"
-            )
+    if local_options:
+        local_df, local_label = max(
+            local_options,
+            key=lambda item: _coverage_score(item[0], start_ts, end_ts),
+        )
 
     # ------------------------------------------------------------------ #
     # Case 1 / 2: local file exists
