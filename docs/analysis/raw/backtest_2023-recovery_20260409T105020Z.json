@@ -1,0 +1,19 @@
+{
+  "period": "2023-recovery",
+  "start_date": "2023-01-01",
+  "end_date": "2023-12-31",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {},
+    "ETH": {}
+  },
+  "per_coin": {},
+  "top_failure_patterns": [],
+  "data_gaps": [
+    "BTC 1W: local file data/binance_cache/BTC_1w.parquet did not cover 2023-01-01 \u2192 2023-12-31 and remote gap-fill returned nothing",
+    "ETH 1W: local file data/binance_cache/ETH_1w.parquet did not cover 2023-01-01 \u2192 2023-12-31 and remote gap-fill returned nothing"
+  ]
+}
