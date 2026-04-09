@@ -898,6 +898,91 @@ technical_philosophy:
       - Do not place SL based on a fixed percentage of account; base it on invalidation and then size the position to match your risk.
       - Do not move SL to break-even reflexively; move it only when the next structural level confirms in your favor.
 
+    minimum_sl_distance:
+      rule: >
+        The risk distance from entry to SL must be AT LEAST 1.5× the
+        current 14-day daily ATR of the coin being traded. If the
+        structurally-correct invalidation level (per by_timeframe rules
+        above) is closer than 1.5× ATR, the setup is invalid: the
+        market does not have enough breathing room for normal
+        counter-trend volatility to play out without prematurely
+        proving the premise wrong. Either widen the entry zone deeper
+        into the retracement band so the SL clears 1.5× ATR, or pass
+        the trade.
+      rationale: >
+        2022-bear backtest produced nine BTC and ten ETH losing entries
+        of which the dominant subset is short setups stopped out within
+        2-4% of entry on routine bear-market counter-trend bounces.
+        Examples on BTC: 2022-03-07 short at $38,403 SL $39,677 (3.3%),
+        2022-04-18 short at $39,732 SL $40,595 (2.2%), 2022-07-04 short
+        at $19,263 SL $19,647 (2.0%), 2022-09-26 short at $18,772 SL
+        $19,180 (2.2%), 2022-11-21 short at $16,268 SL $16,753 (3.0%).
+        ETH was identical: 03-07 short at $2,542 SL $2,674 (5.2%),
+        09-26 short at $1,293 SL $1,337 (3.4%), 10-03 short at $1,281
+        SL $1,317 (2.8%), 11-21 short at $1,140 SL $1,227 (7.6%).
+        BTC daily ATR through 2022 averaged 4-6%; ETH 5-8%. The 2-3%
+        SL distance the engine produced was inside the noise floor —
+        these were random bar-noise stops, not real invalidations.
+      how_to_apply:
+        - >
+          Compute a rolling 14-day ATR per coin and re-evaluate it on
+          every weekly bias check. Cache the value alongside macro and
+          impulse-leg state.
+        - >
+          When sizing a candidate entry, take the maximum of three
+          numbers as the floor for the risk distance:
+            1. The structural invalidation distance (4H confluence
+               zone far edge, or last 1H swing beyond entry).
+            2. 1.5 × current 14-day ATR (in price terms).
+            3. The spread-overshoot buffer (~10-35 pips equivalent).
+        - >
+          If the structural invalidation is INSIDE the 1.5× ATR floor,
+          push the entry deeper into the retracement zone (toward 86%
+          or 90%) so the structural level naturally clears the floor.
+          If even the deepest valid retracement entry cannot satisfy
+          the floor, PASS the trade — the market is too noisy for
+          this setup at this volatility level.
+        - >
+          The 1H 24-bar swing high/low is NOT an acceptable SL anchor
+          on its own. It is a sub-component that must always be
+          combined with the 1.5× ATR floor.
+      relationship_to_existing_rules:
+        - >
+          Operationalizes the qualitative four_hour_sl and one_hour_sl
+          guidance above by giving them a measurable lower bound. The
+          structural rules still take precedence when they are wider
+          than 1.5× ATR.
+        - >
+          Compatible with the 2R take-profit convention in
+          risk_management. With a wider floor SL, position size shrinks
+          accordingly to keep dollar risk constant — that is the
+          correct behavior in high-volatility regimes (smaller size,
+          wider stop) per the pro_trader_mindset.
+        - >
+          Compatible with chase_prevention_rule (iter 5):
+          chase_prevention rejects shallow-retracement entries first;
+          minimum_sl_distance then rejects any remaining entry whose
+          SL would be inside the noise floor. The two rules cull
+          different bad setups.
+      target_distance_corollary: >
+        With SL widened to 1.5× ATR, the 2R take-profit target sits at
+        3× ATR from entry. This is achievable for trend continuation
+        entries but rare for counter-trend or chop entries — which is
+        exactly the filter we want. Setups that cannot reasonably
+        target 3× ATR before hitting the next confluence zone do not
+        belong in the model.
+      note_for_engines: >
+        scripts/theory_backtest.py currently uses a fixed 24-bar 1H
+        window for both SL and TP calculation, with no ATR awareness.
+        Implementation requires:
+          1. A rolling 14-day ATR per coin, re-computed weekly.
+          2. The three-way max() of structural / 1.5× ATR / spread
+             when computing risk distance.
+          3. A "skip trade" outcome when even the deepest retracement
+             entry cannot satisfy the floor — counted as a rejected
+             setup, not a loss.
+        Lands in the Phase 2-final trading/ refactor.
+
   retracement_entry_zones:
     description: >
       Replacement for the single-value "75% retracement" idea. The retracement
