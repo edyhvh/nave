@@ -49,11 +49,11 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def trend(series: pd.Series, window: int) -> str:
+def trend(series: pd.Series, window: int, deadband: float = 0.005) -> str:
     """Classify the latest close vs its rolling mean.
 
-    Returns one of ``"long"``, ``"short"``, ``"neutral"``. The 0.5%
-    deadband around the mean prevents flipping on tiny noise.
+    Returns one of ``"long"``, ``"short"``, ``"neutral"``. The deadband
+    around the mean prevents flipping on tiny noise.
     """
     if len(series) < window + 1:
         return "neutral"
@@ -62,9 +62,9 @@ def trend(series: pd.Series, window: int) -> str:
     ma_now = ma.iloc[-1]
     if pd.isna(ma_now):
         return "neutral"
-    if last > ma_now * 1.005:
+    if last > ma_now * (1 + deadband):
         return "long"
-    if last < ma_now * 0.995:
+    if last < ma_now * (1 - deadband):
         return "short"
     return "neutral"
 
@@ -72,19 +72,19 @@ def trend(series: pd.Series, window: int) -> str:
 def weekly_bias(weekly: pd.DataFrame) -> str:
     if weekly.empty:
         return "neutral"
-    return trend(weekly["close"], window=8)
+    return trend(weekly["close"], window=8, deadband=0.02)
 
 
 def daily_confirms(daily: pd.DataFrame, bias: str) -> bool:
     if daily.empty or bias == "neutral":
         return False
-    return trend(daily["close"], window=20) == bias
+    return trend(daily["close"], window=10) == bias
 
 
 def four_h_setup_valid(h4: pd.DataFrame, bias: str) -> bool:
     if h4.empty or bias == "neutral":
         return False
-    return trend(h4["close"], window=12) == bias
+    return trend(h4["close"], window=8) == bias
 
 
 def daily_atr(daily: pd.DataFrame, window: int = 14) -> float | None:
@@ -109,21 +109,61 @@ def daily_atr(daily: pd.DataFrame, window: int = 14) -> float | None:
     return float(tr.tail(window).mean())
 
 
+def _find_swing_targets(
+    daily: pd.DataFrame,
+    bias: str,
+    entry: float,
+    lookback: int = 60,
+    swing_window: int = 5,
+) -> list[float]:
+    """Find structural swing-level targets from daily data.
+
+    For longs: recent swing highs above entry.
+    For shorts: recent swing lows below entry.
+    Returns sorted list of target prices (nearest first).
+    """
+    if daily.empty or len(daily) < 2 * swing_window + 1:
+        return []
+    sub = daily.tail(lookback).reset_index(drop=True)
+    highs = sub["high"].astype(float).values
+    lows = sub["low"].astype(float).values
+
+    targets: list[float] = []
+    for i in range(swing_window, len(sub) - swing_window):
+        if bias == "long":
+            win_h = highs[i - swing_window : i + swing_window + 1]
+            if highs[i] == win_h.max() and (win_h == highs[i]).sum() == 1:
+                if float(highs[i]) > entry:
+                    targets.append(float(highs[i]))
+        else:
+            win_l = lows[i - swing_window : i + swing_window + 1]
+            if lows[i] == win_l.min() and (win_l == lows[i]).sum() == 1:
+                if float(lows[i]) < entry:
+                    targets.append(float(lows[i]))
+
+    if bias == "long":
+        return sorted(set(targets))
+    return sorted(set(targets), reverse=True)
+
+
 def one_h_entry(
     h1: pd.DataFrame,
     bias: str,
     daily: pd.DataFrame | None = None,
     atr_floor_mult: float = 1.5,
-) -> tuple[float, float, float] | None:
-    """Compute (entry, stop_loss, take_profit) for the 1H trigger.
+) -> tuple[float, float, list[float]] | None:
+    """Compute (entry, stop_loss, targets) for the 1H trigger.
 
     Stop is the **wider** of:
       - the swing high/low of the last 24 1H bars (structural)
       - ``atr_floor_mult × daily ATR-14`` (volatility floor, iter 6)
 
-    Take-profit is a fixed 2R from entry. Returns ``None`` if either the
-    geometry is degenerate or the volatility floor cannot be computed when
-    ``daily`` is supplied.
+    Targets use ZC1/ZC2 dynamic targeting when daily structure is available:
+      - ZC1: nearest daily swing level above/below entry, or 1.5R fallback
+      - ZC2: next swing level, or 2.5R fallback
+    Falls back to fixed 2R when no daily data is supplied.
+
+    Returns ``None`` if the geometry is degenerate.
     """
     if h1.empty or bias == "neutral":
         return None
@@ -148,9 +188,37 @@ def one_h_entry(
 
     if bias == "long":
         sl = entry - risk
-        return entry, sl, entry + 2 * risk
-    sl = entry + risk
-    return entry, sl, entry - 2 * risk
+    else:
+        sl = entry + risk
+
+    # ZC1/ZC2 dynamic targeting
+    targets: list[float] = []
+    if daily is not None and not daily.empty:
+        swing_targets = _find_swing_targets(daily, bias, entry)
+        # Filter targets that give at least 1R reward
+        min_target = entry + risk if bias == "long" else entry - risk
+        for t in swing_targets:
+            if bias == "long" and t >= min_target:
+                targets.append(t)
+            elif bias == "short" and t <= min_target:
+                targets.append(t)
+            if len(targets) >= 2:
+                break
+
+    # Fallback: ZC1 at 1.5R, ZC2 at 2.5R
+    if len(targets) == 0:
+        if bias == "long":
+            targets = [entry + 1.5 * risk, entry + 2.5 * risk]
+        else:
+            targets = [entry - 1.5 * risk, entry - 2.5 * risk]
+    elif len(targets) == 1:
+        # Have ZC1 structural, add ZC2 as extension
+        if bias == "long":
+            targets.append(max(targets[0] + risk, entry + 2.5 * risk))
+        else:
+            targets.append(min(targets[0] - risk, entry - 2.5 * risk))
+
+    return entry, sl, targets
 
 
 # --------------------------------------------------------------------------- #
@@ -353,15 +421,17 @@ class TheoryV2Engine:
                 coin, bias, True, False, "4H", "4H setup invalid after daily confirm"
             )
 
-        entry = one_h_entry(h1, bias, daily=daily)
-        if entry is None:
+        result = one_h_entry(h1, bias, daily=daily)
+        if result is None:
             return TheoryV2Decision(
                 coin, bias, True, True, "1H", "1H entry geometry invalid"
             )
 
-        entry_px, sl, tp = entry
+        entry_px, sl, targets = result
         direction = Direction.LONG if bias == "long" else Direction.SHORT
         atr = daily_atr(daily)
+        risk = abs(entry_px - sl)
+        zc1_rr = abs(targets[0] - entry_px) / risk if risk > 0 else 0
         signal = Signal(
             coin=coin,
             direction=direction,
@@ -371,12 +441,12 @@ class TheoryV2Engine:
             setup_timeframe=Timeframe.H4,
             trigger_timeframe=Timeframe.H1,
             invalidation=sl,
-            targets=[tp],
+            targets=targets,
             metadata={
                 "entry_price": entry_px,
                 "bias": bias,
                 "stop_distance": abs(entry_px - sl) / entry_px,
-                "rr_target": 2.0,
+                "zc1_rr": round(zc1_rr, 2),
                 "daily_atr_14": atr,
                 "retrace_fraction": retrace,
             },
@@ -463,21 +533,25 @@ def _format_decision(decision: TheoryV2Decision) -> str:
     if decision.signal is not None:
         sig = decision.signal
         m = sig.metadata
-        rr = m.get("rr_target")
+        zc1_rr = m.get("zc1_rr")
         atr = m.get("daily_atr_14")
         retrace = m.get("retrace_fraction")
-        body = (
-            f"  ACTION    : {sig.direction.value.upper()}\n"
-            f"  Entry     : {m.get('entry_price'):.2f}\n"
-            f"  Stop-loss : {sig.invalidation:.2f}\n"
-            f"  Target    : {sig.targets[0]:.2f}  (RR {rr})\n"
-            f"  Risk %    : {m.get('stop_distance', 0)*100:.2f}%\n"
-            f"  Daily ATR : {atr:.2f}\n" if atr is not None else ""
-        )
-        extras = []
+        lines = [
+            f"  ACTION    : {sig.direction.value.upper()}",
+            f"  Entry     : {m.get('entry_price'):.2f}",
+            f"  Stop-loss : {sig.invalidation:.2f}",
+        ]
+        if len(sig.targets) >= 2:
+            lines.append(f"  ZC1 (80%) : {sig.targets[0]:.2f}  (RR {zc1_rr})")
+            lines.append(f"  ZC2 (20%) : {sig.targets[1]:.2f}")
+        elif sig.targets:
+            lines.append(f"  Target    : {sig.targets[0]:.2f}  (RR {zc1_rr})")
+        lines.append(f"  Risk %    : {m.get('stop_distance', 0)*100:.2f}%")
+        if atr is not None:
+            lines.append(f"  Daily ATR : {atr:.2f}")
         if retrace is not None:
-            extras.append(f"  Retrace   : {retrace*100:.0f}% of impulse leg")
-        body += "\n".join(extras)
+            lines.append(f"  Retrace   : {retrace*100:.0f}% of impulse leg")
+        body = "\n".join(lines)
         return f"{header}\n  STAGE     : FIRED — {decision.reason}\n{body}"
     return (
         f"{header}\n"

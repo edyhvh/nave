@@ -52,6 +52,7 @@ def _resolve_outcome(
     sl: float,
     tp: float,
 ) -> str | None:
+    """Legacy single-target resolver (kept for compatibility)."""
     if h1_forward.empty:
         return None
     for _, row in h1_forward.iterrows():
@@ -68,6 +69,95 @@ def _resolve_outcome(
             if low <= tp:
                 return "correct"
     return None
+
+
+def _resolve_zc_outcome(
+    h1_forward: pd.DataFrame,
+    direction: str,
+    entry: float,
+    sl: float,
+    targets: list[float],
+) -> tuple[str | None, float]:
+    """ZC1/ZC2 partial-exit resolver.
+
+    Simulates:
+      - 80% closed at ZC1 (targets[0])
+      - 20% trails with stop moved to breakeven after ZC1 hit
+      - If ZC2 (targets[1]) reached, full exit
+
+    Returns (outcome, pnl_in_R) where pnl is the total R-multiple earned.
+    """
+    if h1_forward.empty or not targets:
+        return None, 0.0
+
+    risk = abs(entry - sl)
+    if risk <= 0:
+        return None, 0.0
+
+    zc1 = targets[0]
+    zc2 = targets[1] if len(targets) > 1 else zc1
+
+    zc1_hit = False
+    trail_sl = sl  # trailing stop for the remaining 20%
+
+    for _, row in h1_forward.iterrows():
+        high = float(row["high"])
+        low = float(row["low"])
+
+        if direction == "long":
+            # Check stop first
+            if not zc1_hit and low <= sl:
+                return "incorrect", -1.0
+            if zc1_hit and low <= trail_sl:
+                # 80% already banked at ZC1, 20% stopped at breakeven or trail
+                zc1_reward = (zc1 - entry) / risk
+                trail_reward = (trail_sl - entry) / risk
+                total = 0.8 * zc1_reward + 0.2 * trail_reward
+                return "correct", total
+
+            # Check ZC1
+            if not zc1_hit and high >= zc1:
+                zc1_hit = True
+                trail_sl = entry  # move stop to breakeven for remaining 20%
+
+            # Check ZC2
+            if zc1_hit and high >= zc2:
+                zc1_reward = (zc1 - entry) / risk
+                zc2_reward = (zc2 - entry) / risk
+                total = 0.8 * zc1_reward + 0.2 * zc2_reward
+                return "correct", total
+        else:
+            # Short direction
+            if not zc1_hit and high >= sl:
+                return "incorrect", -1.0
+            if zc1_hit and high >= trail_sl:
+                zc1_reward = (entry - zc1) / risk
+                trail_reward = (entry - trail_sl) / risk
+                total = 0.8 * zc1_reward + 0.2 * trail_reward
+                return "correct", total
+
+            if not zc1_hit and low <= zc1:
+                zc1_hit = True
+                trail_sl = entry
+
+            if zc1_hit and low <= zc2:
+                zc1_reward = (entry - zc1) / risk
+                zc2_reward = (entry - zc2) / risk
+                total = 0.8 * zc1_reward + 0.2 * zc2_reward
+                return "correct", total
+
+    # Unresolved — if ZC1 was hit, count partial profit
+    if zc1_hit:
+        zc1_reward = abs(zc1 - entry) / risk
+        # Use last close for the trailing portion
+        last_close = float(h1_forward["close"].iloc[-1])
+        if direction == "long":
+            trail_reward = (last_close - entry) / risk
+        else:
+            trail_reward = (entry - last_close) / risk
+        total = 0.8 * zc1_reward + 0.2 * trail_reward
+        return "correct", total
+    return None, 0.0
 
 
 def _walk_period(
@@ -89,6 +179,7 @@ def _walk_period(
         "correct": 0,
         "incorrect": 0,
         "unresolved": 0,
+        "total_r": 0.0,
         "stage_counts": {},
         "rejected_by": {},
     }
@@ -109,15 +200,16 @@ def _walk_period(
         sig = decision.signal
         entry = float(sig.metadata["entry_price"])
         sl = float(sig.invalidation)
-        tp = float(sig.targets[0])
+        targets = [float(t) for t in sig.targets]
         direction = sig.direction.value
 
         forward = h1_full[
             (h1_full["timestamp"] > week_start)
             & (h1_full["timestamp"] <= week_start + pd.Timedelta(days=14))
         ]
-        outcome = _resolve_outcome(forward, direction, entry, sl, tp)
+        outcome, pnl_r = _resolve_zc_outcome(forward, direction, entry, sl, targets)
         stats["fired"] += 1
+        stats["total_r"] += pnl_r
         if outcome == "correct":
             stats["correct"] += 1
         elif outcome == "incorrect":
@@ -135,7 +227,7 @@ def main() -> int:
 
     engine = TheoryV2Engine()
     results: dict[str, dict[str, Any]] = {}
-    pooled = {coin: {"fired": 0, "correct": 0, "incorrect": 0, "unresolved": 0}
+    pooled = {coin: {"fired": 0, "correct": 0, "incorrect": 0, "unresolved": 0, "total_r": 0.0}
               for coin in args.coins}
     pooled_stages: dict[str, dict[str, int]] = {coin: {} for coin in args.coins}
 
@@ -149,25 +241,25 @@ def main() -> int:
             if stats.get("skipped"):
                 print(f"[{period}] {coin}: SKIPPED — {stats['reason'][:80]}")
                 continue
-            for k in ("fired", "correct", "incorrect", "unresolved"):
-                pooled[coin][k] += stats[k]
+            for k in ("fired", "correct", "incorrect", "unresolved", "total_r"):
+                pooled[coin][k] += stats.get(k, 0)
             for stage, n in stats.get("stage_counts", {}).items():
                 pooled_stages[coin][stage] = pooled_stages[coin].get(stage, 0) + n
             print(
                 f"[{period}] {coin}: fired={stats['fired']:3d} "
                 f"win={stats['correct']:3d} loss={stats['incorrect']:3d} "
-                f"unr={stats['unresolved']:3d}"
+                f"unr={stats['unresolved']:3d} totalR={stats['total_r']:+.2f}"
             )
 
-    print("\n=== Pooled (theory_v2 with refinement gates active) ===")
+    print("\n=== Pooled (theory_v2 with ZC1/ZC2 dynamic exits) ===")
     for coin in args.coins:
         p = pooled[coin]
         resolved = p["correct"] + p["incorrect"]
         wr = p["correct"] / resolved if resolved else 0.0
-        ev = wr * 2.0 + (1 - wr) * (-1.0) if resolved else 0.0
+        avg_r = p["total_r"] / resolved if resolved else 0.0
         print(
             f"  {coin}: fired={p['fired']} resolved={resolved} "
-            f"WR={wr*100:.1f}%  EV={ev:+.3f}R/trade"
+            f"WR={wr*100:.1f}%  totalR={p['total_r']:+.2f}  avgR={avg_r:+.3f}R/trade"
         )
         print(f"        stage counts: {pooled_stages[coin]}")
 

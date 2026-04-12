@@ -66,8 +66,10 @@ retrace, a 4H setup, or a 1H trigger.
 
 Each gate, in order:
 
-1. **Weekly bias** — close vs 8-week SMA (±0.5% deadband).
-2. **Daily confirmation** — close vs 20-day SMA must agree with weekly bias.
+1. **Weekly bias** — close vs 8-week SMA (±2% deadband). Wider deadband
+   prevents false short flips during bull-market pullbacks.
+2. **Daily confirmation** — close vs 10-day SMA must agree with weekly bias.
+   Shorter window responds faster to trend resumptions.
 3. **Climax cooldown (iter 4)** — no daily true range > 3 × 20-day ATR within
    the last 10 bars. If a recent climax candle is detected, all entries are
    suspended until the cooldown window expires.
@@ -75,11 +77,12 @@ Each gate, in order:
    retracement band of the most recent daily impulse leg. Shallow retracements
    (still extended near the impulse high/low) are rejected. If no clean leg
    is detectable in the last 60 daily bars, the gate is permissive.
-5. **4H setup** — close vs 12-bar SMA on 4H must agree with bias.
+5. **4H setup** — close vs 8-bar SMA on 4H must agree with bias.
 6. **1H trigger** — entry at last 1H close, stop is the wider of:
    - the swing high/low of the last 24 1H bars (structural)
    - 1.5 × 14-day daily ATR (volatility floor — iter 6)
-   Take-profit is fixed 2R.
+   Targets use ZC1/ZC2 dynamic exit: ZC1 (80% at nearest structural swing
+   level, min 1R) and ZC2 (20% trailed to next swing or 2.5R).
 
 The fired signal is routed through `trading.execution.build_execution_plan`,
 which enforces the timeframe contract (weekly/daily bias, 4H setup, 1H

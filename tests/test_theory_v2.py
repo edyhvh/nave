@@ -70,13 +70,13 @@ def test_weekly_bias_neutral_on_empty():
 
 
 def test_daily_confirms_matches_bias():
-    rising = _series_close([100.0] * 21 + [115.0])
+    rising = _series_close([100.0] * 11 + [115.0])
     assert daily_confirms(rising, "long") is True
     assert daily_confirms(rising, "short") is False
 
 
 def test_four_h_setup_requires_alignment():
-    rising = _series_close([100.0] * 13 + [115.0])
+    rising = _series_close([100.0] * 9 + [115.0])
     assert four_h_setup_valid(rising, "long") is True
     assert four_h_setup_valid(rising, "short") is False
 
@@ -86,12 +86,16 @@ def test_one_h_entry_long_geometry():
     h1 = _series_close(closes)
     result = one_h_entry(h1, "long")
     assert result is not None
-    entry, sl, tp = result
+    entry, sl, targets = result
     assert entry == pytest.approx(110.0)
-    # stop is min low across last 24 bars: 99 (from first bars) wait — last 24 includes the 110 bar with low 108.9
-    # min low across all 24 bars = min of (99, 99, ..., 108.9) = 99
+    # stop is min low across last 24 bars = 99 (from first bars with 0.99 multiplier)
     assert sl == pytest.approx(99.0)
-    assert tp == pytest.approx(110.0 + 2 * (110.0 - 99.0))
+    # With no daily data, fallback targets: ZC1 at 1.5R, ZC2 at 2.5R
+    risk = 110.0 - 99.0
+    assert isinstance(targets, list)
+    assert len(targets) == 2
+    assert targets[0] == pytest.approx(110.0 + 1.5 * risk)
+    assert targets[1] == pytest.approx(110.0 + 2.5 * risk)
 
 
 def test_one_h_entry_returns_none_on_zero_risk():
@@ -173,11 +177,13 @@ def test_one_h_entry_uses_atr_floor_when_wider_than_swing():
     daily = _ohlc([100.0 + i for i in range(20)], spread=1.0)
     result = one_h_entry(h1, "long", daily=daily, atr_floor_mult=1.5)
     assert result is not None
-    entry, sl, tp = result
+    entry, sl, targets = result
     # Risk must be the ATR floor, not the structural 1.5 distance.
     structural_risk = 100.5 - 99.5  # last 24 bar low is 99.5 (100 - 0.5)
     risk = entry - sl
     assert risk > structural_risk
+    assert isinstance(targets, list)
+    assert len(targets) == 2
 
 
 def test_one_h_entry_keeps_structural_when_wider_than_atr():
@@ -185,10 +191,11 @@ def test_one_h_entry_keeps_structural_when_wider_than_atr():
     daily = _ohlc([100.0 + i * 0.01 for i in range(20)], spread=0.01)  # tiny ATR
     result = one_h_entry(h1, "long", daily=daily, atr_floor_mult=1.5)
     assert result is not None
-    entry, sl, _tp = result
+    entry, sl, targets = result
     risk = entry - sl
     structural_risk = 100.5 - 99.5
     assert risk == pytest.approx(structural_risk)
+    assert isinstance(targets, list)
 
 
 # --------------------------------------------------------------------------- #

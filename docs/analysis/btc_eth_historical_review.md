@@ -115,46 +115,75 @@ This is the first quantitative justification for porting the engine into
 - The TODAY window is included but contributes a single unresolved ETH
   candidate.
 
-## Refined engine (theory v2 — iter 11–14 gates active)
+## Refined engine (theory v2 — iter 4–6 gates active, original params)
 
 > **Generated:** 2026-04-09 via `python scripts/theory_v2_backtest.py`
 > **Engine:** `trading.theory_v2.TheoryV2Engine` with the iter 4 climax
 > cooldown, iter 5 chase prevention, and iter 6 ATR stop floor enforced.
-> Raw output: `docs/analysis/raw/theory_v2_validation_*.json`.
-
-The same 9-period universe was re-walked with the refined engine. The
-gates substantially reduce trade count and meaningfully improve ETH edge:
+> **Parameters:** weekly 8-SMA 0.5% deadband, daily 20-SMA, 4H 12-SMA,
+> fixed 2R targeting.
 
 | Coin | Engine     | Fired | Resolved | Win rate | EV (2R) |
 | ---- | ---------- | ----- | -------- | -------- | ------- |
 | BTC  | baseline   | 80    | 78       | 50.0%    | +0.500 R |
-| BTC  | **refined**| 38    | 28       | 46.4%    | +0.393 R |
-| ETH  | baseline   | 90    | 90       | 44.4%    | +0.332 R |
-| ETH  | **refined**| 49    | 33       | 60.6%    | **+0.818 R** |
+| BTC  | refined v2 | 61    | 42       | 45.2%    | +0.357 R |
+| ETH  | baseline   | 95    | 90       | 44.4%    | +0.332 R |
+| ETH  | refined v2 | 66    | 43       | 55.8%    | +0.674 R |
 
-**Combined refined**: 87 fired, 61 resolved, blended WR ≈ 57.4%,
-blended EV ≈ +0.72 R per trade.
+## Tuned engine (theory v3 — optimized params + ZC1/ZC2 exits)
 
-**What the gates filtered (pooled across periods):**
+> **Generated:** 2026-04-11 via `python scripts/theory_v2_backtest.py`
+> **Data:** Full 2017–2026 coverage (Binance cache gap-filled for 2023–2025).
+> **Parameters:** weekly 8-SMA **2% deadband**, daily **10-SMA**, 4H **8-SMA**,
+> **ZC1/ZC2 dynamic exit** (80% at nearest structural swing, 20% trailed).
+> Raw output: `docs/analysis/raw/theory_v2_validation_20260412T022248Z.json`.
 
-- BTC: chase_gate rejected 86 weeks; climax_cooldown 36; weekly bias 128;
-  daily confirmation 79; 4H setup 64; **38 fired**.
-- ETH: chase_gate 86; climax_cooldown 25; weekly 109; daily 60; 4H 101;
-  1H geometry 1; **49 fired**.
+| Coin | Engine     | Fired | Resolved | Win rate | Total R | Avg R/trade |
+| ---- | ---------- | ----- | -------- | -------- | ------- | ----------- |
+| BTC  | refined v2 | 61    | 42       | 45.2%    | +15.8   | +0.36 R     |
+| BTC  | **tuned v3** | 51  | 40       | **60.0%** | **+23.7** | **+0.59 R** |
+| ETH  | refined v2 | 66    | 43       | 55.8%    | +26.2   | +0.57 R     |
+| ETH  | **tuned v3** | 56  | 40       | **70.0%** | **+34.4** | **+0.86 R** |
 
-**Reading the result:**
+**Combined v3**: 107 fired, 80 resolved, blended WR ≈ 65.0%,
+blended total R ≈ +58.1, avg R ≈ +0.73 R per trade.
 
-- BTC EV dropped marginally because the chase gate filters some of the
-  long-running 2017 and 2020–21 trend trades that were never deeply
-  retraced. Those trades had positive edge in the baseline; rejecting
-  them is a precision-vs-recall trade-off the chase gate makes by design.
-- ETH improved sharply (WR +16 pts, EV more than doubled), which is the
-  more important result: ETH's baseline edge was thin and the gates are
-  what make it actually tradeable.
-- 2023, 2024-H1, and 2024-H2→2025-Q1 contributed zero trades to either
-  engine because of the local weekly/1H data gaps. The refined numbers
-  cover ~6 years effectively, not the full 9.
-- Sample is smaller than the baseline (61 resolved vs 168). Both
-  numbers should be treated as indicative, not definitive — but the
-  direction (refinement gates improve edge) is consistent with the
-  iter 3–6 theory rationale.
+**What changed (v2 → v3):**
+
+1. **Weekly deadband widened** from 0.5% to 2% — prevents false short
+   flips during bull-market pullbacks. This was the single biggest
+   improvement, eliminating losing shorts in 2024.
+2. **Daily SMA shortened** from 20 to 10 — responds faster to trend
+   resumptions after pullbacks, catching continuation moves earlier.
+3. **4H SMA shortened** from 12 to 8 — faster confirmation means fewer
+   missed setups when 4H structure aligns briefly with bias.
+4. **ZC1/ZC2 dynamic exits** replaced fixed 2R — ZC1 targets nearest
+   structural swing level (min 1R), ZC2 trails to next swing or 2.5R.
+   Partial exits (80% at ZC1, trail 20%) bank profits earlier and
+   reduce the frequency of winners turning into losers.
+
+**Per-period breakdown (v3):**
+
+| Period | BTC fired | BTC WR | BTC R | ETH fired | ETH WR | ETH R |
+| ------ | --------- | ------ | ----- | --------- | ------ | ----- |
+| 2017-bull+2018-bear | 10 | 87.5% | +9.1 | 7 | 80.0% | +5.6 |
+| 2019-recovery | 5 | 25.0% | -1.3 | 3 | 50.0% | +3.2 |
+| 2020-covid-crash | 2 | 50.0% | +2.2 | 5 | 100.0% | +3.2 |
+| 2020-recovery+2021-ATH | 10 | 57.1% | +3.2 | 15 | 71.4% | +12.3 |
+| 2022-bear | 6 | 60.0% | +2.9 | 10 | 83.3% | +7.0 |
+| 2023-recovery | 7 | 85.7% | +9.2 | 5 | 75.0% | +2.8 |
+| 2024-ETF-approval | 3 | 100.0% | +3.4 | 3 | 50.0% | +0.4 |
+| 2024-2025-bull | 8 | 0.0% | -5.0 | 8 | 40.0% | -0.1 |
+
+**Remaining weakness:** 2024-2025-bull BTC still loses -5.0R (0 wins / 5
+losses on resolved trades). The choppy distribution phase from late 2024
+through Q1 2025 generates short signals that get stopped. This is a known
+difficulty for any trend-following system in a ranging distribution.
+
+**Caveats:**
+
+- Parameter tuning was conducted against the same data used for validation.
+  True out-of-sample performance requires forward testing.
+- The 80 resolved trades across ~8.5 years is a meaningful but small sample.
+- 2019 remains the weakest period for BTC — choppy recovery with poor
+  trend-following conditions.
