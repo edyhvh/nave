@@ -30,6 +30,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 import data_loader  # noqa: E402
 from data_loader import DataNotFoundError  # noqa: E402
 
+from trading.cot_gate import load_cached_cot_history  # noqa: E402
 from trading.theory_v2 import TheoryV2Engine  # noqa: E402
 
 
@@ -190,7 +191,9 @@ def _walk_period(
         daily_slice = daily_full[daily_full["timestamp"] <= week_start]
         h4_slice = h4_full[h4_full["timestamp"] <= week_start]
         h1_slice = h1_full[h1_full["timestamp"] <= week_start]
-        decision = engine.evaluate(coin, weekly_slice, daily_slice, h4_slice, h1_slice)
+        decision = engine.evaluate(
+            coin, weekly_slice, daily_slice, h4_slice, h1_slice, as_of=week_start
+        )
         stats["stage_counts"][decision.stage] = stats["stage_counts"].get(decision.stage, 0) + 1
 
         if decision.signal is None:
@@ -225,7 +228,17 @@ def main() -> int:
     parser.add_argument("--coins", nargs="+", default=["BTC", "ETH"])
     args = parser.parse_args()
 
-    engine = TheoryV2Engine()
+    btc_cot_history = load_cached_cot_history("BTC")
+
+    def _cot_provider(_coin: str, _as_of: pd.Timestamp) -> pd.DataFrame:
+        return btc_cot_history
+
+    engine = TheoryV2Engine(cot_history_fn=_cot_provider)
+    print(
+        f"Loaded BTC COT history: {len(btc_cot_history)} rows "
+        f"({btc_cot_history['report_date'].min() if not btc_cot_history.empty else 'n/a'} "
+        f"→ {btc_cot_history['report_date'].max() if not btc_cot_history.empty else 'n/a'})"
+    )
     results: dict[str, dict[str, Any]] = {}
     pooled = {coin: {"fired": 0, "correct": 0, "incorrect": 0, "unresolved": 0, "total_r": 0.0}
               for coin in args.coins}
