@@ -132,10 +132,10 @@ def test_engine_stops_at_daily_when_daily_disagrees():
 def test_engine_fires_full_long_signal_through_execution_contract():
     """Smooth monotonic uptrend produces no climax, no swing extrema → all
     refinement gates pass and the engine fires a long signal."""
-    weekly = _ohlc([100.0 + i for i in range(30)])
-    daily = _ohlc([100.0 + i * 0.5 for i in range(40)])
-    h4 = _ohlc([100.0 + i * 0.2 for i in range(30)])
-    h1 = _ohlc([100.0 + i * 0.1 for i in range(30)])
+    weekly = _ohlc([100.0 + i * 2 for i in range(30)])
+    daily = _ohlc([100.0 + i * 1.0 for i in range(40)])
+    h4 = _ohlc([100.0 + i * 0.4 for i in range(30)])
+    h1 = _ohlc([100.0 + i * 0.2 for i in range(30)])
 
     engine = TheoryV2Engine()
     decision = engine.evaluate("BTC", weekly, daily, h4, h1)
@@ -233,13 +233,13 @@ def test_climax_cooldown_clears_after_window():
 
 
 def test_engine_blocks_on_climax_cooldown():
-    weekly = _ohlc([100.0 + i for i in range(30)])
-    daily_base = [100.0 + i * 0.5 for i in range(40)]
+    weekly = _ohlc([100.0 + i * 2 for i in range(30)])
+    daily_base = [100.0 + i * 1.0 for i in range(40)]
     daily = _ohlc(daily_base, spread=0.5)
-    daily.loc[daily.index[-1], "high"] = 250.0
+    daily.loc[daily.index[-1], "high"] = 350.0
     daily.loc[daily.index[-1], "low"] = 50.0
-    h4 = _ohlc([100.0 + i * 0.2 for i in range(30)])
-    h1 = _ohlc([100.0 + i * 0.1 for i in range(30)])
+    h4 = _ohlc([100.0 + i * 0.4 for i in range(30)])
+    h1 = _ohlc([100.0 + i * 0.2 for i in range(30)])
     decision = TheoryV2Engine().evaluate("BTC", weekly, daily, h4, h1)
     assert decision.stage == "climax_cooldown"
     assert decision.signal is None
@@ -334,10 +334,10 @@ def test_theory_v2_strategy_routes_signals_through_execution_contract(monkeypatc
 
     # Build a single fired decision and patch the loader so the strategy
     # never touches data_loader during the unit test.
-    weekly = _ohlc([100.0 + i for i in range(30)])
-    daily = _ohlc([100.0 + i * 0.5 for i in range(40)])
-    h4 = _ohlc([100.0 + i * 0.2 for i in range(30)])
-    h1 = _ohlc([100.0 + i * 0.1 for i in range(30)])
+    weekly = _ohlc([100.0 + i * 2 for i in range(30)])
+    daily = _ohlc([100.0 + i * 1.0 for i in range(40)])
+    h4 = _ohlc([100.0 + i * 0.4 for i in range(30)])
+    h1 = _ohlc([100.0 + i * 0.2 for i in range(30)])
     fired = TheoryV2Engine().evaluate("BTC", weekly, daily, h4, h1)
     assert fired.signal is not None  # sanity
 

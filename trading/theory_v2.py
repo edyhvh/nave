@@ -76,7 +76,7 @@ def trend(series: pd.Series, window: int, deadband: float = 0.005) -> str:
 def weekly_bias(weekly: pd.DataFrame) -> str:
     if weekly.empty:
         return "neutral"
-    return trend(weekly["close"], window=8, deadband=0.02)
+    return trend(weekly["close"], window=8, deadband=0.04)
 
 
 def daily_confirms(daily: pd.DataFrame, bias: str) -> bool:
