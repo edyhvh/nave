@@ -17,8 +17,8 @@ the iter 3–6 theory loop, which the backtest engine never implemented:
 
 Pipeline (each gate must pass before the next is checked):
 
-    weekly momentum    → velocity over 4 weekly bars must exceed 1.5 weekly
-                         ATRs (iter 13 — high-momentum regime)
+    weekly momentum    → velocity over 4 weekly bars must exceed 1.2 weekly
+                         ATRs (iter 13 high-momentum regime, iter 14 tuned)
     daily confirmation → trend over 20 daily closes must match bias
     post-climax gate   → no daily TR > 3× 20-day ATR within last 10 days
     chase gate         → price inside 50–95% retracement of latest
@@ -104,7 +104,7 @@ def weekly_atr(weekly: pd.DataFrame, window: int = 8) -> float | None:
 def momentum_bias(
     weekly: pd.DataFrame,
     lookback: int = 4,
-    min_velocity: float = 1.5,
+    min_velocity: float = 1.2,
     atr_window: int = 8,
 ) -> tuple[str, float | None]:
     """High-momentum bias: price must move fast relative to its own volatility.

@@ -659,9 +659,11 @@ technical_philosophy:
             that cancel out) resolve to neutral.
           formula: >
             velocity = (close_now − close_{4 weeks ago}) / weekly_ATR_8.
-            long  if velocity > +1.5
-            short if velocity < −1.5
+            long  if velocity > +1.2
+            short if velocity < −1.2
             neutral otherwise
+            (iter 14 parameter sweep selected 1.2 over 1.0/1.5/2.0 on
+            pooled total-R + 2024-2025-bull profitability.)
           rationale: >
             Iter 12 used SMA-8 with 4% deadband — a direction classifier
             that said nothing about how fast price was moving. That gate
