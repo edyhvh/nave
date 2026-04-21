@@ -1408,6 +1408,53 @@ technical_philosophy:
           iter_history_path: "docs/analysis/iterations/"
           engine_source: "trading/theory_v2.py"
         source: "hermes/integration.py::HermesNaveIntegration.strategy_context"
+      recommend_position:
+        purpose: >
+          Size a concrete position from a fired theory_v2_scan entry.
+          Takes the per-coin scan dict plus capital / leverage / risk_pct,
+          returns notional, coin qty, margin required, RR at ZC1/ZC2,
+          and a suggested_mcp_call block the agent can hand to
+          open_position (dry-run by default).
+        inputs:
+          coin_scan: "One entry from theory_v2_scan['coins'][COIN]"
+          capital_usd: "Total trading capital, >0"
+          leverage: "Hyperliquid leverage, 1-50 (default 10)"
+          risk_pct: "Fraction of capital to risk to stop-loss, 0.001-0.1 (default 0.01)"
+        output_shape:
+          recommendation: "'open_position' when fired, 'stand_aside' otherwise"
+          direction: "long | short"
+          entry_price: "from scan"
+          stop_loss: "from scan"
+          targets: "list [zc1, zc2]"
+          sizing:
+            risk_usd: "capital_usd * risk_pct"
+            coin_qty: "risk_usd / |entry - stop|"
+            notional_usd: "coin_qty * entry"
+            margin_required_usd: "notional / leverage"
+          reward:
+            zc1_usd / zc1_rr / zc2_usd / zc2_rr: "profit at each target + RR multiples"
+          order_summary: "human-readable text"
+          safety:
+            default_dry_run: true
+            suggested_mcp_call: "Pre-built open_position payload with dry_run=True"
+        source: "hermes/integration.py::HermesNaveIntegration.recommend_position"
+      scan_history:
+        purpose: >
+          Return the last N daily-scan reports from var/reports/. Lets
+          the agent detect regime persistence (e.g. extreme COT has been
+          blocking for 10 days) rather than treating each day in isolation.
+        inputs:
+          days: "Number of days of history to return, 1-90 (default 7)"
+        output_shape:
+          reports_dir: "Absolute path read from"
+          reports: "list of {date, generated_at, evaluated, fires, stages, path}"
+          missing: "dates in range that had no report file"
+        persistence_contract: >
+          scripts/daily_scan.py writes var/reports/daily_scan_YYYY-MM-DD.json
+          each run (unless --no-persist is passed). Each file contains the
+          full {generated_at, scan, context} payload. scan_history reads
+          only the summary fields — never loads the full context blob.
+        source: "hermes/integration.py::HermesNaveIntegration.scan_history"
     usage_pattern: >
       Each day the agent calls strategy_context once (cached), then
       theory_v2_scan for the configured coin list. For any coin where
@@ -1420,4 +1467,7 @@ technical_philosophy:
       - "MCP trading tools (open_position/close_position) default to dry_run=True."
       - "Private keys never exposed via MCP tools — only the WalletVault reads them."
       - "Agent must never set testnet=False without explicit user instruction."
-      - "theory_v2_scan itself is read-only — it never places orders."
+      - "theory_v2_scan and recommend_position are read-only — they never place orders."
+      - "recommend_position output includes safety.default_dry_run=true and a pre-built suggested_mcp_call with dry_run=True."
+    onboarding_doc: "docs/agent_onboarding.md"
+    scheduling: "ops/com.nave.daily-scan.plist.example + ops/README.md"

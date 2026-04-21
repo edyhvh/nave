@@ -6,8 +6,10 @@ outputs so autonomous agents can consume deterministic responses.
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable
 
 from core.config import CliDefaults
@@ -19,6 +21,11 @@ from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_late
 from trading.cot.cot_position_generator import COTPositionGenerator
 
 logger = configure_logger(__name__)
+
+
+def _default_reports_dir() -> Path:
+    """Project-root-relative directory for persisted daily scans."""
+    return Path(__file__).resolve().parent.parent / "var" / "reports"
 
 
 def _to_jsonable(value: Any) -> Any:
@@ -119,6 +126,47 @@ class HermesNaveIntegration:
                         "theory_v2_scan so the agent can explain why a decision was made."
                     ),
                     "input_schema": {"type": "object", "properties": {}},
+                },
+                {
+                    "name": "recommend_position",
+                    "description": (
+                        "Size a position from a theory_v2_scan fired signal. Takes the "
+                        "coin's scan entry (as returned by theory_v2_scan) plus capital "
+                        "and leverage, and returns notional, coin quantity, risk in USD, "
+                        "reward at ZC1/ZC2, and a human-readable order summary."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "coin_scan": {
+                                "type": "object",
+                                "description": "One coin entry from theory_v2_scan['coins'][COIN]",
+                            },
+                            "capital_usd": {"type": "number", "minimum": 0},
+                            "leverage": {"type": "number", "minimum": 1, "maximum": 50},
+                            "risk_pct": {
+                                "type": "number",
+                                "minimum": 0.001,
+                                "maximum": 0.1,
+                                "default": 0.01,
+                            },
+                        },
+                        "required": ["coin_scan", "capital_usd"],
+                    },
+                },
+                {
+                    "name": "scan_history",
+                    "description": (
+                        "Return the last N daily scan reports from var/reports/. Lets the "
+                        "agent see whether today's stand-aside is new or the continuation "
+                        "of a multi-day regime."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "days": {"type": "integer", "minimum": 1, "maximum": 90, "default": 7},
+                        },
+                    },
                 },
             ],
         }
@@ -312,6 +360,7 @@ class HermesNaveIntegration:
         coin_payload: dict[str, Any] = {}
         for decision in decisions:
             entry: dict[str, Any] = {
+                "coin": decision.coin,
                 "bias": decision.bias,
                 "stage": decision.stage,
                 "reason": decision.reason,
@@ -333,6 +382,8 @@ class HermesNaveIntegration:
                     "weekly_velocity_atr": meta.get("weekly_velocity_atr"),
                     "daily_atr_14": meta.get("daily_atr_14"),
                     "retrace_fraction": meta.get("retrace_fraction"),
+                    "bias_source": meta.get("bias_source", "momentum"),
+                    "range_breakout": meta.get("range_breakout"),
                     "bias_timeframe": sig.bias_timeframe.value if sig.bias_timeframe else None,
                     "setup_timeframe": sig.setup_timeframe.value if sig.setup_timeframe else None,
                     "trigger_timeframe": sig.trigger_timeframe.value if sig.trigger_timeframe else None,
@@ -362,14 +413,17 @@ class HermesNaveIntegration:
         """
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "version": "theory_v2.iter_14",
+            "version": "theory_v2.iter_18",
             "summary": (
-                "Top-down high-momentum pipeline: weekly velocity gate → "
-                "daily confirmation → climax cooldown → chase gate → 4H setup → "
-                "1H trigger. Iter 14 converged via parameter sweep."
+                "Top-down high-momentum pipeline: weekly velocity gate (with "
+                "range-breakout fallback) → daily confirmation → climax cooldown "
+                "→ chase gate → 4H setup → 1H trigger. Iter 14 converged the "
+                "momentum gate; iter 18 added range-breakout fallback for the "
+                "iter 16 consolidation blind spot."
             ),
             "pipeline": [
                 {"timeframe": "1W", "gate": "momentum_bias", "role": "direction"},
+                {"timeframe": "1W", "gate": "range_breakout_bias", "role": "direction_fallback"},
                 {"timeframe": "1W", "gate": "weekly_cot_filter", "role": "positioning"},
                 {"timeframe": "1D", "gate": "daily_confirms", "role": "confirmation"},
                 {"timeframe": "1D", "gate": "climax_cooldown", "role": "risk_gate"},
@@ -383,6 +437,12 @@ class HermesNaveIntegration:
                     "lookback_weeks": 4,
                     "atr_window": 8,
                 },
+                "range_breakout": {
+                    "range_window": 8,
+                    "max_range_atrs": 1.5,
+                    "breakout_buffer_atrs": 0.5,
+                    "atr_window": 8,
+                },
                 "daily_confirm": {"sma_period": 10},
                 "chase_gate": {"min_retrace": 0.50, "max_retrace": 0.95},
                 "climax_cooldown": {"atr_multiple": 3.0, "cooldown_bars": 5},
@@ -390,14 +450,14 @@ class HermesNaveIntegration:
             "backtest_metrics": {
                 "window": "2017-10 → 2025-12 (9 regime periods, BTC + ETH pooled)",
                 "pooled": {
-                    "fires": 46,
-                    "win_rate": 0.778,
-                    "avg_r_per_trade": 1.18,
-                    "total_r": 42.54,
+                    "fires": 47,
+                    "win_rate": 0.784,
+                    "avg_r_per_trade": 1.19,
+                    "total_r": 44.14,
                 },
                 "per_coin": {
-                    "BTC": {"fires": 21, "win_rate": 0.765, "avg_r": 1.13, "total_r": 19.19},
-                    "ETH": {"fires": 25, "win_rate": 0.789, "avg_r": 1.23, "total_r": 23.35},
+                    "BTC": {"fires": 22, "win_rate": 0.778, "avg_r": 1.155, "total_r": 20.79},
+                    "ETH": {"fires": 25, "win_rate": 0.789, "avg_r": 1.229, "total_r": 23.35},
                 },
                 "regime_coverage": {
                     "2017-2018-cycle": 9.90,
@@ -406,18 +466,14 @@ class HermesNaveIntegration:
                     "2023-recovery": 9.22,
                     "2024-2025-bull": 1.70,
                 },
+                "iter_18_delta_vs_iter_14": {
+                    "btc_fires": "+1",
+                    "btc_total_r": "+1.60",
+                    "eth": "unchanged",
+                    "pooled_total_r": "+1.60",
+                },
             },
             "known_blind_spots": [
-                {
-                    "name": "range_breakout",
-                    "description": (
-                        "4-week momentum window goes flat during multi-week "
-                        "consolidations; breakout is detected 1-2 weeks late. "
-                        "Example: Apr 2026 BTC rally fired at $76,361, ~2.5% "
-                        "off the peak."
-                    ),
-                    "iter_ref": "iter_16",
-                },
                 {
                     "name": "cot_extreme_block",
                     "description": (
@@ -427,9 +483,189 @@ class HermesNaveIntegration:
                     ),
                     "iter_ref": "iter_11",
                 },
+                {
+                    "name": "range_breakout_partial",
+                    "description": (
+                        "Iter 18 adds a range-breakout fallback that catches "
+                        "consolidation breakouts the momentum gate misses, "
+                        "but it requires a flat prior range (≤ 1.5 ATRs). "
+                        "Very deep, extended consolidations may still fire "
+                        "late. COT filter also still applies to breakouts — "
+                        "extreme positioning blocks them too."
+                    ),
+                    "iter_ref": "iter_18",
+                },
             ],
             "iter_history_path": "docs/analysis/iterations/",
             "engine_source": "trading/theory_v2.py",
+        }
+
+    def recommend_position(
+        self,
+        *,
+        coin_scan: dict[str, Any],
+        capital_usd: float,
+        leverage: float = 10.0,
+        risk_pct: float = 0.01,
+    ) -> dict[str, Any]:
+        """Turn a fired scan entry into a concrete, sized position recommendation.
+
+        ``coin_scan`` is one entry from ``theory_v2_scan(...)['coins'][COIN]``.
+        The caller passes the user's ``capital_usd`` and desired ``leverage``;
+        ``risk_pct`` is the fraction of capital to risk to stop-loss (default
+        1% per the COT plan generator).
+        """
+        if capital_usd <= 0:
+            raise HermesIntegrationError("capital_usd must be positive")
+        if leverage < 1 or leverage > 50:
+            raise HermesIntegrationError("leverage must be between 1 and 50")
+        if not 0.001 <= risk_pct <= 0.1:
+            raise HermesIntegrationError("risk_pct must be in [0.001, 0.1]")
+        if not isinstance(coin_scan, dict):
+            raise HermesIntegrationError("coin_scan must be a dict from theory_v2_scan output")
+
+        if not coin_scan.get("fired"):
+            return {
+                "recommendation": "stand_aside",
+                "reason": coin_scan.get(
+                    "reason", "scan did not fire — no actionable setup"
+                ),
+                "stage": coin_scan.get("stage"),
+                "bias": coin_scan.get("bias"),
+            }
+
+        sig = coin_scan.get("signal") or {}
+        entry = sig.get("entry_price")
+        stop = sig.get("stop_loss")
+        targets = sig.get("targets") or []
+        direction = sig.get("direction")
+        if entry is None or stop is None or not targets or direction is None:
+            raise HermesIntegrationError(
+                "fired scan entry is missing entry_price/stop_loss/targets/direction"
+            )
+
+        stop_distance = abs(entry - stop)
+        if stop_distance <= 0:
+            raise HermesIntegrationError("stop_loss must differ from entry_price")
+
+        risk_usd = capital_usd * risk_pct
+        coin_qty = risk_usd / stop_distance  # size so loss at stop = risk_usd
+        notional_usd = coin_qty * entry
+        margin_required_usd = notional_usd / leverage
+
+        zc1 = targets[0]
+        zc2 = targets[1] if len(targets) > 1 else None
+        reward_zc1_usd = abs(zc1 - entry) * coin_qty
+        reward_zc2_usd = abs(zc2 - entry) * coin_qty if zc2 is not None else None
+        rr_zc1 = reward_zc1_usd / risk_usd if risk_usd > 0 else None
+        rr_zc2 = (reward_zc2_usd / risk_usd) if reward_zc2_usd is not None else None
+
+        coin = coin_scan.get("coin") or "COIN"
+        human = (
+            f"OPEN {direction.upper()} {coin}\n"
+            f"  Entry     : ${entry:,.2f}\n"
+            f"  Stop-loss : ${stop:,.2f}  (risk ${risk_usd:,.2f})\n"
+            f"  ZC1       : ${zc1:,.2f}  (+${reward_zc1_usd:,.2f}, RR {rr_zc1:.2f})\n"
+        )
+        if zc2 is not None:
+            human += (
+                f"  ZC2       : ${zc2:,.2f}  (+${reward_zc2_usd:,.2f}, RR {rr_zc2:.2f})\n"
+            )
+        human += (
+            f"  Size      : {coin_qty:.6f} {coin} (${notional_usd:,.2f} notional)\n"
+            f"  Leverage  : {leverage:.1f}x → margin ${margin_required_usd:,.2f}"
+        )
+
+        return {
+            "recommendation": "open_position",
+            "direction": direction,
+            "coin": coin,
+            "entry_price": entry,
+            "stop_loss": stop,
+            "targets": targets,
+            "sizing": {
+                "capital_usd": capital_usd,
+                "risk_pct": risk_pct,
+                "risk_usd": round(risk_usd, 2),
+                "coin_qty": round(coin_qty, 8),
+                "notional_usd": round(notional_usd, 2),
+                "leverage": leverage,
+                "margin_required_usd": round(margin_required_usd, 2),
+            },
+            "reward": {
+                "zc1_usd": round(reward_zc1_usd, 2),
+                "zc1_rr": round(rr_zc1, 3) if rr_zc1 is not None else None,
+                "zc2_usd": round(reward_zc2_usd, 2) if reward_zc2_usd is not None else None,
+                "zc2_rr": round(rr_zc2, 3) if rr_zc2 is not None else None,
+            },
+            "order_summary": human,
+            "safety": {
+                "default_dry_run": True,
+                "suggested_mcp_call": {
+                    "tool": "open_position",
+                    "arguments": {
+                        "coin": coin,
+                        "side": direction,
+                        "size_usd": round(notional_usd, 2),
+                        "dry_run": True,
+                    },
+                },
+            },
+        }
+
+    def scan_history(
+        self,
+        *,
+        days: int = 7,
+        reports_dir: str | Path | None = None,
+    ) -> dict[str, Any]:
+        """Return the last N daily-scan reports from ``var/reports/``.
+
+        Reports are expected to be named ``daily_scan_YYYY-MM-DD.json`` and
+        written by ``scripts/daily_scan.py``. Missing/unreadable files are
+        skipped (not fatal) — the agent sees what exists.
+        """
+        if days < 1 or days > 90:
+            raise HermesIntegrationError("days must be between 1 and 90")
+
+        base = Path(reports_dir) if reports_dir else _default_reports_dir()
+        today = date.today()
+        history: list[dict[str, Any]] = []
+        missing: list[str] = []
+        for offset in range(days):
+            day = today - timedelta(days=offset)
+            path = base / f"daily_scan_{day.isoformat()}.json"
+            if not path.exists():
+                missing.append(day.isoformat())
+                continue
+            try:
+                payload = json.loads(path.read_text())
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("skipping unreadable scan %s: %s", path, exc)
+                missing.append(day.isoformat())
+                continue
+            scan = payload.get("scan") or payload
+            summary = scan.get("summary") or {}
+            history.append(
+                {
+                    "date": day.isoformat(),
+                    "path": str(path),
+                    "generated_at": scan.get("generated_at"),
+                    "evaluated": summary.get("evaluated", []),
+                    "fires": summary.get("fires", []),
+                    "stages": {
+                        coin: entry.get("stage")
+                        for coin, entry in (scan.get("coins") or {}).items()
+                    },
+                }
+            )
+
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "reports_dir": str(base),
+            "days_requested": days,
+            "reports": history,
+            "missing": missing,
         }
 
     def dispatch_tool_call(
@@ -443,6 +679,8 @@ class HermesNaveIntegration:
             "weekly_plan": self.weekly_plan,
             "theory_v2_scan": self.theory_v2_scan,
             "strategy_context": self.strategy_context,
+            "recommend_position": self.recommend_position,
+            "scan_history": self.scan_history,
         }
 
         handler = handlers.get(tool_name)

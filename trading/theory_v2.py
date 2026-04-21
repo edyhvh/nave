@@ -134,6 +134,65 @@ def momentum_bias(
     return "neutral", velocity
 
 
+def range_breakout_bias(
+    weekly: pd.DataFrame,
+    range_window: int = 8,
+    max_range_atrs: float = 1.5,
+    breakout_buffer_atrs: float = 0.5,
+    atr_window: int = 8,
+) -> tuple[str, dict | None]:
+    """Range-breakout fallback bias — iter 18 addition for iter 16 blind spot.
+
+    Looks for a flat consolidation (high-low range of the last
+    ``range_window - 1`` prior bars below ``max_range_atrs`` × weekly ATR),
+    then fires when the latest weekly close breaks outside that range
+    by at least ``breakout_buffer_atrs`` × ATR.
+
+    Returns ``(bias, diagnostic)`` where ``diagnostic`` is a dict with
+    ``range_high``, ``range_low``, ``range_size_atrs``, ``breakout_distance_atrs``
+    — useful for surfacing in the decision metadata.
+    """
+    if weekly.empty or len(weekly) < max(range_window + 1, atr_window + 1):
+        return "neutral", None
+    atr = weekly_atr(weekly, atr_window)
+    if atr is None:
+        return "neutral", None
+
+    close = weekly["close"].astype(float)
+    # Prior-range window: close_{-range_window..-2} (exclude current bar)
+    prior = close.iloc[-range_window:-1]
+    if prior.empty:
+        return "neutral", None
+    range_high = float(prior.max())
+    range_low = float(prior.min())
+    range_size = range_high - range_low
+    range_size_atrs = range_size / atr
+
+    if range_size_atrs > max_range_atrs:
+        return "neutral", {
+            "range_high": range_high,
+            "range_low": range_low,
+            "range_size_atrs": range_size_atrs,
+            "reason": "prior window not flat enough",
+        }
+
+    last_close = float(close.iloc[-1])
+    buffer = breakout_buffer_atrs * atr
+    diag = {
+        "range_high": range_high,
+        "range_low": range_low,
+        "range_size_atrs": range_size_atrs,
+    }
+    if last_close > range_high + buffer:
+        diag["breakout_distance_atrs"] = (last_close - range_high) / atr
+        return "long", diag
+    if last_close < range_low - buffer:
+        diag["breakout_distance_atrs"] = (range_low - last_close) / atr
+        return "short", diag
+    diag["reason"] = "flat range but no breakout yet"
+    return "neutral", diag
+
+
 def daily_confirms(daily: pd.DataFrame, bias: str) -> bool:
     if daily.empty or bias == "neutral":
         return False
@@ -461,12 +520,20 @@ class TheoryV2Engine:
         as_of: pd.Timestamp | None = None,
     ) -> TheoryV2Decision:
         bias, velocity = momentum_bias(weekly)
+        bias_source = "momentum"
+        breakout_diag: dict | None = None
         if bias == "neutral":
-            vel_str = f"{velocity:+.2f}" if velocity is not None else "n/a"
-            return TheoryV2Decision(
-                coin, bias, False, False, "weekly",
-                f"no high-momentum weekly bias (velocity={vel_str} ATRs)",
-            )
+            # iter 18 fallback — range-breakout for iter 16 blind spot.
+            rb_bias, breakout_diag = range_breakout_bias(weekly)
+            if rb_bias != "neutral":
+                bias = rb_bias
+                bias_source = "range_breakout"
+            else:
+                vel_str = f"{velocity:+.2f}" if velocity is not None else "n/a"
+                return TheoryV2Decision(
+                    coin, bias, False, False, "weekly",
+                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout)",
+                )
 
         if self.cot_history_fn is not None:
             ts = as_of if as_of is not None else pd.Timestamp.now(tz="UTC")
@@ -527,6 +594,8 @@ class TheoryV2Engine:
                 "daily_atr_14": atr,
                 "retrace_fraction": retrace,
                 "weekly_velocity_atr": round(velocity, 2) if velocity is not None else None,
+                "bias_source": bias_source,
+                "range_breakout": breakout_diag,
             },
         )
         return TheoryV2Decision(coin, bias, True, True, "fired", chase_reason, signal)

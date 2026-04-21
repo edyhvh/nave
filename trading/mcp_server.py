@@ -361,5 +361,46 @@ def strategy_context() -> str:
     return json.dumps(payload, indent=2)
 
 
+@mcp.tool()
+def recommend_position(
+    coin_scan: dict,
+    capital_usd: float,
+    leverage: float = 10.0,
+    risk_pct: float = 0.01,
+) -> str:
+    """Size a concrete position from a theory_v2_scan fired entry.
+
+    Pass in one coin entry from ``theory_v2_scan(...)['coins'][COIN]``.
+    Returns risk in USD, coin quantity, notional, margin required, and
+    a human-readable order summary. If the scan entry has fired=False,
+    returns a stand_aside recommendation with the stage reason.
+
+    Args:
+        coin_scan:   Dict from theory_v2_scan['coins'][COIN]
+        capital_usd: Total trading capital in USD
+        leverage:    Hyperliquid leverage (1-50)
+        risk_pct:    Fraction of capital to risk to stop-loss (default 0.01)
+    """
+    payload = hermes.recommend_position(
+        coin_scan=coin_scan,
+        capital_usd=capital_usd,
+        leverage=leverage,
+        risk_pct=risk_pct,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def scan_history(days: int = 7) -> str:
+    """Return the last N daily-scan reports from var/reports/.
+
+    Lets the agent see whether today's stand-aside is new or the
+    continuation of a multi-day regime — important for judging whether
+    an extreme-COT block is a one-off or a persistent condition.
+    """
+    payload = hermes.scan_history(days=days)
+    return json.dumps(payload, indent=2)
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

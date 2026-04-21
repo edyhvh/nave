@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+from datetime import date, timedelta
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -26,6 +30,8 @@ def test_list_tools_contains_required_toolset() -> None:
         "weekly_plan",
         "theory_v2_scan",
         "strategy_context",
+        "recommend_position",
+        "scan_history",
     }.issubset(tool_names)
 
 
@@ -136,16 +142,18 @@ def test_strategy_context_exposes_parameters_and_metrics() -> None:
     integration = HermesNaveIntegration()
     ctx = integration.strategy_context()
 
-    assert ctx["version"] == "theory_v2.iter_14"
+    assert ctx["version"] == "theory_v2.iter_18"
     weekly = ctx["parameters"]["weekly_momentum"]
     assert weekly["min_velocity_atrs"] == 1.2
     assert weekly["lookback_weeks"] == 4
+    assert ctx["parameters"]["range_breakout"]["max_range_atrs"] == 1.5
     pooled = ctx["backtest_metrics"]["pooled"]
-    assert pooled["fires"] == 46
-    assert pooled["win_rate"] == pytest.approx(0.778)
-    assert pooled["total_r"] == pytest.approx(42.54)
+    assert pooled["fires"] == 47
+    assert pooled["win_rate"] == pytest.approx(0.784)
+    assert pooled["total_r"] == pytest.approx(44.14)
     blind_spot_names = {entry["name"] for entry in ctx["known_blind_spots"]}
-    assert "range_breakout" in blind_spot_names
+    assert "cot_extreme_block" in blind_spot_names
+    assert "range_breakout_partial" in blind_spot_names
 
 
 def test_dispatch_tool_call_routes_new_tools(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -164,4 +172,117 @@ def test_dispatch_tool_call_routes_new_tools(monkeypatch: pytest.MonkeyPatch) ->
     ctx_result = integration.dispatch_tool_call("strategy_context", {})
     assert ctx_result["ok"] is True
     assert ctx_result["tool"] == "strategy_context"
-    assert ctx_result["result"]["version"] == "theory_v2.iter_14"
+    assert ctx_result["result"]["version"] == "theory_v2.iter_18"
+
+
+def _fired_scan_entry() -> dict:
+    return {
+        "coin": "BTC",
+        "bias": "long",
+        "stage": "fired",
+        "reason": "retrace 62% inside entry band",
+        "daily_confirmed": True,
+        "setup_valid": True,
+        "fired": True,
+        "signal": {
+            "direction": "long",
+            "confidence": 0.65,
+            "entry_price": 72000.0,
+            "stop_loss": 70000.0,
+            "targets": [75000.0, 80000.0],
+            "zc1_rr": 1.5,
+            "stop_distance_pct": 0.0278,
+            "weekly_velocity_atr": 1.58,
+            "daily_atr_14": 1500.0,
+            "retrace_fraction": 0.62,
+            "bias_timeframe": "1W",
+            "setup_timeframe": "4H",
+            "trigger_timeframe": "1H",
+        },
+    }
+
+
+def test_recommend_position_sizes_from_fired_scan() -> None:
+    integration = HermesNaveIntegration()
+    entry = _fired_scan_entry()
+
+    result = integration.recommend_position(
+        coin_scan=entry,
+        capital_usd=10000.0,
+        leverage=10.0,
+        risk_pct=0.01,
+    )
+
+    assert result["recommendation"] == "open_position"
+    sizing = result["sizing"]
+    # stop distance = 2000 → qty = 100 / 2000 = 0.05 BTC
+    assert sizing["coin_qty"] == pytest.approx(0.05, rel=1e-3)
+    # notional = 0.05 * 72000 = 3600
+    assert sizing["notional_usd"] == pytest.approx(3600.0, rel=1e-3)
+    # margin = notional / leverage = 360
+    assert sizing["margin_required_usd"] == pytest.approx(360.0, rel=1e-3)
+    # reward at ZC1 = (75000-72000) * 0.05 = 150 USD → RR = 150 / 100 = 1.5
+    assert result["reward"]["zc1_rr"] == pytest.approx(1.5, rel=1e-3)
+    assert result["safety"]["default_dry_run"] is True
+    assert result["safety"]["suggested_mcp_call"]["tool"] == "open_position"
+
+
+def test_recommend_position_stand_aside_on_unfired_scan() -> None:
+    integration = HermesNaveIntegration()
+    result = integration.recommend_position(
+        coin_scan={"fired": False, "stage": "weekly", "reason": "neutral", "bias": "neutral"},
+        capital_usd=10000.0,
+    )
+    assert result["recommendation"] == "stand_aside"
+    assert result["stage"] == "weekly"
+
+
+def test_recommend_position_rejects_bad_inputs() -> None:
+    integration = HermesNaveIntegration()
+    entry = _fired_scan_entry()
+
+    with pytest.raises(HermesIntegrationError):
+        integration.recommend_position(coin_scan=entry, capital_usd=0)
+    with pytest.raises(HermesIntegrationError):
+        integration.recommend_position(coin_scan=entry, capital_usd=100, leverage=100)
+    with pytest.raises(HermesIntegrationError):
+        integration.recommend_position(coin_scan=entry, capital_usd=100, risk_pct=0.5)
+
+
+def test_scan_history_reads_reports_dir(tmp_path: Path) -> None:
+    integration = HermesNaveIntegration()
+    today = date.today()
+    # Write two scans: today and yesterday
+    for offset in (0, 1):
+        day = today - timedelta(days=offset)
+        path = tmp_path / f"daily_scan_{day.isoformat()}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "generated_at": f"{day.isoformat()}T00:00:00+00:00",
+                    "scan": {
+                        "generated_at": f"{day.isoformat()}T00:00:00+00:00",
+                        "coins": {
+                            "BTC": {"stage": "weekly_cot", "fired": False},
+                            "ETH": {"stage": "weekly", "fired": False},
+                        },
+                        "summary": {"evaluated": ["BTC", "ETH"], "fires": []},
+                    },
+                }
+            )
+        )
+
+    result = integration.scan_history(days=3, reports_dir=tmp_path)
+
+    assert len(result["reports"]) == 2
+    assert result["reports"][0]["date"] == today.isoformat()
+    assert result["reports"][0]["stages"]["BTC"] == "weekly_cot"
+    assert len(result["missing"]) == 1
+
+
+def test_scan_history_rejects_out_of_range_days() -> None:
+    integration = HermesNaveIntegration()
+    with pytest.raises(HermesIntegrationError):
+        integration.scan_history(days=0)
+    with pytest.raises(HermesIntegrationError):
+        integration.scan_history(days=100)
