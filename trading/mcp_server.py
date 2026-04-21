@@ -333,5 +333,33 @@ def weekly_plan(
     return json.dumps(payload, indent=2)
 
 
+@mcp.tool()
+def theory_v2_scan(coins: str = "BTC ETH") -> str:
+    """Run the daily top-down theory v2 scan (momentum → daily → 4H → 1H).
+
+    Returns per-coin decision trace: at which stage each coin was rejected
+    (weekly / weekly_cot / daily / climax_cooldown / chase_gate / 4H / 1H)
+    or, if fired, the entry / stop-loss / targets / zc1_rr / velocity.
+    The Hermes agent uses this as its primary daily signal source.
+
+    Args:
+        coins: Whitespace-separated coin list, e.g. 'BTC ETH SOL'.
+    """
+    payload = hermes.theory_v2_scan(coins=coins)
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def strategy_context() -> str:
+    """Return the current theory v2 configuration and pooled backtest summary.
+
+    Use alongside theory_v2_scan so the agent can cite the edge
+    (iter 14 pooled WR 77.8%, total R +42.54) and the known blind spots
+    (iter 16: range-breakouts) when explaining a recommendation.
+    """
+    payload = hermes.strategy_context()
+    return json.dumps(payload, indent=2)
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

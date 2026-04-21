@@ -1342,3 +1342,82 @@ technical_philosophy:
       - Diagonal trendlines are downgraded to "visual context" — they are not standalone signals because price moves vertically, and the diagonal is an artifact of the time axis.
       - Horizontal levels (institutional, opens/closes, swings) are the primary structure.
       - Trendlines may still be drawn but must never be the sole reason for an entry.
+
+  agent_integration:
+    description: >
+      Tools exposed to the autonomous agent (Nous Research Hermes) via MCP
+      through trading/mcp_server.py. The agent's job is to call these each
+      trading day, reason over the structured decision trace, and (with human
+      approval) recommend or open positions.
+    entrypoints:
+      daily_scan_cli: "python scripts/daily_scan.py [--coins 'BTC ETH'] [--out path.json]"
+      mcp_server: "python trading/mcp_server.py (stdio transport)"
+      gateway_handler: "HermesNaveIntegration.gateway_invoke({'tool': ..., 'arguments': ...})"
+    tools:
+      theory_v2_scan:
+        purpose: >
+          Run the top-down theory v2 pipeline for each coin and return the
+          decision trace (stage at which evaluation stopped, reason, bias,
+          signal details when fired). Primary daily signal source.
+        inputs:
+          coins: "Whitespace-separated coin list, e.g. 'BTC ETH'. Default: BTC ETH."
+        output_shape:
+          generated_at: "ISO-8601 UTC timestamp"
+          coins:
+            "<COIN>":
+              bias: "long | short | neutral"
+              stage: "weekly | weekly_cot | daily | climax_cooldown | chase_gate | 4H | 1H | fired"
+              reason: "Human-readable explanation of stage outcome"
+              daily_confirmed: bool
+              setup_valid: bool
+              fired: bool
+              signal:
+                note: "Present only when fired == true"
+                fields:
+                  - direction (long/short)
+                  - entry_price
+                  - stop_loss
+                  - targets (list — ZC1, ZC2)
+                  - zc1_rr
+                  - stop_distance_pct
+                  - weekly_velocity_atr
+                  - daily_atr_14
+                  - retrace_fraction
+          summary:
+            evaluated: "coin list"
+            fires: "coins with a fired signal"
+            fire_count: int
+            evaluation_errors: "coins that raised during evaluation"
+        source: "hermes/integration.py::HermesNaveIntegration.theory_v2_scan"
+      strategy_context:
+        purpose: >
+          Static summary of the current theory v2 configuration, pooled
+          backtest metrics, regime coverage, and known blind spots. Used
+          alongside theory_v2_scan so the agent can cite the edge and
+          explicitly name failure modes when explaining a recommendation.
+        inputs: {}
+        output_shape:
+          version: "theory_v2.iter_14"
+          pipeline: "ordered list of gates (timeframe, gate, role)"
+          parameters: "min_velocity, lookbacks, ATR windows, chase band, etc."
+          backtest_metrics:
+            pooled: "fires / win_rate / avg_r_per_trade / total_r"
+            per_coin: "BTC and ETH breakdowns"
+            regime_coverage: "per-period R"
+          known_blind_spots: "list of (name, description, iter_ref)"
+          iter_history_path: "docs/analysis/iterations/"
+          engine_source: "trading/theory_v2.py"
+        source: "hermes/integration.py::HermesNaveIntegration.strategy_context"
+    usage_pattern: >
+      Each day the agent calls strategy_context once (cached), then
+      theory_v2_scan for the configured coin list. For any coin where
+      fired == true, the agent inspects signal geometry, considers the
+      known_blind_spots, and either (a) stages a dry-run open_position,
+      (b) flags for human confirmation, or (c) stands aside if confidence
+      is low. No position is placed automatically without dry_run=False
+      being explicitly set by the user.
+    safety_gates:
+      - "MCP trading tools (open_position/close_position) default to dry_run=True."
+      - "Private keys never exposed via MCP tools — only the WalletVault reads them."
+      - "Agent must never set testnet=False without explicit user instruction."
+      - "theory_v2_scan itself is read-only — it never places orders."
