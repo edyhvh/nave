@@ -398,6 +398,68 @@ class CotWeeklyStrategy(BaseStrategy):
         return []
 
 
+class TheoryV2Strategy(BaseStrategy):
+    """
+    Top-down weekly→daily→4H→1H execution per the refined theory.
+
+    Uses :class:`trading.theory_v2.TheoryV2Engine` to evaluate each coin and
+    routes the resulting timeframe-aware ``Signal`` through
+    :func:`trading.execution.build_execution_plan` to enforce the 4H/1H
+    contract before any order is sent.
+    """
+
+    def __init__(
+        self,
+        client: HyperliquidClientProtocol,
+        coins: list[str] | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(client, **kwargs)
+        self.coins = coins or ["BTC", "ETH"]
+        self._last_decisions: list[Any] = []
+
+    def compute_signals(self) -> list[Signal]:
+        from trading.theory_v2 import build_signals_for_coins
+
+        signals, decisions = build_signals_for_coins(self.coins)
+        self._last_decisions = decisions
+        for d in decisions:
+            logger.info(
+                "theory_v2 %s: stage=%s bias=%s reason=%s",
+                d.coin, d.stage, d.bias, d.reason,
+            )
+        return signals
+
+    def execute_signals(self, signals: list[Signal]) -> None:
+        from trading.execution import build_execution_plan
+
+        if not signals:
+            logger.info("theory_v2: no fired signals this cycle")
+            return
+        for signal in signals:
+            try:
+                plan = build_execution_plan(signal)
+            except ValueError as exc:
+                logger.warning(
+                    "theory_v2 %s: signal failed execution contract: %s",
+                    signal.coin, exc,
+                )
+                continue
+            if plan is None:
+                continue
+            size_usd = self.position_size_usd(signal)
+            logger.info(
+                "theory_v2 %s %s entry=%.2f SL=%.2f TP=%s size=$%.2f",
+                plan.coin,
+                plan.direction.value,
+                plan.entry_price,
+                plan.invalidation_price,
+                plan.targets,
+                size_usd,
+            )
+            self._open(plan.coin, plan.direction, size_usd)
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

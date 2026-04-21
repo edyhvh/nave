@@ -21,6 +21,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
+class Timeframe(str, Enum):
+    WEEKLY = "1W"
+    DAILY = "1D"
+    H4 = "4H"
+    H1 = "1H"
+
+
 class Direction(str, Enum):
     LONG = "long"
     SHORT = "short"
@@ -38,7 +45,12 @@ class Signal:
         direction:  Trade direction or action.
         confidence: Conviction score in [0, 1]. 1 = maximum conviction.
         source:     Label for the signal source ("macro", "momentum", "sentiment", …)
+        bias_timeframe: Weekly bias timeframe used to frame the idea.
+        setup_timeframe: Timeframe that produced the setup.
+        trigger_timeframe: Timeframe that produced the entry trigger.
         size_usd:   Optional suggested notional size. Strategy may override.
+        invalidation: Optional invalidation price for the setup.
+        targets:    Optional take-profit ladder.
         metadata:   Optional dict for diagnostic context (never contains secrets).
     """
 
@@ -46,7 +58,12 @@ class Signal:
     direction: Direction
     confidence: float  # 0..1
     source: str
+    bias_timeframe: Timeframe | None = None
+    setup_timeframe: Timeframe | None = None
+    trigger_timeframe: Timeframe | None = None
     size_usd: float | None = None
+    invalidation: float | None = None
+    targets: list[float] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
     def __init__(
@@ -55,14 +72,34 @@ class Signal:
         direction: Direction | str,
         confidence: float,
         source: str,
+        bias_timeframe: Timeframe | str | None = None,
+        setup_timeframe: Timeframe | str | None = None,
+        trigger_timeframe: Timeframe | str | None = None,
         size_usd: float | None = None,
+        invalidation: float | None = None,
+        targets: list[float] | None = None,
         metadata: dict | None = None,
     ):
         self.coin = coin
         self.direction = Direction(direction) if isinstance(direction, str) else direction
         self.confidence = confidence
         self.source = source
+        self.bias_timeframe = (
+            Timeframe(bias_timeframe) if isinstance(bias_timeframe, str) else bias_timeframe
+        )
+        self.setup_timeframe = (
+            Timeframe(setup_timeframe)
+            if isinstance(setup_timeframe, str)
+            else setup_timeframe
+        )
+        self.trigger_timeframe = (
+            Timeframe(trigger_timeframe)
+            if isinstance(trigger_timeframe, str)
+            else trigger_timeframe
+        )
         self.size_usd = size_usd
+        self.invalidation = invalidation
+        self.targets = list(targets or [])
         self.metadata = metadata or {}
         self.__post_init__()
 
@@ -71,15 +108,31 @@ class Signal:
             raise ValueError(f"confidence must be in [0, 1], got {self.confidence}")
         if isinstance(self.direction, str):
             self.direction = Direction(self.direction)
+        for attr in ("bias_timeframe", "setup_timeframe", "trigger_timeframe"):
+            value = getattr(self, attr)
+            if isinstance(value, str):
+                setattr(self, attr, Timeframe(value))
 
     @property
     def is_actionable(self) -> bool:
         return self.direction not in (Direction.NEUTRAL,)
 
+    @property
+    def is_timeframe_aware(self) -> bool:
+        return self.setup_timeframe is not None or self.trigger_timeframe is not None
+
     def __repr__(self) -> str:
+        tf_parts = []
+        if self.bias_timeframe:
+            tf_parts.append(f"bias={self.bias_timeframe.value}")
+        if self.setup_timeframe:
+            tf_parts.append(f"setup={self.setup_timeframe.value}")
+        if self.trigger_timeframe:
+            tf_parts.append(f"trigger={self.trigger_timeframe.value}")
+        tf_suffix = f" {' '.join(tf_parts)}" if tf_parts else ""
         return (
             f"Signal({self.coin} {self.direction.value} "
-            f"conf={self.confidence:.2f} src={self.source!r})"
+            f"conf={self.confidence:.2f} src={self.source!r}{tf_suffix})"
         )
 
 

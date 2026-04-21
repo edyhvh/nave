@@ -1,0 +1,350 @@
+{
+  "period": "2020-covid-crash",
+  "start_date": "2020-01-01",
+  "end_date": "2020-06-30",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {
+      "1W": "26 rows 2020-01-06\u21922020-06-29",
+      "1D": "182 rows 2020-01-01\u21922020-06-30",
+      "4H": "1086 rows 2020-01-01\u21922020-06-30",
+      "1H": "4333 rows 2020-01-01\u21922020-06-30"
+    },
+    "ETH": {
+      "1W": "26 rows 2020-01-06\u21922020-06-29",
+      "1D": "182 rows 2020-01-01\u21922020-06-30",
+      "4H": "1086 rows 2020-01-01\u21922020-06-30",
+      "1H": "4333 rows 2020-01-01\u21922020-06-30"
+    }
+  },
+  "per_coin": {
+    "BTC": {
+      "weekly": {
+        "signals": 26,
+        "correct": 2,
+        "incorrect": 4,
+        "accuracy": 0.3333,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 26,
+        "correct": 11,
+        "incorrect": 7,
+        "accuracy": 0.6111,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 11,
+        "correct": 2,
+        "incorrect": 9,
+        "accuracy": 0.1818,
+        "entry_examples": [
+          {
+            "setup_date": "2020-03-09",
+            "direction": "short",
+            "entry_price_1H": 8081.54,
+            "SL": 8788.98,
+            "TP": 6666.66,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-03-16",
+            "direction": "short",
+            "entry_price_1H": 5254.74,
+            "SL": 5940.0,
+            "TP": 3884.22,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-03-23",
+            "direction": "short",
+            "entry_price_1H": 5903.84,
+            "SL": 6407.87,
+            "TP": 4895.78,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-04-27",
+            "direction": "long",
+            "entry_price_1H": 7741.66,
+            "SL": 7480.0,
+            "TP": 8264.98,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-05-18",
+            "direction": "long",
+            "entry_price_1H": 9778.38,
+            "SL": 9432.04,
+            "TP": 10471.06,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-06-08",
+            "direction": "long",
+            "entry_price_1H": 9761.17,
+            "SL": 9372.46,
+            "TP": 10538.59,
+            "outcome": "incorrect"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 6,
+        "correct": 2,
+        "incorrect": 4,
+        "accuracy": 0.3333,
+        "entry_examples": [
+          {
+            "setup_date": "2020-03-09",
+            "direction": "short",
+            "entry_price_1H": 8081.54,
+            "SL": 8788.98,
+            "TP": 6666.66,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-03-16",
+            "direction": "short",
+            "entry_price_1H": 5254.74,
+            "SL": 5940.0,
+            "TP": 3884.22,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-03-23",
+            "direction": "short",
+            "entry_price_1H": 5903.84,
+            "SL": 6407.87,
+            "TP": 4895.78,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-04-27",
+            "direction": "long",
+            "entry_price_1H": 7741.66,
+            "SL": 7480.0,
+            "TP": 8264.98,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-05-18",
+            "direction": "long",
+            "entry_price_1H": 9778.38,
+            "SL": 9432.04,
+            "TP": 10471.06,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-06-08",
+            "direction": "long",
+            "entry_price_1H": 9761.17,
+            "SL": 9372.46,
+            "TP": 10538.59,
+            "outcome": "incorrect"
+          }
+        ]
+      }
+    },
+    "ETH": {
+      "weekly": {
+        "signals": 26,
+        "correct": 3,
+        "incorrect": 7,
+        "accuracy": 0.3,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 26,
+        "correct": 13,
+        "incorrect": 5,
+        "accuracy": 0.7222,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 13,
+        "correct": 3,
+        "incorrect": 10,
+        "accuracy": 0.2308,
+        "entry_examples": [
+          {
+            "setup_date": "2020-03-02",
+            "direction": "short",
+            "entry_price_1H": 218.92,
+            "SL": 227.89,
+            "TP": 200.98,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-03-09",
+            "direction": "short",
+            "entry_price_1H": 203.14,
+            "SL": 234.19,
+            "TP": 141.04,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-03-16",
+            "direction": "short",
+            "entry_price_1H": 121.6,
+            "SL": 133.5,
+            "TP": 97.8,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-03-23",
+            "direction": "short",
+            "entry_price_1H": 124.12,
+            "SL": 137.13,
+            "TP": 98.1,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-04-20",
+            "direction": "long",
+            "entry_price_1H": 182.21,
+            "SL": 175.75,
+            "TP": 195.13,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-04-27",
+            "direction": "long",
+            "entry_price_1H": 197.89,
+            "SL": 192.3,
+            "TP": 209.07,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-05-18",
+            "direction": "long",
+            "entry_price_1H": 208.65,
+            "SL": 200.52,
+            "TP": 224.91,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-06-01",
+            "direction": "long",
+            "entry_price_1H": 233.3,
+            "SL": 229.58,
+            "TP": 240.74,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-06-08",
+            "direction": "long",
+            "entry_price_1H": 244.16,
+            "SL": 234.6,
+            "TP": 263.28,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-06-22",
+            "direction": "long",
+            "entry_price_1H": 228.61,
+            "SL": 227.11,
+            "TP": 231.61,
+            "outcome": "correct"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 10,
+        "correct": 3,
+        "incorrect": 7,
+        "accuracy": 0.3,
+        "entry_examples": [
+          {
+            "setup_date": "2020-03-02",
+            "direction": "short",
+            "entry_price_1H": 218.92,
+            "SL": 227.89,
+            "TP": 200.98,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-03-09",
+            "direction": "short",
+            "entry_price_1H": 203.14,
+            "SL": 234.19,
+            "TP": 141.04,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-03-16",
+            "direction": "short",
+            "entry_price_1H": 121.6,
+            "SL": 133.5,
+            "TP": 97.8,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-03-23",
+            "direction": "short",
+            "entry_price_1H": 124.12,
+            "SL": 137.13,
+            "TP": 98.1,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-04-20",
+            "direction": "long",
+            "entry_price_1H": 182.21,
+            "SL": 175.75,
+            "TP": 195.13,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-04-27",
+            "direction": "long",
+            "entry_price_1H": 197.89,
+            "SL": 192.3,
+            "TP": 209.07,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-05-18",
+            "direction": "long",
+            "entry_price_1H": 208.65,
+            "SL": 200.52,
+            "TP": 224.91,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-06-01",
+            "direction": "long",
+            "entry_price_1H": 233.3,
+            "SL": 229.58,
+            "TP": 240.74,
+            "outcome": "correct"
+          },
+          {
+            "setup_date": "2020-06-08",
+            "direction": "long",
+            "entry_price_1H": 244.16,
+            "SL": 234.6,
+            "TP": 263.28,
+            "outcome": "incorrect"
+          },
+          {
+            "setup_date": "2020-06-22",
+            "direction": "long",
+            "entry_price_1H": 228.61,
+            "SL": 227.11,
+            "TP": 231.61,
+            "outcome": "correct"
+          }
+        ]
+      }
+    }
+  },
+  "top_failure_patterns": [
+    "entry triggered but TP not reached (x11)",
+    "4H setup invalid after daily confirm (x8)"
+  ],
+  "data_gaps": []
+}

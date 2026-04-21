@@ -1,0 +1,27 @@
+{
+  "period": "2024-2025-bull",
+  "start_date": "2024-07-01",
+  "end_date": "2025-03-31",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {
+      "1W": "39 rows 2024-07-07\u21922025-03-30",
+      "1D": "274 rows 2024-07-01\u21922025-03-31",
+      "4H": "1639 rows 2024-07-01\u21922025-03-31"
+    },
+    "ETH": {
+      "1W": "39 rows 2024-07-07\u21922025-03-30",
+      "1D": "274 rows 2024-07-01\u21922025-03-31",
+      "4H": "1639 rows 2024-07-01\u21922025-03-31"
+    }
+  },
+  "per_coin": {},
+  "top_failure_patterns": [],
+  "data_gaps": [
+    "BTC 1H: local file data/hyperliquid_snapshots/BTC_1h.parquet did not cover 2024-07-01 \u2192 2025-03-31 and remote gap-fill returned nothing",
+    "ETH 1H: local file data/hyperliquid_snapshots/ETH_1h.parquet did not cover 2024-07-01 \u2192 2025-03-31 and remote gap-fill returned nothing"
+  ]
+}

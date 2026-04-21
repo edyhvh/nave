@@ -96,6 +96,30 @@ class HermesNaveIntegration:
                         },
                     },
                 },
+                {
+                    "name": "theory_v2_scan",
+                    "description": (
+                        "Daily top-down theory v2 scan — evaluates weekly momentum → "
+                        "daily confirm → climax cooldown → chase gate → 4H → 1H for each "
+                        "coin and returns the full decision trace (stage, reason, bias, "
+                        "fired?). The agent uses this to decide whether to open positions."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "coins": {"type": "string", "default": self.defaults.coins},
+                        },
+                    },
+                },
+                {
+                    "name": "strategy_context",
+                    "description": (
+                        "Return the current theory v2 configuration, pooled backtest "
+                        "metrics, regime coverage, and known blind spots. Use alongside "
+                        "theory_v2_scan so the agent can explain why a decision was made."
+                    ),
+                    "input_schema": {"type": "object", "properties": {}},
+                },
             ],
         }
 
@@ -265,6 +289,149 @@ class HermesNaveIntegration:
             "plan": _to_jsonable(plans),
         }
 
+    def theory_v2_scan(
+        self,
+        *,
+        coins: str = "BTC ETH",
+    ) -> dict[str, Any]:
+        """Run the theory v2 engine on each coin and return the full decision trace.
+
+        Each coin receives a decision record with ``stage`` (where evaluation
+        stopped), ``reason`` (human-readable explanation), ``bias``, and — when
+        a signal fires — the full entry/stop/target geometry. The caller
+        (Hermes / MCP client) uses this to decide whether to open positions.
+        """
+        coin_list = [coin.strip().upper() for coin in coins.split() if coin.strip()]
+        if not coin_list:
+            raise HermesIntegrationError("At least one coin is required for theory_v2_scan")
+
+        from trading.theory_v2 import build_signals_for_coins  # local to keep import light
+
+        signals, decisions = build_signals_for_coins(coin_list)
+
+        coin_payload: dict[str, Any] = {}
+        for decision in decisions:
+            entry: dict[str, Any] = {
+                "bias": decision.bias,
+                "stage": decision.stage,
+                "reason": decision.reason,
+                "daily_confirmed": decision.daily_confirmed,
+                "setup_valid": decision.setup_valid,
+                "fired": decision.signal is not None,
+            }
+            if decision.signal is not None:
+                sig = decision.signal
+                meta = sig.metadata or {}
+                entry["signal"] = {
+                    "direction": sig.direction.value,
+                    "confidence": sig.confidence,
+                    "entry_price": meta.get("entry_price"),
+                    "stop_loss": sig.invalidation,
+                    "targets": list(sig.targets),
+                    "zc1_rr": meta.get("zc1_rr"),
+                    "stop_distance_pct": meta.get("stop_distance"),
+                    "weekly_velocity_atr": meta.get("weekly_velocity_atr"),
+                    "daily_atr_14": meta.get("daily_atr_14"),
+                    "retrace_fraction": meta.get("retrace_fraction"),
+                    "bias_timeframe": sig.bias_timeframe.value if sig.bias_timeframe else None,
+                    "setup_timeframe": sig.setup_timeframe.value if sig.setup_timeframe else None,
+                    "trigger_timeframe": sig.trigger_timeframe.value if sig.trigger_timeframe else None,
+                }
+            coin_payload[decision.coin] = entry
+
+        fires = [d.coin for d in decisions if d.signal is not None]
+
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "coins": coin_payload,
+            "summary": {
+                "evaluated": [d.coin for d in decisions],
+                "fires": fires,
+                "fire_count": len(fires),
+                "evaluation_errors": [c for c in coin_list if c not in {d.coin for d in decisions}],
+            },
+        }
+
+    def strategy_context(self) -> dict[str, Any]:
+        """Return the current theory v2 configuration and pooled backtest summary.
+
+        Static summary of iter 14 — the converged configuration merged into
+        main. Use together with ``theory_v2_scan`` so the agent can cite the
+        edge, the regime coverage, and the known blind spots when explaining
+        its recommendation.
+        """
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "version": "theory_v2.iter_14",
+            "summary": (
+                "Top-down high-momentum pipeline: weekly velocity gate → "
+                "daily confirmation → climax cooldown → chase gate → 4H setup → "
+                "1H trigger. Iter 14 converged via parameter sweep."
+            ),
+            "pipeline": [
+                {"timeframe": "1W", "gate": "momentum_bias", "role": "direction"},
+                {"timeframe": "1W", "gate": "weekly_cot_filter", "role": "positioning"},
+                {"timeframe": "1D", "gate": "daily_confirms", "role": "confirmation"},
+                {"timeframe": "1D", "gate": "climax_cooldown", "role": "risk_gate"},
+                {"timeframe": "1D", "gate": "chase_gate", "role": "entry_band"},
+                {"timeframe": "4H", "gate": "four_h_setup_valid", "role": "structure"},
+                {"timeframe": "1H", "gate": "one_h_entry", "role": "trigger"},
+            ],
+            "parameters": {
+                "weekly_momentum": {
+                    "min_velocity_atrs": 1.2,
+                    "lookback_weeks": 4,
+                    "atr_window": 8,
+                },
+                "daily_confirm": {"sma_period": 10},
+                "chase_gate": {"min_retrace": 0.50, "max_retrace": 0.95},
+                "climax_cooldown": {"atr_multiple": 3.0, "cooldown_bars": 5},
+            },
+            "backtest_metrics": {
+                "window": "2017-10 → 2025-12 (9 regime periods, BTC + ETH pooled)",
+                "pooled": {
+                    "fires": 46,
+                    "win_rate": 0.778,
+                    "avg_r_per_trade": 1.18,
+                    "total_r": 42.54,
+                },
+                "per_coin": {
+                    "BTC": {"fires": 21, "win_rate": 0.765, "avg_r": 1.13, "total_r": 19.19},
+                    "ETH": {"fires": 25, "win_rate": 0.789, "avg_r": 1.23, "total_r": 23.35},
+                },
+                "regime_coverage": {
+                    "2017-2018-cycle": 9.90,
+                    "2020-ATH": None,
+                    "2022-bear": 5.06,
+                    "2023-recovery": 9.22,
+                    "2024-2025-bull": 1.70,
+                },
+            },
+            "known_blind_spots": [
+                {
+                    "name": "range_breakout",
+                    "description": (
+                        "4-week momentum window goes flat during multi-week "
+                        "consolidations; breakout is detected 1-2 weeks late. "
+                        "Example: Apr 2026 BTC rally fired at $76,361, ~2.5% "
+                        "off the peak."
+                    ),
+                    "iter_ref": "iter_16",
+                },
+                {
+                    "name": "cot_extreme_block",
+                    "description": (
+                        "Weekly COT filter rejects setups when speculator "
+                        "positioning is at 95th+ percentile, even if momentum "
+                        "qualifies. By design — reversal-risk gate."
+                    ),
+                    "iter_ref": "iter_11",
+                },
+            ],
+            "iter_history_path": "docs/analysis/iterations/",
+            "engine_source": "trading/theory_v2.py",
+        }
+
     def dispatch_tool_call(
         self, tool_name: str, arguments: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -274,6 +441,8 @@ class HermesNaveIntegration:
             "cot_report": self.cot_report,
             "cot_history": self.cot_history,
             "weekly_plan": self.weekly_plan,
+            "theory_v2_scan": self.theory_v2_scan,
+            "strategy_context": self.strategy_context,
         }
 
         handler = handlers.get(tool_name)

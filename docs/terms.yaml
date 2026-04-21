@@ -368,3 +368,257 @@ terms:
   english: Price vs Value vs Cost
 - spanish: Opción sin cobertura
   english: Naked Option (position without hedge coverage)
+
+# ===========================================================================
+# PHASE 1 ADDITIONS — from docs/elcriptopanavideos.md
+# ===========================================================================
+
+# --- Execution and timeframe terms ---
+- spanish: Temporalidad mayor
+  english: Higher Timeframe (HTF — weekly/daily in this project)
+- spanish: Temporalidad menor
+  english: Lower Timeframe (LTF — 4H/1H in this project)
+- spanish: Top-down
+  english: Top-down (HTF → LTF execution pipeline)
+- spanish: Gatillo de entrada
+  english: Entry Trigger (the specific LTF pattern that fires the order)
+- spanish: Zona de entrada
+  english: Entry Zone (the 4H range inside which a 1H trigger is valid)
+- spanish: Cacería de liquidez
+  english: Liquidity Hunt / Stop Hunt (same as Stop Loss Hunt)
+- spanish: PFQ fractálico
+  english: Fractal False Breakout Pattern (false breakout observed on LTF that
+    composes a HTF candle — 5 daily candles compose 1 weekly)
+- spanish: BOS
+  english: Break of Structure (quiebre de estructura — break of the last swing
+    in the direction of a new bias)
+- spanish: CHoCH
+  english: Change of Character (first structural signal that a new direction
+    is forming, before BOS confirms it)
+- spanish: BEN
+  english: Block Between Levels (bloque entre niveles — zone between a true
+    swing and the nearest institutional level 00/20/50/80)
+- spanish: Primera Zona de Confluencia
+  english: First Confluence Zone (ZC1 — first profit-taking level)
+- spanish: Segunda Zona de Confluencia
+  english: Second Confluence Zone (ZC2 — deeper liquidity pool, used as
+    extended target or sweep-reversal entry zone)
+- spanish: Flip
+  english: Flip (prior support becomes resistance or vice versa after a break)
+- spanish: Niveles institucionales
+  english: Institutional Levels (round numbers ending in 00, 20, 50, 80 — the
+    default targets of institutional trading software)
+
+# --- Retracement and phase terms ---
+- spanish: Retroceso al 50%
+  english: 50% Retracement (alert only, NEVER an entry — common retail trap)
+- spanish: Retroceso al 75%
+  english: 75% Retracement (minimum acceptable entry zone)
+- spanish: Retroceso al 86%
+  english: 86% Retracement (optimal entry — corresponds to institutional flow
+    withdrawal per BIS interbank study)
+- spanish: Retroceso al 90%
+  english: 90%+ Retracement (deep entry for wide-spread venues or high-conviction setups)
+- spanish: Post-momentum
+  english: Post-Momentum (the phase to wait for after an impulse, before
+    repositioning pre-momentum)
+
+# --- Market structure and order flow ---
+- spanish: Libro de órdenes
+  english: Order Book (the structure of bids and asks at each price level)
+- spanish: Boy stops
+  english: Buy Stops (pending buy-stop orders above swing highs — liquidity
+    above price)
+- spanish: Sell stops
+  english: Sell Stops (pending sell-stop orders below swing lows — liquidity
+    below price)
+- spanish: Buy limits
+  english: Buy Limits (pending buy-limit orders below price)
+- spanish: Sell limits
+  english: Sell Limits (pending sell-limit orders above price)
+- spanish: Horquilla
+  english: Bid/Ask Horquilla (Spanish term for the bid-ask spread)
+- spanish: Precio bid
+  english: Bid Price (best price a buyer is willing to pay)
+- spanish: Precio ask
+  english: Ask Price (best price a seller is willing to accept)
+- spanish: Liquidity provider
+  english: Liquidity Provider (dealer / market maker that supplies the bid and ask)
+- spanish: Aggregator
+  english: Aggregator (software that composites quotes from many venues and
+    publishes a unified price to brokers — e.g. Fortex, eSpeed)
+- spanish: Dealer
+  english: Dealer (institutional counterparty that trades on own account)
+- spanish: Interdealer
+  english: Inter-Dealer (dealer-to-dealer market participant)
+- spanish: Cámara de compensación
+  english: Clearing House (the legal counterparty to all futures contracts —
+    guarantees both sides fulfill their obligations)
+- spanish: Offset risk
+  english: Offset Risk / Tercerización del riesgo (the process of passing
+    risk from one counterparty to another for a fee)
+
+# --- COT and sentiment ---
+- spanish: Comerciales
+  english: Commercials (hedgers — defensive, liquidate at USD, operate against
+    the trend at extremes, provide liquidity)
+- spanish: No comerciales
+  english: Non-Commercials (speculators / trend followers — offensive, follow
+    the trend, closest analog to retail speculators)
+- spanish: Reportable
+  english: Reportable (CFTC term for entities whose positions must be reported)
+- spanish: Línea cero
+  english: Zero Line (in COT charts, the line that separates net-long from
+    net-short positioning — crossings signal market-maker model transitions)
+
+# --- Derivatives and instruments ---
+- spanish: Contrato futuro
+  english: Futures Contract (standardized contract to buy/sell an asset at a
+    future date and price)
+- spanish: Forward
+  english: Forward (bilateral, non-standardized futures contract — precursor
+    to modern futures)
+- spanish: Swap
+  english: Swap (derivative exchanging cash flows between two parties)
+- spanish: CFD
+  english: Contract for Difference (bet on price difference without holding
+    the underlying)
+- spanish: Opción financiera
+  english: Financial Option (right but not obligation to buy/sell at a strike)
+- spanish: Prima
+  english: Premium (upfront payment for a derivative — e.g., option premium
+    or futures margin)
+- spanish: Margen
+  english: Margin (collateral required to hold a futures position)
+- spanish: Garantía
+  english: Guarantee (collateral deposited with the clearing house)
+- spanish: Apalancamiento
+  english: Leverage (borrowed capital used to increase position size)
+- spanish: Vencimiento
+  english: Expiry / Maturity (the date a futures contract settles)
+- spanish: Rollover
+  english: Rollover (closing a futures position before expiry and opening the
+    same position in the next contract)
+- spanish: Subyacente
+  english: Underlying (the asset a derivative is based on)
+- spanish: Tamaño del contrato
+  english: Contract Size (how much of the underlying one contract represents)
+- spanish: Tick value
+  english: Tick Value (monetary value of the smallest price move in a contract)
+- spanish: Costo del carry
+  english: Cost of Carry (the difference between spot and futures price,
+    driven by interest rates and storage/convenience)
+- spanish: Carry trade
+  english: Carry Trade (borrow in low-yield currency, invest in high-yield;
+    profit from the interest differential plus any directional move)
+- spanish: Precio spot
+  english: Spot Price (price for immediate delivery)
+- spanish: Paridad futuro-spot
+  english: Futures-Spot Parity (the relationship between futures and spot
+    prices at expiry — they must converge)
+- spanish: Contango
+  english: Contango (futures priced higher than spot — normal carry market)
+- spanish: Backwardation
+  english: Backwardation (futures priced lower than spot — often signals
+    supply stress or strong immediate demand)
+
+# --- Greeks and risk metrics ---
+- spanish: Delta
+  english: Delta (option Greek — sensitivity to underlying price)
+- spanish: Gamma
+  english: Gamma (rate of change of delta)
+- spanish: Theta
+  english: Theta (time decay — position loses value as time passes)
+- spanish: Vega
+  english: Vega (sensitivity to implied volatility)
+- spanish: Alfa
+  english: Alpha (excess return above a benchmark)
+- spanish: Beta
+  english: Beta (correlation with a benchmark — volatility relative to market)
+
+# --- Player types ---
+- spanish: Hedger / Coverturista
+  english: Hedger / Coverturista (market participant using derivatives to
+    cover underlying exposure — primary purpose of derivatives)
+- spanish: Especulador
+  english: Speculator (takes positions for profit without underlying exposure)
+- spanish: Arbitrador
+  english: Arbitrageur (exploits price differences between venues or instruments)
+- spanish: Pro trader
+  english: Pro Trader (FINRA Series 57 certified, works for a firm, targets a
+    fixed annual % return, 80% fundamental 20% technical)
+- spanish: Retailer
+  english: Retailer (small, typically uncovered, speculator — the 14% of
+    forex flow per BIS)
+- spanish: Cliente premium
+  english: Premium Client (high-tier client of a bank/broker with access to
+    tighter spreads and better execution)
+- spanish: SIFI
+  english: Systemically Important Financial Institution (the ~36 global banks
+    that dominate interbank flow)
+
+# --- Frameworks, algorithms, studies ---
+- spanish: Money market
+  english: Money Market (short-term debt and central-bank lending operations)
+- spanish: Price discovery
+  english: Price Discovery (the process by which bid/ask converge into a
+    "price" through many venues)
+- spanish: Interbank market
+  english: Interbank Market (the market where banks trade with each other —
+    where 86% of forex flow happens)
+- spanish: Ebitda / IPDA algorithm
+  english: IPDA / Interbank Price Delivery Algorithm (EXPLANATORY MODEL, NOT
+    a literal unified algorithm — each bank runs its own algos, correlation
+    emerges from shared incentives. See technical.yaml interbank_reality)
+- spanish: Machine engine
+  english: Matching Engine (software that pairs buy and sell orders at a venue)
+- spanish: Aceleración de cash flow
+  english: Cash Flow Acceleration (sudden increase in interbank flow at a
+    confluence zone — the visible footprint of institutional entry)
+- spanish: Re-pricing
+  english: Re-pricing (rprising — when a market maker adjusts their cuote
+    after a displacement; corresponds to the pullback we wait for)
+- spanish: Liquidación a dólar
+  english: USD Liquidation (banks default to liquidating positions in USD
+    when a move exceeds their comfort zone — why USD strengthens into shocks)
+- spanish: Hoja de balance
+  english: Balance Sheet (a bank's asset/liability ledger — drives their
+    willingness to take on position risk)
+- spanish: Risk-on / Risk-off
+  english: Risk-On / Risk-Off (macro regime — risk appetite open vs closed)
+- spanish: Low volatility low beta
+  english: Low Volatility / Low Beta (the state market makers prefer and
+    actively defend)
+
+# --- Psychology and discipline ---
+- spanish: Francotirador
+  english: Sniper (the mindset of a pro trader — wait for the exact setup,
+    skip the rest)
+- spanish: Curva de aprendizaje
+  english: "Learning Curve (four stages: unconscious incompetence → conscious incompetence → conscious competence → unconscious/intuitive competence)"
+- spanish: Plan de contingencia
+  english: Contingency Plan (what to do if the setup fails — defined before
+    entry, never during)
+- spanish: Ejecución impoluta
+  english: Clean Execution ("no buscamos posiciones perfectas sino ejecuciones
+    impolutas de un plan definido")
+- spanish: Consistencia
+  english: Consistency (repeating the same process across many trades — the
+    only way the statistical edge shows up)
+
+# --- Metaphors from the transcripts ---
+- spanish: Ballena
+  english: Whale (large market participant moving enough capital to create a
+    visible footprint)
+- spanish: Ninfa del bosque
+  english: Nymph of the Forest (Pana's metaphor for retail traders chasing
+    price without understanding — they become liquidity for the hunters)
+- spanish: Cazador
+  english: Hunter (the trader who waits for the setup and takes liquidity
+    from the nymphs)
+- spanish: Caminito de hormigas
+  english: Ant Trail (price as stochastic directional system — directional
+    but not precisely predictable; same entry as existing terms.yaml)
+- spanish: Pastilla roja
+  english: Red Pill (Pana's Matrix metaphor for seeing the market as an
+    institutional system rather than a chart)

@@ -1,0 +1,107 @@
+{
+  "period": "TODAY",
+  "start_date": "2026-01-09",
+  "end_date": "2026-04-09",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "data_sources": {
+    "BTC": {
+      "1W": "13 rows 2026-01-11\u21922026-04-05",
+      "1D": "89 rows 2026-01-09\u21922026-04-07",
+      "4H": "531 rows 2026-01-09\u21922026-04-07",
+      "1H": "2121 rows 2026-01-09\u21922026-04-07"
+    },
+    "ETH": {
+      "1W": "13 rows 2026-01-11\u21922026-04-05",
+      "1D": "89 rows 2026-01-09\u21922026-04-07",
+      "4H": "531 rows 2026-01-09\u21922026-04-07",
+      "1H": "2121 rows 2026-01-09\u21922026-04-07"
+    }
+  },
+  "per_coin": {
+    "BTC": {
+      "weekly": {
+        "signals": 13,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": null,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 13,
+        "correct": 1,
+        "incorrect": 4,
+        "accuracy": 0.2,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 1,
+        "correct": 0,
+        "incorrect": 1,
+        "accuracy": 0.0,
+        "entry_examples": []
+      },
+      "1H": {
+        "signals": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": null,
+        "entry_examples": []
+      }
+    },
+    "ETH": {
+      "weekly": {
+        "signals": 13,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": null,
+        "entry_examples": []
+      },
+      "daily": {
+        "signals": 13,
+        "correct": 1,
+        "incorrect": 3,
+        "accuracy": 0.25,
+        "entry_examples": []
+      },
+      "4H": {
+        "signals": 1,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": null,
+        "entry_examples": [
+          {
+            "setup_date": "2026-04-06",
+            "direction": "long",
+            "entry_price_1H": 2121.0,
+            "SL": 2021.0,
+            "TP": 2321.0,
+            "outcome": "unresolved"
+          }
+        ]
+      },
+      "1H": {
+        "signals": 1,
+        "correct": 0,
+        "incorrect": 0,
+        "accuracy": null,
+        "entry_examples": [
+          {
+            "setup_date": "2026-04-06",
+            "direction": "long",
+            "entry_price_1H": 2121.0,
+            "SL": 2021.0,
+            "TP": 2321.0,
+            "outcome": "unresolved"
+          }
+        ]
+      }
+    }
+  },
+  "top_failure_patterns": [
+    "4H setup invalid after daily confirm (x1)"
+  ],
+  "data_gaps": []
+}
