@@ -15,8 +15,10 @@ from trading.theory_v2 import (
     detect_climax_cooldown,
     find_impulse_leg,
     four_h_setup_valid,
+    momentum_bias,
     one_h_entry,
     trend,
+    weekly_atr,
     weekly_bias,
 )
 
@@ -67,6 +69,71 @@ def test_trend_neutral_inside_deadband():
 
 def test_weekly_bias_neutral_on_empty():
     assert weekly_bias(pd.DataFrame()) == "neutral"
+
+
+# --------------------------------------------------------------------------- #
+# Iter 13 — momentum_bias (velocity-normalized weekly displacement)
+# --------------------------------------------------------------------------- #
+
+
+def test_momentum_bias_neutral_on_empty():
+    bias, velocity = momentum_bias(pd.DataFrame())
+    assert bias == "neutral"
+    assert velocity is None
+
+
+def test_momentum_bias_neutral_on_slow_grind():
+    # +0.05% per bar over 20 weekly bars — real trend but tiny velocity.
+    values = [100.0 + i * 0.05 for i in range(20)]
+    weekly = _ohlc(values, spread=2.0)  # large spread inflates ATR → low score
+    bias, velocity = momentum_bias(weekly)
+    assert bias == "neutral"
+    assert velocity is not None and abs(velocity) < 1.5
+
+
+def test_momentum_bias_long_on_fast_up_move():
+    # +2 per bar, modest spread — displacement=8 over 4 bars, ATR≈2.5 → v≈3.2
+    values = [100.0 + i * 2 for i in range(20)]
+    weekly = _ohlc(values, spread=0.5)
+    bias, velocity = momentum_bias(weekly)
+    assert bias == "long"
+    assert velocity is not None and velocity > 1.5
+
+
+def test_momentum_bias_short_on_fast_down_move():
+    values = [200.0 - i * 2 for i in range(20)]
+    weekly = _ohlc(values, spread=0.5)
+    bias, velocity = momentum_bias(weekly)
+    assert bias == "short"
+    assert velocity is not None and velocity < -1.5
+
+
+def test_momentum_bias_neutral_on_choppy_net_zero():
+    # Oscillates around 100 with no net displacement over 4 bars.
+    values = [100.0, 105.0, 100.0, 105.0] * 5
+    weekly = _ohlc(values, spread=0.5)
+    bias, velocity = momentum_bias(weekly)
+    assert bias == "neutral"
+
+
+def test_weekly_atr_positive_on_ramp():
+    weekly = _ohlc([100.0 + i for i in range(20)], spread=0.5)
+    atr = weekly_atr(weekly, window=8)
+    assert atr is not None and atr > 0
+
+
+def test_engine_rejects_slow_trend_even_if_direction_right():
+    """A slow grind with real direction but low velocity must be rejected
+    at the weekly stage under the momentum gate."""
+    # +0.05 per bar, spread 2.0 → velocity well below 1.5
+    weekly = _ohlc([100.0 + i * 0.05 for i in range(30)], spread=2.0)
+    daily = _ohlc([100.0 + i * 0.5 for i in range(40)], spread=0.5)
+    h4 = _ohlc([100.0 + i * 0.2 for i in range(30)])
+    h1 = _ohlc([100.0 + i * 0.1 for i in range(30)])
+    decision = TheoryV2Engine().evaluate("BTC", weekly, daily, h4, h1)
+    assert decision.stage == "weekly"
+    assert decision.signal is None
+    assert "velocity" in decision.reason
 
 
 def test_daily_confirms_matches_bias():

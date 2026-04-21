@@ -17,8 +17,9 @@ the iter 3–6 theory loop, which the backtest engine never implemented:
 
 Pipeline (each gate must pass before the next is checked):
 
-    weekly bias        → trend over 8 weekly closes
-    daily confirmation → trend over 20 daily closes must match weekly bias
+    weekly momentum    → velocity over 4 weekly bars must exceed 1.5 weekly
+                         ATRs (iter 13 — high-momentum regime)
+    daily confirmation → trend over 20 daily closes must match bias
     post-climax gate   → no daily TR > 3× 20-day ATR within last 10 days
     chase gate         → price inside 50–95% retracement of latest
                          daily impulse leg
@@ -77,6 +78,60 @@ def weekly_bias(weekly: pd.DataFrame) -> str:
     if weekly.empty:
         return "neutral"
     return trend(weekly["close"], window=8, deadband=0.04)
+
+
+def _true_range(df: pd.DataFrame) -> pd.Series:
+    """Per-bar true range for an OHLC frame."""
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    close = df["close"].astype(float)
+    prev_close = close.shift(1)
+    return pd.concat(
+        [high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+        axis=1,
+    ).max(axis=1)
+
+
+def weekly_atr(weekly: pd.DataFrame, window: int = 8) -> float | None:
+    """Weekly ATR over the last ``window`` weekly bars."""
+    if len(weekly) < window + 1:
+        return None
+    tr = _true_range(weekly)
+    atr = float(tr.tail(window).mean())
+    return atr if atr > 0 else None
+
+
+def momentum_bias(
+    weekly: pd.DataFrame,
+    lookback: int = 4,
+    min_velocity: float = 1.5,
+    atr_window: int = 8,
+) -> tuple[str, float | None]:
+    """High-momentum bias: price must move fast relative to its own volatility.
+
+    Velocity = (close_now − close_{lookback bars ago}) / weekly ATR.
+
+    A positive velocity above ``min_velocity`` means price rose more than
+    ``min_velocity`` weekly ATRs in ``lookback`` weeks → high-momentum up-move.
+    The symmetric rule fires shorts. Slow grinds (low displacement) and chop
+    (alternating bars that cancel out) yield velocity near zero → neutral.
+
+    Returns ``(bias, velocity)`` so the engine can surface the score in its
+    decision metadata.
+    """
+    if weekly.empty or len(weekly) < max(lookback + 1, atr_window + 1):
+        return "neutral", None
+    atr = weekly_atr(weekly, atr_window)
+    if atr is None:
+        return "neutral", None
+    close = weekly["close"].astype(float)
+    displacement = float(close.iloc[-1] - close.iloc[-lookback - 1])
+    velocity = displacement / atr
+    if velocity > min_velocity:
+        return "long", velocity
+    if velocity < -min_velocity:
+        return "short", velocity
+    return "neutral", velocity
 
 
 def daily_confirms(daily: pd.DataFrame, bias: str) -> bool:
@@ -405,9 +460,13 @@ class TheoryV2Engine:
         h1: pd.DataFrame,
         as_of: pd.Timestamp | None = None,
     ) -> TheoryV2Decision:
-        bias = weekly_bias(weekly)
+        bias, velocity = momentum_bias(weekly)
         if bias == "neutral":
-            return TheoryV2Decision(coin, bias, False, False, "weekly", "no weekly bias")
+            vel_str = f"{velocity:+.2f}" if velocity is not None else "n/a"
+            return TheoryV2Decision(
+                coin, bias, False, False, "weekly",
+                f"no high-momentum weekly bias (velocity={vel_str} ATRs)",
+            )
 
         if self.cot_history_fn is not None:
             ts = as_of if as_of is not None else pd.Timestamp.now(tz="UTC")
@@ -467,6 +526,7 @@ class TheoryV2Engine:
                 "zc1_rr": round(zc1_rr, 2),
                 "daily_atr_14": atr,
                 "retrace_fraction": retrace,
+                "weekly_velocity_atr": round(velocity, 2) if velocity is not None else None,
             },
         )
         return TheoryV2Decision(coin, bias, True, True, "fired", chase_reason, signal)
@@ -570,6 +630,7 @@ def _format_decision(decision: TheoryV2Decision) -> str:
         zc1_rr = m.get("zc1_rr")
         atr = m.get("daily_atr_14")
         retrace = m.get("retrace_fraction")
+        velocity = m.get("weekly_velocity_atr")
         lines = [
             f"  ACTION    : {sig.direction.value.upper()}",
             f"  Entry     : {m.get('entry_price'):.2f}",
@@ -585,6 +646,8 @@ def _format_decision(decision: TheoryV2Decision) -> str:
             lines.append(f"  Daily ATR : {atr:.2f}")
         if retrace is not None:
             lines.append(f"  Retrace   : {retrace*100:.0f}% of impulse leg")
+        if velocity is not None:
+            lines.append(f"  Momentum  : {velocity:+.2f} weekly ATRs / 4w")
         body = "\n".join(lines)
         return f"{header}\n  STAGE     : FIRED — {decision.reason}\n{body}"
     return (

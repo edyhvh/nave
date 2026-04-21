@@ -650,6 +650,29 @@ technical_philosophy:
         rule: >
           If rates direction and COT direction disagree, the resolution is
           neutral — we do not take trades against macro rates on that coin.
+        momentum_bias_gate:
+          rule: >
+            Weekly bias is gated by VELOCITY, not a slow SMA. A direction
+            only counts as a tradable regime when 4-week displacement
+            exceeds 1.5 weekly ATRs in that direction. Slow grinds (real
+            direction but low velocity) and choppy tapes (alternating weeks
+            that cancel out) resolve to neutral.
+          formula: >
+            velocity = (close_now − close_{4 weeks ago}) / weekly_ATR_8.
+            long  if velocity > +1.5
+            short if velocity < −1.5
+            neutral otherwise
+          rationale: >
+            Iter 12 used SMA-8 with 4% deadband — a direction classifier
+            that said nothing about how fast price was moving. That gate
+            flipped bearish on healthy bull-market pullbacks (2024-2025-bull
+            residual −3R). The transcripts' momentum definition is about
+            candle-body dominance and speed, not just sign of price change;
+            iter 13 replaces the sign classifier with a velocity classifier
+            and picks up +0.50R/trade edge on BTC at the cost of half the
+            trade count. ATR normalization keeps the threshold portable
+            across volatility regimes (quiet 2017 vs. manic 2022).
+          code: trading/theory_v2.py :: momentum_bias()
       daily:
         role: Trend confirmation and key level identification.
         inputs:
