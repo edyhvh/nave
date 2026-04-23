@@ -20,12 +20,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from hermes.integration import HermesNaveIntegration  # noqa: E402
+from hermes.integration import HermesNaveIntegration, _default_reports_dir  # noqa: E402
 
 
 def build_payload(coins: str) -> dict:
@@ -38,6 +39,10 @@ def build_payload(coins: str) -> dict:
         "scan": scan,
         "context": context,
     }
+
+
+def default_report_path() -> Path:
+    return _default_reports_dir() / f"daily_scan_{date.today().isoformat()}.json"
 
 
 def format_summary(payload: dict) -> str:
@@ -65,7 +70,17 @@ def format_summary(payload: dict) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--coins", default="BTC ETH", help="Whitespace-separated coin list")
-    parser.add_argument("--out", type=Path, default=None, help="Write JSON payload here")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Override output path. Default: var/reports/daily_scan_YYYY-MM-DD.json",
+    )
+    parser.add_argument(
+        "--no-persist",
+        action="store_true",
+        help="Skip writing to disk (scan still prints to stdout)",
+    )
     parser.add_argument(
         "--format",
         choices=("json", "human", "both"),
@@ -76,9 +91,11 @@ def main() -> int:
 
     payload = build_payload(args.coins)
 
-    if args.out is not None:
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(payload, indent=2))
+    if not args.no_persist:
+        out_path = args.out if args.out is not None else default_report_path()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(payload, indent=2))
+        payload["persisted_to"] = str(out_path)
 
     if args.format in ("human", "both"):
         print(format_summary(payload))

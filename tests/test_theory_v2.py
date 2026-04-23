@@ -17,6 +17,7 @@ from trading.theory_v2 import (
     four_h_setup_valid,
     momentum_bias,
     one_h_entry,
+    range_breakout_bias,
     trend,
     weekly_atr,
     weekly_bias,
@@ -120,6 +121,53 @@ def test_weekly_atr_positive_on_ramp():
     weekly = _ohlc([100.0 + i for i in range(20)], spread=0.5)
     atr = weekly_atr(weekly, window=8)
     assert atr is not None and atr > 0
+
+
+# --------------------------------------------------------------------------- #
+# Iter 18 — range_breakout_bias (flat consolidation + breakout fallback)
+# --------------------------------------------------------------------------- #
+
+
+def test_range_breakout_neutral_when_too_short():
+    bias, diag = range_breakout_bias(pd.DataFrame())
+    assert bias == "neutral"
+    assert diag is None
+
+
+def test_range_breakout_neutral_on_wide_prior_range():
+    # 8 prior bars spanning 100 → 130 = 30-point range, ATR ~ small → > 1.5 ATRs
+    closes = [100.0, 130.0, 105.0, 125.0, 110.0, 120.0, 115.0, 118.0, 119.0]
+    weekly = _ohlc(closes, spread=0.5)
+    bias, diag = range_breakout_bias(weekly)
+    assert bias == "neutral"
+    assert diag is not None
+    assert diag.get("reason") == "prior window not flat enough"
+
+
+def test_range_breakout_fires_long_on_fresh_breakout():
+    # 8 bars of tight consolidation around 100, then a breakout to 108
+    closes = [100.0, 100.5, 99.8, 100.3, 100.1, 99.9, 100.4, 100.2, 108.0]
+    weekly = _ohlc(closes, spread=0.2)
+    bias, diag = range_breakout_bias(weekly)
+    assert bias == "long"
+    assert diag["range_size_atrs"] <= 1.5
+    assert diag["breakout_distance_atrs"] > 0
+
+
+def test_range_breakout_fires_short_on_breakdown():
+    closes = [100.0, 100.5, 99.8, 100.3, 100.1, 99.9, 100.4, 100.2, 92.0]
+    weekly = _ohlc(closes, spread=0.2)
+    bias, diag = range_breakout_bias(weekly)
+    assert bias == "short"
+    assert diag["breakout_distance_atrs"] > 0
+
+
+def test_range_breakout_neutral_on_flat_no_breakout():
+    closes = [100.0, 100.5, 99.8, 100.3, 100.1, 99.9, 100.4, 100.2, 100.3]
+    weekly = _ohlc(closes, spread=0.2)
+    bias, diag = range_breakout_bias(weekly)
+    assert bias == "neutral"
+    assert diag["reason"] == "flat range but no breakout yet"
 
 
 def test_engine_rejects_slow_trend_even_if_direction_right():

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS launchd template for the daily theory v2 scan.
+
+  Installation:
+    1. Copy to ~/Library/LaunchAgents/com.nave.daily-scan.plist
+    2. Replace PROJECT_ROOT and PYTHON_BIN placeholders with absolute paths
+       (no ~ or $HOME — launchd does not expand them).
+    3. launchctl load ~/Library/LaunchAgents/com.nave.daily-scan.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.nave.daily-scan.plist
+
+  Logs land in {PROJECT_ROOT}/var/logs/daily_scan.{out,err}.log
+  Scan reports land in {PROJECT_ROOT}/var/reports/daily_scan_YYYY-MM-DD.json
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nave.daily-scan</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>{PYTHON_BIN}</string>
+        <string>{PROJECT_ROOT}/scripts/daily_scan.py</string>
+        <string>--coins</string>
+        <string>BTC ETH</string>
+        <string>--format</string>
+        <string>json</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>{PROJECT_ROOT}</string>
+
+    <!-- Run every day at 09:05 local time (after the US cash open). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>5</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>{PROJECT_ROOT}/var/logs/daily_scan.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>{PROJECT_ROOT}/var/logs/daily_scan.err.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
