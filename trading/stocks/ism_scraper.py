@@ -31,53 +31,9 @@ from typing import Iterable, Literal
 
 import httpx
 
+from trading.stocks.mapping import GICS_MAPPING, sector_for_ism_industry
+
 logger = logging.getLogger(__name__)
-
-
-# ── ISM industry → GICS sector mapping ────────────────────────────────────
-# Published ISM categories are industry-level; we roll them up to the 11
-# GICS sectors used by the Massive.com fundamentals API so the downstream
-# screener can ask "which tickers belong to this sector?".
-GICS_MAPPING: dict[str, str] = {
-    # Manufacturing industries
-    "apparel, leather & allied products": "Consumer Discretionary",
-    "chemical products": "Materials",
-    "computer & electronic products": "Information Technology",
-    "electrical equipment, appliances & components": "Industrials",
-    "fabricated metal products": "Industrials",
-    "food, beverage & tobacco products": "Consumer Staples",
-    "furniture & related products": "Consumer Discretionary",
-    "machinery": "Industrials",
-    "miscellaneous manufacturing": "Industrials",
-    "nonmetallic mineral products": "Materials",
-    "paper products": "Materials",
-    "petroleum & coal products": "Energy",
-    "plastics & rubber products": "Materials",
-    "primary metals": "Materials",
-    "printing & related support activities": "Industrials",
-    "textile mills": "Consumer Discretionary",
-    "transportation equipment": "Industrials",
-    "wood products": "Materials",
-    # Services industries (selected — full list is longer but these cover
-    # the screeners we ship today)
-    "accommodation & food services": "Consumer Discretionary",
-    "agriculture, forestry, fishing & hunting": "Materials",
-    "arts, entertainment & recreation": "Communication Services",
-    "construction": "Industrials",
-    "educational services": "Consumer Discretionary",
-    "finance & insurance": "Financials",
-    "health care & social assistance": "Health Care",
-    "information": "Communication Services",
-    "management of companies & support services": "Industrials",
-    "mining": "Materials",
-    "professional, scientific & technical services": "Industrials",
-    "public administration": "Industrials",
-    "real estate, rental & leasing": "Real Estate",
-    "retail trade": "Consumer Discretionary",
-    "transportation & warehousing": "Industrials",
-    "utilities": "Utilities",
-    "wholesale trade": "Industrials",
-}
 
 
 # Known press-release URLs. These change monthly; the landing pages we hit
@@ -160,8 +116,18 @@ class ISMReportFetcher:
         url: str | None = None,
     ) -> ISMReport:
         """Fetch and parse the latest ISM report for ``kind``."""
-        target = url or self._resolve_latest_release(kind)
-        html = self._fetch_html(target)
+        if url:
+            html = self._fetch_html(url)
+            return self._parse(html, kind=kind, source_url=url)
+        try:
+            target = self._resolve_latest_release(kind)
+            html = self._fetch_html(target)
+        except Exception as exc:
+            logger.debug(
+                "ISM live fetch failed (%s); falling back to fixture landing URL", exc
+            )
+            target = ISM_MANUFACTURING_LANDING if kind == "manufacturing" else ISM_SERVICES_LANDING
+            html = self._fetch_html(target)
         return self._parse(html, kind=kind, source_url=target)
 
     # ── Fetch layer --------------------------------------------------
@@ -227,11 +193,15 @@ class ISMReportFetcher:
         return ISM_MANUFACTURING_LANDING if kind == "manufacturing" else ISM_SERVICES_LANDING
 
     def _resolve_latest_roundup_url(self, kind: ReportKind) -> str | None:
-        headers = {"User-Agent": self.user_agent}
-        with httpx.Client(timeout=self.timeout_seconds, headers=headers) as c:
-            resp = c.get(ISM_SITEMAP_URL, follow_redirects=True)
-            resp.raise_for_status()
-            sitemap = resp.text
+        try:
+            headers = {"User-Agent": self.user_agent}
+            with httpx.Client(timeout=self.timeout_seconds, headers=headers) as c:
+                resp = c.get(ISM_SITEMAP_URL, follow_redirects=True)
+                resp.raise_for_status()
+                sitemap = resp.text
+        except Exception as exc:
+            logger.debug("ISM sitemap fetch failed: %s", exc)
+            return None
 
         all_urls = re.findall(r"<loc>(https://www\.ismworld\.org[^<]+)</loc>", sitemap)
         roundup_urls = [
@@ -244,7 +214,11 @@ class ISMReportFetcher:
         return sorted(roundup_urls)[-1]
 
     def _extract_prnewswire_url(self, roundup_url: str, *, kind: ReportKind) -> str | None:
-        html = self._fetch_html(roundup_url)
+        try:
+            html = self._fetch_html(roundup_url)
+        except Exception as exc:
+            logger.debug("Failed to fetch ISM roundup page %s: %s", roundup_url, exc)
+            return None
         links = re.findall(r'https://www\.prnewswire\.com/news-releases/[^"\'\s<]+', html)
         if not links:
             return None
@@ -380,5 +354,4 @@ def _split_industries(body: str) -> list[str]:
 def _attach_sectors(rankings: Iterable[ISMIndustryRanking]) -> None:
     """Resolve the GICS sector for each ranking, in place."""
     for r in rankings:
-        key = r.industry.strip().lower()
-        r.gics_sector = GICS_MAPPING.get(key)
+        r.gics_sector = sector_for_ism_industry(r.industry)
