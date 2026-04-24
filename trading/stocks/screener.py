@@ -83,6 +83,8 @@ class SectorScreener:
         *,
         top_n: int = 5,
         trend: str = "expanding",
+        max_pe_ratio: float | None = None,
+        min_eps_growth_next_year: float | None = None,
     ) -> list[StockCandidate]:
         """Pull candidates for each expanding sector and return the top ``top_n``."""
         sectors = report.by_sector(trend=trend)
@@ -90,9 +92,21 @@ class SectorScreener:
             raise StockScreenerError(
                 f"No {trend} sectors resolvable from ISM report {report.report_month!r}."
             )
-        return self.rank_sectors(sectors, top_n=top_n)
+        return self.rank_sectors(
+            sectors,
+            top_n=top_n,
+            max_pe_ratio=max_pe_ratio,
+            min_eps_growth_next_year=min_eps_growth_next_year,
+        )
 
-    def rank_sectors(self, sectors: list[str], *, top_n: int = 5) -> list[StockCandidate]:
+    def rank_sectors(
+        self,
+        sectors: list[str],
+        *,
+        top_n: int = 5,
+        max_pe_ratio: float | None = None,
+        min_eps_growth_next_year: float | None = None,
+    ) -> list[StockCandidate]:
         """Core ranking: fetch fundamentals + sector average, compute score."""
         candidates: list[StockCandidate] = []
         for sector in sectors:
@@ -110,6 +124,15 @@ class SectorScreener:
 
             snapshots = self.massive.batch_fundamentals(tickers)
             for snap in snapshots:
+                if max_pe_ratio is not None and (
+                    snap.pe_ratio is None or snap.pe_ratio > max_pe_ratio
+                ):
+                    continue
+                if min_eps_growth_next_year is not None and (
+                    snap.eps_growth_next_year is None
+                    or snap.eps_growth_next_year < min_eps_growth_next_year
+                ):
+                    continue
                 score, reason = self._score(snap, sector_avg_pe=sector_avg_pe)
                 candidates.append(
                     StockCandidate(

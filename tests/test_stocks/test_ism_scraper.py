@@ -7,6 +7,7 @@ import pytest
 from trading.stocks.ism_scraper import (
     GICS_MAPPING,
     ISMReportFetcher,
+    _looks_like_ism_captcha,
     _parse_industry_list,
     _strip_html,
 )
@@ -124,3 +125,46 @@ def test_fetch_with_playwright_raises_helpful_error_when_unavailable(monkeypatch
     fetcher = ISMReportFetcher(use_playwright=True)
     with pytest.raises(RuntimeError, match="Playwright is not installed"):
         fetcher._fetch_with_playwright("https://example.com")
+
+
+def test_resolve_latest_release_prefers_prnewswire_from_roundup(monkeypatch):
+    fetcher = ISMReportFetcher()
+
+    monkeypatch.setattr(
+        fetcher,
+        "_resolve_latest_roundup_url",
+        lambda kind: "https://www.ismworld.org/x/ism-pmi-reports-roundup-march-2026-manufacturing/",
+    )
+    monkeypatch.setattr(
+        fetcher,
+        "_extract_prnewswire_url",
+        lambda roundup_url, kind: "https://www.prnewswire.com/news-releases/manufacturing-pmi-at-52-7-march-2026-ism-manufacturing-pmi-report-302730721.html",
+    )
+
+    url = fetcher._resolve_latest_release("manufacturing")
+    assert "prnewswire.com" in url
+    assert "manufacturing-pmi" in url
+
+
+def test_extract_prnewswire_url_prefers_kind_specific_link(monkeypatch):
+    fetcher = ISMReportFetcher()
+    html = """
+    <a href="https://www.prnewswire.com/news-releases/other-release-1.html">x</a>
+    <a href="https://www.prnewswire.com/news-releases/services-pmi-at-54-march-2026-ism-services-pmi-report-302734026.html">y</a>
+    """
+    monkeypatch.setattr(fetcher, "_fetch_html", lambda url: html)
+
+    picked = fetcher._extract_prnewswire_url("https://www.ismworld.org/roundup", kind="services")
+    assert picked is not None
+    assert "services-pmi" in picked
+
+
+def test_detects_ism_captcha_page():
+    captcha_html = """
+    <html><body>
+    <form name="captcha_form"></form>
+    <script src="https://www.google.com/recaptcha/api.js?render=x"></script>
+    </body></html>
+    """
+    assert _looks_like_ism_captcha(captcha_html, url="https://www.ismworld.org/path")
+    assert not _looks_like_ism_captcha(captcha_html, url="https://example.com/path")

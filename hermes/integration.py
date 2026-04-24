@@ -168,6 +168,26 @@ class HermesNaveIntegration:
                         },
                     },
                 },
+                {
+                    "name": "stocks_ism_report",
+                    "description": (
+                        "Return ISM hottest/worst industries and Massive-filtered stock "
+                        "candidates based on PE and next-year EPS growth criteria."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": ["manufacturing", "services"],
+                                "default": "manufacturing",
+                            },
+                            "top_n": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
+                            "max_pe_ratio": {"type": "number"},
+                            "min_eps_growth_next_year": {"type": "number"},
+                        },
+                    },
+                },
             ],
         }
 
@@ -668,6 +688,32 @@ class HermesNaveIntegration:
             "missing": missing,
         }
 
+    def stocks_ism_report(
+        self,
+        *,
+        kind: str = "manufacturing",
+        top_n: int = 5,
+        max_pe_ratio: float | None = None,
+        min_eps_growth_next_year: float | None = None,
+    ) -> dict[str, Any]:
+        """Return ISM industry heatmap + filtered stock candidates."""
+        if kind not in {"manufacturing", "services"}:
+            raise HermesIntegrationError("kind must be manufacturing or services")
+        if top_n < 1 or top_n > 20:
+            raise HermesIntegrationError("top_n must be in [1, 20]")
+
+        from trading.stocks.reporting import build_ism_industry_report
+
+        try:
+            return build_ism_industry_report(
+                kind=kind,
+                top_n=top_n,
+                max_pe_ratio=max_pe_ratio,
+                min_eps_growth_next_year=min_eps_growth_next_year,
+            )
+        except ValueError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
     def dispatch_tool_call(
         self, tool_name: str, arguments: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -681,6 +727,7 @@ class HermesNaveIntegration:
             "strategy_context": self.strategy_context,
             "recommend_position": self.recommend_position,
             "scan_history": self.scan_history,
+            "stocks_ism_report": self.stocks_ism_report,
         }
 
         handler = handlers.get(tool_name)

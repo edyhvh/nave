@@ -91,6 +91,48 @@ def test_screener_ranks_by_pe_discount_and_eps_growth():
     assert picks[0].sector_avg_pe == 25.0
 
 
+def test_screener_applies_pe_and_eps_filters():
+    report = _make_report([("machinery", "Industrials")])
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            "GE",
+            "Industrials",
+            pe_ratio=15.0,
+            forward_pe=13.0,
+            eps_growth_next_year=12.0,
+            raw={},
+        ),
+        "CAT": FundamentalSnapshot(
+            "CAT",
+            "Industrials",
+            pe_ratio=32.0,
+            forward_pe=28.0,
+            eps_growth_next_year=11.0,
+            raw={},
+        ),
+        "HON": FundamentalSnapshot(
+            "HON",
+            "Industrials",
+            pe_ratio=18.0,
+            forward_pe=17.0,
+            eps_growth_next_year=5.0,
+            raw={},
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive({"Industrials": 25.0}, snapshots),
+        universe={"Industrials": ["GE", "CAT", "HON"]},
+    )
+
+    picks = screener.rank_from_ism(
+        report,
+        top_n=5,
+        max_pe_ratio=20.0,
+        min_eps_growth_next_year=10.0,
+    )
+    assert [p.symbol for p in picks] == ["GE"]
+
+
 def test_screener_raises_when_no_sectors_resolvable():
     # An expanding industry with no GICS mapping produces an empty list.
     report = ISMReport(
@@ -197,6 +239,48 @@ def test_strategy_live_with_stubbed_broker_captures_skip(caplog):
     summary = strategy.run_once()
     # Summary should still record the attempt; actual order call was skipped.
     assert summary["result"][0]["stubbed"] is True
+
+
+def test_strategy_passes_filter_criteria_to_screener():
+    report = _make_report([("machinery", "Industrials")])
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            "GE",
+            "Industrials",
+            pe_ratio=15.0,
+            forward_pe=13.0,
+            eps_growth_next_year=12.0,
+            raw={},
+        ),
+        "CAT": FundamentalSnapshot(
+            "CAT",
+            "Industrials",
+            pe_ratio=26.0,
+            forward_pe=22.0,
+            eps_growth_next_year=16.0,
+            raw={},
+        ),
+    }
+    massive = _FakeMassive({"Industrials": 25.0}, snapshots)
+    broker = _CountingBroker()
+
+    class _StubFetcher:
+        def fetch_report(self, kind, url=None):  # noqa: ARG002
+            return report
+
+    strategy = ISMSectorStrategy(
+        broker=broker,
+        massive=massive,
+        universe={"Industrials": ["GE", "CAT"]},
+        capital_usd=1000.0,
+        max_positions=3,
+        max_pe_ratio=20.0,
+        min_eps_growth_next_year=10.0,
+        dry_run=True,
+        fetcher=_StubFetcher(),
+    )
+    summary = strategy.run_once()
+    assert [item.symbol for item in summary["plan"]] == ["GE"]
 
 
 def test_stock_journal_tags_trades_with_stock_asset_class(tmp_path):

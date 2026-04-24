@@ -32,6 +32,7 @@ def test_list_tools_contains_required_toolset() -> None:
         "strategy_context",
         "recommend_position",
         "scan_history",
+        "stocks_ism_report",
     }.issubset(tool_names)
 
 
@@ -173,6 +174,30 @@ def test_dispatch_tool_call_routes_new_tools(monkeypatch: pytest.MonkeyPatch) ->
     assert ctx_result["ok"] is True
     assert ctx_result["tool"] == "strategy_context"
     assert ctx_result["result"]["version"] == "theory_v2.iter_18"
+
+
+def test_dispatch_tool_call_routes_stocks_ism_report(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    def fake_stocks_report(**kwargs):
+        return {"kind": "manufacturing", "criteria": kwargs, "summary": {"expanding_candidates": 1}}
+
+    monkeypatch.setattr(integration, "stocks_ism_report", fake_stocks_report)
+    result = integration.dispatch_tool_call(
+        "stocks_ism_report",
+        {"kind": "manufacturing", "top_n": 3, "max_pe_ratio": 25.0},
+    )
+    assert result["ok"] is True
+    assert result["tool"] == "stocks_ism_report"
+    assert result["result"]["criteria"]["top_n"] == 3
+
+
+def test_stocks_ism_report_validates_bounds() -> None:
+    integration = HermesNaveIntegration()
+    with pytest.raises(HermesIntegrationError):
+        integration.stocks_ism_report(kind="bad")
+    with pytest.raises(HermesIntegrationError):
+        integration.stocks_ism_report(top_n=0)
 
 
 def _fired_scan_entry() -> dict:

@@ -213,11 +213,16 @@ nave stocks ism-scan --kind services --json
 
 # 4. Run the full screener (ISM → fundamentals → ranked plan)
 nave stocks screen --kind manufacturing --top-n 5 --capital 10000
+nave stocks screen --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8
 
 # 5. Override the ticker universe (free tier is rpm-bound — stay lean)
 nave stocks screen --universe-json '{"Industrials": ["GE","CAT"]}'
 
-# 6. Stock-only journal stats (crypto trades excluded)
+# 6. Build complete ISM report (hottest/worst industries + filtered picks)
+nave stocks ism-report --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8
+nave stocks ism-report --json
+
+# 7. Stock-only journal stats (crypto trades excluded)
 nave stocks journal-stats
 ```
 

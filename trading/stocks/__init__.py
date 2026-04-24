@@ -26,6 +26,7 @@ from trading.stocks.ism_scraper import (
     GICS_MAPPING,
 )
 from trading.stocks.journal import StockJournal
+from trading.stocks.reporting import DEFAULT_UNIVERSE, build_ism_industry_report
 from trading.stocks.screener import (
     SectorScreener,
     StockCandidate,
@@ -41,9 +42,11 @@ __all__ = [
     "ISMSectorStrategy",
     "MassiveClient",
     "MassiveRateLimitError",
+    "DEFAULT_UNIVERSE",
     "SectorScreener",
     "StockCandidate",
     "StockJournal",
     "StockPlan",
     "StockScreenerError",
+    "build_ism_industry_report",
 ]

@@ -402,5 +402,22 @@ def scan_history(days: int = 7) -> str:
     return json.dumps(payload, indent=2)
 
 
+@mcp.tool()
+def stocks_ism_report(
+    kind: str = "manufacturing",
+    top_n: int = 5,
+    max_pe_ratio: float | None = None,
+    min_eps_growth_next_year: float | None = None,
+) -> str:
+    """Return ISM hottest/worst industries and filtered stock candidates JSON."""
+    payload = hermes.stocks_ism_report(
+        kind=kind,
+        top_n=top_n,
+        max_pe_ratio=max_pe_ratio,
+        min_eps_growth_next_year=min_eps_growth_next_year,
+    )
+    return json.dumps(payload, indent=2)
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

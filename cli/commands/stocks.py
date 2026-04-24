@@ -17,11 +17,13 @@ import typer
 from core.logger import configure_logger
 from trading.brokers import AlpacaBroker
 from trading.stocks import (
+    DEFAULT_UNIVERSE,
     ISMReportFetcher,
     ISMSectorStrategy,
     MassiveClient,
     SectorScreener,
     StockJournal,
+    build_ism_industry_report,
 )
 
 logger = configure_logger(__name__, level=logging.INFO)
@@ -29,27 +31,9 @@ logger = configure_logger(__name__, level=logging.INFO)
 stocks_app = typer.Typer(help="ISM-driven stock trading workflow (Alpaca + Ondo stubs).")
 
 
-# Minimal default ticker universe. Keep this short so free-tier Massive
-# calls stay under the 5-rpm ceiling during a single screen run. Override
-# via --universe-json for a custom list.
-_DEFAULT_UNIVERSE: dict[str, list[str]] = {
-    "Information Technology": ["AAPL", "MSFT", "NVDA"],
-    "Industrials": ["GE", "CAT", "HON"],
-    "Health Care": ["LLY", "JNJ", "UNH"],
-    "Consumer Discretionary": ["AMZN", "HD", "NKE"],
-    "Materials": ["LIN", "FCX", "ECL"],
-    "Energy": ["XOM", "CVX", "COP"],
-    "Financials": ["JPM", "BAC", "V"],
-    "Consumer Staples": ["PG", "KO", "COST"],
-    "Communication Services": ["GOOGL", "META", "NFLX"],
-    "Utilities": ["NEE", "DUK", "SO"],
-    "Real Estate": ["PLD", "AMT", "EQIX"],
-}
-
-
 def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
     if not universe_json:
-        return _DEFAULT_UNIVERSE
+        return DEFAULT_UNIVERSE
     try:
         parsed = _json.loads(universe_json)
     except _json.JSONDecodeError as exc:
@@ -124,6 +108,16 @@ def screen(
     kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
     top_n: int = typer.Option(5, "--top-n", help="Return the top N candidates"),
     capital: float = typer.Option(10000.0, "--capital", help="Total USD to equal-weight across picks"),
+    max_pe_ratio: Optional[float] = typer.Option(
+        None,
+        "--max-pe",
+        help="Optional PE filter (keep only tickers with PE <= this value).",
+    ),
+    min_eps_growth: Optional[float] = typer.Option(
+        None,
+        "--min-eps-growth",
+        help="Optional EPS-growth filter in percent (next-year estimate).",
+    ),
     universe_json: Optional[str] = typer.Option(
         None,
         "--universe-json",
@@ -146,6 +140,8 @@ def screen(
         report_kind=kind,  # type: ignore[arg-type]
         capital_usd=capital,
         max_positions=top_n,
+        max_pe_ratio=max_pe_ratio,
+        min_eps_growth_next_year=min_eps_growth,
         dry_run=dry_run,
     )
     summary = strategy.run_once()
@@ -162,8 +158,8 @@ def screen(
         return
 
     typer.echo(
-        f"{summary['strategy']} via {summary['broker']}  "
-        f"(dry_run={summary['dry_run']})"
+            f"{summary['strategy']} via {summary['broker']}  "
+            f"(dry_run={summary['dry_run']})"
     )
     if not summary["plan"]:
         typer.echo("No candidates — check --universe-json or widen the screener.")
@@ -173,6 +169,78 @@ def screen(
             f"  long {item.symbol:<6}  ~${item.size_usd:>9,.2f}  "
             f"[{item.sector}] score={item.score:+.3f}  {item.reason}"
         )
+
+
+@stocks_app.command("ism-report")
+def ism_report(
+    kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
+    top_n: int = typer.Option(5, "--top-n", help="Top N stocks per ISM trend bucket"),
+    max_pe_ratio: Optional[float] = typer.Option(
+        None,
+        "--max-pe",
+        help="Optional PE filter (keep only tickers with PE <= this value).",
+    ),
+    min_eps_growth: Optional[float] = typer.Option(
+        None,
+        "--min-eps-growth",
+        help="Optional EPS-growth filter in percent (next-year estimate).",
+    ),
+    universe_json: Optional[str] = typer.Option(
+        None,
+        "--universe-json",
+        help="Override sector → tickers mapping as a JSON string.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON report."),
+) -> None:
+    """Build ISM hottest/worst industry report and filtered stock candidates."""
+    if kind not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--kind must be manufacturing or services")
+
+    payload = build_ism_industry_report(
+        kind=kind,
+        top_n=top_n,
+        max_pe_ratio=max_pe_ratio,
+        min_eps_growth_next_year=min_eps_growth,
+        universe=_resolve_universe(universe_json),
+    )
+
+    if json_out:
+        typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    typer.echo(f"ISM {payload['kind'].capitalize()} — {payload['report_month']}")
+    if payload.get("pmi") is not None:
+        typer.echo(f"Headline PMI: {payload['pmi']}")
+    typer.echo(
+        "Criteria: "
+        f"top_n={payload['criteria']['top_n']}, "
+        f"max_pe={payload['criteria']['max_pe_ratio']}, "
+        f"min_eps_growth={payload['criteria']['min_eps_growth_next_year']}"
+    )
+    typer.echo()
+
+    hottest = payload["hottest_industries"][:5]
+    worst = payload["worst_industries"][:5]
+    typer.echo("Hottest industries (ISM expanding):")
+    for item in hottest:
+        typer.echo(f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
+    typer.echo()
+    typer.echo("Worst industries (ISM contracting):")
+    for item in worst:
+        typer.echo(f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
+    typer.echo()
+
+    for label, key in (("Filtered picks from hottest sectors", "expanding"), ("Filtered picks from worst sectors", "contracting")):
+        typer.echo(f"{label}:")
+        rows = payload["candidates"][key]
+        if not rows:
+            typer.echo("  (none)")
+            continue
+        for row in rows:
+            typer.echo(
+                f"  {row['symbol']:<6} [{row['sector']}] score={row['score']:+.3f}  "
+                f"PE={row['pe_ratio']}  EPS(next)={row['eps_growth_next_year']}%"
+            )
 
 
 @stocks_app.command("journal-stats")

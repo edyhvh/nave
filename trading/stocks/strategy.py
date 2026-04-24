@@ -61,6 +61,8 @@ class ISMSectorStrategy(AbstractStrategy):
         report_kind: Literal["manufacturing", "services"] = "manufacturing",
         capital_usd: float = 10_000.0,
         max_positions: int = 5,
+        max_pe_ratio: float | None = None,
+        min_eps_growth_next_year: float | None = None,
         dry_run: bool = True,
         fetcher: ISMReportFetcher | None = None,
         screener: SectorScreener | None = None,
@@ -71,6 +73,8 @@ class ISMSectorStrategy(AbstractStrategy):
         self.report_kind = report_kind
         self.capital_usd = capital_usd
         self.max_positions = max_positions
+        self.max_pe_ratio = max_pe_ratio
+        self.min_eps_growth_next_year = min_eps_growth_next_year
         self.fetcher = fetcher or ISMReportFetcher()
         self.screener = screener or SectorScreener(massive=massive, universe=universe)
         self._last_report: ISMReport | None = None
@@ -80,7 +84,10 @@ class ISMSectorStrategy(AbstractStrategy):
         report = self.fetcher.fetch_report(self.report_kind)
         self._last_report = report
         picks: list[StockCandidate] = self.screener.rank_from_ism(
-            report, top_n=self.max_positions
+            report,
+            top_n=self.max_positions,
+            max_pe_ratio=self.max_pe_ratio,
+            min_eps_growth_next_year=self.min_eps_growth_next_year,
         )
         if not picks:
             logger.info("ISMSectorStrategy: no candidates from %s", report.report_month)

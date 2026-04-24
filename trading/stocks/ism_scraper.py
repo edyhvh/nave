@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import logging
 import re
+import subprocess
 from dataclasses import dataclass, field
+from html import unescape
 from typing import Iterable, Literal
 
 import httpx
@@ -89,6 +91,7 @@ ISM_SERVICES_LANDING = (
     "https://www.ismworld.org/supply-management-news-and-reports/reports/"
     "ism-report-on-business/services/"
 )
+ISM_SITEMAP_URL = "https://www.ismworld.org/sitemap.xml"
 
 
 ReportKind = Literal["manufacturing", "services"]
@@ -169,7 +172,13 @@ class ISMReportFetcher:
         with httpx.Client(timeout=self.timeout_seconds, headers=headers) as c:
             resp = c.get(url, follow_redirects=True)
             resp.raise_for_status()
-            return resp.text
+            html = resp.text
+        if _looks_like_ism_captcha(html, url=url):
+            logger.info("ISM anti-bot page detected for %s — retrying with curl fallback", url)
+            curl_html = self._fetch_with_curl(url)
+            if curl_html:
+                return curl_html
+        return html
 
     def _fetch_with_playwright(self, url: str) -> str:
         """Async Playwright path; compiled on demand so the import stays optional."""
@@ -189,15 +198,58 @@ class ISMReportFetcher:
             browser.close()
             return html
 
-    def _resolve_latest_release(self, kind: ReportKind) -> str:
-        """Best-effort latest-release link resolver.
+    def _fetch_with_curl(self, url: str) -> str:
+        proc = subprocess.run(
+            ["curl", "-sL", url],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(f"curl fetch failed for {url!r}: exit={proc.returncode}")
+        return proc.stdout
 
-        ISM keeps report-page URLs stable per month, so the landing pages
-        above link to the current release. Without a verified network call
-        this method returns the landing URL, which itself renders the
-        latest report inline. Tests can still pass fixtures via ``url``.
+    def _resolve_latest_release(self, kind: ReportKind) -> str:
+        """Resolve the latest report URL.
+
+        ISM's old landing URLs are now unstable and often protected by
+        anti-bot pages. We resolve the latest "ISM PMI Reports Roundup"
+        article from the public sitemap and follow its PRNewswire source
+        link, where the full industry expansion/contraction lists are
+        consistently published.
         """
+        roundup_url = self._resolve_latest_roundup_url(kind)
+        if roundup_url:
+            prnewswire_url = self._extract_prnewswire_url(roundup_url, kind=kind)
+            if prnewswire_url:
+                return prnewswire_url
+            return roundup_url
         return ISM_MANUFACTURING_LANDING if kind == "manufacturing" else ISM_SERVICES_LANDING
+
+    def _resolve_latest_roundup_url(self, kind: ReportKind) -> str | None:
+        headers = {"User-Agent": self.user_agent}
+        with httpx.Client(timeout=self.timeout_seconds, headers=headers) as c:
+            resp = c.get(ISM_SITEMAP_URL, follow_redirects=True)
+            resp.raise_for_status()
+            sitemap = resp.text
+
+        all_urls = re.findall(r"<loc>(https://www\.ismworld\.org[^<]+)</loc>", sitemap)
+        roundup_urls = [
+            u
+            for u in all_urls
+            if "ism-pmi-reports-roundup" in u and f"-{kind}/" in u
+        ]
+        if not roundup_urls:
+            return None
+        return sorted(roundup_urls)[-1]
+
+    def _extract_prnewswire_url(self, roundup_url: str, *, kind: ReportKind) -> str | None:
+        html = self._fetch_html(roundup_url)
+        links = re.findall(r'https://www\.prnewswire\.com/news-releases/[^"\'\s<]+', html)
+        if not links:
+            return None
+        preferred = [u for u in links if f"{kind}-pmi" in u]
+        return unescape(preferred[0] if preferred else links[0])
 
     # ── Parse layer --------------------------------------------------
     def _parse(self, html: str, *, kind: ReportKind, source_url: str) -> ISMReport:
@@ -251,6 +303,13 @@ def _strip_html(html: str) -> str:
     except ImportError:
         text = _TAG_RE.sub(" ", html)
     return _WHITESPACE_RE.sub(" ", text).strip()
+
+
+def _looks_like_ism_captcha(html: str, *, url: str) -> bool:
+    if "ismworld.org" not in url:
+        return False
+    lowered = html.lower()
+    return "captcha_form" in lowered and "google.com/recaptcha/api.js" in lowered
 
 
 def _extract_report_month(text: str) -> str:
