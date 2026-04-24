@@ -2,19 +2,12 @@
 Sector screener.
 
 Given an ISM report (which sectors are expanding vs contracting) and a
-Massive-backed fundamentals client, rank candidate tickers on:
+fundamentals client, rank candidate tickers purely on EPS growth (next year).
 
-  1. PE ratio vs sector average   (lower is better when expanding)
-  2. Forward PE vs trailing PE    (contraction ⇒ earnings accelerating)
-  3. EPS growth (next year)       (higher is better)
+Score  = eps_growth_next_year / 100  (signed; negated for shorts)
+Confidence = 0.6 * match_confidence + 0.4 * eps_growth_confidence
 
-The scoring function is intentionally simple — it mirrors the "discount
-to sector + growth tailwind" heuristic the rest of the repo uses for
-crypto. Tune via :class:`SectorScreener` constructor args.
-
-Ticker universe: this module does not ship its own ticker database. The
-caller passes ``universe={sector: [tickers]}`` so the mapping can live
-wherever makes sense (static file, external data vendor, Hermes input).
+Ticker universe: the caller passes ``universe={sector: [tickers]}``.
 """
 
 from __future__ import annotations
@@ -28,7 +21,8 @@ from trading.stocks.data_provider import (
     MassiveClient,
     MassiveRateLimitError,
 )
-from trading.stocks.ism_scraper import ISMReport
+from trading.stocks.ism_scraper import ISMIndustryRanking, ISMReport
+from trading.stocks.mapping import best_ism_match
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +37,27 @@ class StockCandidate:
 
     symbol: str
     sector: str
-    pe_ratio: float | None
-    forward_pe: float | None
-    sector_avg_pe: float | None
+    industry: str | None
+    driver_industry: str | None
     eps_growth_next_year: float | None
+    eps_growth_source: str | None
+    eps_growth_confidence: float
+    match_confidence: float
+    confidence: float
     score: float
     reason: str
+    side: str = "long"
+    company_name: str | None = None
     fundamentals: FundamentalSnapshot | None = field(default=None, repr=False)
 
 
 class SectorScreener:
     """
-    PE vs sector + EPS-growth screener.
+    EPS-growth screener driven by ISM sector momentum.
+
+    Ranks tickers purely by EPS growth (next year). Industry-to-ISM match
+    confidence and EPS data confidence are combined into a single confidence
+    score used as a secondary sort and filter.
 
     Usage:
         screener = SectorScreener(massive=MassiveClient(), universe=universe)
@@ -65,16 +68,9 @@ class SectorScreener:
         self,
         massive: MassiveClient,
         universe: Mapping[str, list[str]],
-        *,
-        eps_growth_weight: float = 1.0,
-        pe_discount_weight: float = 1.0,
-        forward_pe_weight: float = 0.5,
     ):
         self.massive = massive
         self.universe = {k: list(v) for k, v in universe.items()}
-        self.w_eps = eps_growth_weight
-        self.w_pe = pe_discount_weight
-        self.w_fpe = forward_pe_weight
 
     # ── Entry points --------------------------------------------------
     def rank_from_ism(
@@ -83,8 +79,9 @@ class SectorScreener:
         *,
         top_n: int = 5,
         trend: str = "expanding",
-        max_pe_ratio: float | None = None,
+        side: str | None = None,
         min_eps_growth_next_year: float | None = None,
+        min_confidence: float = 0.0,
     ) -> list[StockCandidate]:
         """Pull candidates for each expanding sector and return the top ``top_n``."""
         sectors = report.by_sector(trend=trend)
@@ -92,11 +89,17 @@ class SectorScreener:
             raise StockScreenerError(
                 f"No {trend} sectors resolvable from ISM report {report.report_month!r}."
             )
+        sector_rankings = _rankings_by_sector(
+            report.expanding if trend == "expanding" else report.contracting,
+            sectors,
+        )
         return self.rank_sectors(
             sectors,
             top_n=top_n,
-            max_pe_ratio=max_pe_ratio,
+            side=side or ("short" if trend == "contracting" else "long"),
             min_eps_growth_next_year=min_eps_growth_next_year,
+            industry_rankings_by_sector=sector_rankings,
+            min_confidence=min_confidence,
         )
 
     def rank_sectors(
@@ -104,46 +107,51 @@ class SectorScreener:
         sectors: list[str],
         *,
         top_n: int = 5,
-        max_pe_ratio: float | None = None,
+        side: str = "long",
         min_eps_growth_next_year: float | None = None,
+        industry_rankings_by_sector: Mapping[str, list[ISMIndustryRanking]] | None = None,
+        min_confidence: float = 0.0,
     ) -> list[StockCandidate]:
-        """Core ranking: fetch fundamentals + sector average, compute score."""
+        """Rank tickers by EPS growth within ISM-driven sectors."""
         candidates: list[StockCandidate] = []
         for sector in sectors:
             tickers = self.universe.get(sector, [])
             if not tickers:
                 logger.info("No tickers configured for sector %r — skipping", sector)
                 continue
-            try:
-                sector_avg_pe = self.massive.sector_average_pe(sector)
-            except MassiveRateLimitError:
-                raise
-            except Exception:
-                logger.exception("Failed to fetch sector average PE for %r", sector)
-                sector_avg_pe = None
-
             snapshots = self.massive.batch_fundamentals(tickers)
+            sector_rankings = (industry_rankings_by_sector or {}).get(sector, [])
             for snap in snapshots:
-                if max_pe_ratio is not None and (
-                    snap.pe_ratio is None or snap.pe_ratio > max_pe_ratio
-                ):
-                    continue
                 if min_eps_growth_next_year is not None and (
                     snap.eps_growth_next_year is None
                     or snap.eps_growth_next_year < min_eps_growth_next_year
                 ):
                     continue
-                score, reason = self._score(snap, sector_avg_pe=sector_avg_pe)
+                driver_industry, match_confidence = best_ism_match(snap.industry, sector_rankings)
+                if driver_industry is None and sector_rankings:
+                    driver_industry = sector_rankings[0].industry
+                score, reason, confidence = self._score(
+                    snap,
+                    match_confidence=match_confidence,
+                    side=side,
+                )
+                if confidence < min_confidence:
+                    continue
                 candidates.append(
                     StockCandidate(
                         symbol=snap.symbol,
                         sector=sector,
-                        pe_ratio=snap.pe_ratio,
-                        forward_pe=snap.forward_pe,
-                        sector_avg_pe=sector_avg_pe,
+                        industry=snap.industry,
+                        driver_industry=driver_industry,
                         eps_growth_next_year=snap.eps_growth_next_year,
+                        eps_growth_source=snap.eps_growth_source,
+                        eps_growth_confidence=snap.eps_growth_confidence,
+                        match_confidence=match_confidence,
+                        confidence=confidence,
                         score=score,
                         reason=reason,
+                        side=side,
+                        company_name=snap.company_name,
                         fundamentals=snap,
                     )
                 )
@@ -156,35 +164,39 @@ class SectorScreener:
         self,
         snap: FundamentalSnapshot,
         *,
-        sector_avg_pe: float | None,
-    ) -> tuple[float, str]:
-        """Return (score, human-readable reason).
+        match_confidence: float,
+        side: str = "long",
+    ) -> tuple[float, str, float]:
+        """Return (score, reason, confidence).
 
-        Components (higher is better):
-            pe_discount   = (sector_avg_pe - pe_ratio) / sector_avg_pe
-            forward_bias  = (pe_ratio - forward_pe) / pe_ratio   # earnings accel
-            eps_growth    = eps_growth_next_year / 100           # already pct
-
-        Missing components contribute 0 and are noted in the reason.
+        score = eps_growth_next_year / 100 (negated for shorts).
+        confidence = 0.6 * match_confidence + 0.4 * eps_growth_confidence.
         """
-        pe_disc = 0.0
-        fwd_bias = 0.0
-        eps = 0.0
         notes: list[str] = []
-
-        if snap.pe_ratio and sector_avg_pe and sector_avg_pe > 0:
-            pe_disc = (sector_avg_pe - snap.pe_ratio) / sector_avg_pe
-            notes.append(f"PE {snap.pe_ratio:.1f} vs sector avg {sector_avg_pe:.1f}")
-        else:
-            notes.append("PE-vs-sector unavailable")
-
-        if snap.pe_ratio and snap.forward_pe and snap.pe_ratio > 0:
-            fwd_bias = (snap.pe_ratio - snap.forward_pe) / snap.pe_ratio
-            notes.append(f"fwd PE {snap.forward_pe:.1f}")
-
         if snap.eps_growth_next_year is not None:
             eps = snap.eps_growth_next_year / 100.0
             notes.append(f"EPS growth {snap.eps_growth_next_year:.1f}%")
+        else:
+            eps = 0.0
+            notes.append("EPS growth unavailable")
+        notes.append(f"match conf {match_confidence:.2f}")
+        notes.append(f"eps conf {snap.eps_growth_confidence:.2f}")
+        confidence = round(0.6 * match_confidence + 0.4 * snap.eps_growth_confidence, 4)
+        notes.append(f"final conf {confidence:.2f}")
+        score = -eps if side.lower().strip() == "short" else eps
+        return score, "; ".join(notes), confidence
 
-        score = self.w_pe * pe_disc + self.w_fpe * fwd_bias + self.w_eps * eps
-        return score, "; ".join(notes)
+
+def _rankings_by_sector(
+    rankings: list[ISMIndustryRanking],
+    sectors: list[str],
+) -> dict[str, list[ISMIndustryRanking]]:
+    allowed = set(sectors)
+    out: dict[str, list[ISMIndustryRanking]] = {}
+    for item in rankings:
+        if item.gics_sector and item.gics_sector in allowed:
+            out.setdefault(item.gics_sector, []).append(item)
+    return out
+
+
+

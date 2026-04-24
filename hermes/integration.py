@@ -183,7 +183,6 @@ class HermesNaveIntegration:
                                 "default": "manufacturing",
                             },
                             "top_n": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
-                            "max_pe_ratio": {"type": "number"},
                             "min_eps_growth_next_year": {"type": "number"},
                         },
                     },
@@ -693,7 +692,6 @@ class HermesNaveIntegration:
         *,
         kind: str = "manufacturing",
         top_n: int = 5,
-        max_pe_ratio: float | None = None,
         min_eps_growth_next_year: float | None = None,
     ) -> dict[str, Any]:
         """Return ISM industry heatmap + filtered stock candidates."""
@@ -708,7 +706,6 @@ class HermesNaveIntegration:
             return build_ism_industry_report(
                 kind=kind,
                 top_n=top_n,
-                max_pe_ratio=max_pe_ratio,
                 min_eps_growth_next_year=min_eps_growth_next_year,
             )
         except ValueError as exc:

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from trading.base.broker import BaseBroker, BrokerResponse
 from trading.base.strategy import AbstractStrategy
@@ -61,8 +61,8 @@ class ISMSectorStrategy(AbstractStrategy):
         report_kind: Literal["manufacturing", "services"] = "manufacturing",
         capital_usd: float = 10_000.0,
         max_positions: int = 5,
-        max_pe_ratio: float | None = None,
         min_eps_growth_next_year: float | None = None,
+        min_confidence: float = 0.0,
         dry_run: bool = True,
         fetcher: ISMReportFetcher | None = None,
         screener: SectorScreener | None = None,
@@ -73,21 +73,21 @@ class ISMSectorStrategy(AbstractStrategy):
         self.report_kind = report_kind
         self.capital_usd = capital_usd
         self.max_positions = max_positions
-        self.max_pe_ratio = max_pe_ratio
         self.min_eps_growth_next_year = min_eps_growth_next_year
+        self.min_confidence = min_confidence
         self.fetcher = fetcher or ISMReportFetcher()
         self.screener = screener or SectorScreener(massive=massive, universe=universe)
         self._last_report: ISMReport | None = None
 
     def compute(self) -> list[StockPlan]:
         """Produce a list of target trades for the upcoming rebalance."""
-        report = self.fetcher.fetch_report(self.report_kind)
+        report = self.fetcher.fetch_report(cast("Any", self.report_kind))
         self._last_report = report
         picks: list[StockCandidate] = self.screener.rank_from_ism(
             report,
             top_n=self.max_positions,
-            max_pe_ratio=self.max_pe_ratio,
             min_eps_growth_next_year=self.min_eps_growth_next_year,
+            min_confidence=self.min_confidence,
         )
         if not picks:
             logger.info("ISMSectorStrategy: no candidates from %s", report.report_month)

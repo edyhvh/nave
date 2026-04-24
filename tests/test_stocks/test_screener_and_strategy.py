@@ -85,10 +85,9 @@ def test_screener_ranks_by_pe_discount_and_eps_growth():
     )
 
     picks = screener.rank_from_ism(report, top_n=3)
-    assert [p.symbol for p in picks] == ["GE", "CAT", "LIN"]
-    # GE: big PE discount AND strong EPS growth ⇒ top score by a wide margin.
+    # EPS-only scoring: GE (20%) > LIN (10%) > CAT (5%)
+    assert [p.symbol for p in picks] == ["GE", "LIN", "CAT"]
     assert picks[0].score > picks[1].score > picks[2].score
-    assert picks[0].sector_avg_pe == 25.0
 
 
 def test_screener_applies_pe_and_eps_filters():
@@ -107,7 +106,7 @@ def test_screener_applies_pe_and_eps_filters():
             "Industrials",
             pe_ratio=32.0,
             forward_pe=28.0,
-            eps_growth_next_year=11.0,
+            eps_growth_next_year=8.0,
             raw={},
         ),
         "HON": FundamentalSnapshot(
@@ -127,10 +126,125 @@ def test_screener_applies_pe_and_eps_filters():
     picks = screener.rank_from_ism(
         report,
         top_n=5,
-        max_pe_ratio=20.0,
         min_eps_growth_next_year=10.0,
     )
     assert [p.symbol for p in picks] == ["GE"]
+
+
+def test_screener_filters_low_confidence_when_requested():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=53.0,
+        expanding=[
+            ISMIndustryRanking(
+                industry="printing & related support activities",
+                trend="expanding",
+                rank=1,
+                gics_sector="Industrials",
+            )
+        ],
+    )
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            "GE",
+            "Industrials",
+            pe_ratio=38.0,
+            forward_pe=39.0,
+            eps_growth_next_year=16.0,
+            raw={},
+            industry="Aerospace & Defense",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive({"Industrials": 30.0}, snapshots),
+        universe={"Industrials": ["GE"]},
+    )
+
+    picks = screener.rank_from_ism(report, top_n=3, min_confidence=0.7)
+    assert picks == []
+
+
+def test_screener_high_confidence_transportation_equipment_match():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=53.0,
+        expanding=[
+            ISMIndustryRanking(
+                industry="transportation equipment",
+                trend="expanding",
+                rank=1,
+                gics_sector="Industrials",
+            )
+        ],
+    )
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            "GE",
+            "Industrials",
+            pe_ratio=30.0,
+            forward_pe=28.0,
+            eps_growth_next_year=18.0,
+            raw={},
+            industry="Aerospace & Defense",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive({"Industrials": 32.0}, snapshots),
+        universe={"Industrials": ["GE"]},
+    )
+
+    picks = screener.rank_from_ism(report, top_n=1, min_confidence=0.7)
+    assert len(picks) == 1
+    assert picks[0].driver_industry == "transportation equipment"
+    assert picks[0].match_confidence >= 0.7
+
+
+def test_screener_short_mode_prefers_high_pe_with_weak_eps():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=53.0,
+        contracting=[
+            ISMIndustryRanking(
+                industry="wood products",
+                trend="contracting",
+                rank=1,
+                gics_sector="Materials",
+            )
+        ],
+    )
+    snapshots = {
+        "LIN": FundamentalSnapshot(
+            "LIN",
+            "Materials",
+            pe_ratio=34.0,
+            forward_pe=37.0,
+            eps_growth_next_year=-8.0,
+            raw={},
+        ),
+        "ECL": FundamentalSnapshot(
+            "ECL",
+            "Materials",
+            pe_ratio=18.0,
+            forward_pe=16.0,
+            eps_growth_next_year=10.0,
+            raw={},
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive({"Materials": 25.0}, snapshots),
+        universe={"Materials": ["LIN", "ECL"]},
+    )
+
+    picks = screener.rank_from_ism(report, trend="contracting", side="short", top_n=2)
+    assert [p.symbol for p in picks] == ["LIN", "ECL"]
+    assert picks[0].side == "short"
 
 
 def test_screener_raises_when_no_sectors_resolvable():
@@ -257,7 +371,7 @@ def test_strategy_passes_filter_criteria_to_screener():
             "Industrials",
             pe_ratio=26.0,
             forward_pe=22.0,
-            eps_growth_next_year=16.0,
+            eps_growth_next_year=8.0,
             raw={},
         ),
     }
@@ -274,13 +388,60 @@ def test_strategy_passes_filter_criteria_to_screener():
         universe={"Industrials": ["GE", "CAT"]},
         capital_usd=1000.0,
         max_positions=3,
-        max_pe_ratio=20.0,
         min_eps_growth_next_year=10.0,
         dry_run=True,
         fetcher=_StubFetcher(),
     )
     summary = strategy.run_once()
     assert [item.symbol for item in summary["plan"]] == ["GE"]
+
+
+def test_strategy_passes_min_confidence_to_screener():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=53.0,
+        expanding=[
+            ISMIndustryRanking(
+                industry="printing & related support activities",
+                trend="expanding",
+                rank=1,
+                gics_sector="Industrials",
+            )
+        ],
+    )
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            "GE",
+            "Industrials",
+            pe_ratio=38.0,
+            forward_pe=39.0,
+            eps_growth_next_year=16.0,
+            raw={},
+            industry="Aerospace & Defense",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        ),
+    }
+    massive = _FakeMassive({"Industrials": 30.0}, snapshots)
+    broker = _CountingBroker()
+
+    class _StubFetcher:
+        def fetch_report(self, kind, url=None):  # noqa: ARG002
+            return report
+
+    strategy = ISMSectorStrategy(
+        broker=broker,
+        massive=massive,
+        universe={"Industrials": ["GE"]},
+        capital_usd=1000.0,
+        max_positions=3,
+        min_confidence=0.7,
+        dry_run=True,
+        fetcher=_StubFetcher(),
+    )
+    summary = strategy.run_once()
+    assert summary["plan"] == []
 
 
 def test_stock_journal_tags_trades_with_stock_asset_class(tmp_path):

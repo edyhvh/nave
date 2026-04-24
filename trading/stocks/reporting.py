@@ -3,23 +3,25 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
-from trading.stocks.data_provider import MassiveClient
+from trading.stocks.data_provider import MassiveClient, MassiveRateLimitError
 from trading.stocks.ism_scraper import ISMReportFetcher
 from trading.stocks.screener import SectorScreener, StockCandidate, StockScreenerError
 
-# Keep this short so free-tier Massive usage (5 rpm) remains practical.
+# Keep this short so FMP daily-budget usage stays practical.
+# The default basket leans toward names whose public-company industries map
+# more cleanly onto ISM buckets than broad mega-cap sector placeholders do.
 DEFAULT_UNIVERSE: dict[str, list[str]] = {
-    "Information Technology": ["AAPL", "MSFT", "NVDA"],
-    "Industrials": ["GE", "CAT", "HON"],
-    "Health Care": ["LLY", "JNJ", "UNH"],
-    "Consumer Discretionary": ["AMZN", "HD", "NKE"],
-    "Materials": ["LIN", "FCX", "ECL"],
-    "Energy": ["XOM", "CVX", "COP"],
-    "Financials": ["JPM", "BAC", "V"],
-    "Consumer Staples": ["PG", "KO", "COST"],
-    "Communication Services": ["GOOGL", "META", "NFLX"],
+    "Information Technology": ["AAPL", "HPQ", "DELL", "AMAT", "GLW"],
+    "Industrials": ["GE", "ETN", "CAT", "PH", "EMR", "ITW", "ROK"],
+    "Health Care": ["LLY", "JNJ", "UNH", "ABT"],
+    "Consumer Discretionary": ["NKE", "DECK", "WHR", "LEN", "MHK", "MLKN"],
+    "Materials": ["NUE", "FCX", "IP", "DD", "LIN", "LYB", "DOW", "EMN"],
+    "Energy": ["XOM", "PSX", "VLO", "MPC"],
+    "Financials": ["JPM", "BAC", "V", "MS"],
+    "Consumer Staples": ["MO", "KO", "MDLZ", "GIS", "KHC", "CPB", "PM"],
+    "Communication Services": ["GOOGL", "META", "NFLX", "DIS"],
     "Utilities": ["NEE", "DUK", "SO"],
     "Real Estate": ["PLD", "AMT", "EQIX"],
 }
@@ -28,9 +30,10 @@ DEFAULT_UNIVERSE: dict[str, list[str]] = {
 def build_ism_industry_report(
     *,
     kind: str = "manufacturing",
-    top_n: int = 5,
-    max_pe_ratio: float | None = None,
+    top_n: int = 10,
+    max_sectors_per_trend: int = 4,
     min_eps_growth_next_year: float | None = None,
+    min_confidence: float = 0.3,
     universe: Mapping[str, list[str]] | None = None,
     fetcher: ISMReportFetcher | None = None,
     massive: MassiveClient | None = None,
@@ -40,30 +43,51 @@ def build_ism_industry_report(
         raise ValueError("kind must be 'manufacturing' or 'services'")
 
     report_fetcher = fetcher or ISMReportFetcher()
-    report = report_fetcher.fetch_report(kind=kind)
+    report = report_fetcher.fetch_report(kind=cast("Any", kind))
     effective_universe = (
         {sector: list(tickers) for sector, tickers in universe.items()}
         if universe is not None
         else DEFAULT_UNIVERSE
     )
-    screener = SectorScreener(massive=massive or MassiveClient(), universe=effective_universe)
+    screener = SectorScreener(
+        massive=massive or MassiveClient(), universe=effective_universe)
 
-    expanding = _safe_rank(
+    long_candidates = _safe_rank(
         screener,
         report=report,
         trend="expanding",
         top_n=top_n,
-        max_pe_ratio=max_pe_ratio,
+        max_sectors=max_sectors_per_trend,
         min_eps_growth_next_year=min_eps_growth_next_year,
+        min_confidence=min_confidence,
     )
-    contracting = _safe_rank(
+    short_candidates = _safe_rank(
         screener,
         report=report,
         trend="contracting",
         top_n=top_n,
-        max_pe_ratio=max_pe_ratio,
+        max_sectors=max_sectors_per_trend,
         min_eps_growth_next_year=min_eps_growth_next_year,
+        min_confidence=min_confidence,
     )
+
+    long_candidates, short_candidates = _remove_overlaps(
+        long_candidates, short_candidates)
+    long_candidates = _filter_report_candidates(
+        long_candidates,
+        side="long",
+        top_n=top_n,
+        min_confidence=min_confidence,
+    )
+    short_candidates = _filter_report_candidates(
+        short_candidates,
+        side="short",
+        top_n=top_n,
+        min_confidence=min_confidence,
+    )
+
+    expanding_primary_industry = _sector_primary_industry(report.expanding)
+    contracting_primary_industry = _sector_primary_industry(report.contracting)
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -73,8 +97,9 @@ def build_ism_industry_report(
         "source_url": report.source_url,
         "criteria": {
             "top_n": top_n,
-            "max_pe_ratio": max_pe_ratio,
+            "max_sectors_per_trend": max_sectors_per_trend,
             "min_eps_growth_next_year": min_eps_growth_next_year,
+            "min_confidence": min_confidence,
         },
         "hottest_industries": [
             {
@@ -93,14 +118,48 @@ def build_ism_industry_report(
             for item in report.contracting
         ],
         "candidates": {
-            "expanding": [_candidate_to_dict(item) for item in expanding],
-            "contracting": [_candidate_to_dict(item) for item in contracting],
+            "longs": [
+                _candidate_to_dict(
+                    item,
+                    ism_industry_hint=expanding_primary_industry,
+                    industry_momentum="gaining",
+                )
+                for item in long_candidates
+            ],
+            "shorts": [
+                _candidate_to_dict(
+                    item,
+                    ism_industry_hint=contracting_primary_industry,
+                    industry_momentum="losing",
+                )
+                for item in short_candidates
+            ],
+            # Backward compatibility keys
+            "expanding": [
+                _candidate_to_dict(
+                    item,
+                    ism_industry_hint=expanding_primary_industry,
+                    industry_momentum="gaining",
+                )
+                for item in long_candidates
+            ],
+            "contracting": [
+                _candidate_to_dict(
+                    item,
+                    ism_industry_hint=contracting_primary_industry,
+                    industry_momentum="losing",
+                )
+                for item in short_candidates
+            ],
         },
         "summary": {
             "hottest_sector_count": len(report.by_sector("expanding")),
             "worst_sector_count": len(report.by_sector("contracting")),
-            "expanding_candidates": len(expanding),
-            "contracting_candidates": len(contracting),
+            "long_candidates": len(long_candidates),
+            "short_candidates": len(short_candidates),
+            # Backward compatibility summary keys
+            "expanding_candidates": len(long_candidates),
+            "contracting_candidates": len(short_candidates),
         },
     }
 
@@ -111,30 +170,116 @@ def _safe_rank(
     report,
     trend: str,
     top_n: int,
-    max_pe_ratio: float | None,
+    max_sectors: int,
     min_eps_growth_next_year: float | None,
+    min_confidence: float,
 ) -> list[StockCandidate]:
     try:
-        return screener.rank_from_ism(
-            report,
-            trend=trend,
+        sectors = report.by_sector(trend=trend)
+        if max_sectors > 0:
+            sectors = sectors[:max_sectors]
+        if not sectors:
+            return []
+        bucket = report.expanding if trend == "expanding" else report.contracting
+        sector_rankings: dict[str, list[Any]] = {}
+        for item in bucket:
+            sector = getattr(item, "gics_sector", None)
+            if isinstance(sector, str) and sector in sectors:
+                sector_rankings.setdefault(sector, []).append(item)
+        return screener.rank_sectors(
+            sectors,
             top_n=top_n,
-            max_pe_ratio=max_pe_ratio,
+            side="short" if trend == "contracting" else "long",
             min_eps_growth_next_year=min_eps_growth_next_year,
+            industry_rankings_by_sector=sector_rankings,
+            min_confidence=min_confidence,
         )
-    except StockScreenerError:
+    except (StockScreenerError, MassiveRateLimitError):
         return []
 
 
-def _candidate_to_dict(item: StockCandidate) -> dict[str, Any]:
+def _candidate_to_dict(
+    item: StockCandidate,
+    *,
+    ism_industry_hint: Mapping[str, str] | None = None,
+    industry_momentum: str | None = None,
+) -> dict[str, Any]:
+    fundamentals_industry = item.industry
+    hinted_industry = item.driver_industry or (
+        ism_industry_hint or {}).get(item.sector)
+    industry = fundamentals_industry or hinted_industry
+    if fundamentals_industry:
+        industry_source = "fmp"
+    elif hinted_industry:
+        industry_source = "ism_hint"
+    else:
+        industry_source = None
+
     return {
         "symbol": item.symbol,
+        "company_name": item.company_name,
         "sector": item.sector,
+        "industry": industry,
+        "driver_industry": hinted_industry,
+        "industry_source": industry_source,
+        "industry_momentum": industry_momentum,
+        "side": item.side,
+        "confidence": round(item.confidence, 4),
+        "match_confidence": round(item.match_confidence, 4),
         "score": round(item.score, 4),
-        "pe_ratio": item.pe_ratio,
-        "forward_pe": item.forward_pe,
-        "sector_avg_pe": item.sector_avg_pe,
-        "eps_growth_next_year": item.eps_growth_next_year,
+        "eps_growth_next_year": round(item.eps_growth_next_year, 2) if item.eps_growth_next_year is not None else None,
+        "eps_growth_source": item.eps_growth_source,
         "reason": item.reason,
     }
 
+
+def _sector_primary_industry(rankings: list[Any]) -> dict[str, str]:
+    """Build a best-effort sector->industry hint map from ISM rankings."""
+    out: dict[str, str] = {}
+    for item in rankings:
+        sector = getattr(item, "gics_sector", None)
+        industry = getattr(item, "industry", None)
+        if isinstance(sector, str) and sector and isinstance(industry, str) and industry:
+            out.setdefault(sector, industry)
+    return out
+
+
+def _remove_overlaps(
+    long_candidates: list[StockCandidate],
+    short_candidates: list[StockCandidate],
+) -> tuple[list[StockCandidate], list[StockCandidate]]:
+    by_symbol_long = {item.symbol: item for item in long_candidates}
+    by_symbol_short = {item.symbol: item for item in short_candidates}
+    overlapping = set(by_symbol_long) & set(by_symbol_short)
+    if not overlapping:
+        return long_candidates, short_candidates
+
+    keep_long = set(by_symbol_long)
+    keep_short = set(by_symbol_short)
+    for symbol in overlapping:
+        long_item = by_symbol_long[symbol]
+        short_item = by_symbol_short[symbol]
+        if long_item.score >= short_item.score:
+            keep_short.discard(symbol)
+        else:
+            keep_long.discard(symbol)
+
+    return (
+        [item for item in long_candidates if item.symbol in keep_long],
+        [item for item in short_candidates if item.symbol in keep_short],
+    )
+
+
+def _filter_report_candidates(
+    candidates: list[StockCandidate],
+    *,
+    side: str,
+    top_n: int,
+    min_confidence: float,
+) -> list[StockCandidate]:
+    filtered: list[StockCandidate] = []
+    for item in candidates:
+        if item.confidence < min_confidence:
+            continue
+        filtered.append(item)
+    return filtered[:top_n]

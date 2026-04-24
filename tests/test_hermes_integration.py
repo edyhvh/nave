@@ -185,7 +185,7 @@ def test_dispatch_tool_call_routes_stocks_ism_report(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(integration, "stocks_ism_report", fake_stocks_report)
     result = integration.dispatch_tool_call(
         "stocks_ism_report",
-        {"kind": "manufacturing", "top_n": 3, "max_pe_ratio": 25.0},
+        {"kind": "manufacturing", "top_n": 3},
     )
     assert result["ok"] is True
     assert result["tool"] == "stocks_ism_report"
