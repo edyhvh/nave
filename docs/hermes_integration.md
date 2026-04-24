@@ -49,7 +49,7 @@ Input:
 - `include_micro` (bool)
 
 ### `stocks_ism_report`
-Returns ISM hottest/worst industries and filtered stock candidates using Massive fundamentals.
+Returns ISM hottest/worst industries and filtered stock candidates using FMP fundamentals.
 
 Input:
 - `kind` (string): `manufacturing` or `services`
@@ -87,3 +87,16 @@ nave mcp run
 
 Hermes can then call tool names registered by the FastMCP server, including
 COT report/history/planning tools plus `stocks_ism_report` for ISM equity workflows.
+
+## Optional Remote FMP MCP
+
+Nave already exposes its own local FastMCP server for repo-native tools. FMP also
+ships a remote MCP endpoint for direct vendor access:
+
+```bash
+nave mcp fmp-connector
+```
+
+This prints `https://financialmodelingprep.com/mcp?apikey=...` using `FMP_API_KEY`.
+Use that in an MCP client when you want direct FMP tools without proxying them
+through Nave. Those calls still consume the same FMP API quota.
