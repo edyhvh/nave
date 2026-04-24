@@ -7,16 +7,17 @@ from typing import Optional
 
 import typer
 
+from cli.professional_typer import ProfessionalTyper
 from cli.utils import prompt_float, select_option
 from core.config import CliDefaults
 
 DEFAULTS = CliDefaults()
 
-data_app = typer.Typer(help="Data fetching and analysis commands")
-trading_app = typer.Typer(help="Trading and strategy commands")
-api_app = typer.Typer(help="Backend API commands")
-mcp_app = typer.Typer(help="MCP server commands")
-journal_app = typer.Typer(help="Manual trade journal commands")
+data_app = ProfessionalTyper(help="Data fetching and analysis commands")
+trading_app = ProfessionalTyper(help="Trading and strategy commands")
+api_app = ProfessionalTyper(help="Backend API commands")
+mcp_app = ProfessionalTyper(help="MCP server commands")
+journal_app = ProfessionalTyper(help="Manual trade journal commands")
 
 trading_app.add_typer(journal_app, name="journal")
 
@@ -142,6 +143,41 @@ def run_mcp() -> None:
 
     typer.echo("Starting MCP server (uses trading/mcp_server)...")
     subprocess.run([sys.executable, "-m", "trading.mcp_server"], check=False)
+
+
+@mcp_app.command("fmp-connector")
+def fmp_connector(
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON instead of prose."),
+) -> None:
+    """Print the remote FMP MCP connector URL for agent clients."""
+    import json as _json
+    import os
+
+    api_key = os.getenv("FMP_API_KEY")
+    if not api_key:
+        raise typer.BadParameter("FMP_API_KEY is not set. Add it to .env before using the FMP MCP connector.")
+
+    payload = {
+        "name": "fmp-remote",
+        "url": f"https://financialmodelingprep.com/mcp?apikey={api_key}",
+        "limits": {
+            "daily_calls": 250,
+            "monthly_mb": 512,
+        },
+        "notes": [
+            "Remote MCP calls count against the same FMP API quota as REST calls.",
+            "Prefer Nave's local MCP server for repo-native tools and FMP's remote MCP only for direct vendor data access.",
+        ],
+    }
+
+    if json_out:
+        typer.echo(_json.dumps(payload, indent=2))
+        return
+
+    typer.echo("FMP remote MCP connector")
+    typer.echo(payload["url"])
+    typer.echo("Quota: 250 calls/day, 512 MB/month")
+    typer.echo("Use this in Claude/Cursor/other MCP clients as a remote server URL.")
 
 
 @journal_app.command("create")

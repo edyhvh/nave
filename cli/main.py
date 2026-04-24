@@ -12,8 +12,9 @@ from cli.commands.core import api_app, data_app, mcp_app, trading_app
 from cli.commands.cot import cot_app
 from cli.commands.hermes import hermes_app
 from cli.commands.stocks import stocks_app
+from cli.professional_typer import ProfessionalTyper
 
-app = typer.Typer(
+app = ProfessionalTyper(
     name="nave",
     help="Nave - Professional macro trading and data platform CLI",
     add_completion=True,

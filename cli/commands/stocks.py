@@ -13,7 +13,10 @@ import logging
 from typing import Optional
 
 import typer
+from rich.console import Console
+from rich.table import Table
 
+from cli.professional_typer import ProfessionalTyper
 from core.logger import configure_logger
 from trading.brokers import AlpacaBroker
 from trading.stocks import (
@@ -28,7 +31,7 @@ from trading.stocks import (
 
 logger = configure_logger(__name__, level=logging.INFO)
 
-stocks_app = typer.Typer(help="ISM-driven stock trading workflow (Alpaca + Ondo stubs).")
+stocks_app = ProfessionalTyper(help="ISM-driven stock trading workflow (Alpaca + Ondo stubs).")
 
 
 def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
@@ -108,15 +111,15 @@ def screen(
     kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
     top_n: int = typer.Option(5, "--top-n", help="Return the top N candidates"),
     capital: float = typer.Option(10000.0, "--capital", help="Total USD to equal-weight across picks"),
-    max_pe_ratio: Optional[float] = typer.Option(
-        None,
-        "--max-pe",
-        help="Optional PE filter (keep only tickers with PE <= this value).",
-    ),
     min_eps_growth: Optional[float] = typer.Option(
         None,
         "--min-eps-growth",
         help="Optional EPS-growth filter in percent (next-year estimate).",
+    ),
+    min_confidence: float = typer.Option(
+        0.3,
+        "--min-confidence",
+        help="Minimum final confidence score (0-1) for screen candidates.",
     ),
     universe_json: Optional[str] = typer.Option(
         None,
@@ -140,8 +143,8 @@ def screen(
         report_kind=kind,  # type: ignore[arg-type]
         capital_usd=capital,
         max_positions=top_n,
-        max_pe_ratio=max_pe_ratio,
         min_eps_growth_next_year=min_eps_growth,
+        min_confidence=min_confidence,
         dry_run=dry_run,
     )
     summary = strategy.run_once()
@@ -174,16 +177,16 @@ def screen(
 @stocks_app.command("ism-report")
 def ism_report(
     kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
-    top_n: int = typer.Option(5, "--top-n", help="Top N stocks per ISM trend bucket"),
-    max_pe_ratio: Optional[float] = typer.Option(
-        None,
-        "--max-pe",
-        help="Optional PE filter (keep only tickers with PE <= this value).",
-    ),
+    top_n: int = typer.Option(10, "--top-n", help="Top N stocks per ISM side bucket (long/short)"),
     min_eps_growth: Optional[float] = typer.Option(
         None,
         "--min-eps-growth",
         help="Optional EPS-growth filter in percent (next-year estimate).",
+    ),
+    min_confidence: float = typer.Option(
+        0.3,
+        "--min-confidence",
+        help="Minimum final confidence score (0-1) for report candidates.",
     ),
     universe_json: Optional[str] = typer.Option(
         None,
@@ -191,6 +194,11 @@ def ism_report(
         help="Override sector → tickers mapping as a JSON string.",
     ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON report."),
+    sheet: bool = typer.Option(
+        False,
+        "--sheet",
+        help="Render report as Rich terminal tables (human-readable).",
+    ),
 ) -> None:
     """Build ISM hottest/worst industry report and filtered stock candidates."""
     if kind not in {"manufacturing", "services"}:
@@ -199,13 +207,17 @@ def ism_report(
     payload = build_ism_industry_report(
         kind=kind,
         top_n=top_n,
-        max_pe_ratio=max_pe_ratio,
         min_eps_growth_next_year=min_eps_growth,
+        min_confidence=min_confidence,
         universe=_resolve_universe(universe_json),
     )
 
-    if json_out:
+    if json_out and not sheet:
         typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    if sheet:
+        _render_ism_report_sheet(payload)
         return
 
     typer.echo(f"ISM {payload['kind'].capitalize()} — {payload['report_month']}")
@@ -214,8 +226,8 @@ def ism_report(
     typer.echo(
         "Criteria: "
         f"top_n={payload['criteria']['top_n']}, "
-        f"max_pe={payload['criteria']['max_pe_ratio']}, "
-        f"min_eps_growth={payload['criteria']['min_eps_growth_next_year']}"
+        f"min_eps_growth={payload['criteria']['min_eps_growth_next_year']}, "
+        f"min_conf={payload['criteria']['min_confidence']}"
     )
     typer.echo()
 
@@ -230,17 +242,128 @@ def ism_report(
         typer.echo(f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
     typer.echo()
 
-    for label, key in (("Filtered picks from hottest sectors", "expanding"), ("Filtered picks from worst sectors", "contracting")):
+    for label, key in (("Top longs (hottest sectors)", "longs"), ("Top shorts (worst sectors)", "shorts")):
         typer.echo(f"{label}:")
-        rows = payload["candidates"][key]
+        rows = payload["candidates"].get(key) or payload["candidates"][
+            "expanding" if key == "longs" else "contracting"
+        ]
         if not rows:
             typer.echo("  (none)")
             continue
         for row in rows:
+            industry = row.get("industry") or "?"
+            driver_industry = row.get("driver_industry") or "?"
+            momentum = row.get("industry_momentum") or "?"
+            side = row.get("side") or ("long" if key == "longs" else "short")
             typer.echo(
-                f"  {row['symbol']:<6} [{row['sector']}] score={row['score']:+.3f}  "
-                f"PE={row['pe_ratio']}  EPS(next)={row['eps_growth_next_year']}%"
+                f"  {row['symbol']:<6} [{row['sector']}] company={industry}  driver={driver_industry}  "
+                f"{side.upper()} momentum={momentum}  "
+                f"conf={row.get('confidence', '?')}  score={row['score']:+.3f}  "
+                f"EPS(next)={row['eps_growth_next_year']}% "
+                f"src={row.get('eps_growth_source') or '?'}"
             )
+
+
+def _render_ism_report_sheet(payload: dict[str, object]) -> None:
+    console = Console()
+    criteria = payload.get("criteria") if isinstance(payload, dict) else {}
+    if not isinstance(criteria, dict):
+        criteria = {}
+
+    console.print(
+        f"ISM {(payload.get('kind') or '').__str__().capitalize()} — {payload.get('report_month') or '?'}"
+    )
+    if payload.get("pmi") is not None:
+        console.print(f"Headline PMI: {payload.get('pmi')}")
+    console.print(
+        "Criteria: "
+        f"top_n={criteria.get('top_n')}, "
+        f"min_eps_growth={criteria.get('min_eps_growth_next_year')}, "
+        f"min_conf={criteria.get('min_confidence')}"
+    )
+    console.print("")
+
+    hottest = payload.get("hottest_industries")
+    if isinstance(hottest, list):
+        table = Table(title="Hottest industries (ISM expanding)")
+        table.add_column("Rank", justify="right")
+        table.add_column("Industry")
+        table.add_column("GICS sector")
+        for item in hottest[:10]:
+            if not isinstance(item, dict):
+                continue
+            table.add_row(
+                str(item.get("rank", "?")),
+                str(item.get("industry", "?")),
+                str(item.get("gics_sector") or "?"),
+            )
+        console.print(table)
+
+    worst = payload.get("worst_industries")
+    if isinstance(worst, list):
+        table = Table(title="Worst industries (ISM contracting)")
+        table.add_column("Rank", justify="right")
+        table.add_column("Industry")
+        table.add_column("GICS sector")
+        for item in worst[:10]:
+            if not isinstance(item, dict):
+                continue
+            table.add_row(
+                str(item.get("rank", "?")),
+                str(item.get("industry", "?")),
+                str(item.get("gics_sector") or "?"),
+            )
+        console.print(table)
+
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, dict):
+        return
+
+    for key, title in (
+        ("longs", "Top longs (hottest sectors)"),
+        ("shorts", "Top shorts (worst sectors)"),
+    ):
+        rows = candidates.get(key)
+        if rows is None:
+            rows = candidates.get("expanding" if key == "longs" else "contracting")
+        table = Table(title=title)
+        table.add_column("Symbol")
+        table.add_column("Name")
+        table.add_column("Side")
+        table.add_column("Sector")
+        table.add_column("Industry")
+        table.add_column("Driver")
+        table.add_column("Momentum")
+        table.add_column("Source")
+        table.add_column("Confidence", justify="right")
+        table.add_column("Score", justify="right")
+        table.add_column("EPS next %", justify="right")
+        table.add_column("EPS src")
+        if isinstance(rows, list) and rows:
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                table.add_row(
+                    str(row.get("symbol") or "?"),
+                    str(row.get("company_name") or ""),
+                    str(row.get("side") or ("long" if key == "longs" else "short")),
+                    str(row.get("sector") or "?"),
+                    str(row.get("industry") or "?"),
+                    str(row.get("driver_industry") or "?"),
+                    str(row.get("industry_momentum") or "?"),
+                    str(row.get("industry_source") or "?"),
+                    str(row.get("confidence") if row.get("confidence") is not None else "?"),
+                    str(row.get("score") if row.get("score") is not None else "?"),
+                    str(
+                        row.get("eps_growth_next_year")
+                        if row.get("eps_growth_next_year") is not None
+                        else "?"
+                    ),
+                    str(row.get("eps_growth_source") or "?"),
+                )
+        else:
+            table.add_row("(none)", "", "", "", "", "", "", "", "", "", "")
+        console.print(table)
 
 
 @stocks_app.command("journal-stats")
