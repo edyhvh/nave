@@ -22,7 +22,7 @@ from trading.base.broker import BaseBroker, BrokerResponse
 from trading.base.strategy import AbstractStrategy
 from trading.stocks.data_provider import MassiveClient
 from trading.stocks.ism_scraper import ISMReport, ISMReportFetcher
-from trading.stocks.screener import SectorScreener, StockCandidate
+from trading.stocks.screener import ScreenerMode, SectorScreener, StockCandidate
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ class ISMSectorStrategy(AbstractStrategy):
         massive: MassiveClient,
         universe: dict[str, list[str]],
         report_kind: Literal["manufacturing", "services"] = "manufacturing",
+        mode: ScreenerMode | None = None,
         capital_usd: float = 10_000.0,
         max_positions: int = 5,
         min_eps_growth_next_year: float | None = None,
@@ -71,6 +72,9 @@ class ISMSectorStrategy(AbstractStrategy):
         self.massive = massive
         self.universe = universe
         self.report_kind = report_kind
+        # Default screening mode mirrors the ISM report kind so
+        # ``report_kind="services"`` auto-selects the revenue-growth screener.
+        self.mode: ScreenerMode = cast("ScreenerMode", mode or report_kind)
         self.capital_usd = capital_usd
         self.max_positions = max_positions
         self.min_eps_growth_next_year = min_eps_growth_next_year
@@ -88,6 +92,7 @@ class ISMSectorStrategy(AbstractStrategy):
             top_n=self.max_positions,
             min_eps_growth_next_year=self.min_eps_growth_next_year,
             min_confidence=self.min_confidence,
+            mode=self.mode,
         )
         if not picks:
             logger.info("ISMSectorStrategy: no candidates from %s", report.report_month)

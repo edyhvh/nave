@@ -9,7 +9,12 @@ from typing import Any, Mapping, cast
 
 from trading.stocks.data_provider import MassiveClient, MassiveRateLimitError
 from trading.stocks.ism_scraper import ISMReportFetcher
-from trading.stocks.screener import SectorScreener, StockCandidate, StockScreenerError
+from trading.stocks.screener import (
+    ScreenerMode,
+    SectorScreener,
+    StockCandidate,
+    StockScreenerError,
+)
 
 # Keep this short so FMP daily-budget usage stays practical.
 # The default basket leans toward names whose public-company industries map
@@ -32,6 +37,7 @@ DEFAULT_UNIVERSE: dict[str, list[str]] = {
 def build_ism_industry_report(
     *,
     kind: str = "manufacturing",
+    mode: str | None = None,
     top_n: int = 10,
     max_sectors_per_trend: int = 4,
     min_eps_growth_next_year: float | None = None,
@@ -42,9 +48,17 @@ def build_ism_industry_report(
     persist_snapshot: bool = False,
     snapshot_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Build a complete ISM report with hottest/worst sectors and filtered names."""
+    """Build a complete ISM report with hottest/worst sectors and filtered names.
+
+    ``mode`` selects the screening strategy (``manufacturing`` = EPS growth,
+    ``services`` = long-term revenue growth + PE-relative filter). When
+    omitted it mirrors ``kind``.
+    """
     if kind not in {"manufacturing", "services"}:
         raise ValueError("kind must be 'manufacturing' or 'services'")
+    effective_mode: ScreenerMode = cast("ScreenerMode", mode or kind)
+    if effective_mode not in {"manufacturing", "services"}:
+        raise ValueError("mode must be 'manufacturing' or 'services'")
 
     report_fetcher = fetcher or ISMReportFetcher()
     report = report_fetcher.fetch_report(kind=cast("Any", kind))
@@ -64,6 +78,7 @@ def build_ism_industry_report(
         max_sectors=max_sectors_per_trend,
         min_eps_growth_next_year=min_eps_growth_next_year,
         min_confidence=min_confidence,
+        mode=effective_mode,
     )
     short_candidates = _safe_rank(
         screener,
@@ -73,6 +88,7 @@ def build_ism_industry_report(
         max_sectors=max_sectors_per_trend,
         min_eps_growth_next_year=min_eps_growth_next_year,
         min_confidence=min_confidence,
+        mode=effective_mode,
     )
 
     long_candidates, short_candidates = _remove_overlaps(
@@ -116,11 +132,13 @@ def build_ism_industry_report(
     payload: dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "kind": report.kind,
+        "mode": effective_mode,
         "report_month": report.report_month,
         "pmi": report.pmi,
         "source_url": report.source_url,
         "criteria": {
             "top_n": top_n,
+            "mode": effective_mode,
             "max_sectors_per_trend": max_sectors_per_trend,
             "min_eps_growth_next_year": min_eps_growth_next_year,
             "min_confidence": min_confidence,
@@ -211,6 +229,7 @@ def _safe_rank(
     max_sectors: int,
     min_eps_growth_next_year: float | None,
     min_confidence: float,
+    mode: ScreenerMode = "manufacturing",
 ) -> list[StockCandidate]:
     try:
         sectors = report.by_sector(trend=trend)
@@ -231,6 +250,7 @@ def _safe_rank(
             min_eps_growth_next_year=min_eps_growth_next_year,
             industry_rankings_by_sector=sector_rankings,
             min_confidence=min_confidence,
+            mode=mode,
         )
     except (StockScreenerError, MassiveRateLimitError):
         return []
@@ -262,11 +282,18 @@ def _candidate_to_dict(
         "industry_source": industry_source,
         "industry_momentum": industry_momentum,
         "side": item.side,
+        "mode": item.mode,
         "confidence": round(item.confidence, 4),
         "match_confidence": round(item.match_confidence, 4),
         "score": round(item.score, 4),
         "eps_growth_next_year": round(item.eps_growth_next_year, 2) if item.eps_growth_next_year is not None else None,
         "eps_growth_source": item.eps_growth_source,
+        "revenue_growth_long_term": (
+            round(item.revenue_growth_long_term, 2)
+            if item.revenue_growth_long_term is not None
+            else None
+        ),
+        "revenue_growth_source": item.revenue_growth_source,
         "reason": item.reason,
     }
 

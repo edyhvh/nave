@@ -219,6 +219,10 @@ nave stocks screen --kind manufacturing --top-n 5 --capital 10000
 nave stocks screen --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8
 nave stocks screen --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8 --min-confidence 0.7
 
+# 4b. Services mode — long-term revenue growth + PE-relative filter
+nave stocks screen --kind services --mode services --top-n 5
+nave stocks ism-report --kind services --mode services --sheet
+
 # 5. Override the ticker universe (keep it lean to respect the 250-call/day cap)
 nave stocks screen --universe-json '{"Industrials": ["GE","CAT"]}'
 
@@ -248,6 +252,33 @@ the public ISM press releases — no browser dependency. Pass
 **Fundamentals data source**: ISM stock screening now uses Financial Modeling
 Prep via `FMP_API_KEY`. The client keeps a persistent cache under `var/fmp_cache/`
 so repeat CLI/Hermes/MCP runs do not burn the 250 calls/day quota unnecessarily.
+
+### Screening modes
+
+The screener supports two ranking strategies via `--mode` (defaults to the
+value of `--kind`):
+
+- **`--mode manufacturing`** *(default)* — ranks purely by EPS growth
+  next year. Confidence = `0.6 × ISM industry-match + 0.4 × EPS confidence`.
+  Unchanged from the original flow.
+- **`--mode services`** — ranks by **long-term revenue growth forecast**
+  (FMP analyst-estimate CAGR, yfinance trailing `revenueGrowth` as
+  fallback) and drops names where `company PE ≥ sector average PE`
+  (a secondary PE-relative check). No other scoring.
+
+Example Services-mode output (truncated):
+
+```
+ISM Services — March 2026
+Mode: services
+Criteria: mode=services, top_n=5, min_eps_growth=None, min_conf=0.3
+
+Top longs (hottest sectors)
+┃ Symbol ┃ Name    ┃ Side ┃ Sector                 ┃ Rev LT % ┃ Rev src                 ┃ Score ┃
+│ GOOGL  │ Alphabet│ long │ Communication Services │   18.0   │ fmp_analyst_estimate    │ +0.180│
+│ META   │ Meta    │ long │ Communication Services │   12.0   │ fmp_analyst_estimate    │ +0.120│
+│ DIS    │ Disney  │ long │ Communication Services │    6.0   │ yfinance_trailing_...   │ +0.060│
+```
 
 **Brokers**: `AlpacaBroker` and `OndoBroker` are stubs. All read/write
 methods raise `NotImplementedError` until the real integrations land,

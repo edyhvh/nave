@@ -116,6 +116,15 @@ def ism_scan(
 def screen(
     kind: str = typer.Option("manufacturing", "--kind",
                              help="ISM report flavour"),
+    mode: Optional[str] = typer.Option(
+        None,
+        "--mode",
+        help=(
+            "Screening strategy: manufacturing (EPS-growth ranking) or "
+            "services (long-term revenue growth + PE-relative filter). "
+            "Defaults to --kind."
+        ),
+    ),
     top_n: int = typer.Option(
         5, "--top-n", help="Return the top N candidates"),
     capital: float = typer.Option(
@@ -143,6 +152,9 @@ def screen(
     """Run the full ISM → fundamentals screener and show the proposed plan."""
     if kind not in {"manufacturing", "services"}:
         raise typer.BadParameter("--kind must be manufacturing or services")
+    effective_mode = mode or kind
+    if effective_mode not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--mode must be manufacturing or services")
 
     universe = _resolve_universe(universe_json)
     massive = MassiveClient()
@@ -152,6 +164,7 @@ def screen(
         massive=massive,
         universe=universe,
         report_kind=kind,  # type: ignore[arg-type]
+        mode=effective_mode,  # type: ignore[arg-type]
         capital_usd=capital,
         max_positions=top_n,
         min_eps_growth_next_year=min_eps_growth,
@@ -189,6 +202,14 @@ def screen(
 def ism_report(
     kind: str = typer.Option("manufacturing", "--kind",
                              help="ISM report flavour"),
+    mode: Optional[str] = typer.Option(
+        None,
+        "--mode",
+        help=(
+            "Screening strategy: manufacturing (EPS-growth) or services "
+            "(long-term revenue growth + PE-relative). Defaults to --kind."
+        ),
+    ),
     top_n: int = typer.Option(
         10, "--top-n", help="Top N stocks per ISM side bucket (long/short)"),
     min_eps_growth: Optional[float] = typer.Option(
@@ -226,9 +247,13 @@ def ism_report(
     """Build ISM hottest/worst industry report and filtered stock candidates."""
     if kind not in {"manufacturing", "services"}:
         raise typer.BadParameter("--kind must be manufacturing or services")
+    effective_mode = mode or kind
+    if effective_mode not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--mode must be manufacturing or services")
 
     payload = build_ism_industry_report(
         kind=kind,
+        mode=effective_mode,
         top_n=top_n,
         min_eps_growth_next_year=min_eps_growth,
         min_confidence=min_confidence,
@@ -303,10 +328,13 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
     console.print(
         f"ISM {(payload.get('kind') or '').__str__().capitalize()} — {payload.get('report_month') or '?'}"
     )
+    if payload.get("mode"):
+        console.print(f"Mode: {payload.get('mode')}")
     if payload.get("pmi") is not None:
         console.print(f"Headline PMI: {payload.get('pmi')}")
     console.print(
         "Criteria: "
+        f"mode={criteria.get('mode')}, "
         f"top_n={criteria.get('top_n')}, "
         f"min_eps_growth={criteria.get('min_eps_growth_next_year')}, "
         f"min_conf={criteria.get('min_confidence')}"
@@ -373,6 +401,9 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
         table.add_column("Score", justify="right")
         table.add_column("EPS next %", justify="right")
         table.add_column("EPS src")
+        # Services-mode extras — filled with "?" when data is absent.
+        table.add_column("Rev LT %", justify="right")
+        table.add_column("Rev src")
         if isinstance(rows, list) and rows:
             for row in rows:
                 if not isinstance(row, dict):
@@ -396,9 +427,17 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
                         else "?"
                     ),
                     str(row.get("eps_growth_source") or "?"),
+                    str(
+                        row.get("revenue_growth_long_term")
+                        if row.get("revenue_growth_long_term") is not None
+                        else "?"
+                    ),
+                    str(row.get("revenue_growth_source") or "?"),
                 )
         else:
-            table.add_row("(none)", "", "", "", "", "", "", "", "", "", "")
+            table.add_row(
+                "(none)", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            )
         console.print(table)
 
 

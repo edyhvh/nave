@@ -28,6 +28,7 @@ from trading.stocks.ism_scraper import (
 from trading.stocks.journal import StockJournal
 from trading.stocks.reporting import DEFAULT_UNIVERSE, build_ism_industry_report
 from trading.stocks.screener import (
+    ScreenerMode,
     SectorScreener,
     StockCandidate,
     StockScreenerError,
@@ -43,6 +44,7 @@ __all__ = [
     "MassiveClient",
     "MassiveRateLimitError",
     "DEFAULT_UNIVERSE",
+    "ScreenerMode",
     "SectorScreener",
     "StockCandidate",
     "StockJournal",

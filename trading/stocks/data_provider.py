@@ -67,6 +67,11 @@ class FundamentalSnapshot:
     eps_growth_source: str | None = None
     eps_growth_confidence: float = 0.0
     company_name: str | None = None
+    # Long-term / multi-year revenue growth forecast — used by Services mode.
+    # FMP analyst-estimates multi-year CAGR first, yfinance trailing
+    # revenueGrowth as fallback. Percent units (e.g. 12.5 means +12.5%).
+    revenue_growth_long_term: float | None = None
+    revenue_growth_source: str | None = None
 
 
 class _TokenBucket:
@@ -269,9 +274,14 @@ class FMPClient:
         if isinstance(cached_payload, dict):
             try:
                 snap = FundamentalSnapshot(**cached_payload)
-                # If the cached snapshot is missing pe/eps or company_name
-                # (e.g. stored before yfinance enrichment was added), enrich now and re-cache.
-                if (snap.pe_ratio is None and snap.eps_growth_next_year is None) or snap.company_name is None:
+                # If the cached snapshot is missing pe/eps, company_name,
+                # or long-term revenue growth (e.g. stored before a given
+                # enrichment was added), enrich now and re-cache.
+                if (
+                    (snap.pe_ratio is None and snap.eps_growth_next_year is None)
+                    or snap.company_name is None
+                    or snap.revenue_growth_long_term is None
+                ):
                     snap = _yfinance_enrich(snap)
                     self._cache_put("fundamentals", key, asdict(snap))
                 self._fundamentals_cache[key] = snap
@@ -297,8 +307,14 @@ class FMPClient:
             snap = _snapshot_from_payload(key, {})
 
         # FMP free tier omits pe/eps from /profile and gates /ratios-ttm
-        # behind a paid plan — fill the gaps from Yahoo Finance.
-        if (snap.pe_ratio is None and snap.eps_growth_next_year is None) or snap.company_name is None:
+        # behind a paid plan — fill the gaps from Yahoo Finance. Also enrich
+        # when the long-term revenue growth forecast (used by Services mode)
+        # isn't available from FMP analyst estimates.
+        if (
+            (snap.pe_ratio is None and snap.eps_growth_next_year is None)
+            or snap.company_name is None
+            or snap.revenue_growth_long_term is None
+        ):
             snap = _yfinance_enrich(snap)
         self._fundamentals_cache[key] = snap
         self._cache_put("fundamentals", key, asdict(snap))
@@ -431,6 +447,9 @@ def _snapshot_from_payload(symbol: str, payload: dict[str, Any]) -> FundamentalS
         next_eps=next_eps,
         estimate_row=estimate_row,
     )
+    revenue_lt_growth = _estimate_long_term_revenue_growth_from_fmp(
+        payload.get("analyst_estimates", []),
+    )
     forward_pe = _first_float(
         estimate_row,
         "forwardPE",
@@ -473,7 +492,45 @@ def _snapshot_from_payload(symbol: str, payload: dict[str, Any]) -> FundamentalS
         eps_growth_source="fmp_analyst_estimate" if next_eps is not None else "vendor_estimate",
         eps_growth_confidence=eps_growth_confidence,
         company_name=company_name,
+        revenue_growth_long_term=revenue_lt_growth,
+        revenue_growth_source="fmp_analyst_estimate" if revenue_lt_growth is not None else None,
     )
+
+
+def _estimate_long_term_revenue_growth_from_fmp(payload: Any) -> float | None:
+    """Compute a multi-year revenue CAGR from FMP analyst-estimate rows.
+
+    Services mode wants a "5-year / long-term" revenue growth forecast.
+    FMP's /analyst-estimates returns up to ~4 forward years with
+    ``estimatedRevenueAvg``; the CAGR across those rows is our best
+    free-tier proxy for a long-term forecast.
+    """
+    rows = _records_from_payload(payload)
+    revenue_by_year: list[tuple[int, float]] = []
+    for row in rows:
+        year = _to_int(row.get("year") or row.get("calendarYear") or row.get("fiscalYear"))
+        revenue = _first_float(
+            row,
+            "estimatedRevenueAvg",
+            "estimatedRevenue",
+            "revenueEstimate",
+            "revenueAvg",
+        )
+        if year is not None and revenue is not None and revenue > 0:
+            revenue_by_year.append((year, revenue))
+    if len(revenue_by_year) < 2:
+        return None
+    revenue_by_year.sort()
+    first_year, first_rev = revenue_by_year[0]
+    last_year, last_rev = revenue_by_year[-1]
+    span = last_year - first_year
+    if span <= 0 or first_rev <= 0:
+        return None
+    cagr = ((last_rev / first_rev) ** (1.0 / span) - 1.0) * 100.0
+    # Keep obviously broken projections out of the screener.
+    if abs(cagr) > 200.0:
+        return None
+    return cagr
 
 
 def _yfinance_enrich(snap: FundamentalSnapshot) -> FundamentalSnapshot:
@@ -524,6 +581,19 @@ def _yfinance_enrich(snap: FundamentalSnapshot) -> FundamentalSnapshot:
         sector = snap.sector or (info.get("sector") or None)
         industry = snap.industry or (info.get("industry") or None)
         company_name = snap.company_name or (info.get("longName") or info.get("shortName") or None)
+
+        # yfinance fallback for long-term revenue growth. ``revenueGrowth`` is
+        # a trailing YoY figure (decimal, e.g. 0.12 = 12%), not a 5Y forecast —
+        # but it's the only readily-available free signal. Used only when FMP
+        # couldn't provide a multi-year CAGR.
+        rev_growth_lt = snap.revenue_growth_long_term
+        rev_growth_source = snap.revenue_growth_source
+        if rev_growth_lt is None:
+            yf_revenue_growth = _to_float(info.get("revenueGrowth"))
+            if yf_revenue_growth is not None:
+                rev_growth_lt = yf_revenue_growth * 100.0
+                rev_growth_source = "yfinance_trailing_revenue_growth"
+
         return FundamentalSnapshot(
             symbol=snap.symbol,
             sector=sector,
@@ -535,6 +605,8 @@ def _yfinance_enrich(snap: FundamentalSnapshot) -> FundamentalSnapshot:
             eps_growth_source=eps_source,
             eps_growth_confidence=eps_conf,
             company_name=company_name,
+            revenue_growth_long_term=rev_growth_lt,
+            revenue_growth_source=rev_growth_source,
         )
     except Exception as exc:
         logger.debug("yfinance enrichment failed for %s: %s", snap.symbol, exc)

@@ -444,6 +444,160 @@ def test_strategy_passes_min_confidence_to_screener():
     assert summary["plan"] == []
 
 
+def test_services_mode_ranks_by_long_term_revenue_growth():
+    """Services mode ranks purely by long-term revenue growth."""
+    report = _make_report([("publishing industries (except internet)", "Communication Services")])
+    snapshots = {
+        "GOOGL": FundamentalSnapshot(
+            "GOOGL",
+            "Communication Services",
+            pe_ratio=22.0,
+            forward_pe=20.0,
+            eps_growth_next_year=None,
+            raw={},
+            industry="Interactive Media & Services",
+            revenue_growth_long_term=18.0,
+            revenue_growth_source="fmp_analyst_estimate",
+        ),
+        "META": FundamentalSnapshot(
+            "META",
+            "Communication Services",
+            pe_ratio=24.0,
+            forward_pe=22.0,
+            eps_growth_next_year=None,
+            raw={},
+            industry="Interactive Media & Services",
+            revenue_growth_long_term=12.0,
+            revenue_growth_source="fmp_analyst_estimate",
+        ),
+        "DIS": FundamentalSnapshot(
+            "DIS",
+            "Communication Services",
+            pe_ratio=28.0,
+            forward_pe=24.0,
+            eps_growth_next_year=None,
+            raw={},
+            industry="Entertainment",
+            revenue_growth_long_term=6.0,
+            revenue_growth_source="yfinance_trailing_revenue_growth",
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive(
+            sector_avg={"Communication Services": 30.0},
+            snapshots=snapshots,
+        ),
+        universe={"Communication Services": ["GOOGL", "META", "DIS"]},
+    )
+
+    picks = screener.rank_from_ism(report, top_n=3, mode="services")
+    # All three pass PE < sector_avg_pe (30.0). Rank by revenue growth.
+    assert [p.symbol for p in picks] == ["GOOGL", "META", "DIS"]
+    assert picks[0].revenue_growth_long_term == 18.0
+    assert picks[0].mode == "services"
+
+
+def test_services_mode_drops_candidates_without_revenue_forecast():
+    report = _make_report([("publishing industries (except internet)", "Communication Services")])
+    snapshots = {
+        "GOOGL": FundamentalSnapshot(
+            "GOOGL",
+            "Communication Services",
+            pe_ratio=22.0,
+            forward_pe=20.0,
+            eps_growth_next_year=25.0,  # high EPS growth — irrelevant for services
+            raw={},
+            industry="Interactive Media & Services",
+            revenue_growth_long_term=None,  # no forecast → filtered out
+        ),
+        "META": FundamentalSnapshot(
+            "META",
+            "Communication Services",
+            pe_ratio=24.0,
+            forward_pe=22.0,
+            eps_growth_next_year=10.0,
+            raw={},
+            industry="Interactive Media & Services",
+            revenue_growth_long_term=11.0,
+            revenue_growth_source="fmp_analyst_estimate",
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive(
+            sector_avg={"Communication Services": 30.0},
+            snapshots=snapshots,
+        ),
+        universe={"Communication Services": ["GOOGL", "META"]},
+    )
+
+    picks = screener.rank_from_ism(report, top_n=3, mode="services")
+    assert [p.symbol for p in picks] == ["META"]
+
+
+def test_services_mode_applies_pe_relative_filter():
+    """Services mode drops companies with PE >= sector average PE."""
+    report = _make_report([("publishing industries (except internet)", "Communication Services")])
+    snapshots = {
+        "GOOGL": FundamentalSnapshot(
+            "GOOGL",
+            "Communication Services",
+            pe_ratio=22.0,  # under sector PE → passes
+            forward_pe=20.0,
+            eps_growth_next_year=None,
+            raw={},
+            industry="Interactive Media & Services",
+            revenue_growth_long_term=15.0,
+            revenue_growth_source="fmp_analyst_estimate",
+        ),
+        "NFLX": FundamentalSnapshot(
+            "NFLX",
+            "Communication Services",
+            pe_ratio=40.0,  # above sector PE → fails filter
+            forward_pe=36.0,
+            eps_growth_next_year=None,
+            raw={},
+            industry="Entertainment",
+            revenue_growth_long_term=20.0,  # higher growth, still excluded
+            revenue_growth_source="fmp_analyst_estimate",
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive(
+            sector_avg={"Communication Services": 30.0},
+            snapshots=snapshots,
+        ),
+        universe={"Communication Services": ["GOOGL", "NFLX"]},
+    )
+
+    picks = screener.rank_from_ism(report, top_n=5, mode="services")
+    assert [p.symbol for p in picks] == ["GOOGL"]
+
+
+def test_manufacturing_mode_ignores_revenue_growth_field():
+    """Adding revenue_growth doesn't affect manufacturing-mode ranking."""
+    report = _make_report([("machinery", "Industrials")])
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            "GE", "Industrials",
+            pe_ratio=15.0, forward_pe=13.0, eps_growth_next_year=20.0, raw={},
+            revenue_growth_long_term=3.0,  # low rev growth
+        ),
+        "CAT": FundamentalSnapshot(
+            "CAT", "Industrials",
+            pe_ratio=22.0, forward_pe=21.0, eps_growth_next_year=5.0, raw={},
+            revenue_growth_long_term=40.0,  # high rev growth but mode=manuf
+        ),
+    }
+    screener = SectorScreener(
+        massive=_FakeMassive({"Industrials": 25.0}, snapshots),
+        universe={"Industrials": ["GE", "CAT"]},
+    )
+
+    picks = screener.rank_from_ism(report, top_n=2)  # default mode=manufacturing
+    # EPS-growth still drives the ranking — GE (20%) beats CAT (5%).
+    assert [p.symbol for p in picks] == ["GE", "CAT"]
+
+
 def test_stock_journal_tags_trades_with_stock_asset_class(tmp_path):
     from trading.journal import AssetClass, SQLiteStorage, TradeJournal
     from trading.stocks.journal import StockJournal
