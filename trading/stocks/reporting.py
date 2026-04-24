@@ -345,7 +345,8 @@ def _persist_monthly_snapshot(
     *,
     snapshot_dir: str | Path | None,
 ) -> Path:
-    root = Path(snapshot_dir) if snapshot_dir is not None else _default_snapshot_dir()
+    root = Path(
+        snapshot_dir) if snapshot_dir is not None else _default_snapshot_dir()
     root.mkdir(parents=True, exist_ok=True)
     month_key = _month_key(payload)
     kind = str(payload.get("kind") or "unknown")

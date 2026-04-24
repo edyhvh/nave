@@ -198,7 +198,8 @@ def test_ism_report_persists_monthly_snapshot(tmp_path) -> None:
 
     payload = build_ism_industry_report(
         fetcher=_StubFetcher(report),
-        massive=_StubMassive(snapshots, {"Industrials": 25.0, "Materials": 18.0}),
+        massive=_StubMassive(
+            snapshots, {"Industrials": 25.0, "Materials": 18.0}),
         universe={"Industrials": ["GE"], "Materials": ["NUE"]},
         top_n=2,
         max_sectors_per_trend=2,
@@ -210,7 +211,8 @@ def test_ism_report_persists_monthly_snapshot(tmp_path) -> None:
     saved_to = payload.get("saved_to")
     assert isinstance(saved_to, str)
 
-    saved = json.loads((tmp_path / "ism_manufacturing_2026-03.json").read_text())
+    saved = json.loads(
+        (tmp_path / "ism_manufacturing_2026-03.json").read_text())
     assert saved["report_month"] == "March 2026"
     assert saved["screened_universe"]["all_symbols"] == ["GE", "NUE"]
     assert "hottest_industries" in saved

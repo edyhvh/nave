@@ -31,7 +31,8 @@ from trading.stocks import (
 
 logger = configure_logger(__name__, level=logging.INFO)
 
-stocks_app = ProfessionalTyper(help="ISM-driven stock trading workflow (Alpaca + Ondo stubs).")
+stocks_app = ProfessionalTyper(
+    help="ISM-driven stock trading workflow (Alpaca + Ondo stubs).")
 
 
 def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
@@ -40,9 +41,11 @@ def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
     try:
         parsed = _json.loads(universe_json)
     except _json.JSONDecodeError as exc:
-        raise typer.BadParameter(f"--universe-json is not valid JSON: {exc}") from exc
+        raise typer.BadParameter(
+            f"--universe-json is not valid JSON: {exc}") from exc
     if not isinstance(parsed, dict):
-        raise typer.BadParameter("--universe-json must be an object mapping sector → [tickers]")
+        raise typer.BadParameter(
+            "--universe-json must be an object mapping sector → [tickers]")
     return {str(k): [str(t) for t in v] for k, v in parsed.items()}
 
 
@@ -63,7 +66,8 @@ def ism_scan(
         "--playwright/--no-playwright",
         help="Use the Playwright fallback instead of httpx+BS4.",
     ),
-    json_out: bool = typer.Option(False, "--json", help="Emit JSON instead of a table."),
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit JSON instead of a table."),
 ) -> None:
     """Fetch the latest ISM Report On Business® and print the ranking."""
     if kind not in {"manufacturing", "services"}:
@@ -79,11 +83,13 @@ def ism_scan(
             "pmi": report.pmi,
             "source_url": report.source_url,
             "expanding": [
-                {"rank": r.rank, "industry": r.industry, "gics_sector": r.gics_sector}
+                {"rank": r.rank, "industry": r.industry,
+                    "gics_sector": r.gics_sector}
                 for r in report.expanding
             ],
             "contracting": [
-                {"rank": r.rank, "industry": r.industry, "gics_sector": r.gics_sector}
+                {"rank": r.rank, "industry": r.industry,
+                    "gics_sector": r.gics_sector}
                 for r in report.contracting
             ],
         }
@@ -108,9 +114,12 @@ def ism_scan(
 
 @stocks_app.command("screen")
 def screen(
-    kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
-    top_n: int = typer.Option(5, "--top-n", help="Return the top N candidates"),
-    capital: float = typer.Option(10000.0, "--capital", help="Total USD to equal-weight across picks"),
+    kind: str = typer.Option("manufacturing", "--kind",
+                             help="ISM report flavour"),
+    top_n: int = typer.Option(
+        5, "--top-n", help="Return the top N candidates"),
+    capital: float = typer.Option(
+        10000.0, "--capital", help="Total USD to equal-weight across picks"),
     min_eps_growth: Optional[float] = typer.Option(
         None,
         "--min-eps-growth",
@@ -126,8 +135,10 @@ def screen(
         "--universe-json",
         help="Override sector → tickers mapping as a JSON string.",
     ),
-    json_out: bool = typer.Option(False, "--json", help="Emit JSON plan instead of table."),
-    dry_run: bool = typer.Option(True, "--dry-run/--live", help="Default dry-run. Broker is stubbed."),
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit JSON plan instead of table."),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--live", help="Default dry-run. Broker is stubbed."),
 ) -> None:
     """Run the full ISM → fundamentals screener and show the proposed plan."""
     if kind not in {"manufacturing", "services"}:
@@ -161,8 +172,8 @@ def screen(
         return
 
     typer.echo(
-            f"{summary['strategy']} via {summary['broker']}  "
-            f"(dry_run={summary['dry_run']})"
+        f"{summary['strategy']} via {summary['broker']}  "
+        f"(dry_run={summary['dry_run']})"
     )
     if not summary["plan"]:
         typer.echo("No candidates — check --universe-json or widen the screener.")
@@ -176,8 +187,10 @@ def screen(
 
 @stocks_app.command("ism-report")
 def ism_report(
-    kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
-    top_n: int = typer.Option(10, "--top-n", help="Top N stocks per ISM side bucket (long/short)"),
+    kind: str = typer.Option("manufacturing", "--kind",
+                             help="ISM report flavour"),
+    top_n: int = typer.Option(
+        10, "--top-n", help="Top N stocks per ISM side bucket (long/short)"),
     min_eps_growth: Optional[float] = typer.Option(
         None,
         "--min-eps-growth",
@@ -232,7 +245,8 @@ def ism_report(
         _render_ism_report_sheet(payload)
         return
 
-    typer.echo(f"ISM {payload['kind'].capitalize()} — {payload['report_month']}")
+    typer.echo(
+        f"ISM {payload['kind'].capitalize()} — {payload['report_month']}")
     if payload.get("pmi") is not None:
         typer.echo(f"Headline PMI: {payload['pmi']}")
     typer.echo(
@@ -249,11 +263,13 @@ def ism_report(
     worst = payload["worst_industries"][:5]
     typer.echo("Hottest industries (ISM expanding):")
     for item in hottest:
-        typer.echo(f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
+        typer.echo(
+            f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
     typer.echo()
     typer.echo("Worst industries (ISM contracting):")
     for item in worst:
-        typer.echo(f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
+        typer.echo(
+            f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
     typer.echo()
 
     for label, key in (("Top longs (hottest sectors)", "longs"), ("Top shorts (worst sectors)", "shorts")):
@@ -342,7 +358,8 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
     ):
         rows = candidates.get(key)
         if rows is None:
-            rows = candidates.get("expanding" if key == "longs" else "contracting")
+            rows = candidates.get("expanding" if key ==
+                                  "longs" else "contracting")
         table = Table(title=title)
         table.add_column("Symbol")
         table.add_column("Name")
@@ -369,8 +386,10 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
                     str(row.get("driver_industry") or "?"),
                     str(row.get("industry_momentum") or "?"),
                     str(row.get("industry_source") or "?"),
-                    str(row.get("confidence") if row.get("confidence") is not None else "?"),
-                    str(row.get("score") if row.get("score") is not None else "?"),
+                    str(row.get("confidence") if row.get(
+                        "confidence") is not None else "?"),
+                    str(row.get("score") if row.get(
+                        "score") is not None else "?"),
                     str(
                         row.get("eps_growth_next_year")
                         if row.get("eps_growth_next_year") is not None
