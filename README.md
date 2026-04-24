@@ -168,6 +168,68 @@ nave/
 └── requirements.txt   # Python dependencies
 ```
 
+## Multi-asset architecture (crypto + stocks)
+
+The `trading/` package is organized by asset class so that strategies and
+broker integrations can live side by side without mixing concerns:
+
+```
+trading/
+├── base/           # Asset-agnostic abstractions
+│   ├── broker.py   # BaseBroker ABC, BrokerResponse envelope
+│   ├── strategy.py # AbstractStrategy (compute → execute)
+│   └── journal.py  # BaseJournal scoped to an AssetClass
+├── brokers/
+│   ├── hyperliquid.py  # adapter over trading.crypto.client
+│   ├── alpaca.py       # stub (equities, integration pending)
+│   └── ondo.py         # stub (RWA/DeFi, integration pending)
+├── crypto/         # Hyperliquid + COT + theory-v2 stack
+├── stocks/         # ISM + Massive.com fundamentals workflow
+│   ├── ism_scraper.py     # httpx+BS4 primary; Playwright fallback
+│   ├── data_provider.py   # Massive.com REST (rate-limited: 5 rpm)
+│   ├── screener.py        # PE-vs-sector + EPS-growth ranking
+│   ├── strategy.py        # ISMSectorStrategy
+│   └── journal.py         # StockJournal (tags asset_class=stock)
+└── journal/        # Shared journal — asset_class aware
+```
+
+Back-compat: the legacy top-level paths (`trading.client`, `trading.signals`,
+`trading.cot.cot_analyzer`, …) keep working via `sys.modules` aliases set up
+by `trading/_compat.py`, so scripts/, tests/, cli/, and hermes/integration.py
+continue to import the crypto stack unchanged.
+
+## Stocks workflow (ISM + Massive.com)
+
+```bash
+# 1. Install extra deps
+pip install -r requirements.txt
+
+# 2. Add your Massive API key to .env (free tier = 5 rpm)
+MASSIVE_API_KEY=your_key
+
+# 3. Fetch the latest ISM Manufacturing report
+nave stocks ism-scan --kind manufacturing
+nave stocks ism-scan --kind services --json
+
+# 4. Run the full screener (ISM → fundamentals → ranked plan)
+nave stocks screen --kind manufacturing --top-n 5 --capital 10000
+
+# 5. Override the ticker universe (free tier is rpm-bound — stay lean)
+nave stocks screen --universe-json '{"Industrials": ["GE","CAT"]}'
+
+# 6. Stock-only journal stats (crypto trades excluded)
+nave stocks journal-stats
+```
+
+**ISM data sources**: default path uses `httpx + BeautifulSoup` against
+the public ISM press releases — no browser dependency. Pass
+`--playwright` to `stocks ism-scan` for a JS-rendered mirror (requires
+`pip install playwright && python -m playwright install chromium`).
+
+**Brokers**: `AlpacaBroker` and `OndoBroker` are stubs. All read/write
+methods raise `NotImplementedError` until the real integrations land,
+which is safe because the strategy defaults to `dry_run=True`.
+
 ## Trading on Hyperliquid
 
 Nave integrates with [Hyperliquid](https://hyperliquid.xyz) for futures paper
