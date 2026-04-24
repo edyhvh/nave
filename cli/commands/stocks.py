@@ -199,6 +199,16 @@ def ism_report(
         "--sheet",
         help="Render report as Rich terminal tables (human-readable).",
     ),
+    save_snapshot: bool = typer.Option(
+        True,
+        "--save-snapshot/--no-save-snapshot",
+        help="Save monthly ISM rankings + screened companies to var/stocks_history as JSON.",
+    ),
+    snapshot_dir: Optional[str] = typer.Option(
+        None,
+        "--snapshot-dir",
+        help="Optional output directory for monthly ISM snapshot JSON files.",
+    ),
 ) -> None:
     """Build ISM hottest/worst industry report and filtered stock candidates."""
     if kind not in {"manufacturing", "services"}:
@@ -210,6 +220,8 @@ def ism_report(
         min_eps_growth_next_year=min_eps_growth,
         min_confidence=min_confidence,
         universe=_resolve_universe(universe_json),
+        persist_snapshot=save_snapshot,
+        snapshot_dir=snapshot_dir,
     )
 
     if json_out and not sheet:
@@ -229,6 +241,8 @@ def ism_report(
         f"min_eps_growth={payload['criteria']['min_eps_growth_next_year']}, "
         f"min_conf={payload['criteria']['min_confidence']}"
     )
+    if payload.get("saved_to"):
+        typer.echo(f"Snapshot saved: {payload['saved_to']}")
     typer.echo()
 
     hottest = payload["hottest_industries"][:5]
@@ -281,6 +295,9 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
         f"min_eps_growth={criteria.get('min_eps_growth_next_year')}, "
         f"min_conf={criteria.get('min_confidence')}"
     )
+    saved_to = payload.get("saved_to")
+    if saved_to:
+        console.print(f"Snapshot saved: {saved_to}")
     console.print("")
 
     hottest = payload.get("hottest_industries")

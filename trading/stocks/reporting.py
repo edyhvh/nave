@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Mapping, cast
 
 from trading.stocks.data_provider import MassiveClient, MassiveRateLimitError
@@ -37,6 +39,8 @@ def build_ism_industry_report(
     universe: Mapping[str, list[str]] | None = None,
     fetcher: ISMReportFetcher | None = None,
     massive: MassiveClient | None = None,
+    persist_snapshot: bool = False,
+    snapshot_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build a complete ISM report with hottest/worst sectors and filtered names."""
     if kind not in {"manufacturing", "services"}:
@@ -88,8 +92,28 @@ def build_ism_industry_report(
 
     expanding_primary_industry = _sector_primary_industry(report.expanding)
     contracting_primary_industry = _sector_primary_industry(report.contracting)
+    expanding_sectors = report.by_sector("expanding")
+    contracting_sectors = report.by_sector("contracting")
 
-    return {
+    screened_by_trend = {
+        "expanding_by_sector": _symbols_by_sector(
+            effective_universe,
+            expanding_sectors[:max_sectors_per_trend] if max_sectors_per_trend > 0 else expanding_sectors,
+        ),
+        "contracting_by_sector": _symbols_by_sector(
+            effective_universe,
+            contracting_sectors[:max_sectors_per_trend] if max_sectors_per_trend > 0 else contracting_sectors,
+        ),
+    }
+
+    screened_all_symbols = sorted(
+        {
+            *screened_by_trend["expanding_by_sector"].get("all_symbols", []),
+            *screened_by_trend["contracting_by_sector"].get("all_symbols", []),
+        }
+    )
+
+    payload: dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "kind": report.kind,
         "report_month": report.report_month,
@@ -153,15 +177,29 @@ def build_ism_industry_report(
             ],
         },
         "summary": {
-            "hottest_sector_count": len(report.by_sector("expanding")),
-            "worst_sector_count": len(report.by_sector("contracting")),
+            "hottest_sector_count": len(expanding_sectors),
+            "worst_sector_count": len(contracting_sectors),
             "long_candidates": len(long_candidates),
             "short_candidates": len(short_candidates),
+            "screened_symbol_count": len(screened_all_symbols),
             # Backward compatibility summary keys
             "expanding_candidates": len(long_candidates),
             "contracting_candidates": len(short_candidates),
         },
+        "screened_universe": {
+            **screened_by_trend,
+            "all_symbols": screened_all_symbols,
+        },
     }
+
+    if persist_snapshot:
+        saved_to = _persist_monthly_snapshot(
+            payload,
+            snapshot_dir=snapshot_dir,
+        )
+        payload["saved_to"] = str(saved_to)
+
+    return payload
 
 
 def _safe_rank(
@@ -283,3 +321,55 @@ def _filter_report_candidates(
             continue
         filtered.append(item)
     return filtered[:top_n]
+
+
+def _symbols_by_sector(
+    universe: Mapping[str, list[str]],
+    sectors: list[str],
+) -> dict[str, Any]:
+    by_sector: dict[str, list[str]] = {}
+    all_symbols: set[str] = set()
+    for sector in sectors:
+        symbols = [str(sym).upper() for sym in universe.get(sector, [])]
+        by_sector[sector] = symbols
+        all_symbols.update(symbols)
+    return {
+        "sectors": sectors,
+        "by_sector": by_sector,
+        "all_symbols": sorted(all_symbols),
+    }
+
+
+def _persist_monthly_snapshot(
+    payload: Mapping[str, Any],
+    *,
+    snapshot_dir: str | Path | None,
+) -> Path:
+    root = Path(snapshot_dir) if snapshot_dir is not None else _default_snapshot_dir()
+    root.mkdir(parents=True, exist_ok=True)
+    month_key = _month_key(payload)
+    kind = str(payload.get("kind") or "unknown")
+    path = root / f"ism_{kind}_{month_key}.json"
+    # Keep the first snapshot of the month as the source of truth.
+    if not path.exists():
+        path.write_text(json.dumps(payload, indent=2, default=str))
+    return path
+
+
+def _month_key(payload: Mapping[str, Any]) -> str:
+    report_month = str(payload.get("report_month") or "").strip()
+    if report_month:
+        try:
+            dt = datetime.strptime(report_month, "%B %Y")
+            return dt.strftime("%Y-%m")
+        except ValueError:
+            pass
+
+    generated_at = str(payload.get("generated_at") or "")
+    if len(generated_at) >= 7:
+        return generated_at[:7]
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def _default_snapshot_dir() -> Path:
+    return Path(__file__).resolve().parents[2] / "var" / "stocks_history"
