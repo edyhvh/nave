@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from trading.signals import Direction, Signal, Timeframe
+from trading.crypto.signals import Direction, Signal, Timeframe
 
 
 @dataclass

@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from trading.client import HyperliquidClient
-from trading.cot import (
+from trading.crypto.client import HyperliquidClient
+from trading.crypto.cot import (
     COTAnalyzer,
     COTHistoricalAnalyzer,
     COTPositionGenerator,

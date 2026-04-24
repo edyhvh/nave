@@ -5,7 +5,7 @@ A Signal is a directional opinion on a market with a confidence score.
 Strategies combine multiple signals to decide whether to trade.
 
 Usage:
-    from trading.signals import Signal, Direction, SignalAggregator
+    from trading.crypto.signals import Signal, Direction, SignalAggregator
 
     # Produce signals from your analysis:
     signal = Signal(coin="ETH", direction=Direction.LONG, confidence=0.75, source="macro")
@@ -279,7 +279,7 @@ class MacroSignalProducer:
         Uses non-commercial positioning (specs vs commercials per philosophy).
         Integrates with F.I.T.S. sentiment layer.
         """
-        from trading.cot.cot_analyzer import COTAnalyzer
+        from trading.crypto.cot.cot_analyzer import COTAnalyzer
 
         analyzer = COTAnalyzer(setups=setups)
         # If data isn't already COTBias objects, analyze raw dict payload first.

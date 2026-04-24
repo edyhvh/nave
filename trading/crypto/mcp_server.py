@@ -38,9 +38,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import json
 from mcp.server.fastmcp import FastMCP
 from hermes.integration import HermesNaveIntegration
-from trading.client import HyperliquidClient
-from trading.services import COTService
-from trading.vault import WalletVault
+from trading.crypto.client import HyperliquidClient
+from trading.crypto.services import COTService
+from trading.crypto.vault import WalletVault
 
 mcp = FastMCP(
     name="nave-trading",

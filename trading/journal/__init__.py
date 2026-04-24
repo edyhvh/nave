@@ -35,6 +35,7 @@ from .models import (
     TradeJournalEntry,
     PositionUpdate,
     TradeReview,
+    AssetClass,
 )
 from .journal import TradeJournal
 from .storage import SQLiteStorage, JSONStorage
@@ -51,6 +52,7 @@ __all__ = [
     "TradeJournalEntry",
     "PositionUpdate",
     "TradeReview",
+    "AssetClass",
     "TradeJournal",
     "SQLiteStorage",
     "JSONStorage",
