@@ -7,13 +7,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, cast
 
-from trading.stocks.data_provider import MassiveClient, MassiveRateLimitError
+from trading.stocks.data_provider import (
+    FundamentalSnapshot,
+    MassiveClient,
+    MassiveRateLimitError,
+)
 from trading.stocks.ism_scraper import ISMReportFetcher
 from trading.stocks.screener import (
     ScreenerMode,
     SectorScreener,
     StockCandidate,
     StockScreenerError,
+    _safe_sector_avg_pe,
 )
 
 # Keep this short so FMP daily-budget usage stays practical.
@@ -208,6 +213,18 @@ def build_ism_industry_report(
             **screened_by_trend,
             "all_symbols": screened_all_symbols,
         },
+        "reviewed_companies": _capture_reviewed_companies(
+            screener=screener,
+            mode=effective_mode,
+            expanding_by_sector=screened_by_trend["expanding_by_sector"]["by_sector"],
+            contracting_by_sector=screened_by_trend["contracting_by_sector"]["by_sector"],
+            long_candidates=long_candidates,
+            short_candidates=short_candidates,
+            ism_industry_hint_long=expanding_primary_industry,
+            ism_industry_hint_short=contracting_primary_industry,
+            min_eps_growth_next_year=min_eps_growth_next_year,
+            min_confidence=min_confidence,
+        ),
     }
 
     if persist_snapshot:
@@ -367,6 +384,165 @@ def _symbols_by_sector(
     }
 
 
+def _capture_reviewed_companies(
+    *,
+    screener: SectorScreener,
+    mode: ScreenerMode,
+    expanding_by_sector: Mapping[str, list[str]],
+    contracting_by_sector: Mapping[str, list[str]],
+    long_candidates: list[StockCandidate],
+    short_candidates: list[StockCandidate],
+    ism_industry_hint_long: Mapping[str, str],
+    ism_industry_hint_short: Mapping[str, str],
+    min_eps_growth_next_year: float | None,
+    min_confidence: float,
+) -> list[dict[str, Any]]:
+    """Per-symbol fundamentals + selection status for everything reviewed."""
+    long_by_symbol = {c.symbol: c for c in long_candidates}
+    short_by_symbol = {c.symbol: c for c in short_candidates}
+
+    rows: dict[str, dict[str, Any]] = {}
+    for trend, sector_map, hint_map in (
+        ("expanding", expanding_by_sector, ism_industry_hint_long),
+        ("contracting", contracting_by_sector, ism_industry_hint_short),
+    ):
+        for sector, symbols in sector_map.items():
+            if not symbols:
+                continue
+            sector_avg_pe = (
+                _safe_sector_avg_pe(screener.massive, sector)
+                if mode == "services"
+                else None
+            )
+            try:
+                snapshots = screener.massive.batch_fundamentals(symbols)
+            except MassiveRateLimitError:
+                snapshots = []
+            snap_by_symbol = {s.symbol.upper(): s for s in snapshots}
+            for raw_symbol in symbols:
+                symbol = str(raw_symbol).upper()
+                if symbol in rows:
+                    # Already captured under the other trend — keep the first.
+                    continue
+                snap = snap_by_symbol.get(symbol)
+                rows[symbol] = _reviewed_company_row(
+                    symbol=symbol,
+                    sector=sector,
+                    trend=trend,
+                    snap=snap,
+                    sector_avg_pe=sector_avg_pe,
+                    long_candidate=long_by_symbol.get(symbol),
+                    short_candidate=short_by_symbol.get(symbol),
+                    ism_industry_hint=hint_map.get(sector),
+                    mode=mode,
+                    min_eps_growth_next_year=min_eps_growth_next_year,
+                    min_confidence=min_confidence,
+                )
+    return [rows[symbol] for symbol in sorted(rows)]
+
+
+def _reviewed_company_row(
+    *,
+    symbol: str,
+    sector: str,
+    trend: str,
+    snap: FundamentalSnapshot | None,
+    sector_avg_pe: float | None,
+    long_candidate: StockCandidate | None,
+    short_candidate: StockCandidate | None,
+    ism_industry_hint: str | None,
+    mode: ScreenerMode,
+    min_eps_growth_next_year: float | None,
+    min_confidence: float,
+) -> dict[str, Any]:
+    if long_candidate is not None:
+        side = "long"
+        scored = long_candidate
+    elif short_candidate is not None:
+        side = "short"
+        scored = short_candidate
+    else:
+        side = "not_selected"
+        scored = None
+
+    row: dict[str, Any] = {
+        "symbol": symbol,
+        "sector": sector,
+        "trend": trend,
+        "side": side,
+        "company_name": snap.company_name if snap else None,
+        "industry": snap.industry if snap else None,
+        "driver_industry": (scored.driver_industry if scored else ism_industry_hint),
+        "pe_ratio": _round(snap.pe_ratio if snap else None, 2),
+        "forward_pe": _round(snap.forward_pe if snap else None, 2),
+        "sector_avg_pe": _round(sector_avg_pe, 2),
+        "eps_growth_next_year": _round(snap.eps_growth_next_year if snap else None, 2),
+        "eps_growth_source": snap.eps_growth_source if snap else None,
+        "eps_growth_confidence": _round(snap.eps_growth_confidence if snap else None, 4),
+        "revenue_growth_long_term": _round(
+            snap.revenue_growth_long_term if snap else None, 2
+        ),
+        "revenue_growth_source": snap.revenue_growth_source if snap else None,
+    }
+
+    if scored is not None:
+        row["confidence"] = round(scored.confidence, 4)
+        row["score"] = round(scored.score, 4)
+        row["reason"] = scored.reason
+        row["exclusion_reason"] = None
+    else:
+        row["confidence"] = None
+        row["score"] = None
+        row["reason"] = None
+        row["exclusion_reason"] = _infer_exclusion_reason(
+            snap=snap,
+            sector_avg_pe=sector_avg_pe,
+            mode=mode,
+            min_eps_growth_next_year=min_eps_growth_next_year,
+            min_confidence=min_confidence,
+        )
+    return row
+
+
+def _infer_exclusion_reason(
+    *,
+    snap: FundamentalSnapshot | None,
+    sector_avg_pe: float | None,
+    mode: ScreenerMode,
+    min_eps_growth_next_year: float | None,
+    min_confidence: float,
+) -> str:
+    if snap is None:
+        return "fundamentals_unavailable"
+    if mode == "services":
+        if snap.revenue_growth_long_term is None:
+            return "missing_revenue_forecast"
+        if (
+            sector_avg_pe is not None
+            and snap.pe_ratio is not None
+            and snap.pe_ratio >= sector_avg_pe
+        ):
+            return f"pe_above_sector_avg ({snap.pe_ratio:.1f} >= {sector_avg_pe:.1f})"
+    if mode == "manufacturing" and min_eps_growth_next_year is not None:
+        if snap.eps_growth_next_year is None or snap.eps_growth_next_year < min_eps_growth_next_year:
+            return f"below_min_eps_growth ({min_eps_growth_next_year}%)"
+    # If a min_confidence floor was applied, a low source/match confidence
+    # would have been the gate. We can't re-derive match confidence here
+    # without re-scoring, so describe the floor.
+    if min_confidence > 0:
+        return f"below_min_confidence_or_outside_top_n ({min_confidence})"
+    return "outside_top_n"
+
+
+def _round(value: float | None, ndigits: int) -> float | None:
+    if value is None:
+        return None
+    try:
+        return round(float(value), ndigits)
+    except (TypeError, ValueError):
+        return None
+
+
 def _persist_monthly_snapshot(
     payload: Mapping[str, Any],
     *,
@@ -400,4 +576,6 @@ def _month_key(payload: Mapping[str, Any]) -> str:
 
 
 def _default_snapshot_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "var" / "stocks_history"
+    # Repo-committed so monthly ISM rankings + reviewed-company data live
+    # alongside the code (the local copy *is* the committed copy).
+    return Path(__file__).resolve().parents[2] / "stocks_history"

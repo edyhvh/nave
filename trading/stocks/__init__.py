@@ -33,7 +33,13 @@ from trading.stocks.screener import (
     StockCandidate,
     StockScreenerError,
 )
+from trading.stocks.social_analyzer import (
+    X_POSTS_ANALYSIS_SYSTEM_PROMPT,
+    analyze_tickers,
+    analyze_tickers_async,
+)
 from trading.stocks.strategy import ISMSectorStrategy, StockPlan
+from trading.stocks.x_client import XClient, XClientError, XPost
 
 __all__ = [
     "GICS_MAPPING",
@@ -50,5 +56,11 @@ __all__ = [
     "StockJournal",
     "StockPlan",
     "StockScreenerError",
+    "X_POSTS_ANALYSIS_SYSTEM_PROMPT",
+    "XClient",
+    "XClientError",
+    "XPost",
+    "analyze_tickers",
+    "analyze_tickers_async",
     "build_ism_industry_report",
 ]

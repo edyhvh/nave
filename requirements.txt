@@ -65,3 +65,7 @@ beautifulsoup4>=4.12.0   # ISM press-release HTML parsing
 # Install on demand:
 #     pip install playwright && python -m playwright install chromium
 
+# X (Twitter) social sentiment — optional; only needed for `nave stocks x-analyze`.
+# Requires logged-in X account auth tokens stored in a local SQLite DB.
+twscrape>=0.17           # async X search client
+

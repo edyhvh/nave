@@ -28,11 +28,30 @@ from trading.stocks import (
     StockJournal,
     build_ism_industry_report,
 )
+from trading.stocks.ism_calendar import (
+    ISMCalendarError,
+    fetch_ism_calendar,
+    load_calendar,
+    next_release,
+)
+from trading.stocks.social_analyzer import (
+    analyze_tickers,
+    render_sheet as render_x_sheet,
+)
+from trading.stocks.x_client import (
+    DEFAULT_LIMIT_PER_TICKER,
+    DEFAULT_LOOKBACK_DAYS,
+)
 
 logger = configure_logger(__name__, level=logging.INFO)
 
 stocks_app = ProfessionalTyper(
     help="ISM-driven stock trading workflow (Alpaca + Ondo stubs).")
+
+ism_calendar_app = ProfessionalTyper(
+    help="Internal ISM release calendar (sourced from FMP)."
+)
+stocks_app.add_typer(ism_calendar_app, name="ism-calendar")
 
 
 def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
@@ -236,7 +255,7 @@ def ism_report(
     save_snapshot: bool = typer.Option(
         True,
         "--save-snapshot/--no-save-snapshot",
-        help="Save monthly ISM rankings + screened companies to var/stocks_history as JSON.",
+        help="Save monthly ISM rankings + screened companies to stocks_history/ (repo-committed) as JSON.",
     ),
     snapshot_dir: Optional[str] = typer.Option(
         None,
@@ -439,6 +458,245 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
                 "(none)", "", "", "", "", "", "", "", "", "", "", "", "", "",
             )
         console.print(table)
+
+
+@stocks_app.command("x-analyze")
+def x_analyze(
+    tickers: Optional[str] = typer.Option(
+        None,
+        "--tickers",
+        help="Comma-separated tickers to analyze, e.g. NVDA,AAPL,GE.",
+    ),
+    from_snapshot: Optional[str] = typer.Option(
+        None,
+        "--from-snapshot",
+        help="Path to an ISM snapshot JSON; pulls top picks from candidates.longs.",
+    ),
+    top: int = typer.Option(
+        5,
+        "--top",
+        help="With --from-snapshot, take the top N long candidates.",
+    ),
+    days: int = typer.Option(
+        DEFAULT_LOOKBACK_DAYS,
+        "--days",
+        help="Lookback window in days for X search.",
+    ),
+    limit_per_ticker: int = typer.Option(
+        DEFAULT_LIMIT_PER_TICKER,
+        "--limit-per-ticker",
+        help="Max posts per ticker.",
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit the full JSON payload (incl. analysis prompt)."
+    ),
+    sheet: bool = typer.Option(
+        False, "--sheet", help="Render Rich tables (default for terminal)."
+    ),
+    save_snapshot: bool = typer.Option(
+        True,
+        "--save-snapshot/--no-save-snapshot",
+        help="Save the analysis payload to stocks_history/ as JSON.",
+    ),
+    snapshot_dir: Optional[str] = typer.Option(
+        None,
+        "--snapshot-dir",
+        help="Override snapshot output directory.",
+    ),
+) -> None:
+    """Fetch X posts about tickers and package them with the LLM analysis prompt.
+
+    Output is a JSON payload (machine-readable, persisted) plus an optional
+    Rich-table sheet for the terminal. The analysis prompt is baked into the
+    payload — pipe the JSON into your LLM, paste it into Claude/ChatGPT, or
+    let the Hermes Telegram agent run it.
+    """
+    resolved = _resolve_tickers(tickers, from_snapshot=from_snapshot, top=top)
+    if not resolved:
+        raise typer.BadParameter(
+            "No tickers resolved. Pass --tickers or --from-snapshot."
+        )
+
+    payload = analyze_tickers(
+        resolved,
+        days=days,
+        limit_per_ticker=limit_per_ticker,
+        persist=save_snapshot,
+        snapshot_dir=snapshot_dir,
+    )
+
+    if json_out and not sheet:
+        typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    # Default to sheet for human consumption; JSON path printed for follow-up.
+    render_x_sheet(payload)
+    if not sheet and payload.get("saved_to"):
+        typer.echo(f"\nJSON payload (with LLM prompt): {payload['saved_to']}")
+
+
+def _resolve_tickers(
+    tickers: Optional[str],
+    *,
+    from_snapshot: Optional[str],
+    top: int,
+) -> list[str]:
+    if tickers:
+        return [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    if from_snapshot:
+        path = _path_for(from_snapshot)
+        if not path.exists():
+            raise typer.BadParameter(f"snapshot not found: {path}")
+        snapshot = _json.loads(path.read_text())
+        longs = (snapshot.get("candidates") or {}).get("longs") or []
+        return [str(row.get("symbol", "")).upper() for row in longs[:top] if row.get("symbol")]
+    return []
+
+
+def _path_for(maybe_path: str):
+    from pathlib import Path
+    return Path(maybe_path).expanduser().resolve()
+
+
+@ism_calendar_app.command("refresh")
+def ism_calendar_refresh(
+    year: list[int] = typer.Option(
+        None,
+        "--year",
+        help="Year(s) to refresh. Defaults to the current year. Repeat for many.",
+    ),
+    snapshot_dir: Optional[str] = typer.Option(
+        None,
+        "--snapshot-dir",
+        help="Override calendar output directory.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON."),
+) -> None:
+    """Fetch the ISM release calendar from FMP and save it to the repo."""
+    from datetime import date
+
+    years = year or [date.today().year]
+    written: list[dict[str, object]] = []
+    for y in years:
+        try:
+            calendar = fetch_ism_calendar(y, snapshot_dir=snapshot_dir)
+        except ISMCalendarError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        written.append(
+            {
+                "year": calendar.year,
+                "releases": len(calendar.releases),
+                "manufacturing": len(calendar.by_kind("manufacturing")),
+                "services": len(calendar.by_kind("services")),
+            }
+        )
+
+    if json_out:
+        typer.echo(_json.dumps(written, indent=2, default=str))
+        return
+    for row in written:
+        typer.echo(
+            f"  ISM {row['year']}: {row['releases']} releases "
+            f"(mfg={row['manufacturing']}, svc={row['services']})"
+        )
+
+
+@ism_calendar_app.command("show")
+def ism_calendar_show(
+    year: int = typer.Option(
+        None, "--year", help="Year to show. Defaults to the current year."
+    ),
+    kind: Optional[str] = typer.Option(
+        None,
+        "--kind",
+        help="Filter to manufacturing or services. Defaults to both.",
+    ),
+    snapshot_dir: Optional[str] = typer.Option(
+        None, "--snapshot-dir", help="Override calendar input directory."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON."),
+) -> None:
+    """Print the stored ISM release calendar as a Rich table or JSON."""
+    from datetime import date
+
+    target_year = year or date.today().year
+    if kind is not None and kind not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--kind must be manufacturing or services")
+
+    calendar = load_calendar(target_year, snapshot_dir=snapshot_dir)
+    if calendar is None:
+        raise typer.BadParameter(
+            f"No stored calendar for {target_year}. Run "
+            f"`nave stocks ism-calendar refresh --year {target_year}` first."
+        )
+
+    releases = calendar.releases
+    if kind is not None:
+        releases = [r for r in releases if r.kind == kind]
+
+    if json_out:
+        typer.echo(
+            _json.dumps(
+                {
+                    "year": calendar.year,
+                    "generated_at": calendar.generated_at,
+                    "source": calendar.source,
+                    "releases": [r.__dict__ for r in releases],
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return
+
+    console = Console()
+    console.print(
+        f"[bold]ISM release calendar — {calendar.year}[/bold]  "
+        f"(source: {calendar.source}, generated_at: {calendar.generated_at})"
+    )
+    table = Table()
+    table.add_column("Release date (UTC)")
+    table.add_column("Kind")
+    table.add_column("Covers")
+    table.add_column("Event")
+    table.add_column("Impact")
+    for r in releases:
+        table.add_row(
+            r.release_at_utc,
+            r.kind,
+            r.covers_month or "?",
+            r.event,
+            r.impact or "?",
+        )
+    console.print(table)
+
+
+@ism_calendar_app.command("next")
+def ism_calendar_next(
+    kind: Optional[str] = typer.Option(
+        None, "--kind", help="Filter to manufacturing or services."
+    ),
+    snapshot_dir: Optional[str] = typer.Option(
+        None, "--snapshot-dir", help="Override calendar input directory."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON."),
+) -> None:
+    """Print the next upcoming ISM release from the stored calendar."""
+    if kind is not None and kind not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--kind must be manufacturing or services")
+
+    release = next_release(kind=kind, snapshot_dir=snapshot_dir)  # type: ignore[arg-type]
+    if release is None:
+        raise typer.BadParameter(
+            "No upcoming release found. Refresh the calendar first."
+        )
+    if json_out:
+        typer.echo(_json.dumps(release.__dict__, indent=2, default=str))
+        return
+    typer.echo(
+        f"Next ISM {release.kind} release: {release.release_at_utc} "
+        f"(covers {release.covers_month or '?'}) — {release.event}"
+    )
 
 
 @stocks_app.command("journal-stats")
