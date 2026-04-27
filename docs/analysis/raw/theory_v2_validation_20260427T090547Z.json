@@ -1,0 +1,563 @@
+{
+  "per_period": {
+    "2017-bull+2018-bear": {
+      "BTC": {
+        "fired": 6,
+        "correct": 4,
+        "incorrect": 0,
+        "unresolved": 2,
+        "total_r": 5.800000000000003,
+        "stage_counts": {
+          "chase_gate": 10,
+          "weekly": 63,
+          "4H": 15,
+          "climax_cooldown": 6,
+          "daily": 5,
+          "fired": 6
+        },
+        "rejected_by": {
+          "chase_gate": 10,
+          "weekly": 63,
+          "4H": 15,
+          "climax_cooldown": 6,
+          "daily": 5
+        }
+      },
+      "ETH": {
+        "fired": 6,
+        "correct": 3,
+        "incorrect": 1,
+        "unresolved": 2,
+        "total_r": 4.099999999999998,
+        "stage_counts": {
+          "weekly": 75,
+          "fired": 6,
+          "climax_cooldown": 4,
+          "chase_gate": 11,
+          "daily": 5,
+          "4H": 4
+        },
+        "rejected_by": {
+          "weekly": 75,
+          "climax_cooldown": 4,
+          "chase_gate": 11,
+          "daily": 5,
+          "4H": 4
+        }
+      },
+      "LINK": {
+        "skipped": true,
+        "reason": "local file data/binance_cache/LINK_1h.parquet (resampled 1H\u21924H) did not cover 2016-11-02 \u2192 2018-12-31 and remote gap-fill returned nothing"
+      }
+    },
+    "2019-recovery": {
+      "BTC": {
+        "fired": 2,
+        "correct": 1,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": 0.7000000000000028,
+        "stage_counts": {
+          "weekly": 35,
+          "chase_gate": 4,
+          "climax_cooldown": 4,
+          "daily": 4,
+          "4H": 3,
+          "fired": 2
+        },
+        "rejected_by": {
+          "weekly": 35,
+          "chase_gate": 4,
+          "climax_cooldown": 4,
+          "daily": 4,
+          "4H": 3
+        }
+      },
+      "ETH": {
+        "fired": 2,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 4.201660440016599,
+        "stage_counts": {
+          "weekly": 35,
+          "chase_gate": 6,
+          "fired": 2,
+          "climax_cooldown": 3,
+          "daily": 4,
+          "4H": 2
+        },
+        "rejected_by": {
+          "weekly": 35,
+          "chase_gate": 6,
+          "climax_cooldown": 3,
+          "daily": 4,
+          "4H": 2
+        }
+      },
+      "LINK": {
+        "fired": 4,
+        "correct": 3,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 3.9846723054569275,
+        "stage_counts": {
+          "4H": 4,
+          "chase_gate": 7,
+          "weekly": 30,
+          "fired": 4,
+          "climax_cooldown": 3,
+          "daily": 4
+        },
+        "rejected_by": {
+          "4H": 4,
+          "chase_gate": 7,
+          "weekly": 30,
+          "climax_cooldown": 3,
+          "daily": 4
+        }
+      }
+    },
+    "2020-covid-crash": {
+      "BTC": {
+        "fired": 1,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 3.1674317247402985,
+        "stage_counts": {
+          "chase_gate": 6,
+          "4H": 2,
+          "daily": 3,
+          "weekly": 12,
+          "climax_cooldown": 2,
+          "fired": 1
+        },
+        "rejected_by": {
+          "chase_gate": 6,
+          "4H": 2,
+          "daily": 3,
+          "weekly": 12,
+          "climax_cooldown": 2
+        }
+      },
+      "ETH": {
+        "fired": 3,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 2,
+        "total_r": 1.7000000000000002,
+        "stage_counts": {
+          "weekly": 13,
+          "4H": 2,
+          "climax_cooldown": 3,
+          "chase_gate": 3,
+          "fired": 3,
+          "daily": 2
+        },
+        "rejected_by": {
+          "weekly": 13,
+          "4H": 2,
+          "climax_cooldown": 3,
+          "chase_gate": 3,
+          "daily": 2
+        }
+      },
+      "LINK": {
+        "fired": 3,
+        "correct": 2,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": 2.043740393162141,
+        "stage_counts": {
+          "weekly": 12,
+          "chase_gate": 3,
+          "daily": 5,
+          "4H": 1,
+          "fired": 3,
+          "climax_cooldown": 2
+        },
+        "rejected_by": {
+          "weekly": 12,
+          "chase_gate": 3,
+          "daily": 5,
+          "4H": 1,
+          "climax_cooldown": 2
+        }
+      }
+    },
+    "2020-recovery+2021-ATH": {
+      "BTC": {
+        "fired": 6,
+        "correct": 2,
+        "incorrect": 2,
+        "unresolved": 2,
+        "total_r": 1.4,
+        "stage_counts": {
+          "weekly": 42,
+          "climax_cooldown": 9,
+          "4H": 3,
+          "daily": 6,
+          "chase_gate": 12,
+          "fired": 6
+        },
+        "rejected_by": {
+          "weekly": 42,
+          "climax_cooldown": 9,
+          "4H": 3,
+          "daily": 6,
+          "chase_gate": 12
+        }
+      },
+      "ETH": {
+        "fired": 8,
+        "correct": 5,
+        "incorrect": 3,
+        "unresolved": 0,
+        "total_r": 5.5000000000000036,
+        "stage_counts": {
+          "weekly": 46,
+          "daily": 8,
+          "climax_cooldown": 4,
+          "chase_gate": 8,
+          "fired": 8,
+          "4H": 4
+        },
+        "rejected_by": {
+          "weekly": 46,
+          "daily": 8,
+          "climax_cooldown": 4,
+          "chase_gate": 8,
+          "4H": 4
+        }
+      },
+      "LINK": {
+        "fired": 3,
+        "correct": 1,
+        "incorrect": 2,
+        "unresolved": 0,
+        "total_r": -0.570246313815735,
+        "stage_counts": {
+          "chase_gate": 8,
+          "climax_cooldown": 5,
+          "daily": 7,
+          "4H": 6,
+          "weekly": 49,
+          "fired": 3
+        },
+        "rejected_by": {
+          "chase_gate": 8,
+          "climax_cooldown": 5,
+          "daily": 7,
+          "4H": 6,
+          "weekly": 49
+        }
+      }
+    },
+    "2022-bear": {
+      "BTC": {
+        "fired": 3,
+        "correct": 2,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": 2.051143444982931,
+        "stage_counts": {
+          "fired": 3,
+          "weekly": 31,
+          "chase_gate": 5,
+          "4H": 5,
+          "daily": 5,
+          "climax_cooldown": 3
+        },
+        "rejected_by": {
+          "weekly": 31,
+          "chase_gate": 5,
+          "4H": 5,
+          "daily": 5,
+          "climax_cooldown": 3
+        }
+      },
+      "ETH": {
+        "fired": 4,
+        "correct": 3,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 4.600000000000001,
+        "stage_counts": {
+          "4H": 7,
+          "weekly": 29,
+          "chase_gate": 6,
+          "fired": 4,
+          "daily": 6
+        },
+        "rejected_by": {
+          "4H": 7,
+          "weekly": 29,
+          "chase_gate": 6,
+          "daily": 6
+        }
+      },
+      "LINK": {
+        "fired": 2,
+        "correct": 1,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": 0.5832310838445813,
+        "stage_counts": {
+          "weekly": 41,
+          "fired": 2,
+          "daily": 3,
+          "chase_gate": 5,
+          "4H": 1
+        },
+        "rejected_by": {
+          "weekly": 41,
+          "daily": 3,
+          "chase_gate": 5,
+          "4H": 1
+        }
+      }
+    },
+    "2023-recovery": {
+      "BTC": {
+        "fired": 4,
+        "correct": 4,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 7.6675153570714665,
+        "stage_counts": {
+          "weekly": 27,
+          "fired": 4,
+          "climax_cooldown": 7,
+          "daily": 7,
+          "4H": 4,
+          "chase_gate": 3
+        },
+        "rejected_by": {
+          "weekly": 27,
+          "climax_cooldown": 7,
+          "daily": 7,
+          "4H": 4,
+          "chase_gate": 3
+        }
+      },
+      "ETH": {
+        "fired": 1,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 1.5508655428798437,
+        "stage_counts": {
+          "weekly": 33,
+          "fired": 1,
+          "climax_cooldown": 4,
+          "daily": 5,
+          "chase_gate": 6,
+          "4H": 3
+        },
+        "rejected_by": {
+          "weekly": 33,
+          "climax_cooldown": 4,
+          "daily": 5,
+          "chase_gate": 6,
+          "4H": 3
+        }
+      },
+      "LINK": {
+        "fired": 8,
+        "correct": 7,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 13.175208140257862,
+        "stage_counts": {
+          "weekly": 29,
+          "fired": 8,
+          "daily": 8,
+          "chase_gate": 1,
+          "climax_cooldown": 5,
+          "4H": 1
+        },
+        "rejected_by": {
+          "weekly": 29,
+          "daily": 8,
+          "chase_gate": 1,
+          "climax_cooldown": 5,
+          "4H": 1
+        }
+      }
+    },
+    "2024-ETF-approval": {
+      "BTC": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "stage_counts": {
+          "weekly": 18,
+          "daily": 2,
+          "chase_gate": 4,
+          "climax_cooldown": 2
+        },
+        "rejected_by": {
+          "weekly": 18,
+          "daily": 2,
+          "chase_gate": 4,
+          "climax_cooldown": 2
+        }
+      },
+      "ETH": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "stage_counts": {
+          "weekly": 17,
+          "chase_gate": 4,
+          "climax_cooldown": 3,
+          "daily": 2
+        },
+        "rejected_by": {
+          "weekly": 17,
+          "chase_gate": 4,
+          "climax_cooldown": 3,
+          "daily": 2
+        }
+      },
+      "LINK": {
+        "fired": 2,
+        "correct": 2,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 2.9053985384095338,
+        "stage_counts": {
+          "weekly": 16,
+          "chase_gate": 3,
+          "fired": 2,
+          "daily": 4,
+          "4H": 1
+        },
+        "rejected_by": {
+          "weekly": 16,
+          "chase_gate": 3,
+          "daily": 4,
+          "4H": 1
+        }
+      }
+    },
+    "2024-2025-bull": {
+      "BTC": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "stage_counts": {
+          "daily": 1,
+          "weekly": 29,
+          "weekly_cot": 9,
+          "4H": 1
+        },
+        "rejected_by": {
+          "daily": 1,
+          "weekly": 29,
+          "weekly_cot": 9,
+          "4H": 1
+        }
+      },
+      "ETH": {
+        "fired": 1,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 1.7000000000000002,
+        "stage_counts": {
+          "daily": 3,
+          "weekly": 26,
+          "weekly_cot": 9,
+          "fired": 1,
+          "4H": 1
+        },
+        "rejected_by": {
+          "daily": 3,
+          "weekly": 26,
+          "weekly_cot": 9,
+          "4H": 1
+        }
+      },
+      "LINK": {
+        "fired": 1,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.8836291913214991,
+        "stage_counts": {
+          "weekly": 29,
+          "4H": 1,
+          "daily": 3,
+          "weekly_cot": 6,
+          "fired": 1
+        },
+        "rejected_by": {
+          "weekly": 29,
+          "4H": 1,
+          "daily": 3,
+          "weekly_cot": 6
+        }
+      }
+    }
+  },
+  "pooled": {
+    "BTC": {
+      "fired": 22,
+      "correct": 14,
+      "incorrect": 4,
+      "unresolved": 4,
+      "total_r": 20.786090526794702
+    },
+    "ETH": {
+      "fired": 25,
+      "correct": 15,
+      "incorrect": 4,
+      "unresolved": 6,
+      "total_r": 23.352525982896445
+    },
+    "LINK": {
+      "fired": 23,
+      "correct": 17,
+      "incorrect": 4,
+      "unresolved": 2,
+      "total_r": 23.00563333863681
+    }
+  },
+  "stage_counts": {
+    "BTC": {
+      "chase_gate": 44,
+      "weekly": 257,
+      "4H": 33,
+      "climax_cooldown": 33,
+      "daily": 33,
+      "fired": 22,
+      "weekly_cot": 9
+    },
+    "ETH": {
+      "weekly": 274,
+      "fired": 25,
+      "climax_cooldown": 21,
+      "chase_gate": 44,
+      "daily": 35,
+      "4H": 23,
+      "weekly_cot": 9
+    },
+    "LINK": {
+      "4H": 15,
+      "chase_gate": 27,
+      "weekly": 206,
+      "fired": 23,
+      "climax_cooldown": 15,
+      "daily": 34,
+      "weekly_cot": 6
+    }
+  }
+}
