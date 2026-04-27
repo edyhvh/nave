@@ -1,7 +1,19 @@
 # Memecoin scanner — planning doc
 
 Branch: `experiment/memecoin-scanner` (off `feat/stocks`).
-Status: **planning only — no code yet, do not implement until scope is signed off.**
+Status: **v1 implementation in progress — decisions locked below.**
+
+## v1 decisions (locked 2026-04-27)
+
+| Question                  | Decision                                                                  |
+|---------------------------|---------------------------------------------------------------------------|
+| Data providers            | Helius (free/starter) + Pump.fun + DexScreener + Jupiter v6. **No Birdeye.** |
+| Wallet handling           | Separate Solana burner-wallet flow (do NOT extend the existing EVM vault). |
+| v1 execution              | Read-only. Architecture must keep room for v2 burner-wallet swaps.         |
+| Universe                  | Pump.fun tokens with on-chain liquidity ≥ **$25,000**.                     |
+| Holder concentration      | Top-10 ≤ **25 %**. Flag (not auto-fail) if top-1 > **15-18 %**.            |
+| v2 sizing                 | **0.25 R per trade**, **5 %** portfolio cap on the memecoin asset class.   |
+| Safety report contract    | Structured JSON: `rug_score`, `honeypot_flags`, `lp_status`, `holder_concentration`, `dev_wallets`, … |
 
 ## Goal
 
@@ -60,17 +72,18 @@ visible in the report so a human can override.
 
 **In scope (v1):**
 - Read-only scanner module under `trading/memecoin/`.
-- Data providers: Helius (RPC + token metadata), Birdeye (market data,
-  liquidity), Jupiter (route/quote simulation for honeypot check),
-  Pump.fun API (new launches feed).
+- Data providers: **Helius** (RPC + DAS API for token metadata + holders),
+  **Pump.fun** (new launches feed + bonding curve), **DexScreener**
+  (price/volume/liquidity for graduated tokens — free, no key),
+  **Jupiter v6** (route/quote simulation for honeypot check).
 - A `safety_check.py` implementing the 5 canonical SPL checks.
 - A `scoring.py` implementing the transparent rubric.
-- A `scanner.py` that pulls new launches, applies safety filter, scores
-  survivors, returns a ranked list.
+- A `scanner.py` that pulls new launches, applies the $25k liquidity
+  gate, runs safety filter, scores survivors, returns a ranked list.
 - MCP tools exposed to Hermes: `memecoin_scan`, `memecoin_safety_report`,
   `memecoin_score`.
 - CLI: `nave memecoin scan`, `nave memecoin check <mint>`.
-- Tests with recorded fixtures (don't hammer Helius/Birdeye in CI).
+- Tests with recorded fixtures (don't hammer Helius in CI).
 
 **Out of scope (v1) — explicit non-goals:**
 - No order execution. No swap. No Jupiter trades. The output is signal
@@ -100,28 +113,39 @@ Same patterns as `trading/stocks/`: cache-backed data layer, deterministic
 scoring, Hermes/MCP surface, `dry_run=True` defaults if/when execution
 ever lands.
 
-## Open questions for the user — answer before any code lands
+## Safety report JSON contract
 
-1. **Data provider budget** — Helius has paid tiers; Birdeye is metered.
-   What's the realistic monthly budget? Scan rate (every 60s? 5min?
-   on-demand only?) drives cost.
-2. **Wallet handling** — nave's existing vault is EVM-only (Hyperliquid).
-   v1 is read-only so no key needed, but if v2 adds execution, do we
-   add a Solana keypair to the vault, or use a separate burner flow?
-3. **Universe** — Pump.fun-only, or all Solana SPL tokens above some
-   liquidity floor? Pump.fun is the most rug-heavy but also the most
-   "100% in minutes" venue.
-4. **Holder-concentration threshold** — start at 30% top-10, or stricter?
-5. **Position sizing rule** — for the eventual v2, what's the per-trade
-   R cap and total memecoin allocation cap? (My suggestion: 0.25R per
-   trade, 5% portfolio cap on the asset class as a whole.)
+`memecoin_safety_report(mint)` returns:
+
+```json
+{
+  "mint": "<base58>",
+  "verdict": "PASS | WATCH | FAIL",
+  "rug_score": 0,
+  "checks": {
+    "mint_authority_renounced": true,
+    "freeze_authority_revoked": true,
+    "lp_status": {"locked": true, "burned": false, "lp_provider": "raydium", "details": "..."},
+    "honeypot": {"buy_simulates": true, "sell_simulates": true, "flags": []},
+    "holder_concentration": {"top_1_pct": 0.0, "top_5_pct": 0.0, "top_10_pct": 0.0, "flagged_top1": false}
+  },
+  "dev_wallets": [{"address": "...", "balance_pct": 0.0, "notes": "..."}],
+  "honeypot_flags": [],
+  "raw": {"...": "provider responses for debugging"},
+  "fetched_at": "<iso8601>"
+}
+```
+
+`verdict` is the rollup: `FAIL` if any of the 5 hard checks fail, `WATCH`
+if all pass but `flagged_top1` is true, `PASS` otherwise.
 
 ## Next step
 
-Get sign-off on:
-- The "safe = anti-rug, not low-vol" framing.
-- The 5-check + scoring rubric scope.
-- Read-only v1 (no execution).
-- Answers to the 5 open questions above.
-
-Then iterate the doc, then implement.
+Doc is locked. Implementation starts in this branch:
+1. `trading/memecoin/data_provider.py` — Helius + Pump.fun + DexScreener + Jupiter clients.
+2. `trading/memecoin/safety_check.py` — 5 canonical checks → `SafetyReport`.
+3. `trading/memecoin/scoring.py` — transparent rubric.
+4. `trading/memecoin/scanner.py` — discover → gate → safety → score.
+5. `trading/memecoin/mcp_tools.py` + register in `trading/crypto/mcp_server.py`.
+6. `cli/commands/memecoin.py` — `nave memecoin scan` + `nave memecoin check`.
+7. `tests/test_memecoin/` with recorded fixtures.

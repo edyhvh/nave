@@ -11,6 +11,7 @@ import typer
 from cli.commands.core import api_app, data_app, mcp_app, trading_app
 from cli.commands.cot import cot_app
 from cli.commands.hermes import hermes_app
+from cli.commands.memecoin import memecoin_app
 from cli.commands.stocks import stocks_app
 from cli.professional_typer import ProfessionalTyper
 
@@ -27,6 +28,7 @@ app.add_typer(mcp_app, name="mcp")
 app.add_typer(cot_app, name="cot")
 app.add_typer(hermes_app, name="hermes")
 app.add_typer(stocks_app, name="stocks")
+app.add_typer(memecoin_app, name="memecoin")
 
 
 @app.command("version")
