@@ -1,7 +1,3 @@
-Create a file called AGENTS.md in the root of the repo with exactly this content:
-
----
-
 # AGENTS.md — nave trading theory refinement
 
 ## Branch: feat/theory_refinement
@@ -219,9 +215,3 @@ Codex must:
 Continue iterating autonomously until convergence criteria is met.
 
 **Do NOT stop after one iteration.**
-
----
-
-Then commit it:
-git add AGENTS.md
-git commit -m "chore: add AGENTS.md for theory refinement workflow"

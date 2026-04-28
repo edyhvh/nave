@@ -1,19 +1,28 @@
 # Nave
 
-A financial data analysis platform that tracks macroeconomic indicators and cryptocurrency market data using OpenBB. The project focuses on monitoring liquidity, monetary policy, sentiment, debt metrics, and crypto-specific indicators to predict market movements and assess fiat currency health.
+A BTC/ETH trading copilot built on OpenBB macro data, with a stocks workflow
+on top. Crypto entries flow through a top-down weekly → daily → 4H → 1H
+pipeline (`trading.crypto.theory_v2`), and the same engine is exposed to
+Hermes/MCP agents. Stocks use an ISM-driven sector screener with FMP
+fundamentals.
 
-## Project Overview
+## What's in here
 
-This project analyzes 20+ economic and financial indicators across 8 categories:
-
-- **Liquidity and Monetary Policy**: TGA, RRP, Fed injections, interest rates
-- **Sentiment and Market Psychology**: AAII surveys, risk appetite (VIX)
-- **Debt, Deficit, and Fiat Currency Value**: Debt/GDP ratios, purchasing power
-- **Crypto-Specific and Global Flows**: Market cap, ETF flows, capital flows
-- **Inflation and Employment**: CPI/PCE, unemployment rates
-- **Bond and Commodity Markets**: Yield curves, commodity prices
-- **Global Activity and On-Chain**: PMI indices, blockchain metrics
-- **Risk and Digital Currencies**: Geopolitical risk, CBDC tracking
+- **Crypto trading (`trading/crypto/`)** — `theory_v2` engine (iter 18:
+  pooled +44.14R / 78% WR over 9.5y backtest), Hyperliquid integration,
+  weekly COT gate, encrypted wallet vault.
+- **Stocks workflow (`trading/stocks/`)** — ISM-driven sector ranking,
+  FMP fundamentals, EPS/revenue-growth screener, paper-trading via
+  Alpaca/Ondo broker stubs.
+- **Macro indicators (`backend/app/services/`, `extensions/openbb_*`)** —
+  20+ indicators across liquidity, sentiment, debt, on-chain, bonds,
+  inflation/employment, and CBDC tracking. Used as gates for the trading
+  engines, not as a standalone product.
+- **Agent integration (`hermes/`, `trading/crypto/mcp_server.py`)** —
+  Hermes/MCP tool surface (`daily_scan`, `theory_v2_scan`,
+  `strategy_context`, `recommend_position`, `cot_report`, `weekly_plan`).
+- **CLI (`cli/`)** — unified `nave` Typer entrypoint covering trading,
+  stocks, COT, Hermes, MCP, and data ops.
 
 ## Installation
 
@@ -136,39 +145,7 @@ source .venv/bin/activate
 ./scripts/dev_shell.sh
 ```
 
-## Project Structure
-
-```
-nave/
-├── cli/                 # Unified Typer CLI
-│   ├── main.py          # Entrypoint and command group registration
-│   ├── commands/        # Modular command groups
-│   └── utils.py         # Shared CLI prompt helpers
-├── core/                # Cross-cutting app primitives
-│   ├── config.py        # Typed defaults and shared configuration
-│   ├── exceptions.py    # Domain-level exceptions
-│   └── logger.py        # Logger bootstrap helpers
-├── hermes/              # Hermes Agent integration contracts
-│   └── integration.py   # Tool registry + dispatch + gateway payload handling
-├── trading/             # Trading integration package
-│   ├── vault.py         # Encrypted wallet storage (Fernet/AES)
-│   ├── client.py        # Hyperliquid REST + SDK client
-│   ├── signals.py       # Signal types and macro signal producers
-│   └── strategy.py      # BaseStrategy + example strategy
-├── scripts/             # Analysis and utility scripts
-│   ├── setup_wallets.py # One-time EVM wallet generation
-│   ├── show_mnemonic.py # Reveal seed phrase securely (60s auto-clear)
-│   └── openbb_tools.py  # OpenBB data fetching helpers
-├── docs/               # Documentation and configuration
-│   └── web3-setup.md   # Wallet setup and trading integration guide
-├── extensions/         # OpenBB extensions
-├── setup.py            # One-command environment setup
-├── .envrc             # Direnv configuration (optional)
-├── mise.toml          # Python version management
-└── requirements.txt   # Python dependencies
-```
-
-## Multi-asset architecture (crypto + stocks)
+## Project structure (crypto + stocks)
 
 The `trading/` package is organized by asset class so that strategies and
 broker integrations can live side by side without mixing concerns:
@@ -327,7 +304,7 @@ python -m trading.client summary --wallet hermes
 python -m trading.strategy --wallet hermes --coins BTC ETH
 ```
 
-### Weekly COT Analysis (feat/cot_grok)
+### Weekly COT Analysis
 
 COT is now the **main weekly driver** for trading setups.
 
@@ -353,12 +330,9 @@ nave trading run --paper --strategy cot-weekly
 - Scans other Hyperliquid perps for liquidity/funding opportunities
 - Dry-run by default
 
-See `docs/technical.yaml` for full philosophy and `trading/cot/` for implementation.
-
-## Roadmap after PR #8
-
-- PR #8 (merged): COT as main weekly driver
-- PR #9 (this branch): modular COT pipeline with real-data-only execution planning
+See `docs/technical.yaml` for full philosophy and `trading/crypto/cot/` for
+the COT pipeline implementation. The full theory-refinement workflow that
+produced theory_v2 is described in `AGENTS.md`.
 
 ### Wallets
 
