@@ -53,9 +53,82 @@ class HermesNaveIntegration:
             "skill": {
                 "name": "nave_trading",
                 "version": "1.0.0",
-                "description": "Nave COT analysis and weekly planning tools",
+                "description": "Nave momentum, COT analysis, and weekly planning tools",
             },
             "tools": [
+                {
+                    "name": "momentum_scan",
+                    "description": (
+                        "Primary derivatives market-read tool and default scan path. Scans BTC/ETH perpetuals "
+                        "for high-probability momentum breakouts with retest, volatility, "
+                        "participation, funding, and risk-efficiency filters."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbols": {"type": "string", "default": "BTCUSDT,ETHUSDT"},
+                            "tf": {"type": "string", "default": "4h,1h"},
+                            "account_equity": {"type": "number", "default": 10000.0},
+                            "risk_pct": {"type": "number", "default": 0.005},
+                            "score_threshold": {"type": "integer", "default": 75},
+                        },
+                    },
+                },
+                {
+                    "name": "market_scan",
+                    "description": (
+                        "Default generic market scan alias. Internally routes to momentum_scan so Hermes "
+                        "uses momentum by default when looking at BTC/ETH derivatives."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbols": {"type": "string", "default": "BTCUSDT,ETHUSDT"},
+                            "tf": {"type": "string", "default": "4h,1h"},
+                            "account_equity": {"type": "number", "default": 10000.0},
+                            "risk_pct": {"type": "number", "default": 0.005},
+                            "score_threshold": {"type": "integer", "default": 75},
+                        },
+                    },
+                },
+                {
+                    "name": "momentum_playbook",
+                    "description": (
+                        "Build one concrete BTC/ETH derivatives trade plan with entry zone, "
+                        "invalidation, targets, sizing, and leverage constraints."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {"type": "string", "default": "BTCUSDT"},
+                            "side": {"type": "string", "enum": ["long", "short"]},
+                            "tf": {"type": "string", "default": "4h,1h"},
+                            "account_equity": {"type": "number", "default": 10000.0},
+                            "risk_pct": {"type": "number", "default": 0.005},
+                            "score_threshold": {"type": "integer", "default": 75},
+                        },
+                        "required": ["symbol", "side"],
+                    },
+                },
+                {
+                    "name": "market_playbook",
+                    "description": (
+                        "Default generic trade-plan alias. Internally routes to momentum_playbook so BTC/ETH "
+                        "market planning defaults to momentum execution rules."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {"type": "string", "default": "BTCUSDT"},
+                            "side": {"type": "string", "enum": ["long", "short"]},
+                            "tf": {"type": "string", "default": "4h,1h"},
+                            "account_equity": {"type": "number", "default": 10000.0},
+                            "risk_pct": {"type": "number", "default": 0.005},
+                            "score_threshold": {"type": "integer", "default": 75},
+                        },
+                        "required": ["symbol", "side"],
+                    },
+                },
                 {
                     "name": "cot_report",
                     "description": "Return latest COT report with section metrics and bias.",
@@ -106,10 +179,10 @@ class HermesNaveIntegration:
                 {
                     "name": "theory_v2_scan",
                     "description": (
-                        "Daily top-down theory v2 scan — evaluates weekly momentum → "
+                        "Legacy secondary scan. Daily top-down theory v2 scan — evaluates weekly momentum → "
                         "daily confirm → climax cooldown → chase gate → 4H → 1H for each "
                         "coin and returns the full decision trace (stage, reason, bias, "
-                        "fired?). The agent uses this to decide whether to open positions."
+                        "fired?). Use when you explicitly want the theory-v2 path rather than the default momentum scan."
                     ),
                     "input_schema": {
                         "type": "object",
@@ -329,6 +402,108 @@ class HermesNaveIntegration:
             }
 
         return payload
+
+    def momentum_scan(
+        self,
+        *,
+        symbols: str = "BTCUSDT,ETHUSDT",
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+    ) -> dict[str, Any]:
+        if account_equity <= 0:
+            raise HermesIntegrationError("account_equity must be positive")
+        if not 0.001 <= risk_pct <= 0.02:
+            raise HermesIntegrationError("risk_pct must be between 0.001 and 0.02")
+        if not 1 <= score_threshold <= 100:
+            raise HermesIntegrationError("score_threshold must be between 1 and 100")
+
+        from trading.crypto.momentum.service import MomentumMarketService
+
+        service = MomentumMarketService()
+        try:
+            return service.scan_live(
+                symbols=service.parse_symbols(symbols),
+                timeframes=service.parse_timeframes(tf),
+                account_equity=account_equity,
+                risk_pct=risk_pct,
+                score_threshold=score_threshold,
+            )
+        except ValueError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+    def momentum_playbook(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+    ) -> dict[str, Any]:
+        if account_equity <= 0:
+            raise HermesIntegrationError("account_equity must be positive")
+        if side not in {"long", "short"}:
+            raise HermesIntegrationError("side must be long or short")
+        if not 0.001 <= risk_pct <= 0.02:
+            raise HermesIntegrationError("risk_pct must be between 0.001 and 0.02")
+        if not 1 <= score_threshold <= 100:
+            raise HermesIntegrationError("score_threshold must be between 1 and 100")
+
+        from trading.crypto.momentum.service import MomentumMarketService
+
+        service = MomentumMarketService()
+        try:
+            return service.playbook_live(
+                symbol=service.parse_symbols(symbol)[0],
+                side=side,
+                timeframes=service.parse_timeframes(tf),
+                account_equity=account_equity,
+                risk_pct=risk_pct,
+                score_threshold=score_threshold,
+            )
+        except ValueError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+    def market_scan(
+        self,
+        *,
+        symbols: str = "BTCUSDT,ETHUSDT",
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+    ) -> dict[str, Any]:
+        """Default generic scan alias: route market reads to momentum."""
+        return self.momentum_scan(
+            symbols=symbols,
+            tf=tf,
+            account_equity=account_equity,
+            risk_pct=risk_pct,
+            score_threshold=score_threshold,
+        )
+
+    def market_playbook(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+    ) -> dict[str, Any]:
+        """Default generic playbook alias: route market plans to momentum."""
+        return self.momentum_playbook(
+            symbol=symbol,
+            side=side,
+            tf=tf,
+            account_equity=account_equity,
+            risk_pct=risk_pct,
+            score_threshold=score_threshold,
+        )
 
     def cot_history(
         self,
@@ -875,6 +1050,10 @@ class HermesNaveIntegration:
         """Invoke a Hermes-registered tool by name with validated arguments."""
         args = arguments or {}
         handlers: dict[str, Callable[..., dict[str, Any]]] = {
+            "momentum_scan": self.momentum_scan,
+            "momentum_playbook": self.momentum_playbook,
+            "market_scan": self.market_scan,
+            "market_playbook": self.market_playbook,
             "cot_report": self.cot_report,
             "cot_history": self.cot_history,
             "weekly_plan": self.weekly_plan,

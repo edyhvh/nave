@@ -1,0 +1,61 @@
+{
+  "score_tradeable_threshold": 90,
+  "min_rr": 1.8,
+  "trend": {
+    "ema_fast": 20,
+    "ema_slow": 50,
+    "min_slope_bps": 2.0
+  },
+  "breakout": {
+    "lookback_bars": 20,
+    "recent_breakout_bars": 6,
+    "buffer_atr": 0.15,
+    "retest_tolerance": 0.008,
+    "pending_distance_atr": 0.35,
+    "min_retest_hours": 6,
+    "max_retest_hours": 24
+  },
+  "volatility": {
+    "atr_fast": 14,
+    "atr_slow": 50,
+    "min_atr_ratio": 1.1,
+    "min_range_expansion": 1.2
+  },
+  "structure": {
+    "swing_bars": 3,
+    "lookback_bars": 6
+  },
+  "participation": {
+    "min_volume_ratio": 1.25,
+    "min_oi_change_pct": 0.02,
+    "max_funding_long": 0.0008,
+    "min_funding_short": -0.0008,
+    "squeeze_abs_funding": 0.0012,
+    "squeeze_oi_change_pct": 0.06
+  },
+  "execution": {
+    "stop_atr_buffer": 0.6,
+    "target_atr_multiple": 4.0,
+    "min_expected_move_pct": 0.08,
+    "max_expected_move_pct": 0.2,
+    "max_holding_bars": 72
+  },
+  "risk": {
+    "default_risk_pct": 0.005,
+    "min_risk_pct": 0.003,
+    "max_risk_pct": 0.01,
+    "btc_default_leverage": 3.0,
+    "btc_max_leverage": 4.0,
+    "eth_default_leverage": 2.5,
+    "eth_max_leverage": 3.0,
+    "fallback_default_leverage": 2.0,
+    "fallback_max_leverage": 3.0
+  },
+  "weights": {
+    "trend_alignment": 25,
+    "breakout_quality": 25,
+    "volatility_regime": 15,
+    "participation": 15,
+    "risk_efficiency": 20
+  }
+}

@@ -25,6 +25,10 @@ def test_list_tools_contains_required_toolset() -> None:
     assert payload["skill"]["name"] == "nave_trading"
     tool_names = {tool["name"] for tool in payload["tools"]}
     assert {
+        "momentum_scan",
+        "market_scan",
+        "momentum_playbook",
+        "market_playbook",
         "cot_report",
         "cot_history",
         "weekly_plan",
@@ -174,6 +178,85 @@ def test_dispatch_tool_call_routes_new_tools(monkeypatch: pytest.MonkeyPatch) ->
     assert ctx_result["ok"] is True
     assert ctx_result["tool"] == "strategy_context"
     assert ctx_result["result"]["version"] == "theory_v2.iter_18"
+
+
+def test_momentum_scan_routes_through_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    def fake_scan_live(self, **kwargs):
+        return {
+            "strategy": "derivatives_momentum_v1",
+            "symbols": ["BTCUSDT"],
+            "summary": {"tradeable_count": 1},
+            "results": {"BTCUSDT": {"plans": [], "tradeable": []}},
+        }
+
+    monkeypatch.setattr("trading.crypto.momentum.service.MomentumMarketService.scan_live", fake_scan_live)
+    payload = integration.momentum_scan(symbols="BTCUSDT")
+
+    assert payload["strategy"] == "derivatives_momentum_v1"
+    assert payload["summary"]["tradeable_count"] == 1
+
+
+def test_momentum_playbook_validates_side(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    with pytest.raises(HermesIntegrationError):
+        integration.momentum_playbook(symbol="BTCUSDT", side="flat")
+
+
+def test_dispatch_tool_call_routes_momentum_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "momentum_scan",
+        lambda **kwargs: {"strategy": "derivatives_momentum_v1", "args": kwargs},
+    )
+    result = integration.dispatch_tool_call(
+        "momentum_scan",
+        {"symbols": "BTCUSDT", "tf": "4h,1h"},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "momentum_scan"
+    assert result["result"]["args"]["symbols"] == "BTCUSDT"
+
+
+def test_market_scan_alias_routes_to_momentum(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "momentum_scan",
+        lambda **kwargs: {"strategy": "derivatives_momentum_v1", "args": kwargs},
+    )
+    result = integration.dispatch_tool_call(
+        "market_scan",
+        {"symbols": "BTCUSDT", "tf": "4h,1h"},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "market_scan"
+    assert result["result"]["strategy"] == "derivatives_momentum_v1"
+
+
+def test_market_playbook_alias_routes_to_momentum(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "momentum_playbook",
+        lambda **kwargs: {"strategy": "derivatives_momentum_v1", "plan": {"side": kwargs["side"]}},
+    )
+    result = integration.dispatch_tool_call(
+        "market_playbook",
+        {"symbol": "ETHUSDT", "side": "short"},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "market_playbook"
+    assert result["result"]["plan"]["side"] == "short"
 
 
 def test_dispatch_tool_call_routes_stocks_ism_report(monkeypatch: pytest.MonkeyPatch) -> None:
