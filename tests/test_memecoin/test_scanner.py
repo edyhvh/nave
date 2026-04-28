@@ -245,3 +245,5 @@ def test_scanner_check_single_mint_returns_full_candidate():
     payload = cand.to_dict()
     assert payload["safety"]["verdict"] in {"PASS", "WATCH"}
     assert payload["score"]["label"] in {"GOOD", "WATCH", "SHILL"}
+    assert payload["entry_timing"] in {"EARLY", "MID", "LATE", "EXTENDED"}
+    assert payload["seen_count_24h"] >= 1

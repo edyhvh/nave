@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
+from trading.memecoin.archive import mint_history, persist_scan_snapshot
 from trading.memecoin.data_provider import (
     MemecoinDataProvider,
     PumpFunClient,
@@ -33,6 +35,7 @@ from trading.memecoin.scoring import (
     ScoreBreakdown,
     score_candidate,
 )
+from trading.memecoin.timing import EntryTiming, classify_entry_timing
 
 # Re-export sort constants for CLI / MCP layers.
 SORT_FRESH = PumpFunClient.SORT_FRESH
@@ -53,6 +56,10 @@ class MemecoinCandidate:
     discovered_via: str  # e.g. "pumpfun_new_launches"
     launch: PumpFunLaunch | None = None
     skipped_reason: str | None = field(default=None)
+    entry_timing: EntryTiming | None = field(default=None)
+    seen_count_24h: int = field(default=0)
+    first_seen_at: str | None = field(default=None)
+    last_seen_at: str | None = field(default=None)
 
     @property
     def passed(self) -> bool:
@@ -73,6 +80,10 @@ class MemecoinCandidate:
             "score": self.score.to_dict(),
             "safety": self.safety.to_dict(),
             "market": _market_to_dict(self.market),
+            "entry_timing": self.entry_timing.value if self.entry_timing else None,
+            "seen_count_24h": self.seen_count_24h,
+            "first_seen_at": self.first_seen_at,
+            "last_seen_at": self.last_seen_at,
         }
 
 
@@ -93,12 +104,20 @@ def _market_to_dict(market: TokenMarket | None) -> dict[str, Any] | None:
     }
 
 
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).isoformat()
+
+
 class MemecoinScanner:
     """Orchestrates the discover → gate → safety → score pipeline."""
 
     def __init__(
         self,
-        provider: MemecoinDataProvider | None = None,
+        provider: Any | None = None,
         *,
         liquidity_floor_usd: float = LIQUIDITY_FLOOR_USD,
     ):
@@ -135,9 +154,21 @@ class MemecoinScanner:
             logger.info("scanner: no new launches returned by Pump.fun")
             return []
 
+        scanned_at = _now_utc()
+        prior_history = mint_history(hours=24, now=scanned_at)
         candidates: list[MemecoinCandidate] = []
         for launch in launches:
             market = self.provider.market(launch.mint)
+            prior = prior_history.get(launch.mint)
+            seen_count_24h = (prior.seen_count if prior else 0) + 1
+            first_seen_at = prior.first_seen_at if prior else _iso(scanned_at)
+            last_seen_at = _iso(scanned_at)
+            entry_timing = classify_entry_timing(
+                market=market,
+                seen_count=seen_count_24h,
+                first_seen_at=first_seen_at,
+                now=scanned_at,
+            )
             liquidity = (market.liquidity_usd if market else None) or (
                 launch.liquidity_usd or 0.0
             )
@@ -155,6 +186,10 @@ class MemecoinScanner:
                             f"liquidity ${liquidity:,.0f} below floor "
                             f"${self.liquidity_floor_usd:,.0f}"
                         ),
+                        entry_timing=entry_timing,
+                        seen_count_24h=seen_count_24h,
+                        first_seen_at=first_seen_at,
+                        last_seen_at=last_seen_at,
                     )
                 )
                 continue
@@ -176,6 +211,10 @@ class MemecoinScanner:
                     score=score,
                     discovered_via="pumpfun_new_launches",
                     launch=launch,
+                    entry_timing=entry_timing,
+                    seen_count_24h=seen_count_24h,
+                    first_seen_at=first_seen_at,
+                    last_seen_at=last_seen_at,
                 )
             )
 
@@ -183,6 +222,20 @@ class MemecoinScanner:
         passing.sort(key=lambda c: c.score.total, reverse=True)
         if top_n is not None:
             passing = passing[:top_n]
+
+        try:
+            persist_scan_snapshot(
+                candidates=[candidate.to_dict() for candidate in candidates],
+                params={
+                    "limit": limit,
+                    "sort": sort,
+                    "keep_skipped": keep_skipped,
+                    "top_n": top_n,
+                },
+                scanned_at=scanned_at,
+            )
+        except OSError as exc:
+            logger.warning("scanner: failed to persist scan archive: %s", exc)
 
         if keep_skipped:
             non_passing = [c for c in candidates if not c.passed]
@@ -200,6 +253,17 @@ class MemecoinScanner:
             creator=launch.creator if launch else None,
         )
         score = score_candidate(mint, market, safety=safety)
+        scanned_at = _now_utc()
+        prior = mint_history(hours=24, now=scanned_at).get(mint)
+        seen_count_24h = (prior.seen_count if prior else 0) + 1
+        first_seen_at = prior.first_seen_at if prior else _iso(scanned_at)
+        last_seen_at = _iso(scanned_at)
+        entry_timing = classify_entry_timing(
+            market=market,
+            seen_count=seen_count_24h,
+            first_seen_at=first_seen_at,
+            now=scanned_at,
+        )
         liquidity = (market.liquidity_usd if market else None) or 0.0
         skipped = None
         if liquidity < self.liquidity_floor_usd:
@@ -207,13 +271,10 @@ class MemecoinScanner:
                 f"liquidity ${liquidity:,.0f} below floor "
                 f"${self.liquidity_floor_usd:,.0f}"
             )
+        metadata = self.provider.metadata(mint)
         return MemecoinCandidate(
             mint=mint,
-            name=(launch.name if launch else None) or (
-                self.provider.metadata(mint).name
-                if self.provider.metadata(mint)
-                else None
-            ),
+            name=(launch.name if launch else None) or (metadata.name if metadata else None),
             symbol=(launch.symbol if launch else None),
             market=market,
             safety=safety,
@@ -221,6 +282,10 @@ class MemecoinScanner:
             discovered_via="manual",
             launch=launch,
             skipped_reason=skipped,
+            entry_timing=entry_timing,
+            seen_count_24h=seen_count_24h,
+            first_seen_at=first_seen_at,
+            last_seen_at=last_seen_at,
         )
 
     # ── Internals ----------------------------------------------------
@@ -231,6 +296,10 @@ class MemecoinScanner:
         launch: PumpFunLaunch,
         market: TokenMarket | None,
         reason: str,
+        entry_timing: EntryTiming,
+        seen_count_24h: int,
+        first_seen_at: str,
+        last_seen_at: str,
     ) -> MemecoinCandidate:
         # Synthesize an empty SafetyReport / ScoreBreakdown so the shape
         # is uniform without paying for real probes on a rejected token.
@@ -260,4 +329,8 @@ class MemecoinScanner:
             discovered_via="pumpfun_new_launches",
             launch=launch,
             skipped_reason=reason,
+            entry_timing=entry_timing,
+            seen_count_24h=seen_count_24h,
+            first_seen_at=first_seen_at,
+            last_seen_at=last_seen_at,
         )
