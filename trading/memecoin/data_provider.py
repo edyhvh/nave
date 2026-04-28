@@ -45,11 +45,21 @@ logger = logging.getLogger(__name__)
 # probes (try to swap 1000 lamports of TOKEN → wSOL).
 WSOL_MINT = "So11111111111111111111111111111111111111112"
 
+# Lamports per SOL (1 SOL = 1e9 lamports).
+LAMPORTS_PER_SOL = 1_000_000_000
+
 DEFAULT_CACHE_TTL_SECONDS = 60 * 5  # 5 min — memecoin state moves fast
 DEFAULT_TIMEOUT_SECONDS = 12.0
 DEFAULT_RPM = 60  # be polite on free tiers
 RATE_WINDOW_SECONDS = 60.0
 DEFAULT_429_RETRIES = 2
+
+# A browser-ish UA helps with Cloudflare-fronted endpoints (Pump.fun,
+# DexScreener) that reject bare httpx requests.
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 nave-memecoin/0.1"
+)
 
 _DOTENV_ATTEMPTED = False
 
@@ -233,7 +243,10 @@ class _BaseClient:
             return self._http
         self._http = httpx.Client(
             base_url=self.base_url,
-            headers={"Accept": "application/json"},
+            headers={
+                "Accept": "application/json",
+                "User-Agent": DEFAULT_USER_AGENT,
+            },
             timeout=self.timeout_seconds,
         )
         return self._http
@@ -488,21 +501,34 @@ class PumpFunClient(_BaseClient):
     """
 
     name = "pumpfun"
-    default_base_url = "https://frontend-api.pump.fun"
+    # frontend-api (v1) and frontend-api-v2 are dead as of 2026-04;
+    # v3 is the live host the pump.fun web client itself uses.
+    default_base_url = "https://frontend-api-v3.pump.fun"
 
-    def list_new_launches(self, limit: int = 50) -> list[PumpFunLaunch]:
-        cached = self._cache_get("new_launches", str(limit))
+    # Pump.fun v3 sort values that work in the wild.
+    SORT_FRESH = "created_timestamp"  # newest mints; usually 0 liquidity
+    SORT_ACTIVE = "last_trade_timestamp"  # recently traded; mixes fresh + graduated
+    SORT_TOP_MCAP = "usd_market_cap"  # highest mcap on the active list
+
+    def list_new_launches(
+        self,
+        limit: int = 50,
+        *,
+        sort: str = SORT_ACTIVE,
+        sol_usd: float | None = None,
+    ) -> list[PumpFunLaunch]:
+        cache_key = f"{sort}_{limit}"
+        cached = self._cache_get("launches", cache_key)
         if isinstance(cached, list):
             return [PumpFunLaunch(**row) for row in cached]
 
-        # /coins?offset=0&limit=N&sort=created_timestamp&order=DESC&includeNsfw=false
         payload = self._request_json(
             "GET",
             "/coins",
             params={
                 "offset": 0,
                 "limit": limit,
-                "sort": "created_timestamp",
+                "sort": sort,
                 "order": "DESC",
                 "includeNsfw": "false",
             },
@@ -510,11 +536,11 @@ class PumpFunClient(_BaseClient):
         if not isinstance(payload, list):
             return []
 
-        launches = [self._parse_launch(row) for row in payload]
+        launches = [self._parse_launch(row, sol_usd=sol_usd) for row in payload]
         launches = [lx for lx in launches if lx is not None]
         self._cache_put(
-            "new_launches",
-            str(limit),
+            "launches",
+            cache_key,
             [
                 {
                     "mint": lx.mint,
@@ -533,7 +559,9 @@ class PumpFunClient(_BaseClient):
         )
         return launches
 
-    def get_launch(self, mint: str) -> PumpFunLaunch | None:
+    def get_launch(
+        self, mint: str, *, sol_usd: float | None = None
+    ) -> PumpFunLaunch | None:
         cached = self._cache_get("launch", mint)
         if isinstance(cached, dict):
             try:
@@ -543,7 +571,7 @@ class PumpFunClient(_BaseClient):
         payload = self._request_json("GET", f"/coins/{mint}")
         if not isinstance(payload, dict):
             return None
-        launch = self._parse_launch(payload)
+        launch = self._parse_launch(payload, sol_usd=sol_usd)
         if launch is not None:
             self._cache_put(
                 "launch",
@@ -563,18 +591,33 @@ class PumpFunClient(_BaseClient):
         return launch
 
     @staticmethod
-    def _parse_launch(row: dict[str, Any]) -> PumpFunLaunch | None:
+    def _parse_launch(row: dict[str, Any], *, sol_usd: float | None = None) -> PumpFunLaunch | None:
         mint = row.get("mint") or row.get("address")
         if not mint:
             return None
-        # Bonding-curve progress is roughly virtual_sol_reserves / completion target.
+
+        # Bonding-curve progress: pump.fun graduates around 85 SOL of REAL
+        # reserves. Prefer real_sol_reserves; fall back to virtual.
+        real_sol_lamports = _to_float(row.get("real_sol_reserves"))
+        virtual_sol_lamports = _to_float(row.get("virtual_sol_reserves"))
         progress = _to_float(row.get("complete_progress"))
-        if progress is None:
-            v_sol = _to_float(row.get("virtual_sol_reserves"))
-            if v_sol is not None:
-                # Pump.fun graduates around ~85 SOL of real reserves; use 100 SOL as
-                # a coarse 100% mark for display-only progress.
-                progress = min(100.0, (v_sol / 1e9) / 100.0 * 100.0)
+        if progress is None and real_sol_lamports is not None:
+            real_sol = real_sol_lamports / LAMPORTS_PER_SOL
+            progress = min(100.0, real_sol / 85.0 * 100.0)
+        elif progress is None and virtual_sol_lamports is not None:
+            v_sol = virtual_sol_lamports / LAMPORTS_PER_SOL
+            progress = min(100.0, v_sol / 100.0 * 100.0)
+
+        # Liquidity USD: v3 doesn't ship a `liquidity` field. For tokens
+        # still on the bonding curve, liquidity ≈ real_sol_reserves * 2
+        # (both sides of the constant-product pool) priced in USD.
+        liquidity_usd = _to_float(row.get("liquidity")) or _to_float(
+            row.get("usd_liquidity")
+        )
+        if liquidity_usd is None and real_sol_lamports is not None and sol_usd:
+            real_sol = real_sol_lamports / LAMPORTS_PER_SOL
+            liquidity_usd = real_sol * 2.0 * sol_usd
+
         return PumpFunLaunch(
             mint=mint,
             name=row.get("name"),
@@ -582,9 +625,9 @@ class PumpFunClient(_BaseClient):
             creator=row.get("creator") or row.get("dev"),
             created_at=row.get("created_timestamp") or row.get("created_at"),
             bonding_curve_progress=progress,
-            market_cap_usd=_to_float(row.get("usd_market_cap")),
-            liquidity_usd=_to_float(row.get("liquidity"))
-            or _to_float(row.get("usd_liquidity")),
+            market_cap_usd=_to_float(row.get("usd_market_cap"))
+            or _to_float(row.get("market_cap")),
+            liquidity_usd=liquidity_usd,
             raw=row,
         )
 
@@ -602,6 +645,27 @@ class DexScreenerClient(_BaseClient):
 
     name = "dexscreener"
     default_base_url = "https://api.dexscreener.com"
+
+    def get_sol_price_usd(self) -> float | None:
+        """Returns the current SOL/USD price from the deepest wSOL pair.
+
+        Used to convert Pump.fun ``real_sol_reserves`` (lamports) into a
+        USD liquidity figure for tokens still on the bonding curve.
+        Cached for 5 min — SOL doesn't move enough to matter at this
+        granularity.
+        """
+        cached = self._cache_get("sol_price", "wsol")
+        if isinstance(cached, dict):
+            value = _to_float(cached.get("value"))
+            if value:
+                return value
+        market = self.get_token_market(WSOL_MINT)
+        price = market.price_usd if market else None
+        if price:
+            self._cache_put(
+                "sol_price", "wsol", {"value": price}, ttl_seconds=300
+            )
+        return price
 
     def get_token_market(self, mint: str) -> TokenMarket | None:
         cached = self._cache_get("token_market", mint)
@@ -681,7 +745,9 @@ class JupiterClient(_BaseClient):
     """
 
     name = "jupiter"
-    default_base_url = "https://quote-api.jup.ag"
+    # quote-api.jup.ag/v6 was retired in early 2026; the public free
+    # endpoint is now lite-api.jup.ag/swap/v1.
+    default_base_url = "https://lite-api.jup.ag"
 
     def has_sell_route(
         self,
@@ -698,7 +764,7 @@ class JupiterClient(_BaseClient):
 
         payload = self._request_json(
             "GET",
-            "/v6/quote",
+            "/swap/v1/quote",
             params={
                 "inputMint": mint,
                 "outputMint": WSOL_MINT,
@@ -708,19 +774,19 @@ class JupiterClient(_BaseClient):
                 "asLegacyTransaction": "false",
             },
         )
-        ok = (
-            isinstance(payload, dict)
-            and payload.get("outAmount")
-            and _to_float(payload.get("outAmount"))
-            and _to_float(payload.get("outAmount")) > 0
+        out_amount = (
+            _to_float(payload.get("outAmount"))
+            if isinstance(payload, dict)
+            else None
         )
+        ok = bool(out_amount and out_amount > 0)
         self._cache_put(
             "sell_route",
             f"{mint}_{amount}_{slippage_bps}",
-            {"ok": bool(ok), "payload": payload if isinstance(payload, dict) else None},
+            {"ok": ok, "payload": payload if isinstance(payload, dict) else None},
             ttl_seconds=60,
         )
-        return bool(ok)
+        return ok
 
 
 # ── Composite provider ────────────────────────────────────────────────────────
@@ -761,7 +827,8 @@ class MemecoinDataProvider:
         market = self.dexscreener.get_token_market(mint)
         if market is not None and (market.liquidity_usd or 0) > 0:
             return market
-        launch = self.pumpfun.get_launch(mint)
+        sol_usd = self.dexscreener.get_sol_price_usd()
+        launch = self.pumpfun.get_launch(mint, sol_usd=sol_usd)
         if launch is None:
             return market
         return TokenMarket(
@@ -780,8 +847,16 @@ class MemecoinDataProvider:
             raw={"pumpfun": launch.raw},
         )
 
-    def new_launches(self, limit: int = 50) -> list[PumpFunLaunch]:
-        return self.pumpfun.list_new_launches(limit=limit)
+    def new_launches(
+        self,
+        limit: int = 50,
+        *,
+        sort: str = PumpFunClient.SORT_ACTIVE,
+    ) -> list[PumpFunLaunch]:
+        sol_usd = self.dexscreener.get_sol_price_usd()
+        return self.pumpfun.list_new_launches(
+            limit=limit, sort=sort, sol_usd=sol_usd
+        )
 
     def has_sell_route(self, mint: str, *, amount: int = 1000) -> bool:
         return self.jupiter.has_sell_route(mint, amount=amount)

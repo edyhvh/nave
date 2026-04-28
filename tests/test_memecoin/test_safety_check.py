@@ -180,6 +180,40 @@ def test_dev_wallets_surface_creator_and_large_holders():
     assert notes["DevWallet"] == "pump.fun creator"
 
 
+def test_dev_wallets_skip_zero_balance_creator():
+    """Creator with 0 % current balance is noise — drop it."""
+    report = check_safety(
+        CLEAN_MINT,
+        metadata=_make_metadata(mint_authority=None, freeze_authority=None),
+        holders=[
+            TokenHolder(address="WhaleX", amount=7.0, pct_of_supply=7.0),
+        ],
+        market=_make_market(),
+        has_sell_route=True,
+        creator="DevWalletWhoDumpedAtLaunch",
+    )
+    addresses = {row["address"] for row in report.dev_wallets}
+    assert "DevWalletWhoDumpedAtLaunch" not in addresses
+    assert "WhaleX" in addresses
+
+
+def test_unrenounced_mint_authority_always_surfaces_in_dev_wallets():
+    """A live mint authority is always worth flagging, even with 0 % balance."""
+    report = check_safety(
+        CLEAN_MINT,
+        metadata=_make_metadata(
+            mint_authority="MintAuthorityStillLive", freeze_authority=None
+        ),
+        holders=[TokenHolder(address="OtherHolder", amount=2.0, pct_of_supply=2.0)],
+        market=_make_market(),
+        has_sell_route=True,
+    )
+    addresses = {row["address"] for row in report.dev_wallets}
+    assert "MintAuthorityStillLive" in addresses
+    notes = {row["address"]: row["notes"] for row in report.dev_wallets}
+    assert "mint authority" in notes["MintAuthorityStillLive"].lower()
+
+
 def test_report_to_dict_matches_documented_contract():
     report = check_safety(
         CLEAN_MINT,

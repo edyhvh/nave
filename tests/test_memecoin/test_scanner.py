@@ -19,7 +19,9 @@ from trading.memecoin.scoring import Label
 class _FakePumpFun:
     launches: list[PumpFunLaunch]
 
-    def list_new_launches(self, limit: int = 50) -> list[PumpFunLaunch]:
+    def list_new_launches(
+        self, limit: int = 50, *, sort: str = "last_trade_timestamp"
+    ) -> list[PumpFunLaunch]:
         return self.launches[:limit]
 
     def get_launch(self, mint: str) -> PumpFunLaunch | None:
@@ -48,7 +50,9 @@ class _FakeProvider:
     def market(self, mint: str) -> TokenMarket | None:
         return self.markets_by_mint.get(mint)
 
-    def new_launches(self, limit: int = 50) -> list[PumpFunLaunch]:
+    def new_launches(
+        self, limit: int = 50, *, sort: str = "last_trade_timestamp"
+    ) -> list[PumpFunLaunch]:
         return self.launches[:limit]
 
     def has_sell_route(self, mint: str, *, amount: int = 1000) -> bool:

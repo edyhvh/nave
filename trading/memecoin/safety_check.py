@@ -329,19 +329,25 @@ def _build_dev_wallets(
 
     holder_lookup = {h.address: h.pct_of_supply for h in holders}
 
+    # Creator and update-authority are only worth surfacing if they
+    # actually hold tokens — the creator typically dumps to 0 % at
+    # launch and a 0 %-balance row is just noise.
     if creator:
-        add(creator, holder_lookup.get(creator, 0.0), "pump.fun creator")
+        creator_pct = holder_lookup.get(creator, 0.0)
+        if creator_pct >= DEV_WALLET_FLAG_PCT:
+            add(creator, creator_pct, "pump.fun creator")
     if metadata is not None:
-        add(
-            metadata.update_authority,
-            holder_lookup.get(metadata.update_authority or "", 0.0),
-            "metadata update authority",
-        )
-        add(
-            metadata.mint_authority,
-            holder_lookup.get(metadata.mint_authority or "", 0.0),
-            "mint authority (not renounced)",
-        )
+        ua_pct = holder_lookup.get(metadata.update_authority or "", 0.0)
+        if ua_pct >= DEV_WALLET_FLAG_PCT:
+            add(metadata.update_authority, ua_pct, "metadata update authority")
+        # Mint authority that isn't renounced is always worth surfacing,
+        # regardless of current balance — it can mint more supply.
+        if metadata.mint_authority:
+            add(
+                metadata.mint_authority,
+                holder_lookup.get(metadata.mint_authority, 0.0),
+                "mint authority (not renounced)",
+            )
 
     # Surface any single non-LP holder above DEV_WALLET_FLAG_PCT that's
     # not already represented above.

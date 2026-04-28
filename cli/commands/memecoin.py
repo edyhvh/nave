@@ -18,6 +18,13 @@ from rich.table import Table
 from cli.professional_typer import ProfessionalTyper
 from core.logger import configure_logger
 from trading.memecoin import MemecoinScanner
+from trading.memecoin.scanner import SORT_ACTIVE, SORT_FRESH, SORT_TOP_MCAP
+
+_SORT_CHOICES = {
+    "active": SORT_ACTIVE,
+    "fresh": SORT_FRESH,
+    "top": SORT_TOP_MCAP,
+}
 
 logger = configure_logger(__name__, level=logging.INFO)
 
@@ -45,10 +52,20 @@ def _label_color(label: str) -> str:
 @memecoin_app.command("scan")
 def scan(
     limit: int = typer.Option(
-        50, "--limit", help="How many recent Pump.fun launches to pull."
+        50, "--limit", help="How many recent Pump.fun rows to pull."
     ),
     top_n: int = typer.Option(
         10, "--top-n", help="Keep the top-N passing candidates by score."
+    ),
+    sort: str = typer.Option(
+        "active",
+        "--sort",
+        help=(
+            "Pump.fun discovery sort. 'active' (default) surfaces both fresh "
+            "and graduated tokens that are currently moving. 'fresh' returns "
+            "just-minted tokens (most fail the liquidity gate). 'top' rotates "
+            "the top-mcap rows on Pump.fun's active list."
+        ),
     ),
     keep_skipped: bool = typer.Option(
         False,
@@ -60,12 +77,25 @@ def scan(
     ),
 ) -> None:
     """Run the discover → gate → safety → score pipeline."""
+    sort_value = _SORT_CHOICES.get(sort.lower())
+    if sort_value is None:
+        raise typer.BadParameter(
+            f"--sort must be one of {sorted(_SORT_CHOICES)}, got {sort!r}"
+        )
+
     scanner = MemecoinScanner()
-    candidates = scanner.scan(limit=limit, top_n=top_n, keep_skipped=keep_skipped)
+    candidates = scanner.scan(
+        limit=limit, top_n=top_n, sort=sort_value, keep_skipped=keep_skipped
+    )
 
     payload = {
         "tool": "memecoin_scan",
-        "params": {"limit": limit, "top_n": top_n, "keep_skipped": keep_skipped},
+        "params": {
+            "limit": limit,
+            "top_n": top_n,
+            "sort": sort,
+            "keep_skipped": keep_skipped,
+        },
         "count": len(candidates),
         "candidates": [c.to_dict() for c in candidates],
     }

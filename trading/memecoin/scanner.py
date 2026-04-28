@@ -22,6 +22,7 @@ from typing import Any
 
 from trading.memecoin.data_provider import (
     MemecoinDataProvider,
+    PumpFunClient,
     PumpFunLaunch,
     TokenMarket,
 )
@@ -32,6 +33,11 @@ from trading.memecoin.scoring import (
     ScoreBreakdown,
     score_candidate,
 )
+
+# Re-export sort constants for CLI / MCP layers.
+SORT_FRESH = PumpFunClient.SORT_FRESH
+SORT_ACTIVE = PumpFunClient.SORT_ACTIVE
+SORT_TOP_MCAP = PumpFunClient.SORT_TOP_MCAP
 
 logger = logging.getLogger(__name__)
 
@@ -103,20 +109,28 @@ class MemecoinScanner:
         self,
         *,
         limit: int = 50,
+        sort: str = SORT_ACTIVE,
         keep_skipped: bool = False,
         top_n: int | None = None,
     ) -> list[MemecoinCandidate]:
         """Run a full scan.
 
         Args:
-            limit:        How many recent Pump.fun launches to pull.
+            limit:        How many recent Pump.fun rows to pull.
+            sort:         Pump.fun sort mode. ``SORT_ACTIVE`` (default,
+                          ``last_trade_timestamp``) surfaces both fresh
+                          and graduated tokens that are currently moving.
+                          ``SORT_FRESH`` (``created_timestamp``) returns
+                          just-minted tokens — almost all fail the
+                          liquidity gate. ``SORT_TOP_MCAP`` rotates the
+                          top-mcap rows on Pump.fun's active list.
             keep_skipped: If True, returns liquidity-floor rejections too
                           (with ``passed=False`` and ``skipped_reason``).
                           Useful for observability.
             top_n:        If set, truncates the output to the top-N
                           *passing* candidates by score.
         """
-        launches = self.provider.new_launches(limit=limit)
+        launches = self.provider.new_launches(limit=limit, sort=sort)
         if not launches:
             logger.info("scanner: no new launches returned by Pump.fun")
             return []
