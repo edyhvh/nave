@@ -3,7 +3,7 @@ Tests for the trade journaling system.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
 
@@ -256,7 +256,7 @@ class TestSQLiteStorage:
 
         update = PositionUpdate(
             trade_id=trade.id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             current_price=52000,
             unrealized_pnl=400,
         )

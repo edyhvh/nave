@@ -417,5 +417,101 @@ def stocks_ism_report(
     return json.dumps(payload, indent=2)
 
 
+# ── Memecoin scanner (Solana, read-only) ─────────────────────────────────────
+
+
+@mcp.tool()
+def memecoin_scan(
+    limit: int = 50,
+    top_n: int = 10,
+    keep_skipped: bool = False,
+) -> str:
+    """Scan recent Pump.fun launches and return safety-filtered ranked candidates.
+
+    Pipeline: Pump.fun new launches → liquidity gate ($25k) → 5 canonical
+    SPL safety checks (mint authority, freeze authority, LP, honeypot,
+    holder concentration) → transparent FDV/vol/liquidity/momentum/age
+    score → ranked top-N. Returns JSON with full breakdown per candidate
+    so a human or Hermes can override individual sub-scores.
+
+    Args:
+        limit:        How many recent launches to pull from Pump.fun.
+        top_n:        Keep the top-N passing candidates by score.
+        keep_skipped: Include liquidity-rejected tokens for observability.
+    """
+    from trading.memecoin.mcp_tools import memecoin_scan_json
+
+    return memecoin_scan_json(limit=limit, top_n=top_n, keep_skipped=keep_skipped)
+
+
+@mcp.tool()
+def memecoin_safety_report(mint: str) -> str:
+    """Return the structured 5-check safety report for a single Solana mint.
+
+    Output JSON contract: ``{verdict, rug_score, checks: {mint_authority_renounced,
+    freeze_authority_revoked, lp_status, honeypot, holder_concentration},
+    dev_wallets, honeypot_flags}``. ``verdict`` is FAIL on any hard check,
+    WATCH if all pass but top-1 holder is in the 15-18% flag band, PASS otherwise.
+    """
+    from trading.memecoin.mcp_tools import memecoin_safety_report_json
+
+    return memecoin_safety_report_json(mint)
+
+
+@mcp.tool()
+def memecoin_score(mint: str, include_safety: bool = False) -> str:
+    """Return the transparent rubric score for a single Solana mint.
+
+    All sub-bands (FDV, turnover, liquidity, momentum, age) are returned
+    with their numeric inputs and per-band points so callers can override
+    a single sub-score without recomputing the rest. Set
+    ``include_safety=True`` to additionally run the safety report (a
+    failing safety verdict clamps the label to SHILL).
+    """
+    from trading.memecoin.mcp_tools import memecoin_score_json
+
+    return memecoin_score_json(mint, include_safety=include_safety)
+
+
+@mcp.tool()
+def memecoin_scan_history(hours: int = 24) -> str:
+    """Return trailing memecoin scan archive visibility by mint.
+
+    Uses snapshots persisted under ``var/memecoin_scans``. This lets
+    callers detect whether a token is first-seen in the current scan or
+    repeatedly appearing across the recent window.
+    """
+    from trading.memecoin.mcp_tools import memecoin_scan_history_json
+
+    return memecoin_scan_history_json(hours=hours)
+
+
+@mcp.tool()
+def memecoin_recommend(
+    limit: int = 50,
+    top_n: int = 10,
+    keep_skipped: bool = False,
+    history_hours: int = 24,
+    capital_usd: float = 10_000.0,
+    memecoin_exposure_usd: float = 0.0,
+) -> str:
+    """Return per-candidate enter-now recommendations for memecoins.
+
+    Contract per row: ``{enter_now, entry_timing, position_size_usd, reason}``.
+    Sizing is fixed to 0.25R per trade and capped by 5% memecoin class
+    exposure. ``entry_timing=EXTENDED`` is auto-blocked.
+    """
+    from trading.memecoin.mcp_tools import memecoin_recommend_json
+
+    return memecoin_recommend_json(
+        limit=limit,
+        top_n=top_n,
+        keep_skipped=keep_skipped,
+        history_hours=history_hours,
+        capital_usd=capital_usd,
+        memecoin_exposure_usd=memecoin_exposure_usd,
+    )
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")
