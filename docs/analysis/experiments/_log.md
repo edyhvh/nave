@@ -25,4 +25,4 @@ See `00_baseline.md` for the comparison rules every experiment must beat.
 | 05 | experiment/atr-floor-tune | atr_floor 1.5 → 1.25/1.3/1.4/1.75 | +49.27/+48.53/+46.72/+43.19 | +5.13/+4.39/+2.58/-0.95 | ❌ pooled WR drops 1-3pp at all wins; not strict | — |
 | 06 | (extend forward window 14d → 21d) | resolution window | +44.65 | +0.51 | ❌ noise; ETH WR drops 6pp | — |
 | 06b | (trail SL to +0.5R after ZC1 hit) | exit policy | +43.42 | -0.72 | ❌ ETH regresses | — |
-| 07 | experiment/add-link | LINK as 4th coin | +67.15 | +23.01 | ✅ ship | draft |
+| 07 | experiment/add-link | LINK as 4th coin | +67.15 | +23.01 | ✅ ship | #18 |

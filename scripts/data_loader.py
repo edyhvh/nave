@@ -43,6 +43,7 @@ COIN_ALIASES: dict[str, list[str]] = {
     "BTC": ["btc", "btcusdt", "btcusd", "btc-usd", "bitcoin", "xbt"],
     "ETH": ["eth", "ethusdt", "ethusd", "eth-usd", "ethereum"],
     "LINK": ["link", "linkusdt", "linkusd", "link-usd", "chainlink"],
+    "SOL": ["sol", "solusdt", "solusd", "sol-usd", "solana"],
 }
 
 # Timeframe canonical names mapped to pandas offset aliases and minute counts.
