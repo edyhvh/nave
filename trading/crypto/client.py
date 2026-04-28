@@ -26,7 +26,7 @@ from typing import Literal
 
 import requests
 
-from trading.vault import WalletVault
+from trading.crypto.vault import WalletVault
 
 
 MAINNET_API = "https://api.hyperliquid.xyz"

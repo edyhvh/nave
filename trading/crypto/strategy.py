@@ -7,8 +7,8 @@ A Strategy ties together:
   - Position sizing and risk rules
 
 Usage:
-    from trading.strategy import BaseStrategy
-    from trading.signals import SignalAggregator, Direction
+    from trading.crypto.strategy import BaseStrategy
+    from trading.crypto.signals import SignalAggregator, Direction
 
     class MyMacroStrategy(BaseStrategy):
         def compute_signals(self) -> list[Signal]:
@@ -29,9 +29,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
 
-from trading.client import HyperliquidClient, HyperliquidClientProtocol
-from trading.config import DEFAULT_SETUPS
-from trading.signals import Direction, Signal, SignalAggregator
+from trading.crypto.client import HyperliquidClient, HyperliquidClientProtocol
+from trading.crypto.config import DEFAULT_SETUPS
+from trading.crypto.signals import Direction, Signal, SignalAggregator
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ class MacroMomentumStrategy(BaseStrategy):
         self.setups = setups or list(DEFAULT_SETUPS)
 
     def compute_signals(self) -> list[Signal]:
-        from trading.signals import MacroSignalProducer
+        from trading.crypto.signals import MacroSignalProducer
 
         indicators = self._fetch_indicators()
         producer = MacroSignalProducer(
@@ -185,8 +185,8 @@ class MacroMomentumStrategy(BaseStrategy):
         Fetch indicators including COT as the MAIN weekly driver.
         Integrates with trading.cot for BTC/ETH comparison per philosophy.
         """
-        from trading.cot.cot_fetcher import fetch_latest_cot
-        from trading.cot.cot_analyzer import COTAnalyzer
+        from trading.crypto.cot.cot_fetcher import fetch_latest_cot
+        from trading.crypto.cot.cot_analyzer import COTAnalyzer
 
         logger.info("Fetching COT as primary weekly bias (Sunday analysis of Friday release)")
 
@@ -265,8 +265,8 @@ class CotWeeklyStrategy(BaseStrategy):
 
     def compute_signals(self) -> list[Signal]:
         """Compute weekly COT-based signals from live datasets."""
-        from trading.cot.cot_analyzer import COTAnalyzer
-        from trading.cot.cot_fetcher import fetch_latest_cot
+        from trading.crypto.cot.cot_analyzer import COTAnalyzer
+        from trading.crypto.cot.cot_fetcher import fetch_latest_cot
 
         try:
             cot_data = fetch_latest_cot()
@@ -419,7 +419,7 @@ class TheoryV2Strategy(BaseStrategy):
         self._last_decisions: list[Any] = []
 
     def compute_signals(self) -> list[Signal]:
-        from trading.theory_v2 import build_signals_for_coins
+        from trading.crypto.theory_v2 import build_signals_for_coins
 
         signals, decisions = build_signals_for_coins(self.coins)
         self._last_decisions = decisions
@@ -431,7 +431,7 @@ class TheoryV2Strategy(BaseStrategy):
         return signals
 
     def execute_signals(self, signals: list[Signal]) -> None:
-        from trading.execution import build_execution_plan
+        from trading.crypto.execution import build_execution_plan
 
         if not signals:
             logger.info("theory_v2: no fired signals this cycle")

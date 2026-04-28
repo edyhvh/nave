@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 import threading
 
-from .models import Trade, TradeEnvironment, TradeStatus, TradeOutcome, PositionUpdate, TradeReview
+from .models import Trade, TradeEnvironment, TradeStatus, TradeOutcome, PositionUpdate, TradeReview, AssetClass
 
 
 class StorageBackend(ABC):
@@ -35,6 +35,7 @@ class StorageBackend(ABC):
         coin: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        asset_class: Optional[AssetClass] = None,
         limit: int = 1000
     ) -> List[Trade]:
         """Query trades with filters."""
@@ -119,9 +120,18 @@ class SQLiteStorage(StorageBackend):
                 pnl_absolute REAL,
                 pnl_percent REAL,
                 outcome TEXT,
+                asset_class TEXT NOT NULL DEFAULT 'crypto',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Additive migration for pre-existing DBs that predate the asset_class column.
+        cursor.execute("PRAGMA table_info(trades)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+        if "asset_class" not in existing_cols:
+            cursor.execute(
+                "ALTER TABLE trades ADD COLUMN asset_class TEXT NOT NULL DEFAULT 'crypto'"
+            )
 
         # Position updates table
         cursor.execute("""
@@ -167,6 +177,8 @@ class SQLiteStorage(StorageBackend):
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_trades_time ON trades(entry_time)")
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_trades_asset ON trades(asset_class)")
+        cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_updates_trade ON position_updates(trade_id)")
 
         conn.commit()
@@ -201,19 +213,20 @@ class SQLiteStorage(StorageBackend):
             'pnl_absolute': trade.pnl_absolute,
             'pnl_percent': trade.pnl_percent,
             'outcome': trade.outcome.value,
+            'asset_class': trade.asset_class.value,
         }
 
         cursor.execute("""
-            INSERT OR REPLACE INTO trades 
+            INSERT OR REPLACE INTO trades
             (id, strategy_name, coin, direction, size_usd, leverage, entry_price, exit_price,
              entry_fee, exit_fee, funding_fees, entry_time, exit_time, status, environment,
              stop_loss, take_profit, entry_signals, exit_signals, tags, notes,
-             pnl_absolute, pnl_percent, outcome)
-            VALUES 
+             pnl_absolute, pnl_percent, outcome, asset_class)
+            VALUES
             (:id, :strategy_name, :coin, :direction, :size_usd, :leverage, :entry_price, :exit_price,
              :entry_fee, :exit_fee, :funding_fees, :entry_time, :exit_time, :status, :environment,
              :stop_loss, :take_profit, :entry_signals, :exit_signals, :tags, :notes,
-             :pnl_absolute, :pnl_percent, :outcome)
+             :pnl_absolute, :pnl_percent, :outcome, :asset_class)
         """, data)
 
         conn.commit()
@@ -237,6 +250,7 @@ class SQLiteStorage(StorageBackend):
         coin: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        asset_class: Optional[AssetClass] = None,
         limit: int = 1000
     ) -> List[Trade]:
         """Query trades with filters."""
@@ -255,6 +269,9 @@ class SQLiteStorage(StorageBackend):
         if coin:
             conditions.append("coin = ?")
             params.append(coin)
+        if asset_class:
+            conditions.append("asset_class = ?")
+            params.append(asset_class.value)
         if start_date:
             conditions.append("entry_time >= ?")
             params.append(start_date.isoformat())
@@ -438,6 +455,10 @@ class SQLiteStorage(StorageBackend):
 
     def _row_to_trade(self, row: sqlite3.Row) -> Trade:
         """Convert database row to Trade object."""
+        # row.keys() handles pre-migration rows where asset_class may be absent.
+        asset_class_val = (
+            row["asset_class"] if "asset_class" in row.keys() and row["asset_class"] else "crypto"
+        )
         return Trade(
             id=row['id'],
             strategy_name=row['strategy_name'] or "",
@@ -455,6 +476,7 @@ class SQLiteStorage(StorageBackend):
                 row['exit_time']) if row['exit_time'] else None,
             status=TradeStatus(row['status']),
             environment=TradeEnvironment(row['environment']),
+            asset_class=AssetClass(asset_class_val),
             stop_loss=row['stop_loss'],
             take_profit=row['take_profit'],
             entry_signals=json.loads(
@@ -505,6 +527,7 @@ class JSONStorage(StorageBackend):
         coin: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        asset_class: Optional[AssetClass] = None,
         limit: int = 1000,
     ) -> List[Trade]:
         """Query trades with filters."""
@@ -516,6 +539,8 @@ class JSONStorage(StorageBackend):
             trades = [t for t in trades if t.status == status]
         if coin:
             trades = [t for t in trades if t.coin == coin]
+        if asset_class:
+            trades = [t for t in trades if t.asset_class == asset_class]
         if start_date:
             trades = [t for t in trades if t.entry_time >= start_date]
         if end_date:

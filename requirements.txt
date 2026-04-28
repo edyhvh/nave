@@ -55,4 +55,17 @@ web3>=6.0.0              # Ethereum JSON-RPC client
 hyperliquid-python-sdk>=0.22.0  # Hyperliquid exchange API SDK
 cryptography>=42.0.0    # Fernet encryption for wallet vault
 
-ruff>=0.1.0  # Linter and formattermcp>=1.0.0              # Model Context Protocol server
+ruff>=0.1.0  # Linter and formatter
+mcp>=1.0.0              # Model Context Protocol server
+
+# ── Stocks workflow ──────────────────────────────────────────────────────────
+httpx>=0.27.0            # ISM + Massive.com REST client
+beautifulsoup4>=4.12.0   # ISM press-release HTML parsing
+# playwright is optional — only needed when scraping JS-rendered mirrors.
+# Install on demand:
+#     pip install playwright && python -m playwright install chromium
+
+# X (Twitter) social sentiment — optional; only needed for `nave stocks x-analyze`.
+# Requires logged-in X account auth tokens stored in a local SQLite DB.
+twscrape>=0.17           # async X search client
+

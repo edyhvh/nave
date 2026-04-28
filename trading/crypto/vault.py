@@ -11,7 +11,7 @@ SECURITY RULES:
   - Never log, print, or pass private_key to anything except a signer.
 
 Usage:
-    from trading.vault import WalletVault
+    from trading.crypto.vault import WalletVault
 
     vault = WalletVault()
     print(vault.address("openfang"))   # safe — public address only

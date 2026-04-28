@@ -38,10 +38,10 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from trading.config import DEFAULT_SETUPS, COT_PRIMARY_WEIGHT
-from trading.cot.cot_historical_analyzer import COTHistoricalAnalyzer
-from trading.cot.cot_report_generator import COTReportGenerator
-from trading.signals import Signal, Direction
+from trading.crypto.config import DEFAULT_SETUPS, COT_PRIMARY_WEIGHT
+from trading.crypto.cot.cot_historical_analyzer import COTHistoricalAnalyzer
+from trading.crypto.cot.cot_report_generator import COTReportGenerator
+from trading.crypto.signals import Signal, Direction
 
 logger = logging.getLogger(__name__)
 
@@ -581,7 +581,7 @@ if __name__ == "__main__":
     import logging as _logging
 
     _logging.basicConfig(level=_logging.DEBUG, format="%(levelname)s: %(message)s")
-    from trading.cot.cot_fetcher import fetch_latest_cot
+    from trading.crypto.cot.cot_fetcher import fetch_latest_cot
 
     data = fetch_latest_cot(debug=True)
     analyzer = COTAnalyzer()

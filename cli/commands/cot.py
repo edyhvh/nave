@@ -10,6 +10,7 @@ from datetime import timezone as _timezone
 
 import typer
 
+from cli.professional_typer import ProfessionalTyper
 from core.config import CliDefaults
 from trading.client import HyperliquidClient
 from trading.cot.cot_analyzer import COTAnalyzer
@@ -18,7 +19,7 @@ from trading.cot.cot_report_generator import COTReportGenerator
 
 DEFAULTS = CliDefaults()
 
-cot_app = typer.Typer(help="COT specific commands")
+cot_app = ProfessionalTyper(help="COT specific commands")
 
 
 @cot_app.command("analyze")

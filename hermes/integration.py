@@ -168,6 +168,93 @@ class HermesNaveIntegration:
                         },
                     },
                 },
+                {
+                    "name": "stocks_ism_report",
+                    "description": (
+                        "Return ISM hottest/worst industries and Massive-filtered stock "
+                        "candidates based on PE and next-year EPS growth criteria."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": ["manufacturing", "services"],
+                                "default": "manufacturing",
+                            },
+                            "top_n": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
+                            "min_eps_growth_next_year": {"type": "number"},
+                        },
+                    },
+                },
+                {
+                    "name": "stocks_ism_calendar",
+                    "description": (
+                        "Return the internal ISM release calendar (sourced from FMP). "
+                        "Use this to answer 'when is the next ISM Manufacturing/Services "
+                        "PMI release?' or to fetch the full year's release dates."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "year": {
+                                "type": "integer",
+                                "minimum": 2000,
+                                "maximum": 2100,
+                                "description": "Calendar year. Defaults to the current year.",
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": ["manufacturing", "services"],
+                                "description": "Optional filter. Omit to return both.",
+                            },
+                            "next_only": {
+                                "type": "boolean",
+                                "default": False,
+                                "description": "Return only the next upcoming release.",
+                            },
+                            "refresh": {
+                                "type": "boolean",
+                                "default": False,
+                                "description": "Re-fetch from FMP and overwrite the stored file.",
+                            },
+                        },
+                    },
+                },
+                {
+                    "name": "stocks_x_analyze",
+                    "description": (
+                        "Fetch recent X (Twitter) posts about one or more stock tickers "
+                        "and return them packaged with the LLM analysis prompt baked in. "
+                        "The caller (Telegram-side LLM, manual paste into another model) "
+                        "uses payload.analysis_prompt.system + .user to produce the final "
+                        "markdown sentiment report."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "tickers": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of tickers, e.g. ['NVDA', 'AAPL'].",
+                            },
+                            "days": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 30,
+                                "default": 7,
+                            },
+                            "limit_per_ticker": {
+                                "type": "integer",
+                                "minimum": 5,
+                                "maximum": 200,
+                                "default": 50,
+                            },
+                            "persist": {"type": "boolean", "default": True},
+                        },
+                        "required": ["tickers"],
+                    },
+                },
             ],
         }
 
@@ -668,6 +755,120 @@ class HermesNaveIntegration:
             "missing": missing,
         }
 
+    def stocks_ism_report(
+        self,
+        *,
+        kind: str = "manufacturing",
+        top_n: int = 5,
+        min_eps_growth_next_year: float | None = None,
+    ) -> dict[str, Any]:
+        """Return ISM industry heatmap + filtered stock candidates."""
+        if kind not in {"manufacturing", "services"}:
+            raise HermesIntegrationError("kind must be manufacturing or services")
+        if top_n < 1 or top_n > 20:
+            raise HermesIntegrationError("top_n must be in [1, 20]")
+
+        from trading.stocks.reporting import build_ism_industry_report
+
+        try:
+            return build_ism_industry_report(
+                kind=kind,
+                top_n=top_n,
+                min_eps_growth_next_year=min_eps_growth_next_year,
+            )
+        except ValueError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+    def stocks_ism_calendar(
+        self,
+        *,
+        year: int | None = None,
+        kind: str | None = None,
+        next_only: bool = False,
+        refresh: bool = False,
+    ) -> dict[str, Any]:
+        """Return the stored ISM release calendar (or the next upcoming release)."""
+        from datetime import date
+
+        from trading.stocks.ism_calendar import (
+            ISMCalendarError,
+            fetch_ism_calendar,
+            load_calendar,
+            next_release,
+        )
+
+        if kind is not None and kind not in {"manufacturing", "services"}:
+            raise HermesIntegrationError(
+                "kind must be manufacturing or services"
+            )
+
+        if next_only:
+            release = next_release(kind=kind)  # type: ignore[arg-type]
+            return {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "next_release": _to_jsonable(release) if release else None,
+            }
+
+        target_year = year or date.today().year
+        if refresh:
+            try:
+                calendar = fetch_ism_calendar(target_year)
+            except ISMCalendarError as exc:
+                raise HermesIntegrationError(str(exc)) from exc
+        else:
+            calendar = load_calendar(target_year)
+            if calendar is None:
+                try:
+                    calendar = fetch_ism_calendar(target_year)
+                except ISMCalendarError as exc:
+                    raise HermesIntegrationError(str(exc)) from exc
+
+        releases = (
+            calendar.by_kind(kind)  # type: ignore[arg-type]
+            if kind is not None
+            else calendar.releases
+        )
+        return {
+            "year": calendar.year,
+            "generated_at": calendar.generated_at,
+            "source": calendar.source,
+            "source_url": calendar.source_url,
+            "releases": _to_jsonable(releases),
+        }
+
+    def stocks_x_analyze(
+        self,
+        *,
+        tickers: list[str],
+        days: int = 7,
+        limit_per_ticker: int = 50,
+        persist: bool = True,
+    ) -> dict[str, Any]:
+        """Fetch X posts for tickers and return them with the analysis prompt baked in.
+
+        The Telegram-side LLM (or any caller) reads ``analysis_prompt.system``
+        and ``analysis_prompt.user`` from the response and runs them against
+        its own model to produce the final markdown sentiment report.
+        """
+        if not isinstance(tickers, list) or not tickers:
+            raise HermesIntegrationError("tickers must be a non-empty list of strings")
+        if not 1 <= days <= 30:
+            raise HermesIntegrationError("days must be between 1 and 30")
+        if not 5 <= limit_per_ticker <= 200:
+            raise HermesIntegrationError("limit_per_ticker must be between 5 and 200")
+
+        from trading.stocks.social_analyzer import analyze_tickers
+
+        try:
+            return analyze_tickers(
+                tickers,
+                days=days,
+                limit_per_ticker=limit_per_ticker,
+                persist=persist,
+            )
+        except ValueError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
     def dispatch_tool_call(
         self, tool_name: str, arguments: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -681,6 +882,9 @@ class HermesNaveIntegration:
             "strategy_context": self.strategy_context,
             "recommend_position": self.recommend_position,
             "scan_history": self.scan_history,
+            "stocks_ism_report": self.stocks_ism_report,
+            "stocks_ism_calendar": self.stocks_ism_calendar,
+            "stocks_x_analyze": self.stocks_x_analyze,
         }
 
         handler = handlers.get(tool_name)

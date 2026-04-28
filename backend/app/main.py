@@ -17,7 +17,6 @@ if str(root_path) not in sys.path:
     sys.path.insert(0, str(root_path))
 
 
-# TODO: import routers from app.api when implemented
 from app.api.indicators import router as indicators_router  # noqa: E402
 from app.api.cot import router as cot_router  # noqa: E402
 

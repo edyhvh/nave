@@ -16,8 +16,9 @@ Nave exposes Hermes-compatible interfaces through:
    - `nave hermes call`
    - `nave hermes gateway-invoke`
 3. `trading/mcp_server.py`
-   - Existing account/execution tools
-   - New COT-oriented tools (`cot_report`, `cot_history`, `weekly_plan`)
+    - Existing account/execution tools
+    - COT + scan tools (`cot_report`, `cot_history`, `weekly_plan`, `theory_v2_scan`, `scan_history`)
+    - Stocks macro report tool (`stocks_ism_report`)
 
 ## Tool Contracts
 
@@ -46,6 +47,15 @@ Input:
 - `wallet` (string)
 - `coins` (string)
 - `include_micro` (bool)
+
+### `stocks_ism_report`
+Returns ISM hottest/worst industries and filtered stock candidates using FMP fundamentals.
+
+Input:
+- `kind` (string): `manufacturing` or `services`
+- `top_n` (int): top candidates per trend bucket
+- `max_pe_ratio` (number, optional): keep only names with `PE <= max_pe_ratio`
+- `min_eps_growth_next_year` (number, optional): keep only names with `EPS growth >= threshold`
 
 ## Examples
 
@@ -76,4 +86,17 @@ nave mcp run
 ```
 
 Hermes can then call tool names registered by the FastMCP server, including
-COT report/history/weekly planning tools for autonomous workflows.
+COT report/history/planning tools plus `stocks_ism_report` for ISM equity workflows.
+
+## Optional Remote FMP MCP
+
+Nave already exposes its own local FastMCP server for repo-native tools. FMP also
+ships a remote MCP endpoint for direct vendor access:
+
+```bash
+nave mcp fmp-connector
+```
+
+This prints `https://financialmodelingprep.com/mcp?apikey=...` using `FMP_API_KEY`.
+Use that in an MCP client when you want direct FMP tools without proxying them
+through Nave. Those calls still consume the same FMP API quota.

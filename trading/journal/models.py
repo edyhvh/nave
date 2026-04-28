@@ -25,6 +25,12 @@ class TradeEnvironment(Enum):
     LIVE = "live"                # Real money
 
 
+class AssetClass(Enum):
+    """Asset class for a trade. Used for filtering, reporting, and broker routing."""
+    CRYPTO = "crypto"            # Hyperliquid perps (default — historical trades)
+    STOCK = "stock"              # Alpaca / Ondo equities
+
+
 class TradeOutcome(Enum):
     """Outcome classification for closed trades."""
     WIN = "win"
@@ -69,6 +75,7 @@ class Trade:
     # Trade lifecycle
     status: TradeStatus = TradeStatus.PENDING
     environment: TradeEnvironment = TradeEnvironment.BACKTEST
+    asset_class: AssetClass = AssetClass.CRYPTO  # default preserves back-compat for existing rows
 
     # Risk management
     stop_loss: Optional[float] = None
@@ -93,12 +100,27 @@ class Trade:
             self.status = TradeStatus(self.status)
         if isinstance(self.environment, str):
             self.environment = TradeEnvironment(self.environment)
+        if isinstance(self.asset_class, str):
+            self.asset_class = AssetClass(self.asset_class)
         if isinstance(self.outcome, str):
             self.outcome = TradeOutcome(self.outcome)
         if isinstance(self.entry_time, str):
             self.entry_time = datetime.fromisoformat(self.entry_time)
         if isinstance(self.exit_time, str):
             self.exit_time = datetime.fromisoformat(self.exit_time)
+
+    @property
+    def symbol(self) -> str:
+        """Alias for :attr:`coin`. Preferred when the asset class is a stock."""
+        return self.coin
+
+    @property
+    def is_crypto(self) -> bool:
+        return self.asset_class == AssetClass.CRYPTO
+
+    @property
+    def is_stock(self) -> bool:
+        return self.asset_class == AssetClass.STOCK
 
     @property
     def is_closed(self) -> bool:
@@ -189,6 +211,7 @@ class Trade:
         # Convert enums to strings
         data['status'] = self.status.value
         data['environment'] = self.environment.value
+        data['asset_class'] = self.asset_class.value
         data['outcome'] = self.outcome.value
         data['entry_time'] = self.entry_time.isoformat()
         data['exit_time'] = self.exit_time.isoformat() if self.exit_time else None

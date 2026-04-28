@@ -41,8 +41,8 @@ from typing import Callable
 
 import pandas as pd
 
-from trading.cot_gate import weekly_cot_filter
-from trading.signals import Direction, Signal, Timeframe
+from trading.crypto.cot_gate import weekly_cot_filter
+from trading.crypto.signals import Direction, Signal, Timeframe
 
 CotHistoryFn = Callable[[str, pd.Timestamp], "pd.DataFrame | None"]
 
@@ -644,7 +644,7 @@ def _default_cot_history_fn() -> CotHistoryFn:
     Per ``cot_integration.yaml`` ETH COT is weaker than BTC COT; both coins
     use BTC COT as the market-wide positioning reference.
     """
-    from trading.cot_gate import load_cached_cot_history
+    from trading.crypto.cot_gate import load_cached_cot_history
 
     btc_history = load_cached_cot_history("BTC")
 

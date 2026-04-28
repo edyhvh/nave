@@ -6,10 +6,11 @@ import json
 
 import typer
 
+from cli.professional_typer import ProfessionalTyper
 from core.exceptions import HermesIntegrationError
 from hermes.integration import HermesNaveIntegration
 
-hermes_app = typer.Typer(help="Hermes Agent integration commands")
+hermes_app = ProfessionalTyper(help="Hermes Agent integration commands")
 
 
 @hermes_app.command("tools")
