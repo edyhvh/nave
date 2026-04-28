@@ -139,7 +139,13 @@ class SectorScreener:
             if not tickers:
                 logger.info("No tickers configured for sector %r — skipping", sector)
                 continue
-            snapshots = self.massive.batch_fundamentals(tickers)
+            try:
+                snapshots = self.massive.batch_fundamentals(tickers)
+            except Exception as exc:
+                logger.warning(
+                    "Failed to fetch fundamentals for sector %r — skipping: %s", sector, exc
+                )
+                continue
             sector_rankings = (industry_rankings_by_sector or {}).get(sector, [])
 
             # Services mode uses sector-average PE as a secondary "company

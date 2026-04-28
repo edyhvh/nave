@@ -173,6 +173,13 @@ class ISMReportFetcher:
         )
         if proc.returncode != 0:
             raise RuntimeError(f"curl fetch failed for {url!r}: exit={proc.returncode}")
+        # Treat a suspiciously small response as a failure so the caller can
+        # fall back to the landing URL rather than silently parsing an empty body.
+        if len(proc.stdout) < 200:
+            raise RuntimeError(
+                f"curl returned an unexpectedly small response ({len(proc.stdout)} bytes) "
+                f"for {url!r}; treating as failure."
+            )
         return proc.stdout
 
     def _resolve_latest_release(self, kind: ReportKind) -> str:
