@@ -131,6 +131,7 @@ class MomentumSetupEngine:
             config=self.config,
         )
         tradeable = self._is_tradeable(
+            side=side,
             setup_status=setup_status,
             rr_estimated=rr_estimated,
             expected_move_pct=expected_move_pct,
@@ -317,6 +318,7 @@ class MomentumSetupEngine:
     def _is_tradeable(
         self,
         *,
+        side: str,
         setup_status: str,
         rr_estimated: float,
         expected_move_pct: float,
@@ -344,6 +346,12 @@ class MomentumSetupEngine:
                 daily_ema_gap_pct <= self.config.trend.min_daily_ema_gap_intraday_underextended
                 and volatility.atr_ratio < self.config.volatility.min_atr_ratio_intraday_underextended
             )
+        swing_short_exhaustion_ok = True
+        if side == "short" and expected_move_pct >= 0.1 and daily_ema_gap_pct is not None:
+            swing_short_exhaustion_ok = not (
+                daily_ema_gap_pct >= self.config.trend.max_daily_ema_gap_swing_short
+                and volatility.range_expansion < self.config.volatility.min_range_expansion_swing_short
+            )
         return (
             setup_status == "confirmed"
             and rr_estimated >= self.config.min_rr
@@ -354,6 +362,7 @@ class MomentumSetupEngine:
             and atr_ok
             and intraday_gap_ok
             and intraday_underextended_ok
+            and swing_short_exhaustion_ok
             and not participation.crowded
         )
 
