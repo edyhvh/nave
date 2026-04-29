@@ -338,6 +338,12 @@ class MomentumSetupEngine:
                 setup_ema_gap_pct >= self.config.trend.max_setup_ema_gap_intraday
                 and daily_ema_gap_pct <= self.config.trend.min_daily_ema_gap_intraday
             )
+        intraday_underextended_ok = True
+        if expected_move_pct < 0.1 and daily_ema_gap_pct is not None:
+            intraday_underextended_ok = not (
+                daily_ema_gap_pct <= self.config.trend.min_daily_ema_gap_intraday_underextended
+                and volatility.atr_ratio < self.config.volatility.min_atr_ratio_intraday_underextended
+            )
         return (
             setup_status == "confirmed"
             and rr_estimated >= self.config.min_rr
@@ -347,6 +353,7 @@ class MomentumSetupEngine:
             and volume_ok
             and atr_ok
             and intraday_gap_ok
+            and intraday_underextended_ok
             and not participation.crowded
         )
 

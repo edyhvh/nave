@@ -13,6 +13,7 @@ class TrendConfig:
     min_slope_bps: float
     max_setup_ema_gap_intraday: float
     min_daily_ema_gap_intraday: float
+    min_daily_ema_gap_intraday_underextended: float
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,7 @@ class VolatilityConfig:
     min_range_expansion: float
     expansion_atr_floor: float
     min_atr_ratio_swing: float
+    min_atr_ratio_intraday_underextended: float
 
 
 @dataclass(frozen=True)
