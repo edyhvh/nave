@@ -20,7 +20,8 @@
     "atr_slow": 50,
     "min_atr_ratio": 1.1,
     "min_range_expansion": 1.2,
-    "expansion_atr_floor": 0.95
+    "expansion_atr_floor": 0.95,
+    "min_atr_ratio_swing": 1.0
   },
   "structure": {
     "swing_bars": 3,

@@ -331,6 +331,9 @@ class MomentumSetupEngine:
         volume_ok = True
         if expected_move_pct >= 0.1:
             volume_ok = participation.volume_ratio >= self.config.participation.min_volume_ratio_swing
+        atr_ok = True
+        if expected_move_pct >= 0.1:
+            atr_ok = volatility.atr_ratio >= self.config.volatility.min_atr_ratio_swing
         return (
             setup_status == "confirmed"
             and rr_estimated >= self.config.min_rr
@@ -338,6 +341,7 @@ class MomentumSetupEngine:
             and score >= self.config.score_tradeable_threshold
             and volatility.passed
             and volume_ok
+            and atr_ok
             and not participation.crowded
         )
 

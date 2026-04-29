@@ -272,6 +272,51 @@ def test_momentum_engine_requires_stronger_volume_for_swing_horizon() -> None:
     assert plan.tradeable is False
 
 
+def test_momentum_engine_requires_stronger_atr_for_swing_horizon() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    engine = MomentumSetupEngine()
+
+    with patch.object(
+        engine,
+        "_reward_profile",
+        return_value=(0.12, 0.04, 3.0),
+    ), patch.object(
+        engine,
+        "_assess_volatility",
+        return_value=VolatilityAssessment(
+            passed=True,
+            atr_ratio=0.98,
+            range_expansion=2.3,
+            score=0.9,
+            atr_fast=0.75,
+        ),
+    ), patch(
+        "trading.crypto.momentum.engine.assess_participation",
+        return_value=ParticipationAssessment(
+            passed=True,
+            score=0.9,
+            volume_ratio=2.5,
+            oi_change_pct=0.1,
+            oi_supported=True,
+            funding_rate=0.0002,
+            crowded=False,
+            squeeze_risk=False,
+        ),
+    ):
+        plan = engine.evaluate_symbol(
+            symbol="BTCUSDT",
+            daily_frame=daily,
+            setup_frame=setup,
+            trigger_frame=trigger,
+            open_interest=oi,
+            funding_rate=0.0002,
+            side="long",
+        )[0]
+
+    assert plan.expected_move_pct == 0.12
+    assert plan.tradeable is False
+
+
 def test_backtester_returns_metrics_and_baseline_delta() -> None:
     daily, setup, trigger, oi = _build_long_frames()
     backtester = MomentumBacktester()
