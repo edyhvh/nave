@@ -1,85 +1,85 @@
 {
-  "generated_at": "2026-04-28T20:58:37.964035+00:00",
+  "generated_at": "2026-04-29T07:16:28.299585+00:00",
   "periods": [
     {
       "period": "2017-bull+2018-bear",
       "complete": false,
-      "trade_count": 57,
-      "win_rate": 0.8246,
-      "expectancy": 1.8729,
-      "max_drawdown": 3.0,
-      "pct_reaching_8": 0.8596,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2017-bull+2018-bear_20260428T202211Z.json"
+      "trade_count": 50,
+      "win_rate": 0.82,
+      "expectancy": 1.942,
+      "max_drawdown": 2.0,
+      "pct_reaching_8": 0.88,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2017-bull+2018-bear_20260428T211156Z.json"
     },
     {
       "period": "2019-recovery",
       "complete": true,
-      "trade_count": 41,
-      "win_rate": 0.878,
-      "expectancy": 1.8797,
+      "trade_count": 36,
+      "win_rate": 0.8333,
+      "expectancy": 1.8428,
       "max_drawdown": 3.0,
-      "pct_reaching_8": 0.8537,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2019-recovery_20260428T202333Z.json"
+      "pct_reaching_8": 0.8056,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2019-recovery_20260428T211400Z.json"
     },
     {
       "period": "2020-covid-crash",
       "complete": true,
-      "trade_count": 24,
-      "win_rate": 0.7917,
-      "expectancy": 2.0317,
+      "trade_count": 17,
+      "win_rate": 0.7647,
+      "expectancy": 2.2855,
       "max_drawdown": 2.0,
-      "pct_reaching_8": 0.75,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-covid-crash_20260428T202410Z.json"
+      "pct_reaching_8": 0.8235,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-covid-crash_20260428T211437Z.json"
     },
     {
       "period": "2020-recovery+2021-ATH",
       "complete": true,
-      "trade_count": 64,
-      "win_rate": 0.7656,
-      "expectancy": 1.9213,
+      "trade_count": 50,
+      "win_rate": 0.72,
+      "expectancy": 1.9873,
       "max_drawdown": 3.0,
-      "pct_reaching_8": 0.75,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-recovery+2021-ATH_20260428T202617Z.json"
+      "pct_reaching_8": 0.76,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-recovery+2021-ATH_20260428T211646Z.json"
     },
     {
       "period": "2022-bear",
       "complete": true,
-      "trade_count": 31,
-      "win_rate": 0.7419,
-      "expectancy": 1.9776,
+      "trade_count": 28,
+      "win_rate": 0.75,
+      "expectancy": 2.0627,
       "max_drawdown": 3.0,
-      "pct_reaching_8": 0.7097,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2022-bear_20260428T202737Z.json"
+      "pct_reaching_8": 0.7143,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2022-bear_20260428T211806Z.json"
     },
     {
       "period": "2023-recovery",
       "complete": true,
-      "trade_count": 25,
-      "win_rate": 0.72,
-      "expectancy": 1.7422,
-      "max_drawdown": 2.0,
-      "pct_reaching_8": 0.4,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2023-recovery_20260428T202902Z.json"
+      "trade_count": 16,
+      "win_rate": 0.8125,
+      "expectancy": 2.0697,
+      "max_drawdown": 1.0,
+      "pct_reaching_8": 0.4375,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2023-recovery_20260429T071433Z.json"
     },
     {
       "period": "2024-ETF-approval",
       "complete": true,
-      "trade_count": 17,
-      "win_rate": 0.7647,
-      "expectancy": 1.5432,
-      "max_drawdown": 1.177,
-      "pct_reaching_8": 0.4118,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-ETF-approval_20260428T202938Z.json"
+      "trade_count": 8,
+      "win_rate": 0.875,
+      "expectancy": 1.8305,
+      "max_drawdown": 0.177,
+      "pct_reaching_8": 0.375,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-ETF-approval_20260429T071619Z.json"
     },
     {
       "period": "2024-2025-bull",
       "complete": true,
-      "trade_count": 17,
-      "win_rate": 0.7059,
-      "expectancy": 1.511,
+      "trade_count": 11,
+      "win_rate": 0.8182,
+      "expectancy": 2.0973,
       "max_drawdown": 2.0,
-      "pct_reaching_8": 0.5294,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-2025-bull_20260428T203036Z.json"
+      "pct_reaching_8": 0.7273,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-2025-bull_20260429T071529Z.json"
     },
     {
       "period": "TODAY",
@@ -89,19 +89,19 @@
       "expectancy": 1.8515,
       "max_drawdown": 1.0,
       "pct_reaching_8": 0.75,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_TODAY_20260428T205255Z.json"
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_TODAY_20260428T212122Z.json"
     }
   ],
   "confidence_bands": [
     {
       "band": "90-100",
-      "count": 280,
-      "win_rate": 0.7857,
-      "avg_r": 1.8562,
-      "pct_reaching_8": 0.7179
+      "count": 220,
+      "win_rate": 0.7864,
+      "avg_r": 1.9893,
+      "pct_reaching_8": 0.7545
     }
   ],
-  "total_trades": 280,
+  "total_trades": 220,
   "complete_periods": 8,
   "partial_periods": 1,
   "readiness": {
@@ -111,7 +111,7 @@
       "2024-ETF-approval"
     ],
     "reasons": [
-      "La banda 90-100 mantiene 78.57% de win rate con +1.86R promedio.",
+      "La banda 90-100 mantiene 78.64% de win rate con +1.99R promedio.",
       "Los periodos que aun requieren vigilancia operativa son: 2023-recovery, 2024-ETF-approval."
     ]
   },
