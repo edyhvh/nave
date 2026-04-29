@@ -270,6 +270,39 @@ def test_momentum_engine_rejects_late_swing_short_with_mid_range_expansion() -> 
     assert tradeable is False
 
 
+def test_momentum_engine_rejects_late_intraday_long_with_thin_setup_gap() -> None:
+    engine = MomentumSetupEngine()
+
+    tradeable = engine._is_tradeable(
+        side="long",
+        setup_status="confirmed",
+        rr_estimated=2.0,
+        expected_move_pct=0.08,
+        score=93,
+        volatility=VolatilityAssessment(
+            passed=True,
+            atr_ratio=1.4,
+            range_expansion=2.45,
+            score=0.92,
+            atr_fast=0.75,
+        ),
+        participation=ParticipationAssessment(
+            passed=True,
+            score=0.9,
+            volume_ratio=2.4,
+            oi_change_pct=0.08,
+            oi_supported=True,
+            funding_rate=0.0003,
+            crowded=False,
+            squeeze_risk=False,
+        ),
+        daily_ema_gap_pct=0.105,
+        setup_ema_gap_pct=0.044,
+    )
+
+    assert tradeable is False
+
+
 def test_momentum_engine_requires_stronger_volume_for_swing_horizon() -> None:
     daily, setup, trigger, oi = _build_long_frames()
     engine = MomentumSetupEngine()

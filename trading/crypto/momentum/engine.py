@@ -346,6 +346,12 @@ class MomentumSetupEngine:
                 daily_ema_gap_pct <= self.config.trend.min_daily_ema_gap_intraday_underextended
                 and volatility.atr_ratio < self.config.volatility.min_atr_ratio_intraday_underextended
             )
+        intraday_late_long_ok = True
+        if side == "long" and expected_move_pct < 0.1 and daily_ema_gap_pct is not None and setup_ema_gap_pct is not None:
+            intraday_late_long_ok = not (
+                daily_ema_gap_pct >= self.config.trend.min_daily_ema_gap_intraday_late_long
+                and setup_ema_gap_pct <= self.config.trend.max_setup_ema_gap_intraday_late_long
+            )
         swing_short_exhaustion_ok = True
         if side == "short" and expected_move_pct >= 0.1 and daily_ema_gap_pct is not None:
             swing_short_exhaustion_ok = not (
@@ -362,6 +368,7 @@ class MomentumSetupEngine:
             and atr_ok
             and intraday_gap_ok
             and intraday_underextended_ok
+            and intraday_late_long_ok
             and swing_short_exhaustion_ok
             and not participation.crowded
         )

@@ -15,6 +15,8 @@ class TrendConfig:
     min_daily_ema_gap_intraday: float
     min_daily_ema_gap_intraday_underextended: float
     max_daily_ema_gap_swing_short: float
+    min_daily_ema_gap_intraday_late_long: float
+    max_setup_ema_gap_intraday_late_long: float
 
 
 @dataclass(frozen=True)
