@@ -11,6 +11,8 @@ class TrendConfig:
     ema_fast: int
     ema_slow: int
     min_slope_bps: float
+    max_setup_ema_gap_intraday: float
+    min_daily_ema_gap_intraday: float
 
 
 @dataclass(frozen=True)

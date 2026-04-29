@@ -98,6 +98,8 @@ class MomentumSetupEngine:
             open_interest=open_interest,
             funding_rate=funding_rate,
         )
+        daily_ema_gap_pct = self._ema_gap_pct(daily)
+        setup_ema_gap_pct = self._ema_gap_pct(setup)
 
         setup_status = self._status_from_assessments(
             daily_trend=daily_trend,
@@ -135,6 +137,8 @@ class MomentumSetupEngine:
             score=score_breakdown.total,
             volatility=volatility,
             participation=participation,
+            daily_ema_gap_pct=daily_ema_gap_pct,
+            setup_ema_gap_pct=setup_ema_gap_pct,
         )
         sizing = recommend_position_sizing(
             symbol=symbol,
@@ -182,16 +186,8 @@ class MomentumSetupEngine:
             diagnostics=diagnostics_payload(
                 daily_trend_slope_bps=round(daily_trend.slope_bps, 2),
                 setup_trend_slope_bps=round(setup_trend.slope_bps, 2),
-                daily_ema_gap_pct=round(
-                    abs(float(daily["close"].iloc[-1]) - float(daily["close"].ewm(span=self.config.trend.ema_fast, adjust=False).mean().iloc[-1]))
-                    / float(daily["close"].iloc[-1]),
-                    4,
-                ) if float(daily["close"].iloc[-1]) else None,
-                setup_ema_gap_pct=round(
-                    abs(float(setup["close"].iloc[-1]) - float(setup["close"].ewm(span=self.config.trend.ema_fast, adjust=False).mean().iloc[-1]))
-                    / float(setup["close"].iloc[-1]),
-                    4,
-                ) if float(setup["close"].iloc[-1]) else None,
+                daily_ema_gap_pct=round(daily_ema_gap_pct, 4) if daily_ema_gap_pct is not None else None,
+                setup_ema_gap_pct=round(setup_ema_gap_pct, 4) if setup_ema_gap_pct is not None else None,
                 breakout_level=round(
                     breakout.breakout_level, 6) if breakout.breakout_level is not None else None,
                 breakout_volume_ratio=round(participation.volume_ratio, 3),
@@ -327,6 +323,8 @@ class MomentumSetupEngine:
         score: int,
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
+        daily_ema_gap_pct: float | None,
+        setup_ema_gap_pct: float | None,
     ) -> bool:
         volume_ok = True
         if expected_move_pct >= 0.1:
@@ -334,6 +332,12 @@ class MomentumSetupEngine:
         atr_ok = True
         if expected_move_pct >= 0.1:
             atr_ok = volatility.atr_ratio >= self.config.volatility.min_atr_ratio_swing
+        intraday_gap_ok = True
+        if expected_move_pct < 0.1 and daily_ema_gap_pct is not None and setup_ema_gap_pct is not None:
+            intraday_gap_ok = not (
+                setup_ema_gap_pct >= self.config.trend.max_setup_ema_gap_intraday
+                and daily_ema_gap_pct <= self.config.trend.min_daily_ema_gap_intraday
+            )
         return (
             setup_status == "confirmed"
             and rr_estimated >= self.config.min_rr
@@ -342,8 +346,16 @@ class MomentumSetupEngine:
             and volatility.passed
             and volume_ok
             and atr_ok
+            and intraday_gap_ok
             and not participation.crowded
         )
+
+    def _ema_gap_pct(self, frame: pd.DataFrame) -> float | None:
+        close = float(frame["close"].iloc[-1])
+        if not close:
+            return None
+        fast = float(frame["close"].ewm(span=self.config.trend.ema_fast, adjust=False).mean().iloc[-1])
+        return abs(close - fast) / close
 
     def _targets(self, entry_price: float, side: str, expected_move_pct: float) -> tuple[float, float, float]:
         tp1_pct = min(max(expected_move_pct * 0.5, 0.04), 0.08)
