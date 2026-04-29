@@ -31,6 +31,7 @@
 - Resultado:
   - `btc_swing_low_atr`: `0 trades`
   - `btc_swing_high_atr`: `2 trades / 50.00% win rate / +1.0065R`
+
 - En otras palabras, el nuevo corte no borra un bucket bueno de BTC en los periodos recientes usados como control.
 
 ## Lectura
@@ -41,35 +42,4 @@
 
 ## Validacion
 
-- `PYTHONPATH=. pytest tests/test_momentum_engine.py tests/test_momentum_workflow.py tests/test_momentum_scripts.py -q` -> `23 passed`# Iteracion 96
-
-> **Backtest command:** `python scripts/momentum_backtest.py --period 2023-recovery --symbols BTC ETH --trigger-timeframe 1H`
-> **Artifact:** `docs/analysis/raw/momentum_backtest_2023-recovery_20260429T071433Z.json`
-
-## Resumen
-
-- Periodo: `2023-recovery`
-- Ventana solicitada: `2023-01-01T00:00:00+00:00` -> `2023-12-31T00:00:00+00:00`
-- Ventana efectiva: `2022-11-02T00:00:00+00:00` -> `2023-12-31T00:00:00+00:00`
-- Cobertura completa: `True`
-- Trades totales: `16`
-- Win rate pool: `0.8125`
-- Expectancy pool: `2.0697`
-
-## Observaciones
-
-### BTC
-
-- Cobertura: `2022-11-02T00:00:00+00:00` -> `2023-12-31T00:00:00+00:00` (completa=`True`)
-- Trades: `7`
-- Win rate: `1.0`
-- Expectancy: `2.9883`
-- Nota: No obvious structural defect from aggregate stats; inspect individual losing trades before changing thresholds.
-
-### ETH
-
-- Cobertura: `2022-11-02T00:00:00+00:00` -> `2023-12-31T00:00:00+00:00` (completa=`True`)
-- Trades: `9`
-- Win rate: `0.6667`
-- Expectancy: `1.3552`
-- Nota: Too few trades are reaching 8%; inspect whether entries are late and whether retest tolerance is too loose.
+- `PYTHONPATH=. pytest tests/test_momentum_engine.py tests/test_momentum_workflow.py tests/test_momentum_scripts.py -q` -> `23 passed`
