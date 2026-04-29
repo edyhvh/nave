@@ -109,7 +109,8 @@ class MomentumSetupEngine:
         )
 
         entry_price = self._entry_price(side, trigger, breakout, retest)
-        invalidation = self._invalidation(trigger, side, breakout, retest, entry_price)
+        invalidation = self._invalidation(
+            trigger, side, breakout, retest, entry_price)
         expected_move_pct, stop_pct, rr_estimated = self._reward_profile(
             entry_price=entry_price,
             invalidation=invalidation,
@@ -117,7 +118,8 @@ class MomentumSetupEngine:
             volatility=volatility,
         )
         score_breakdown = build_score_breakdown(
-            trend_score=((daily_trend.score + setup_trend.score + structure.score) / 3.0),
+            trend_score=(
+                (daily_trend.score + setup_trend.score + structure.score) / 3.0),
             breakout_score=self._breakout_score(breakout, retest),
             volatility_score=volatility.score,
             participation_score=participation.score,
@@ -180,7 +182,18 @@ class MomentumSetupEngine:
             diagnostics=diagnostics_payload(
                 daily_trend_slope_bps=round(daily_trend.slope_bps, 2),
                 setup_trend_slope_bps=round(setup_trend.slope_bps, 2),
-                breakout_level=round(breakout.breakout_level, 6) if breakout.breakout_level is not None else None,
+                daily_ema_gap_pct=round(
+                    abs(float(daily["close"].iloc[-1]) - float(daily["close"].ewm(span=self.config.trend.ema_fast, adjust=False).mean().iloc[-1]))
+                    / float(daily["close"].iloc[-1]),
+                    4,
+                ) if float(daily["close"].iloc[-1]) else None,
+                setup_ema_gap_pct=round(
+                    abs(float(setup["close"].iloc[-1]) - float(setup["close"].ewm(span=self.config.trend.ema_fast, adjust=False).mean().iloc[-1]))
+                    / float(setup["close"].iloc[-1]),
+                    4,
+                ) if float(setup["close"].iloc[-1]) else None,
+                breakout_level=round(
+                    breakout.breakout_level, 6) if breakout.breakout_level is not None else None,
                 breakout_volume_ratio=round(participation.volume_ratio, 3),
                 atr_ratio=round(volatility.atr_ratio, 3),
                 range_expansion=round(volatility.range_expansion, 3),
@@ -263,7 +276,8 @@ class MomentumSetupEngine:
         entry_price: float,
     ) -> float:
         level = breakout.breakout_level if breakout.breakout_level is not None else entry_price
-        invalidation = build_invalidation(trigger, side, level, retest, self.config)
+        invalidation = build_invalidation(
+            trigger, side, level, retest, self.config)
         if side == "long" and invalidation >= entry_price:
             invalidation = entry_price * (1 - 0.02)
         if side == "short" and invalidation <= entry_price:
@@ -278,18 +292,21 @@ class MomentumSetupEngine:
         breakout: BreakoutAssessment,
         volatility: VolatilityAssessment,
     ) -> tuple[float, float, float]:
-        stop_pct = abs(entry_price - invalidation) / entry_price if entry_price else 0.0
+        stop_pct = abs(entry_price - invalidation) / \
+            entry_price if entry_price else 0.0
         range_height = 0.0
         if breakout.range_low is not None and breakout.range_high is not None:
             range_height = abs(breakout.range_high - breakout.range_low)
         measured_move_pct = range_height / entry_price if entry_price else 0.0
-        atr_move_pct = (volatility.atr_fast * self.config.execution.target_atr_multiple) / entry_price if entry_price else 0.0
+        atr_move_pct = (volatility.atr_fast * self.config.execution.target_atr_multiple) / \
+            entry_price if entry_price else 0.0
         expected_move_pct = max(
             measured_move_pct,
             atr_move_pct,
             self.config.execution.min_expected_move_pct if breakout.detected else 0.0,
         )
-        expected_move_pct = min(expected_move_pct, self.config.execution.max_expected_move_pct)
+        expected_move_pct = min(
+            expected_move_pct, self.config.execution.max_expected_move_pct)
         rr_estimated = expected_move_pct / stop_pct if stop_pct else 0.0
         return float(expected_move_pct), float(stop_pct), float(rr_estimated)
 
@@ -323,7 +340,8 @@ class MomentumSetupEngine:
     def _targets(self, entry_price: float, side: str, expected_move_pct: float) -> tuple[float, float, float]:
         tp1_pct = min(max(expected_move_pct * 0.5, 0.04), 0.08)
         tp2_pct = expected_move_pct
-        tp3_pct = min(expected_move_pct * 1.6, self.config.execution.max_expected_move_pct)
+        tp3_pct = min(expected_move_pct * 1.6,
+                      self.config.execution.max_expected_move_pct)
         if side == "long":
             return (
                 entry_price * (1 + tp1_pct),

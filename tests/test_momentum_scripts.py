@@ -50,6 +50,11 @@ def test_momentum_review_script_json_mode(monkeypatch, capsys, tmp_path: Path) -
     module = _load_script_module("momentum_review_script", "scripts/momentum_review.py")
     summary = {"generated_at": "2026-04-28T00:00:00+00:00", "total_trades": 10, "automation": {"ready": False, "warnings": []}}
     captured_paths: dict[str, Path] = {}
+    project_root = tmp_path / "project"
+    raw_dir = project_root / "docs" / "analysis" / "raw"
+    raw_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(module, "PROJECT_ROOT", project_root)
 
     def build_review_summary(raw_dir: Path):
         captured_paths["raw_dir"] = raw_dir
@@ -70,5 +75,7 @@ def test_momentum_review_script_json_mode(monkeypatch, capsys, tmp_path: Path) -
     assert decoded["summary"]["automation"]["ready"] is False
     assert decoded["artifacts"]["markdown"] == "docs/analysis/momentum_historical_review.md"
     assert decoded["artifacts"]["json"] == "docs/analysis/raw/momentum_review_latest.json"
-    assert captured_paths["raw_dir"] == PROJECT_ROOT / "docs" / "analysis" / "raw"
+    assert captured_paths["raw_dir"] == raw_dir
+    written = json.loads((raw_dir / "momentum_review_latest.json").read_text())
+    assert written["total_trades"] == 10
     assert captured.err == ""

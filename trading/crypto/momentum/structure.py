@@ -27,9 +27,11 @@ def assess_structure(frame: pd.DataFrame, side: str, config: MomentumConfig) -> 
     if side == "long":
         passed = highs == sorted(highs) and lows == sorted(lows)
     else:
-        passed = highs == sorted(highs, reverse=True) and lows == sorted(lows, reverse=True)
+        passed = highs == sorted(
+            highs, reverse=True) and lows == sorted(lows, reverse=True)
 
-    dispersion = (max(highs) - min(lows)) / recent["close"].iloc[-1] if recent["close"].iloc[-1] else 0.0
+    dispersion = (max(highs) - min(lows)) / \
+        recent["close"].iloc[-1] if recent["close"].iloc[-1] else 0.0
     score = min(dispersion / 0.06, 1.0)
     if not passed:
         score *= 0.35
@@ -57,8 +59,10 @@ def assess_retest(
     if post_breakout.empty:
         return RetestAssessment("pending", False, None, None, None, False)
 
-    maturation_start = breakout_index + pd.Timedelta(hours=config.breakout.min_retest_hours)
-    freshness_end = breakout_index + pd.Timedelta(hours=config.breakout.max_retest_hours)
+    maturation_start = breakout_index + \
+        pd.Timedelta(hours=config.breakout.min_retest_hours)
+    freshness_end = breakout_index + \
+        pd.Timedelta(hours=config.breakout.max_retest_hours)
     freshness_window = post_breakout.loc[post_breakout.index <= freshness_end]
     if freshness_window.empty:
         return RetestAssessment("invalid", False, None, None, None, False)
@@ -68,18 +72,22 @@ def assess_retest(
     stale = post_breakout.index[-1] > freshness_end
 
     if side == "long":
-        touches = freshness_window.loc[freshness_window["low"] <= breakout_level + tolerance]
+        touches = freshness_window.loc[freshness_window["low"]
+                                       <= breakout_level + tolerance]
         confirmed_rows = pd.DataFrame()
         if not touches.empty:
             confirmation_window = freshness_window.loc[touches.index[0]:]
-            mature_confirmation_window = confirmation_window.loc[confirmation_window.index >= maturation_start]
-            confirmed_rows = mature_confirmation_window.loc[mature_confirmation_window["close"] >= breakout_level]
+            mature_confirmation_window = confirmation_window.loc[
+                confirmation_window.index >= maturation_start]
+            confirmed_rows = mature_confirmation_window.loc[
+                mature_confirmation_window["close"] >= breakout_level]
         confirmed = not confirmed_rows.empty
         close_above_level = last_close >= breakout_level
         status = "confirmed" if confirmed and close_above_level else "pending"
         if last_close < breakout_level - tolerance or (stale and not confirmed):
             status = "invalid"
-        entry_price = float(confirmed_rows["close"].iloc[0]) if confirmed else None
+        entry_price = float(
+            confirmed_rows["close"].iloc[0]) if confirmed else None
         return RetestAssessment(
             status,
             confirmed,
@@ -89,12 +97,15 @@ def assess_retest(
             close_above_level,
         )
 
-    touches = freshness_window.loc[freshness_window["high"] >= breakout_level - tolerance]
+    touches = freshness_window.loc[freshness_window["high"]
+                                   >= breakout_level - tolerance]
     confirmed_rows = pd.DataFrame()
     if not touches.empty:
         confirmation_window = freshness_window.loc[touches.index[0]:]
-        mature_confirmation_window = confirmation_window.loc[confirmation_window.index >= maturation_start]
-        confirmed_rows = mature_confirmation_window.loc[mature_confirmation_window["close"] <= breakout_level]
+        mature_confirmation_window = confirmation_window.loc[
+            confirmation_window.index >= maturation_start]
+        confirmed_rows = mature_confirmation_window.loc[
+            mature_confirmation_window["close"] <= breakout_level]
     confirmed = not confirmed_rows.empty
     close_above_level = last_close <= breakout_level
     status = "confirmed" if confirmed and close_above_level else "pending"

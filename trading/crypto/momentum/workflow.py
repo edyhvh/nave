@@ -274,6 +274,10 @@ def _with_trade_diagnostics(payload: dict[str, Any]) -> dict[str, Any]:
         trade.setdefault("expected_move_pct", 0.0)
         trade.setdefault("rr_estimated", 0.0)
         trade.setdefault("holding_horizon_estimate", "unknown")
+        trade.setdefault("best_move_pct", 0.0)
+        trade.setdefault("worst_move_pct", 0.0)
+        trade.setdefault("score_breakdown", {})
+        trade.setdefault("diagnostics", {})
     return payload
 
 

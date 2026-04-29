@@ -95,7 +95,10 @@ def assess_volatility(frame: pd.DataFrame, bar_index: pd.Timestamp, config: Mome
     range_expansion = float((bar["high"] - bar["low"]) / avg_range.loc[bar_index]) if avg_range.loc[bar_index] else 0.0
     passed = (
         atr_ratio >= config.volatility.min_atr_ratio
-        or range_expansion >= config.volatility.min_range_expansion
+        or (
+            range_expansion >= config.volatility.min_range_expansion
+            and atr_ratio >= config.volatility.expansion_atr_floor
+        )
     )
     atr_score = min(atr_ratio / max(config.volatility.min_atr_ratio, 0.01), 1.6) / 1.6
     range_score = min(

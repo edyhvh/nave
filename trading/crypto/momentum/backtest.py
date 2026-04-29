@@ -30,6 +30,10 @@ class BacktestTrade:
     reached_8_pct: bool
     reached_12_pct: bool
     reached_20_pct: bool
+    best_move_pct: float
+    worst_move_pct: float
+    score_breakdown: dict[str, int]
+    diagnostics: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -50,6 +54,10 @@ class BacktestTrade:
             "reached_8_pct": self.reached_8_pct,
             "reached_12_pct": self.reached_12_pct,
             "reached_20_pct": self.reached_20_pct,
+            "best_move_pct": round(self.best_move_pct, 4),
+            "worst_move_pct": round(self.worst_move_pct, 4),
+            "score_breakdown": self.score_breakdown,
+            "diagnostics": self.diagnostics,
         }
 
 
@@ -95,7 +103,8 @@ class MomentumBacktester:
             for plan in plans:
                 if not self._should_enter(plan, baseline=baseline):
                     continue
-                trade = self._simulate_trade(plan, trigger.loc[trigger.index > end_time])
+                trade = self._simulate_trade(
+                    plan, trigger.loc[trigger.index > end_time])
                 if trade is not None:
                     trades.append(trade)
                     active_until = trade.exit_time
@@ -137,9 +146,11 @@ class MomentumBacktester:
         if future_trigger.empty:
             return None
         horizon = future_trigger.head(self.config.execution.max_holding_bars)
-        entry_price = float(plan.entry_zone[-1] if plan.side == "long" else plan.entry_zone[0])
+        entry_price = float(
+            plan.entry_zone[-1] if plan.side == "long" else plan.entry_zone[0])
         stop_distance = abs(entry_price - plan.invalidation)
         best_move = 0.0
+        worst_move = 0.0
         exit_price = float(horizon["close"].iloc[-1])
         exit_time = cast(pd.Timestamp, horizon.index[-1])
 
@@ -149,6 +160,7 @@ class MomentumBacktester:
             close = float(row["close"])
             if plan.side == "long":
                 best_move = max(best_move, (high - entry_price) / entry_price)
+                worst_move = min(worst_move, (low - entry_price) / entry_price)
                 if low <= plan.invalidation:
                     exit_price = plan.invalidation
                     exit_time = cast(pd.Timestamp, timestamp)
@@ -159,6 +171,7 @@ class MomentumBacktester:
                     break
             else:
                 best_move = max(best_move, (entry_price - low) / entry_price)
+                worst_move = min(worst_move, (entry_price - high) / entry_price)
                 if high >= plan.invalidation:
                     exit_price = plan.invalidation
                     exit_time = cast(pd.Timestamp, timestamp)
@@ -170,8 +183,10 @@ class MomentumBacktester:
             exit_price = close
             exit_time = cast(pd.Timestamp, timestamp)
 
-        realized_move_pct = ((exit_price - entry_price) / entry_price) if plan.side == "long" else ((entry_price - exit_price) / entry_price)
-        r_multiple = ((exit_price - entry_price) / stop_distance) if plan.side == "long" else ((entry_price - exit_price) / stop_distance)
+        realized_move_pct = ((exit_price - entry_price) / entry_price) if plan.side == "long" else (
+            (entry_price - exit_price) / entry_price)
+        r_multiple = ((exit_price - entry_price) / stop_distance) if plan.side == "long" else (
+            (entry_price - exit_price) / stop_distance)
         return BacktestTrade(
             symbol=plan.symbol,
             side=plan.side,
@@ -190,6 +205,10 @@ class MomentumBacktester:
             reached_8_pct=best_move >= 0.08,
             reached_12_pct=best_move >= 0.12,
             reached_20_pct=best_move >= 0.20,
+            best_move_pct=best_move,
+            worst_move_pct=worst_move,
+            score_breakdown=plan.score_breakdown,
+            diagnostics=plan.diagnostics,
         )
 
     def _metrics(self, trades: list[BacktestTrade]) -> dict[str, Any]:

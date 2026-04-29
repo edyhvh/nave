@@ -30,6 +30,7 @@ class VolatilityConfig:
     atr_slow: int
     min_atr_ratio: float
     min_range_expansion: float
+    expansion_atr_floor: float
 
 
 @dataclass(frozen=True)

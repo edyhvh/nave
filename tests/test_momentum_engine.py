@@ -7,7 +7,7 @@ import pandas as pd
 
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, TradePlan
 from trading.crypto.momentum.config import load_momentum_config
-from trading.crypto.momentum.filters import VolatilityAssessment
+from trading.crypto.momentum.filters import VolatilityAssessment, assess_breakout, assess_volatility, normalize_frame
 from trading.crypto.momentum.structure import assess_retest
 
 
@@ -106,17 +106,28 @@ def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     daily, setup, trigger, oi = _build_long_frames()
     engine = MomentumSetupEngine()
 
-    plans = engine.evaluate_symbol(
-        symbol="BTCUSDT",
-        daily_frame=daily,
-        setup_frame=setup,
-        trigger_frame=trigger,
-        open_interest=oi,
-        funding_rate=0.0002,
-        account_equity=20000.0,
-        risk_pct=0.005,
-        side="long",
-    )
+    with patch.object(
+        engine,
+        "_assess_volatility",
+        return_value=VolatilityAssessment(
+            passed=True,
+            atr_ratio=1.08,
+            range_expansion=2.36,
+            score=0.92,
+            atr_fast=0.75,
+        ),
+    ):
+        plans = engine.evaluate_symbol(
+            symbol="BTCUSDT",
+            daily_frame=daily,
+            setup_frame=setup,
+            trigger_frame=trigger,
+            open_interest=oi,
+            funding_rate=0.0002,
+            account_equity=20000.0,
+            risk_pct=0.005,
+            side="long",
+        )
 
     plan = plans[0]
     assert plan.side == "long"
@@ -126,6 +137,8 @@ def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     assert plan.rr_estimated >= 1.8
     assert plan.expected_move_pct >= 0.08
     assert plan.leverage_constraints["recommended"] <= 4.0
+    assert "daily_ema_gap_pct" in plan.diagnostics
+    assert "setup_ema_gap_pct" in plan.diagnostics
     assert plan.reasoning["machine"][3]["passed"] is True
     breakout_level = plan.diagnostics["breakout_level"]
     tolerance = breakout_level * load_momentum_config().breakout.retest_tolerance
@@ -178,6 +191,50 @@ def test_momentum_engine_requires_volatility_confirmation_for_tradeability() -> 
 
     assert plan.setup_status == "confirmed"
     assert plan.tradeable is False
+
+
+def test_assess_volatility_requires_atr_support_for_range_expansion() -> None:
+    config = load_momentum_config()
+    idx = pd.date_range("2025-01-01", periods=60, freq="4h", tz="UTC")
+    opens = [100.0] * len(idx)
+    highs = [100.5] * 59 + [101.3]
+    lows = [99.5] * 59 + [99.1]
+    closes = [100.1] * len(idx)
+    volumes = [1000.0] * len(idx)
+    frame = _frame(idx, opens, highs, lows, closes, volumes).set_index("timestamp")
+    atr_fast = pd.Series([0.94] * len(idx), index=idx)
+    atr_slow = pd.Series([1.0] * len(idx), index=idx)
+
+    with patch("trading.crypto.momentum.filters.atr", side_effect=[atr_fast, atr_slow]):
+        assessment = assess_volatility(frame, idx[-1], config)
+
+    assert assessment.atr_ratio == 0.94
+    assert assessment.range_expansion > config.volatility.min_range_expansion
+    assert assessment.passed is False
+
+
+def test_momentum_engine_requires_rr_floor_for_tradeability() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    engine = MomentumSetupEngine()
+
+    with patch.object(
+        engine,
+        "_reward_profile",
+        return_value=(0.08, 0.05, 1.6),
+    ):
+        plan = engine.evaluate_symbol(
+            symbol="BTCUSDT",
+            daily_frame=daily,
+            setup_frame=setup,
+            trigger_frame=trigger,
+            open_interest=oi,
+            funding_rate=0.0002,
+            side="long",
+        )[0]
+
+    assert plan.setup_status == "confirmed"
+    assert plan.tradeable is False
+    assert plan.rr_estimated == 1.6
 
 
 def test_backtester_returns_metrics_and_baseline_delta() -> None:
@@ -274,6 +331,10 @@ def test_backtester_does_not_stack_overlapping_entries_from_same_setup() -> None
 
     assert payload["trade_count"] == 1
     assert payload["trades"][0]["exit_price"] == 108.0
+    assert payload["trades"][0]["best_move_pct"] >= 0.08
+    assert payload["trades"][0]["worst_move_pct"] <= -0.01
+    assert payload["trades"][0]["score_breakdown"] == {}
+    assert payload["trades"][0]["diagnostics"] == {}
 
 
 def test_assess_retest_invalidates_stale_confirmation() -> None:
