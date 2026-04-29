@@ -295,6 +295,43 @@ class HermesNaveIntegration:
                     },
                 },
                 {
+                    "name": "stocks_politicians_scan",
+                    "description": (
+                        "Daily-cadence scan of Congressional STOCK Act disclosures. "
+                        "Call this once per day as part of the daily routine: fetches "
+                        "the latest House and Senate periodic transaction reports from "
+                        "FMP and returns only disclosures not previously surfaced "
+                        "(diffed against an internal seen-cache). "
+                        "When 'new_total' > 0, notify the user with the trades; "
+                        "when 'new_total' == 0, stay silent. "
+                        "Note the STOCK Act allows up to 45 days between trade and "
+                        "disclosure — this is informational, not a real-time edge."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "lookback_days": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 30,
+                                "description": (
+                                    "Reserved for future use. The provider returns the "
+                                    "FMP 'latest' window regardless; novelty is gated "
+                                    "by the local seen-cache, not by this parameter."
+                                ),
+                            },
+                            "persist": {
+                                "type": "boolean",
+                                "default": True,
+                                "description": (
+                                    "Update the seen-cache with this scan's results. "
+                                    "Set false for a dry-run preview."
+                                ),
+                            },
+                        },
+                    },
+                },
+                {
                     "name": "stocks_x_analyze",
                     "description": (
                         "Fetch recent X (Twitter) posts about one or more stock tickers "
@@ -1011,6 +1048,36 @@ class HermesNaveIntegration:
             "releases": _to_jsonable(releases),
         }
 
+    def stocks_politicians_scan(
+        self,
+        *,
+        lookback_days: int | None = None,
+        persist: bool = True,
+    ) -> dict[str, Any]:
+        """Return new Congressional STOCK Act disclosures since the last scan.
+
+        Hermes should call this once per day. The response includes
+        ``new_total`` (notify the user when > 0) and ``new_trades`` with
+        chamber, politician, symbol, transaction type, bucketed amount,
+        transaction date, disclosure date, and the source PDF link.
+
+        ``lookback_days`` is accepted for forward compatibility but does
+        not currently filter the FMP feed — novelty is determined entirely
+        by the local seen-cache.
+        """
+        if lookback_days is not None and not 1 <= lookback_days <= 30:
+            raise HermesIntegrationError("lookback_days must be between 1 and 30")
+
+        from trading.stocks.politicians import (
+            PoliticianTradesError,
+            run_daily_scan,
+        )
+
+        try:
+            return run_daily_scan(persist=persist)
+        except PoliticianTradesError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
     def stocks_x_analyze(
         self,
         *,
@@ -1063,6 +1130,7 @@ class HermesNaveIntegration:
             "scan_history": self.scan_history,
             "stocks_ism_report": self.stocks_ism_report,
             "stocks_ism_calendar": self.stocks_ism_calendar,
+            "stocks_politicians_scan": self.stocks_politicians_scan,
             "stocks_x_analyze": self.stocks_x_analyze,
         }
 

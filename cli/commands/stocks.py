@@ -1,9 +1,10 @@
 """Stocks CLI command group — ISM-driven equity workflow.
 
 Subcommands:
-    nave stocks ism-scan       Fetch and render the latest ISM report.
-    nave stocks screen         Run the PE-vs-sector + EPS-growth screener.
-    nave stocks journal-stats  Print stock-only journal stats.
+    nave stocks ism-scan            Fetch and render the latest ISM report.
+    nave stocks screen              Run the PE-vs-sector + EPS-growth screener.
+    nave stocks journal-stats       Print stock-only journal stats.
+    nave stocks politicians-scan    Surface newly-published Congressional trades.
 """
 
 from __future__ import annotations
@@ -710,3 +711,77 @@ def journal_stats(json_out: bool = typer.Option(False, "--json")) -> None:
     typer.echo("Stock journal stats:")
     for k, v in stats.items():
         typer.echo(f"  {k}: {v}")
+
+
+@stocks_app.command("politicians-scan")
+def politicians_scan(
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit the full JSON payload."
+    ),
+    no_persist: bool = typer.Option(
+        False,
+        "--no-persist",
+        help="Run a dry scan without updating the seen-disclosures cache.",
+    ),
+    save_report: bool = typer.Option(
+        True,
+        "--save-report/--no-save-report",
+        help="Persist a JSON snapshot under var/reports/politicians/.",
+    ),
+) -> None:
+    """Fetch new Congressional STOCK Act disclosures since the last scan.
+
+    Designed to run once per day (cron-friendly). Returns only disclosures
+    not previously seen — empty when nothing new has been filed.
+    """
+    from datetime import date
+    from pathlib import Path
+    from trading.stocks.politicians import run_daily_scan
+
+    payload = run_daily_scan(persist=not no_persist)
+
+    if save_report:
+        project_root = Path(__file__).resolve().parents[2]
+        report_dir = project_root / "var" / "reports" / "politicians"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / f"{date.today().isoformat()}.json"
+        report_path.write_text(_json.dumps(payload, indent=2, default=str))
+        payload["saved_to"] = str(report_path)
+
+    if json_out:
+        typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    console = Console()
+    console.print(
+        f"[bold]Politicians scan[/bold] — fetched {payload['fetched_total']} "
+        f"latest disclosures, {payload['new_total']} new since "
+        f"{payload['previous_scan_at'] or 'first run'}."
+    )
+
+    new_trades = payload.get("new_trades") or []
+    if not new_trades:
+        console.print("[dim]No new disclosures.[/dim]")
+        return
+
+    table = Table(show_lines=False)
+    table.add_column("Chamber")
+    table.add_column("Politician")
+    table.add_column("Symbol")
+    table.add_column("Type")
+    table.add_column("Amount")
+    table.add_column("Tx Date")
+    table.add_column("Disclosed")
+    for trade in new_trades:
+        table.add_row(
+            (trade.get("chamber") or "").title(),
+            trade.get("politician") or "—",
+            trade.get("symbol") or "—",
+            trade.get("transaction_type") or "—",
+            trade.get("amount_range") or "—",
+            trade.get("transaction_date") or "—",
+            trade.get("disclosure_date") or "—",
+        )
+    console.print(table)
+    if payload.get("saved_to"):
+        console.print(f"\n[dim]Saved report: {payload['saved_to']}[/dim]")
