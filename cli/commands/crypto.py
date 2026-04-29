@@ -9,9 +9,11 @@ from rich.console import Console
 from rich.table import Table
 
 from cli.professional_typer import ProfessionalTyper
+from trading.crypto.momentum import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService
 
 crypto_app = ProfessionalTyper(help="Crypto derivatives momentum commands")
+DEFAULT_SCORE_THRESHOLD = load_momentum_config().score_tradeable_threshold
 
 
 def _build_scan_payload(
@@ -21,6 +23,7 @@ def _build_scan_payload(
     account_equity: float,
     risk_pct: float,
     score_threshold: int,
+    apply_cadence_policy: bool,
 ) -> dict:
     service = MomentumMarketService()
     return service.scan_live(
@@ -29,6 +32,7 @@ def _build_scan_payload(
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
+        apply_cadence_policy=apply_cadence_policy,
     )
 
 
@@ -100,7 +104,16 @@ def momentum_scan(
     tf: str = typer.Option("4h,1h", "--tf", help="Setup and trigger timeframe, e.g. 4h,1h or 4h,15m."),
     account_equity: float = typer.Option(10000.0, "--account-equity", help="Account equity used for sizing context."),
     risk_pct: float = typer.Option(0.005, "--risk-pct", help="Risk per trade as decimal, e.g. 0.005 = 0.5%."),
-    score_threshold: int = typer.Option(75, "--score-threshold", help="Minimum score to flag a setup as tradeable."),
+    score_threshold: int = typer.Option(
+        DEFAULT_SCORE_THRESHOLD,
+        "--score-threshold",
+        help="Minimum score to flag a setup as tradeable.",
+    ),
+    adaptive_threshold: bool = typer.Option(
+        False,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold instead of only reporting it.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Scan BTC/ETH derivatives for fresh momentum setups."""
@@ -110,6 +123,7 @@ def momentum_scan(
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2))
@@ -123,7 +137,16 @@ def scan(
     tf: str = typer.Option("4h,1h", "--tf", help="Setup and trigger timeframe, e.g. 4h,1h or 4h,15m."),
     account_equity: float = typer.Option(10000.0, "--account-equity", help="Account equity used for sizing context."),
     risk_pct: float = typer.Option(0.005, "--risk-pct", help="Risk per trade as decimal, e.g. 0.005 = 0.5%."),
-    score_threshold: int = typer.Option(75, "--score-threshold", help="Minimum score to flag a setup as tradeable."),
+    score_threshold: int = typer.Option(
+        DEFAULT_SCORE_THRESHOLD,
+        "--score-threshold",
+        help="Minimum score to flag a setup as tradeable.",
+    ),
+    adaptive_threshold: bool = typer.Option(
+        False,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold instead of only reporting it.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Default market scan: routes to the momentum engine."""
@@ -133,6 +156,7 @@ def scan(
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2))
@@ -147,7 +171,11 @@ def momentum_playbook(
     tf: str = typer.Option("4h,1h", "--tf", help="Setup and trigger timeframe, e.g. 4h,1h or 4h,15m."),
     account_equity: float = typer.Option(10000.0, "--account-equity", help="Account equity used for sizing context."),
     risk_pct: float = typer.Option(0.005, "--risk-pct", help="Risk per trade as decimal, e.g. 0.005 = 0.5%."),
-    score_threshold: int = typer.Option(75, "--score-threshold", help="Minimum score to flag a setup as tradeable."),
+    score_threshold: int = typer.Option(
+        DEFAULT_SCORE_THRESHOLD,
+        "--score-threshold",
+        help="Minimum score to flag a setup as tradeable.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Build a concrete derivatives momentum playbook for one symbol and side."""
@@ -172,7 +200,11 @@ def playbook(
     tf: str = typer.Option("4h,1h", "--tf", help="Setup and trigger timeframe, e.g. 4h,1h or 4h,15m."),
     account_equity: float = typer.Option(10000.0, "--account-equity", help="Account equity used for sizing context."),
     risk_pct: float = typer.Option(0.005, "--risk-pct", help="Risk per trade as decimal, e.g. 0.005 = 0.5%."),
-    score_threshold: int = typer.Option(75, "--score-threshold", help="Minimum score to flag a setup as tradeable."),
+    score_threshold: int = typer.Option(
+        DEFAULT_SCORE_THRESHOLD,
+        "--score-threshold",
+        help="Minimum score to flag a setup as tradeable.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Default trade-plan builder: routes to the momentum engine."""

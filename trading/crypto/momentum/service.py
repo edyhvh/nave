@@ -9,6 +9,7 @@ import requests
 
 from trading.crypto.client import HyperliquidClient
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, load_momentum_config
+from trading.crypto.momentum.config import CadenceConfig
 
 
 BINANCE_FAPI_URL = "https://fapi.binance.com"
@@ -20,6 +21,86 @@ class MomentumTimeframes:
     bias: str
     setup: str
     trigger: str
+
+
+def build_cadence_policy(
+    results: dict[str, dict[str, Any]],
+    *,
+    base_threshold: int,
+    cadence: CadenceConfig,
+) -> dict[str, Any]:
+    confirmed_setups = 0
+    confirmed_symbols: set[str] = set()
+    tradeable_at_base = 0
+    tradeable_symbols: set[str] = set()
+    top_score = 0
+
+    for symbol, entry in results.items():
+        for plan in entry.get("plans", []):
+            score = int(plan.get("confidence_score", 0) or 0)
+            top_score = max(top_score, score)
+            if plan.get("setup_status") == "confirmed":
+                confirmed_setups += 1
+                confirmed_symbols.add(symbol)
+            if plan.get("tradeable") and score >= base_threshold:
+                tradeable_at_base += 1
+                tradeable_symbols.add(symbol)
+
+    target_trade_count_range = [0, cadence.baseline_trades_per_month]
+    recommended_threshold = base_threshold
+    state = "normal"
+    note = "Stay selective: keep the base threshold until breadth expands across symbols and confirmed setups."
+
+    if (
+        confirmed_setups >= cadence.expansion_min_confirmed
+        and tradeable_at_base >= cadence.expansion_min_tradeable
+        and len(tradeable_symbols) >= cadence.expansion_min_symbols
+    ):
+        state = "expansion"
+        recommended_threshold = max(cadence.min_score_floor, base_threshold - cadence.expansion_threshold_buffer)
+        target_trade_count_range = [cadence.baseline_trades_per_month, cadence.expansion_trades_per_month]
+        note = "Breadth and quality are both elevated; allow more trades if they keep clearing the recommended threshold."
+    elif confirmed_setups <= 1 and tradeable_at_base == 0:
+        state = "quiet"
+        recommended_threshold = min(99, base_threshold + cadence.quiet_threshold_buffer)
+        note = "Momentum breadth is thin; tighten selection and avoid forcing activity."
+
+    return {
+        "state": state,
+        "base_threshold": base_threshold,
+        "recommended_threshold": recommended_threshold,
+        "target_trade_count_range": target_trade_count_range,
+        "baseline_trades_per_month": cadence.baseline_trades_per_month,
+        "breadth": {
+            "confirmed_setups": confirmed_setups,
+            "tradeable_at_base_threshold": tradeable_at_base,
+            "symbols_with_confirmed": len(confirmed_symbols),
+            "symbols_with_tradeable": len(tradeable_symbols),
+            "top_score": top_score,
+        },
+        "note": note,
+    }
+
+
+def _filter_tradeable_plans(
+    results: dict[str, dict[str, Any]],
+    *,
+    threshold: int,
+) -> tuple[dict[str, dict[str, Any]], list[str], int]:
+    tradeable_symbols: list[str] = []
+    tradeable_count = 0
+    filtered: dict[str, dict[str, Any]] = {}
+    for symbol, entry in results.items():
+        plans = entry.get("plans", [])
+        tradeable = [plan for plan in plans if plan.get("tradeable") and int(plan.get("confidence_score", 0) or 0) >= threshold]
+        if tradeable:
+            tradeable_symbols.append(symbol)
+        tradeable_count += len(tradeable)
+        filtered[symbol] = {
+            **entry,
+            "tradeable": tradeable,
+        }
+    return filtered, tradeable_symbols, tradeable_count
 
 
 class MomentumMarketService:
@@ -43,9 +124,9 @@ class MomentumMarketService:
         account_equity: float = 10000.0,
         risk_pct: float | None = None,
         score_threshold: int | None = None,
+        apply_cadence_policy: bool = False,
     ) -> dict[str, Any]:
         plans_by_symbol: dict[str, dict[str, Any]] = {}
-        tradeable_symbols: list[str] = []
         confirmed_count = 0
         threshold = score_threshold or self.config.score_tradeable_threshold
         for symbol in symbols:
@@ -61,18 +142,25 @@ class MomentumMarketService:
                 risk_pct=risk_pct or self.config.risk.default_risk_pct,
             )
             serialized = [plan.to_dict() for plan in sorted(plans, key=lambda item: (-int(item.tradeable), -item.confidence_score))]
-            tradeable = [plan for plan in serialized if plan["tradeable"] and plan["confidence_score"] >= threshold]
             confirmed_count += sum(1 for plan in serialized if plan["setup_status"] == "confirmed")
-            if tradeable:
-                tradeable_symbols.append(symbol)
             plans_by_symbol[symbol] = {
                 "plans": serialized,
-                "tradeable": tradeable,
+                "tradeable": [],
                 "market_data": {
                     "funding_rate": frames.get("funding_rate"),
                     "open_interest_points": len(frames.get("open_interest") or []),
                 },
             }
+        cadence_policy = build_cadence_policy(
+            plans_by_symbol,
+            base_threshold=threshold,
+            cadence=self.config.cadence,
+        )
+        effective_threshold = cadence_policy["recommended_threshold"] if apply_cadence_policy else threshold
+        results_out, tradeable_symbols, tradeable_count = _filter_tradeable_plans(
+            plans_by_symbol,
+            threshold=effective_threshold,
+        )
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "strategy": "derivatives_momentum_v1",
@@ -83,12 +171,21 @@ class MomentumMarketService:
                 "trigger": timeframes.trigger,
             },
             "summary": {
-                "tradeable_count": sum(len(entry["tradeable"]) for entry in plans_by_symbol.values()),
+                "tradeable_count": tradeable_count,
                 "confirmed_count": confirmed_count,
                 "symbols_with_tradeable": tradeable_symbols,
                 "score_threshold": threshold,
+                "effective_score_threshold": effective_threshold,
+                "recommended_score_threshold": cadence_policy["recommended_threshold"],
+                "cadence_state": cadence_policy["state"],
+                "cadence_policy_applied": apply_cadence_policy,
             },
-            "results": plans_by_symbol,
+            "cadence": {
+                **cadence_policy,
+                "applied": apply_cadence_policy,
+                "effective_threshold": effective_threshold,
+            },
+            "results": results_out,
         }
 
     def playbook_live(

@@ -61,6 +61,18 @@ class ExecutionConfig:
 
 
 @dataclass(frozen=True)
+class CadenceConfig:
+    baseline_trades_per_month: int
+    expansion_trades_per_month: int
+    quiet_threshold_buffer: int
+    expansion_threshold_buffer: int
+    min_score_floor: int
+    expansion_min_confirmed: int
+    expansion_min_tradeable: int
+    expansion_min_symbols: int
+
+
+@dataclass(frozen=True)
 class RiskConfig:
     default_risk_pct: float
     min_risk_pct: float
@@ -100,6 +112,7 @@ class MomentumConfig:
     structure: StructureConfig
     participation: ParticipationConfig
     execution: ExecutionConfig
+    cadence: CadenceConfig
     risk: RiskConfig
     weights: ScoreWeights
 
@@ -126,6 +139,7 @@ def load_momentum_config(config_path: str | Path | None = None) -> MomentumConfi
         structure=StructureConfig(**payload["structure"]),
         participation=ParticipationConfig(**payload["participation"]),
         execution=ExecutionConfig(**payload["execution"]),
+        cadence=CadenceConfig(**payload["cadence"]),
         risk=RiskConfig(**payload["risk"]),
         weights=ScoreWeights(**payload["weights"]),
     )

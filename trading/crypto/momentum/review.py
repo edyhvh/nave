@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from trading.crypto.momentum.config import load_momentum_config
+
 
 RECENT_PERIODS = {
     "2023-recovery",
@@ -12,6 +14,8 @@ RECENT_PERIODS = {
     "2024-2025-bull",
     "TODAY",
 }
+
+CADENCE_BASELINE_TRADES = load_momentum_config().cadence.baseline_trades_per_month
 
 
 def latest_artifacts(raw_dir: Path) -> dict[str, tuple[Path, dict[str, Any]]]:
@@ -73,11 +77,18 @@ def _readiness_summary(periods: list[dict[str, Any]], bands_out: list[dict[str, 
     }
 
 
-def _recommendation(readiness: dict[str, Any]) -> str:
+def _recommendation(readiness: dict[str, Any], cadence: dict[str, Any]) -> str:
     focus_periods = readiness.get("focus_periods", [])
     focus_text = ", ".join(focus_periods)
+    weak_expansion_months = cadence.get("weak_expansion_months", [])
+    weak_expansion_text = ", ".join(weak_expansion_months)
 
     if readiness.get("status") == "shadow-ready":
+        if weak_expansion_text:
+            return (
+                "Modelo listo para shadow deployment con umbral operativo de 90; "
+                f"contener la expansion de cadencia en {weak_expansion_text} hasta que recupere win rate y expectancy."
+            )
         if focus_text:
             return (
                 "Modelo listo para shadow deployment con umbral operativo de 90; "
@@ -86,9 +97,20 @@ def _recommendation(readiness: dict[str, Any]) -> str:
         return "Modelo listo para shadow deployment con umbral operativo de 90 y revision manual de perdedores aislados."
 
     if readiness.get("status") == "candidate-ready":
+        if weak_expansion_text:
+            return (
+                "Modelo apto para paper trading; "
+                f"no expandir la cadencia en {weak_expansion_text} hasta recuperar calidad suficiente."
+            )
         if focus_text:
             return f"Modelo apto para paper trading; concentrar el siguiente refinamiento en {focus_text}."
         return "Modelo apto para paper trading; mantener parametros y revisar perdedores manualmente."
+
+    if weak_expansion_text:
+        return (
+            "Modelo todavia en fase de investigacion; "
+            f"la expansion de actividad en {weak_expansion_text} fue debil y no debe repetirse sin mejor calidad."
+        )
 
     return "Modelo todavia en fase de investigacion; no relajar filtros hasta cerrar los periodos debiles restantes."
 
@@ -146,6 +168,81 @@ def _automation_summary(periods: list[dict[str, Any]], readiness: dict[str, Any]
     return {
         "ready": ready,
         "warnings": warnings,
+    }
+
+
+def _monthly_cadence_summary(latest: dict[str, tuple[Path, dict[str, Any]]]) -> dict[str, Any]:
+    months: dict[str, dict[str, Any]] = {}
+    for _, payload in latest.values():
+        for result in payload.get("results", {}).values():
+            for trade in result.get("trades", []):
+                entry_time = trade.get("entry_time")
+                if not entry_time:
+                    continue
+                month = str(entry_time)[:7]
+                bucket = months.setdefault(
+                    month,
+                    {
+                        "month": month,
+                        "trade_count": 0,
+                        "wins": 0.0,
+                        "r_sum": 0.0,
+                        "high_confidence_count": 0,
+                        "symbols": set(),
+                    },
+                )
+                bucket["trade_count"] += 1
+                bucket["wins"] += 1.0 if float(trade.get("r_multiple", 0.0)) > 0 else 0.0
+                bucket["r_sum"] += float(trade.get("r_multiple", 0.0))
+                bucket["high_confidence_count"] += 1 if int(trade.get("confidence_score", 0) or 0) >= 90 else 0
+                symbol = trade.get("symbol")
+                if symbol:
+                    bucket["symbols"].add(str(symbol).replace("USDT", ""))
+
+    rows: list[dict[str, Any]] = []
+    for month in sorted(months):
+        bucket = months[month]
+        trade_count = int(bucket["trade_count"])
+        rows.append(
+            {
+                "month": month,
+                "trade_count": trade_count,
+                "win_rate": round(bucket["wins"] / trade_count, 4) if trade_count else 0.0,
+                "expectancy": round(bucket["r_sum"] / trade_count, 4) if trade_count else 0.0,
+                "high_confidence_count": int(bucket["high_confidence_count"]),
+                "symbols": sorted(bucket["symbols"]),
+            }
+        )
+
+    active_months = len(rows)
+    avg_trades = round(sum(row["trade_count"] for row in rows) / active_months, 2) if active_months else 0.0
+    max_trades = max((row["trade_count"] for row in rows), default=0)
+    healthy_expansion_months = [
+        row["month"]
+        for row in rows
+        if row["trade_count"] > CADENCE_BASELINE_TRADES
+        and row["win_rate"] >= 0.7
+        and row["expectancy"] >= 1.25
+        and row["high_confidence_count"] >= CADENCE_BASELINE_TRADES
+    ]
+    weak_expansion_months = [
+        row["month"]
+        for row in rows
+        if row["trade_count"] > CADENCE_BASELINE_TRADES
+        and (
+            row["expectancy"] < 1.25
+            or row["win_rate"] < 0.7
+            or row["high_confidence_count"] < CADENCE_BASELINE_TRADES
+        )
+    ]
+    return {
+        "baseline_trades_per_month": CADENCE_BASELINE_TRADES,
+        "active_months": active_months,
+        "average_trades_per_month": avg_trades,
+        "max_trades_in_month": max_trades,
+        "healthy_expansion_months": healthy_expansion_months,
+        "weak_expansion_months": weak_expansion_months,
+        "months": rows,
     }
 
 
@@ -212,12 +309,14 @@ def build_review_summary(raw_dir: Path) -> dict[str, Any]:
     complete_periods = [row for row in periods if row["complete"]]
     partial_periods = [row for row in periods if not row["complete"]]
     readiness = _readiness_summary(periods, bands_out)
-    recommendation = _recommendation(readiness)
+    cadence = _monthly_cadence_summary(latest)
+    recommendation = _recommendation(readiness, cadence)
     automation = _automation_summary(periods, readiness, pooled_trades)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "periods": periods,
         "confidence_bands": bands_out,
+        "cadence": cadence,
         "total_trades": pooled_trades,
         "complete_periods": len(complete_periods),
         "partial_periods": len(partial_periods),
@@ -230,6 +329,7 @@ def build_review_summary(raw_dir: Path) -> dict[str, Any]:
 def write_review_markdown(summary: dict[str, Any], output_path: Path) -> Path:
     periods = summary.get("periods", [])
     bands = summary.get("confidence_bands", [])
+    cadence = summary.get("cadence", {})
     readiness = summary.get("readiness", {})
     automation = summary.get("automation", {})
     focus_periods = readiness.get("focus_periods", [])
@@ -271,6 +371,36 @@ def write_review_markdown(summary: dict[str, Any], output_path: Path) -> Path:
         lines.append(
             f"| {row['band']} | {row['count']} | {row['win_rate']:.2%} | {row['avg_r']:+.2f} | {row['pct_reaching_8']:.2%} |"
         )
+
+    cadence_months = cadence.get("months", [])
+    if cadence_months:
+        lines.extend(
+            [
+                "",
+                "## Cadencia mensual",
+                "",
+                f"- Baseline operativo: {cadence.get('baseline_trades_per_month', 0)} trades/mes.",
+                f"- Promedio observado: {cadence.get('average_trades_per_month', 0.0)} trades/mes activos.",
+                f"- Pico observado: {cadence.get('max_trades_in_month', 0)} trades en un mes.",
+                (
+                    f"- Meses de expansion saludable: {', '.join(cadence.get('healthy_expansion_months', []))}."
+                    if cadence.get("healthy_expansion_months")
+                    else "- Aun no hay meses de expansion saludable por encima del baseline actual."
+                ),
+                (
+                    f"- Meses con expansion debil: {', '.join(cadence.get('weak_expansion_months', []))}."
+                    if cadence.get("weak_expansion_months")
+                    else "- No hay meses con expansion debil bajo los criterios actuales."
+                ),
+                "",
+                "| Mes | Trades | Win rate | Avg R | 90+ setups | Simbolos |",
+                "| --- | ------ | -------- | ----- | ---------- | -------- |",
+            ]
+        )
+        for row in cadence_months:
+            lines.append(
+                f"| {row['month']} | {row['trade_count']} | {row['win_rate']:.2%} | {row['expectancy']:+.2f} | {row['high_confidence_count']} | {', '.join(row['symbols']) or '-'} |"
+            )
 
     if readiness.get("reasons"):
         lines.extend(

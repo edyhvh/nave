@@ -43,6 +43,16 @@
     "max_expected_move_pct": 0.2,
     "max_holding_bars": 72
   },
+  "cadence": {
+    "baseline_trades_per_month": 3,
+    "expansion_trades_per_month": 6,
+    "quiet_threshold_buffer": 3,
+    "expansion_threshold_buffer": 2,
+    "min_score_floor": 88,
+    "expansion_min_confirmed": 3,
+    "expansion_min_tradeable": 2,
+    "expansion_min_symbols": 2
+  },
   "risk": {
     "default_risk_pct": 0.005,
     "min_risk_pct": 0.003,

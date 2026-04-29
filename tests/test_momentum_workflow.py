@@ -287,3 +287,193 @@ def test_build_review_summary_reports_shadow_ready_and_focus_periods(tmp_path: P
     assert "partial_regimes" in warning_codes
     assert "focus_periods" in warning_codes
     assert "today_low_sample" in warning_codes
+
+
+def test_build_review_summary_reports_monthly_cadence(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    payload = {
+        "period": "2024-2025-bull",
+        "coverage": {"complete": True},
+        "pooled": {
+            "trade_count": 5,
+            "metrics": {"win_rate": 0.8, "expectancy": 1.7, "max_drawdown": 1.0, "pct_reaching_8": 0.6},
+        },
+        "results": {
+            "BTC": {
+                "trades": [
+                    {"symbol": "BTCUSDT", "entry_time": "2024-07-04T13:00:00+00:00", "confidence_score": 91, "r_multiple": 2.3, "reached_8_pct": True},
+                    {"symbol": "BTCUSDT", "entry_time": "2024-07-20T13:00:00+00:00", "confidence_score": 92, "r_multiple": 1.8, "reached_8_pct": True},
+                ]
+            },
+            "ETH": {
+                "trades": [
+                    {"symbol": "ETHUSDT", "entry_time": "2024-07-11T13:00:00+00:00", "confidence_score": 93, "r_multiple": 1.5, "reached_8_pct": True},
+                    {"symbol": "ETHUSDT", "entry_time": "2024-08-02T13:00:00+00:00", "confidence_score": 90, "r_multiple": 1.6, "reached_8_pct": True},
+                    {"symbol": "ETHUSDT", "entry_time": "2024-08-16T13:00:00+00:00", "confidence_score": 89, "r_multiple": -0.4, "reached_8_pct": False},
+                ]
+            },
+        },
+    }
+    (raw_dir / "momentum_backtest_2024-2025-bull_20260429T120000Z.json").write_text(
+        __import__("json").dumps(payload),
+        encoding="utf-8",
+    )
+
+    summary = build_review_summary(raw_dir)
+
+    assert summary["cadence"]["baseline_trades_per_month"] == 3
+    assert summary["cadence"]["average_trades_per_month"] == 2.5
+    assert summary["cadence"]["max_trades_in_month"] == 3
+    assert summary["cadence"]["healthy_expansion_months"] == []
+    assert summary["cadence"]["weak_expansion_months"] == []
+    assert summary["cadence"]["months"][0]["month"] == "2024-07"
+    assert summary["cadence"]["months"][0]["high_confidence_count"] == 3
+
+
+def test_write_review_markdown_includes_cadence_section(tmp_path: Path) -> None:
+    from trading.crypto.momentum.review import write_review_markdown
+
+    output = tmp_path / "review.md"
+    summary = {
+        "generated_at": "2026-04-29T00:00:00+00:00",
+        "total_trades": 5,
+        "complete_periods": 1,
+        "partial_periods": 0,
+        "recommendation": "test",
+        "periods": [
+            {
+                "period": "2024-2025-bull",
+                "complete": True,
+                "trade_count": 5,
+                "win_rate": 0.8,
+                "expectancy": 1.7,
+                "max_drawdown": 1.0,
+                "pct_reaching_8": 0.6,
+            }
+        ],
+        "confidence_bands": [
+            {"band": "90-100", "count": 5, "win_rate": 0.8, "avg_r": 1.7, "pct_reaching_8": 0.6}
+        ],
+        "cadence": {
+            "baseline_trades_per_month": 3,
+            "average_trades_per_month": 2.5,
+            "max_trades_in_month": 3,
+            "healthy_expansion_months": ["2024-07"],
+            "weak_expansion_months": [],
+            "months": [
+                {"month": "2024-07", "trade_count": 3, "win_rate": 1.0, "expectancy": 1.87, "high_confidence_count": 3, "symbols": ["BTC", "ETH"]}
+            ],
+        },
+        "readiness": {"status": "shadow-ready", "focus_periods": [], "reasons": []},
+        "automation": {"ready": True, "warnings": []},
+    }
+
+    write_review_markdown(summary, output)
+
+    content = output.read_text(encoding="utf-8")
+    assert "## Cadencia mensual" in content
+    assert "2024-07" in content
+    assert "Meses de expansion saludable: 2024-07." in content
+
+
+def test_build_review_summary_recommendation_flags_weak_expansion_month(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+
+    trades = []
+    for day in range(1, 5):
+        trades.append(
+            {
+                "symbol": "BTCUSDT",
+                "entry_time": f"2024-07-{day:02d}T13:00:00+00:00",
+                "confidence_score": 92,
+                "r_multiple": 0.2,
+                "reached_8_pct": False,
+            }
+        )
+    for day in range(1, 117):
+        trades.append(
+            {
+                "symbol": "BTCUSDT",
+                "entry_time": f"2024-08-{((day - 1) % 28) + 1:02d}T13:00:00+00:00",
+                "confidence_score": 92,
+                "r_multiple": 2.0,
+                "reached_8_pct": True,
+            }
+        )
+
+    payload = {
+        "period": "2024-2025-bull",
+        "coverage": {"complete": True},
+        "pooled": {
+            "trade_count": len(trades),
+            "metrics": {"win_rate": 0.95, "expectancy": 1.93, "max_drawdown": 1.0, "pct_reaching_8": 0.9},
+        },
+        "results": {
+            "BTC": {
+                "trades": trades,
+            }
+        },
+    }
+    (raw_dir / "momentum_backtest_2024-2025-bull_20260429T120000Z.json").write_text(
+        __import__("json").dumps(payload),
+        encoding="utf-8",
+    )
+
+    summary = build_review_summary(raw_dir)
+
+    assert summary["readiness"]["status"] == "shadow-ready"
+    assert summary["cadence"]["weak_expansion_months"] == ["2024-07"]
+    assert "2024-07" in summary["recommendation"]
+
+
+def test_build_review_summary_keeps_weak_expansion_out_of_healthy_list(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+
+    trades = []
+    weak_month_r = [2.4, 2.1, -0.5, -0.4]
+    for index, r_multiple in enumerate(weak_month_r, start=1):
+        trades.append(
+            {
+                "symbol": "BTCUSDT",
+                "entry_time": f"2025-02-{index:02d}T13:00:00+00:00",
+                "confidence_score": 92,
+                "r_multiple": r_multiple,
+                "reached_8_pct": r_multiple > 0,
+            }
+        )
+    for index, r_multiple in enumerate([2.2, 2.0, 1.9, 1.7], start=1):
+        trades.append(
+            {
+                "symbol": "ETHUSDT",
+                "entry_time": f"2025-03-{index:02d}T13:00:00+00:00",
+                "confidence_score": 93,
+                "r_multiple": r_multiple,
+                "reached_8_pct": True,
+            }
+        )
+
+    payload = {
+        "period": "2024-2025-bull",
+        "coverage": {"complete": True},
+        "pooled": {
+            "trade_count": len(trades),
+            "metrics": {"win_rate": 0.75, "expectancy": 1.425, "max_drawdown": 1.0, "pct_reaching_8": 0.75},
+        },
+        "results": {
+            "BTC": {"trades": trades[:4]},
+            "ETH": {"trades": trades[4:]},
+        },
+    }
+    (raw_dir / "momentum_backtest_2024-2025-bull_20260429T120000Z.json").write_text(
+        __import__("json").dumps(payload),
+        encoding="utf-8",
+    )
+
+    summary = build_review_summary(raw_dir)
+
+    assert "2025-02" in summary["cadence"]["weak_expansion_months"]
+    assert "2025-02" not in summary["cadence"]["healthy_expansion_months"]
+    assert "2025-03" in summary["cadence"]["healthy_expansion_months"]
