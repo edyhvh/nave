@@ -28,6 +28,7 @@
   },
   "participation": {
     "min_volume_ratio": 1.25,
+    "min_volume_ratio_swing": 2.0,
     "min_oi_change_pct": 0.02,
     "max_funding_long": 0.0008,
     "min_funding_short": -0.0008,

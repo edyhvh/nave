@@ -42,6 +42,7 @@ class StructureConfig:
 @dataclass(frozen=True)
 class ParticipationConfig:
     min_volume_ratio: float
+    min_volume_ratio_swing: float
     min_oi_change_pct: float
     max_funding_long: float
     min_funding_short: float
