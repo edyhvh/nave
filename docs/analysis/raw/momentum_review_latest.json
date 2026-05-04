@@ -1,65 +1,65 @@
 {
-  "generated_at": "2026-04-29T12:54:37.182927+00:00",
+  "generated_at": "2026-05-04T20:57:14.204733+00:00",
   "periods": [
     {
       "period": "2017-bull+2018-bear",
       "complete": false,
-      "trade_count": 50,
-      "win_rate": 0.82,
-      "expectancy": 1.942,
-      "max_drawdown": 2.0,
-      "pct_reaching_8": 0.88,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2017-bull+2018-bear_20260428T211156Z.json"
+      "trade_count": 10,
+      "win_rate": 0.9,
+      "expectancy": 2.5056,
+      "max_drawdown": 0.288,
+      "pct_reaching_8": 0.9,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2017-bull+2018-bear_20260504T205343Z.json"
     },
     {
       "period": "2019-recovery",
       "complete": true,
-      "trade_count": 36,
-      "win_rate": 0.8333,
-      "expectancy": 1.8428,
-      "max_drawdown": 3.0,
-      "pct_reaching_8": 0.8056,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2019-recovery_20260428T211400Z.json"
+      "trade_count": 16,
+      "win_rate": 0.75,
+      "expectancy": 1.6196,
+      "max_drawdown": 2.0,
+      "pct_reaching_8": 0.8125,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2019-recovery_20260504T203440Z.json"
     },
     {
       "period": "2020-covid-crash",
       "complete": true,
-      "trade_count": 17,
-      "win_rate": 0.7647,
-      "expectancy": 2.2855,
-      "max_drawdown": 2.0,
-      "pct_reaching_8": 0.8235,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-covid-crash_20260428T211437Z.json"
+      "trade_count": 9,
+      "win_rate": 0.7778,
+      "expectancy": 2.1489,
+      "max_drawdown": 1.0,
+      "pct_reaching_8": 0.6667,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-covid-crash_20260504T203317Z.json"
     },
     {
       "period": "2020-recovery+2021-ATH",
       "complete": true,
-      "trade_count": 50,
-      "win_rate": 0.72,
-      "expectancy": 1.9873,
-      "max_drawdown": 3.0,
-      "pct_reaching_8": 0.76,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-recovery+2021-ATH_20260428T211646Z.json"
+      "trade_count": 17,
+      "win_rate": 0.8235,
+      "expectancy": 1.8475,
+      "max_drawdown": 1.0,
+      "pct_reaching_8": 0.6471,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2020-recovery+2021-ATH_20260504T203559Z.json"
     },
     {
       "period": "2022-bear",
       "complete": true,
-      "trade_count": 28,
-      "win_rate": 0.75,
-      "expectancy": 2.0627,
-      "max_drawdown": 3.0,
+      "trade_count": 7,
+      "win_rate": 0.8571,
+      "expectancy": 2.3636,
+      "max_drawdown": 1.0,
       "pct_reaching_8": 0.7143,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2022-bear_20260428T211806Z.json"
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2022-bear_20260504T203439Z.json"
     },
     {
       "period": "2023-recovery",
       "complete": true,
-      "trade_count": 14,
-      "win_rate": 0.9286,
-      "expectancy": 2.5083,
+      "trade_count": 13,
+      "win_rate": 0.9231,
+      "expectancy": 2.4695,
       "max_drawdown": 0.044,
-      "pct_reaching_8": 0.5,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2023-recovery_20260429T071433Z.json"
+      "pct_reaching_8": 0.4615,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2023-recovery_20260504T205259Z.json"
     },
     {
       "period": "2024-ETF-approval",
@@ -69,236 +69,108 @@
       "expectancy": 2.6072,
       "max_drawdown": 0.0,
       "pct_reaching_8": 0.6,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-ETF-approval_20260429T071619Z.json"
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-ETF-approval_20260504T205154Z.json"
     },
     {
       "period": "2024-2025-bull",
       "complete": true,
-      "trade_count": 9,
+      "trade_count": 7,
       "win_rate": 1.0,
-      "expectancy": 2.7856,
+      "expectancy": 2.6207,
       "max_drawdown": 0.0,
-      "pct_reaching_8": 0.8889,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-2025-bull_20260429T071529Z.json"
+      "pct_reaching_8": 0.8571,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_2024-2025-bull_20260504T205225Z.json"
     },
     {
       "period": "TODAY",
       "complete": true,
-      "trade_count": 4,
-      "win_rate": 0.75,
-      "expectancy": 1.8515,
-      "max_drawdown": 1.0,
-      "pct_reaching_8": 0.75,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_TODAY_20260428T212122Z.json"
+      "trade_count": 3,
+      "win_rate": 1.0,
+      "expectancy": 1.8923,
+      "max_drawdown": 0.0,
+      "pct_reaching_8": 0.6667,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_TODAY_20260504T205129Z.json"
     }
   ],
   "confidence_bands": [
     {
       "band": "90-100",
-      "count": 213,
-      "win_rate": 0.8028,
-      "avg_r": 2.0659,
-      "pct_reaching_8": 0.7793
+      "count": 87,
+      "win_rate": 0.8621,
+      "avg_r": 2.1543,
+      "pct_reaching_8": 0.7011
     }
   ],
   "cadence": {
     "baseline_trades_per_month": 3,
-    "active_months": 70,
-    "average_trades_per_month": 3.04,
-    "max_trades_in_month": 18,
+    "active_months": 50,
+    "average_trades_per_month": 1.74,
+    "max_trades_in_month": 8,
     "healthy_expansion_months": [
-      "2017-10",
-      "2018-03",
-      "2018-05",
-      "2018-06",
-      "2018-08",
       "2018-11",
-      "2019-05",
-      "2019-06",
-      "2020-02",
-      "2020-04",
-      "2020-05",
-      "2020-11",
-      "2020-12",
-      "2021-08",
-      "2022-05",
-      "2022-06",
       "2023-08",
       "2023-12"
     ],
-    "weak_expansion_months": [
-      "2019-12",
-      "2021-04",
-      "2021-12"
-    ],
+    "weak_expansion_months": [],
     "months": [
       {
-        "month": "2017-09",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 0.885,
-        "high_confidence_count": 2,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
         "month": "2017-10",
-        "trade_count": 4,
-        "win_rate": 0.75,
-        "expectancy": 1.5485,
-        "high_confidence_count": 4,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2017-11",
-        "trade_count": 2,
-        "win_rate": 1.0,
-        "expectancy": 1.2095,
-        "high_confidence_count": 2,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2017-12",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 1.1935,
-        "high_confidence_count": 2,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-01",
-        "trade_count": 3,
-        "win_rate": 0.3333,
-        "expectancy": 0.318,
-        "high_confidence_count": 3,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-02",
         "trade_count": 1,
         "win_rate": 1.0,
-        "expectancy": 1.845,
+        "expectancy": 4.215,
         "high_confidence_count": 1,
         "symbols": [
           "BTC"
         ]
       },
       {
-        "month": "2018-03",
-        "trade_count": 9,
-        "win_rate": 0.7778,
-        "expectancy": 2.1457,
-        "high_confidence_count": 9,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-05",
-        "trade_count": 4,
-        "win_rate": 0.75,
-        "expectancy": 1.6165,
-        "high_confidence_count": 4,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-06",
-        "trade_count": 4,
-        "win_rate": 1.0,
-        "expectancy": 2.5657,
-        "high_confidence_count": 4,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-07",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 1.8835,
-        "high_confidence_count": 2,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-08",
-        "trade_count": 4,
-        "win_rate": 1.0,
-        "expectancy": 2.3843,
-        "high_confidence_count": 4,
-        "symbols": [
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-09",
-        "trade_count": 3,
-        "win_rate": 1.0,
-        "expectancy": 3.125,
-        "high_confidence_count": 3,
-        "symbols": [
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-11",
-        "trade_count": 18,
-        "win_rate": 1.0,
-        "expectancy": 2.0162,
-        "high_confidence_count": 18,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2018-12",
-        "trade_count": 2,
-        "win_rate": 1.0,
-        "expectancy": 4.665,
-        "high_confidence_count": 2,
-        "symbols": [
-          "ETH"
-        ]
-      },
-      {
-        "month": "2019-01",
+        "month": "2017-11",
         "trade_count": 1,
         "win_rate": 1.0,
-        "expectancy": 2.487,
+        "expectancy": 1.66,
         "high_confidence_count": 1,
         "symbols": [
           "ETH"
         ]
       },
       {
-        "month": "2019-03",
+        "month": "2018-07",
+        "trade_count": 1,
+        "win_rate": 0.0,
+        "expectancy": -0.288,
+        "high_confidence_count": 1,
+        "symbols": [
+          "BTC"
+        ]
+      },
+      {
+        "month": "2018-08",
+        "trade_count": 1,
+        "win_rate": 1.0,
+        "expectancy": 3.428,
+        "high_confidence_count": 1,
+        "symbols": [
+          "ETH"
+        ]
+      },
+      {
+        "month": "2018-09",
         "trade_count": 2,
         "win_rate": 1.0,
-        "expectancy": 0.169,
+        "expectancy": 3.1425,
         "high_confidence_count": 2,
         "symbols": [
+          "ETH"
+        ]
+      },
+      {
+        "month": "2018-11",
+        "trade_count": 8,
+        "win_rate": 1.0,
+        "expectancy": 2.439,
+        "high_confidence_count": 8,
+        "symbols": [
+          "BTC",
           "ETH"
         ]
       },
@@ -315,28 +187,6 @@
       },
       {
         "month": "2019-05",
-        "trade_count": 4,
-        "win_rate": 0.75,
-        "expectancy": 1.557,
-        "high_confidence_count": 4,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2019-06",
-        "trade_count": 8,
-        "win_rate": 1.0,
-        "expectancy": 2.7648,
-        "high_confidence_count": 8,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2019-07",
         "trade_count": 1,
         "win_rate": 0.0,
         "expectancy": -1.0,
@@ -346,10 +196,20 @@
         ]
       },
       {
+        "month": "2019-06",
+        "trade_count": 2,
+        "win_rate": 1.0,
+        "expectancy": 2.469,
+        "high_confidence_count": 2,
+        "symbols": [
+          "ETH"
+        ]
+      },
+      {
         "month": "2019-08",
         "trade_count": 2,
         "win_rate": 1.0,
-        "expectancy": 3.16,
+        "expectancy": 2.461,
         "high_confidence_count": 2,
         "symbols": [
           "BTC",
@@ -360,9 +220,10 @@
         "month": "2019-09",
         "trade_count": 2,
         "win_rate": 1.0,
-        "expectancy": 3.0195,
+        "expectancy": 2.6495,
         "high_confidence_count": 2,
         "symbols": [
+          "BTC",
           "ETH"
         ]
       },
@@ -378,64 +239,70 @@
       },
       {
         "month": "2019-12",
-        "trade_count": 4,
+        "trade_count": 2,
         "win_rate": 0.0,
         "expectancy": -1.0,
-        "high_confidence_count": 4,
+        "high_confidence_count": 2,
         "symbols": [
-          "BTC",
+          "BTC"
+        ]
+      },
+      {
+        "month": "2020-01",
+        "trade_count": 1,
+        "win_rate": 1.0,
+        "expectancy": 1.024,
+        "high_confidence_count": 1,
+        "symbols": [
           "ETH"
         ]
       },
       {
         "month": "2020-02",
-        "trade_count": 5,
+        "trade_count": 3,
         "win_rate": 1.0,
-        "expectancy": 3.2766,
-        "high_confidence_count": 5,
+        "expectancy": 3.196,
+        "high_confidence_count": 3,
         "symbols": [
           "ETH"
         ]
       },
       {
         "month": "2020-03",
-        "trade_count": 3,
+        "trade_count": 2,
         "win_rate": 1.0,
-        "expectancy": 3.269,
-        "high_confidence_count": 3,
+        "expectancy": 3.199,
+        "high_confidence_count": 2,
         "symbols": [
-          "BTC",
-          "ETH"
+          "BTC"
         ]
       },
       {
         "month": "2020-04",
-        "trade_count": 4,
-        "win_rate": 0.75,
-        "expectancy": 1.8723,
-        "high_confidence_count": 4,
+        "trade_count": 1,
+        "win_rate": 0.0,
+        "expectancy": -1.0,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
           "ETH"
         ]
       },
       {
         "month": "2020-05",
-        "trade_count": 5,
-        "win_rate": 0.8,
-        "expectancy": 3.07,
-        "high_confidence_count": 5,
+        "trade_count": 2,
+        "win_rate": 1.0,
+        "expectancy": 4.33,
+        "high_confidence_count": 2,
         "symbols": [
-          "BTC",
           "ETH"
         ]
       },
       {
         "month": "2020-07",
-        "trade_count": 3,
+        "trade_count": 2,
         "win_rate": 1.0,
-        "expectancy": 4.328,
-        "high_confidence_count": 3,
+        "expectancy": 3.385,
+        "high_confidence_count": 2,
         "symbols": [
           "BTC",
           "ETH"
@@ -443,20 +310,9 @@
       },
       {
         "month": "2020-08",
-        "trade_count": 3,
-        "win_rate": 0.6667,
-        "expectancy": 1.7843,
-        "high_confidence_count": 3,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2020-09",
         "trade_count": 1,
         "win_rate": 1.0,
-        "expectancy": 2.757,
+        "expectancy": 2.238,
         "high_confidence_count": 1,
         "symbols": [
           "ETH"
@@ -466,7 +322,7 @@
         "month": "2020-10",
         "trade_count": 3,
         "win_rate": 0.6667,
-        "expectancy": 0.8123,
+        "expectancy": 0.7777,
         "high_confidence_count": 3,
         "symbols": [
           "BTC",
@@ -475,31 +331,19 @@
       },
       {
         "month": "2020-11",
-        "trade_count": 5,
-        "win_rate": 0.8,
-        "expectancy": 2.6648,
-        "high_confidence_count": 5,
+        "trade_count": 1,
+        "win_rate": 1.0,
+        "expectancy": 2.492,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
           "ETH"
         ]
       },
       {
         "month": "2020-12",
-        "trade_count": 8,
-        "win_rate": 0.875,
-        "expectancy": 2.499,
-        "high_confidence_count": 8,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2021-01",
         "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 0.4545,
+        "win_rate": 1.0,
+        "expectancy": 2.4085,
         "high_confidence_count": 2,
         "symbols": [
           "BTC",
@@ -508,117 +352,61 @@
       },
       {
         "month": "2021-02",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 0.971,
-        "high_confidence_count": 2,
+        "trade_count": 1,
+        "win_rate": 1.0,
+        "expectancy": 2.008,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2021-03",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 0.861,
-        "high_confidence_count": 2,
-        "symbols": [
-          "BTC",
-          "ETH"
+          "BTC"
         ]
       },
       {
         "month": "2021-04",
-        "trade_count": 4,
-        "win_rate": 0.25,
-        "expectancy": -0.1355,
-        "high_confidence_count": 4,
+        "trade_count": 1,
+        "win_rate": 0.0,
+        "expectancy": -1.0,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2021-05",
-        "trade_count": 2,
-        "win_rate": 1.0,
-        "expectancy": 3.1355,
-        "high_confidence_count": 2,
-        "symbols": [
-          "ETH"
-        ]
-      },
-      {
-        "month": "2021-06",
-        "trade_count": 3,
-        "win_rate": 0.6667,
-        "expectancy": 1.336,
-        "high_confidence_count": 3,
-        "symbols": [
-          "BTC",
-          "ETH"
+          "BTC"
         ]
       },
       {
         "month": "2021-08",
-        "trade_count": 4,
-        "win_rate": 0.75,
-        "expectancy": 2.328,
-        "high_confidence_count": 4,
+        "trade_count": 1,
+        "win_rate": 1.0,
+        "expectancy": 1.517,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
-          "ETH"
+          "BTC"
         ]
       },
       {
         "month": "2021-09",
-        "trade_count": 2,
+        "trade_count": 1,
         "win_rate": 1.0,
-        "expectancy": 3.1215,
-        "high_confidence_count": 2,
+        "expectancy": 2.74,
+        "high_confidence_count": 1,
         "symbols": [
           "ETH"
         ]
       },
       {
         "month": "2021-10",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 1.0255,
-        "high_confidence_count": 2,
+        "trade_count": 3,
+        "win_rate": 0.6667,
+        "expectancy": 1.054,
+        "high_confidence_count": 3,
         "symbols": [
           "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2021-12",
-        "trade_count": 4,
-        "win_rate": 0.5,
-        "expectancy": 1.2145,
-        "high_confidence_count": 4,
-        "symbols": [
           "ETH"
         ]
       },
       {
         "month": "2022-01",
-        "trade_count": 3,
+        "trade_count": 2,
         "win_rate": 1.0,
-        "expectancy": 2.5647,
-        "high_confidence_count": 3,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2022-03",
-        "trade_count": 3,
-        "win_rate": 1.0,
-        "expectancy": 2.878,
-        "high_confidence_count": 3,
+        "expectancy": 2.926,
+        "high_confidence_count": 2,
         "symbols": [
           "BTC",
           "ETH"
@@ -626,10 +414,10 @@
       },
       {
         "month": "2022-05",
-        "trade_count": 6,
-        "win_rate": 0.8333,
-        "expectancy": 2.3972,
-        "high_confidence_count": 6,
+        "trade_count": 2,
+        "win_rate": 1.0,
+        "expectancy": 3.0455,
+        "high_confidence_count": 2,
         "symbols": [
           "BTC",
           "ETH"
@@ -637,20 +425,9 @@
       },
       {
         "month": "2022-06",
-        "trade_count": 7,
-        "win_rate": 0.8571,
-        "expectancy": 2.991,
-        "high_confidence_count": 7,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2022-07",
         "trade_count": 1,
-        "win_rate": 0.0,
-        "expectancy": -1.0,
+        "win_rate": 1.0,
+        "expectancy": 3.96,
         "high_confidence_count": 1,
         "symbols": [
           "ETH"
@@ -658,24 +435,12 @@
       },
       {
         "month": "2022-09",
-        "trade_count": 3,
-        "win_rate": 0.6667,
-        "expectancy": 1.6793,
-        "high_confidence_count": 3,
-        "symbols": [
-          "BTC",
-          "ETH"
-        ]
-      },
-      {
-        "month": "2022-11",
-        "trade_count": 2,
+        "trade_count": 1,
         "win_rate": 0.0,
         "expectancy": -1.0,
-        "high_confidence_count": 2,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
-          "ETH"
+          "BTC"
         ]
       },
       {
@@ -696,16 +461,6 @@
         "high_confidence_count": 1,
         "symbols": [
           "ETH"
-        ]
-      },
-      {
-        "month": "2023-03",
-        "trade_count": 1,
-        "win_rate": 1.0,
-        "expectancy": 3.013,
-        "high_confidence_count": 1,
-        "symbols": [
-          "BTC"
         ]
       },
       {
@@ -834,13 +589,12 @@
       },
       {
         "month": "2025-02",
-        "trade_count": 3,
+        "trade_count": 1,
         "win_rate": 1.0,
-        "expectancy": 3.2757,
-        "high_confidence_count": 3,
+        "expectancy": 3.102,
+        "high_confidence_count": 1,
         "symbols": [
-          "BTC",
-          "ETH"
+          "BTC"
         ]
       },
       {
@@ -855,10 +609,10 @@
       },
       {
         "month": "2026-02",
-        "trade_count": 2,
-        "win_rate": 0.5,
-        "expectancy": 2.3625,
-        "high_confidence_count": 2,
+        "trade_count": 1,
+        "win_rate": 1.0,
+        "expectancy": 2.996,
+        "high_confidence_count": 1,
         "symbols": [
           "ETH"
         ]
@@ -875,18 +629,21 @@
       }
     ]
   },
-  "total_trades": 213,
+  "total_trades": 87,
   "complete_periods": 8,
   "partial_periods": 1,
   "readiness": {
-    "status": "shadow-ready",
-    "focus_periods": [],
+    "status": "candidate-ready",
+    "focus_periods": [
+      "2023-recovery"
+    ],
     "reasons": [
-      "La banda 90-100 mantiene 80.28% de win rate con +2.07R promedio."
+      "La banda 90-100 mantiene 86.21% de win rate con +2.15R promedio.",
+      "Los periodos que aun requieren vigilancia operativa son: 2023-recovery."
     ]
   },
   "automation": {
-    "ready": true,
+    "ready": false,
     "warnings": [
       {
         "code": "partial_regimes",
@@ -894,11 +651,21 @@
         "message": "Historical coverage is still partial for: 2017-bull+2018-bear."
       },
       {
+        "code": "focus_periods",
+        "severity": "warning",
+        "message": "Recent regimes still requiring operator review: 2023-recovery."
+      },
+      {
         "code": "today_low_sample",
         "severity": "warning",
-        "message": "TODAY has only 4 trades; keep live rollout in shadow mode until more live-window observations accumulate."
+        "message": "TODAY has only 3 trades; keep live rollout in shadow mode until more live-window observations accumulate."
+      },
+      {
+        "code": "aggregate_sample",
+        "severity": "warning",
+        "message": "Only 87 aggregate trades are represented in the latest review; treat regime-level stability as provisional."
       }
     ]
   },
-  "recommendation": "Modelo listo para shadow deployment con umbral operativo de 90; contener la expansion de cadencia en 2019-12, 2021-04, 2021-12 hasta que recupere win rate y expectancy."
+  "recommendation": "Modelo apto para paper trading; concentrar el siguiente refinamiento en 2023-recovery."
 }

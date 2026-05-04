@@ -126,23 +126,70 @@ actual. La regla theory-grounded es bloquearlos.
 - **2024-2025-bull**: bloquea 2 shorts ganadores (sesgo semanal -0.66 y
   -0.75); el WR del periodo se mantiene en 1.0 sobre los 7 que quedan.
 
-## Lectura practica
+## Iteracion 4 (intentada y revertida): ceiling de extension semanal para longs intraday
 
-- El overlay ya tiene dos capas teoricamente coherentes:
-  1. **Weekly bias requerido**: swings sin tailwind semanal no entran.
-  2. **Chase gate selectivo**: pullbacks demasiado superficiales sobre
+Se probo y commiteo una capa adicional que bloqueaba longs intraday
+cuando la velocity semanal superaba 2.0 ATR. La regla mejoraba el replay
+pooled (WR 0.853 → 0.868) pero la validacion historica fresca la
+desmonto:
+
+| Periodo | Con iter-4 | Sin iter-4 |
+|---|---|---|
+| 2020-covid-crash | 5 / 60.0% / +1.75 | **9 / 77.8% / +2.15** |
+| 2020-recovery+2021-ATH | **13 / 92.3% / +2.28** | 17 / 82.4% / +1.85 |
+| 2019-recovery | 15 / 73.3% / +1.46 | 16 / 75.0% / +1.62 |
+| 2022-bear | 7 / 85.7% / +2.36 | 7 / 85.7% / +2.36 |
+
+La regla ayudaba en 2020-2021 ATH (donde se calibro) pero hacia daño
+real en 2020-covid-crash (-17.8 pp WR, -4 trades). Firma clasica de
+overfit sobre un cluster especifico. **Se revirtio el commit
+(`Revert "feat(momentum): cap stretched intraday longs - iter 4"`).**
+
+Lessons aprendidas:
+- Replay sobre artifacts existentes es optimista por construccion: solo
+  ve los trades que el engine viejo tomo, no los que el engine nuevo
+  rechaza antes de evaluar.
+- Una regla calibrada sobre un solo cluster (5 perdedores en 2020-2021
+  ATH) no generaliza sin validacion fresca por periodo.
+- Total R por periodo es un mejor objetivo que WR por trade: iter-3-only
+  tiene WR menor (-1.8 pp) pero genera +12.5% mas R total porque
+  mantiene frecuencia.
+
+## Validacion historica fresca (estado final)
+
+Backtest end-to-end con el overlay iter-3-only sobre los 9 periodos:
+
+| Periodo | Trades | WR | Expectancy |
+|---|---|---|---|
+| 2017-bull+2018-bear | 10 | 0.900 | +2.51 |
+| 2019-recovery | 16 | 0.750 | +1.62 |
+| 2020-covid-crash | 9 | 0.778 | +2.15 |
+| 2020-recovery+2021-ATH | 17 | 0.824 | +1.85 |
+| 2022-bear | 7 | 0.857 | +2.36 |
+| 2023-recovery | 13 | 0.923 | +2.47 |
+| 2024-ETF-approval | 5 | 1.000 | +2.61 |
+| 2024-2025-bull | 7 | 1.000 | +2.62 |
+| TODAY | 3 | 1.000 | +1.89 |
+| **POOL** | **87** | **0.862** | **+2.15** (total +187 R) |
+
+## Lectura practica (final)
+
+- El overlay tiene dos capas teoricamente coherentes y validadas
+  end-to-end:
+  1. **Chase gate selectivo**: pullbacks demasiado superficiales sobre
      impulsos extendidos no entran (con carve-out para overshoots).
-- Cada capa esta calibrada con datos separables y direccion teorica,
-  no con barridos ciegos.
-- El siguiente plano probable ya no es weekly velocity: es estructura
-  diaria (e.g., distancia al fast EMA, secuencia de cierres por encima
-  del rango previo). Para estimar bien ese plano se debe primero correr
-  un backtest historico fresco con la nueva config, no solo replay.
+  2. **Weekly bias requerido para swings**: posiciones multi-dia sin
+     tailwind semanal no entran.
+- Cada capa esta calibrada con datos separables y direccion teorica.
+- Se intento una tercera capa (iter 4: long intraday extension ceiling)
+  pero se revirtio tras fallar validacion fresca por sobre-ajuste.
 
 ## Estado recomendado
 
-- Mantener este overlay como candidato valido en la rama experimental.
-- Si se quiere validacion mas fuerte antes de merge, el siguiente paso
-  correcto es re-correr el backtest historico completo con y sin overlay
-  y comparar expectancy, drawdown y win rate por periodo sobre ejecucion
-  fresca, no solo replay.
+- **Listo para merge**: el overlay con dos capas pasa validacion
+  historica end-to-end, mejora WR pool de baseline ~0.80 a 0.862, y
+  mantiene expectancy positiva (+2.15 R por trade) en todos los 9
+  regimenes.
+- Para futuras iteraciones: **no calibrar reglas sobre un solo cluster
+  sin validacion fresca**. El replay siempre debe ir acompañado de un
+  backtest historico completo antes de aceptar la regla.
