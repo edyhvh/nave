@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -8,6 +9,7 @@ import pandas as pd
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, TradePlan
 from trading.crypto.momentum.config import load_momentum_config
 from trading.crypto.momentum.filters import ParticipationAssessment, VolatilityAssessment, assess_breakout, assess_volatility, normalize_frame
+from trading.crypto.momentum.theory_overlay import TheoryOverlayAssessment, evaluate_theory_overlay
 from trading.crypto.momentum.structure import assess_retest
 
 
@@ -104,7 +106,8 @@ def _build_long_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.D
 
 def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     daily, setup, trigger, oi = _build_long_frames()
-    engine = MomentumSetupEngine()
+    base_config = load_momentum_config()
+    engine = MomentumSetupEngine(base_config)
 
     with patch.object(
         engine,
@@ -139,10 +142,181 @@ def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     assert plan.leverage_constraints["recommended"] <= 4.0
     assert "daily_ema_gap_pct" in plan.diagnostics
     assert "setup_ema_gap_pct" in plan.diagnostics
+    assert plan.diagnostics["theory_overlay"]["passed"] is True
     assert plan.reasoning["machine"][3]["passed"] is True
+    assert any(item["code"] == "theory_overlay" and item["passed"] is True for item in plan.reasoning["machine"])
     breakout_level = plan.diagnostics["breakout_level"]
     tolerance = breakout_level * load_momentum_config().breakout.retest_tolerance
     assert plan.entry_zone[1] <= breakout_level + tolerance + 1e-6
+
+
+def test_theory_overlay_blocks_stretched_swing_chase() -> None:
+    config = replace(load_momentum_config().theory_overlay, require_daily_confirmation=False)
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("long", 1.9)):
+        with patch(
+            "trading.crypto.momentum.theory_overlay.chase_gate",
+            return_value=(False, 0.12, "chase gate: retrace 12% < min 20%"),
+        ):
+            overlay = evaluate_theory_overlay(
+                side="long",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.12,
+                config=config,
+            )
+
+    assert overlay.passed is False
+    assert overlay.stage == "chase_gate"
+    assert overlay.retrace_fraction is not None
+    assert overlay.retrace_fraction < config.chase_min_retrace
+
+
+def test_theory_overlay_defers_when_weekly_bias_is_neutral_intraday() -> None:
+    config = load_momentum_config().theory_overlay
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("neutral", 0.3)):
+        with patch("trading.crypto.momentum.theory_overlay.range_breakout_bias", return_value=("neutral", None)):
+            overlay = evaluate_theory_overlay(
+                side="long",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.08,
+                config=config,
+            )
+
+    assert overlay.passed is True
+    assert overlay.stage == "weekly_neutral"
+
+
+def test_theory_overlay_blocks_weekly_neutral_swing() -> None:
+    config = load_momentum_config().theory_overlay
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("neutral", 0.3)):
+        with patch("trading.crypto.momentum.theory_overlay.range_breakout_bias", return_value=("neutral", None)):
+            overlay = evaluate_theory_overlay(
+                side="long",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.12,
+                config=config,
+            )
+
+    assert overlay.passed is False
+    assert overlay.stage == "weekly_neutral_swing"
+
+
+def test_theory_overlay_weekly_neutral_swing_block_can_be_disabled() -> None:
+    config = replace(load_momentum_config().theory_overlay, block_weekly_neutral_swing=False)
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("neutral", 0.3)):
+        with patch("trading.crypto.momentum.theory_overlay.range_breakout_bias", return_value=("neutral", None)):
+            overlay = evaluate_theory_overlay(
+                side="long",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.12,
+                config=config,
+            )
+
+    assert overlay.passed is True
+    assert overlay.stage == "weekly_neutral"
+
+
+def test_theory_overlay_allows_negative_retrace_overshoot() -> None:
+    config = replace(load_momentum_config().theory_overlay, require_daily_confirmation=False)
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("long", 1.9)):
+        with patch(
+            "trading.crypto.momentum.theory_overlay.chase_gate",
+            return_value=(False, -0.25, "chase gate: retrace -25% < min 20%"),
+        ):
+            overlay = evaluate_theory_overlay(
+                side="long",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.12,
+                config=config,
+            )
+
+    assert overlay.passed is True
+    assert overlay.stage == "chase_overshoot"
+    assert overlay.retrace_fraction == -0.25
+
+
+def test_theory_overlay_applies_chase_at_swing_floor_threshold() -> None:
+    config = replace(
+        load_momentum_config().theory_overlay,
+        require_daily_confirmation=False,
+        chase_min_expected_move_pct=0.08,
+    )
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("short", -1.9)):
+        with patch(
+            "trading.crypto.momentum.theory_overlay.chase_gate",
+            return_value=(False, 0.05, "chase gate: retrace 5% < min 20%"),
+        ):
+            overlay = evaluate_theory_overlay(
+                side="short",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.08,
+                config=config,
+            )
+
+    assert overlay.passed is False
+    assert overlay.stage == "chase_gate"
+    assert overlay.retrace_fraction == 0.05
+
+
+def test_momentum_engine_theory_overlay_can_veto_otherwise_good_setup() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    engine = MomentumSetupEngine()
+
+    with patch.object(
+        engine,
+        "_assess_volatility",
+        return_value=VolatilityAssessment(
+            passed=True,
+            atr_ratio=1.08,
+            range_expansion=2.36,
+            score=0.92,
+            atr_fast=0.75,
+        ),
+    ):
+        with patch(
+            "trading.crypto.momentum.engine.evaluate_theory_overlay",
+            return_value=TheoryOverlayAssessment(
+                passed=False,
+                stage="climax_cooldown",
+                bias="long",
+                bias_source="momentum",
+                reason="daily climax cooldown active",
+                weekly_velocity_atr=1.8,
+                bars_since_climax=2,
+            ),
+        ):
+            plan = engine.evaluate_symbol(
+                symbol="BTCUSDT",
+                daily_frame=daily,
+                setup_frame=setup,
+                trigger_frame=trigger,
+                open_interest=oi,
+                funding_rate=0.0002,
+                side="long",
+            )[0]
+
+    assert plan.setup_status == "confirmed"
+    assert plan.tradeable is False
+    assert plan.diagnostics["theory_overlay"]["stage"] == "climax_cooldown"
+    theory_items = [item for item in plan.reasoning["machine"] if item["code"] == "theory_overlay"]
+    assert theory_items and theory_items[0]["passed"] is False
 
 
 def test_momentum_engine_rejects_crowded_funding_even_when_structure_is_good() -> None:
@@ -263,6 +437,13 @@ def test_momentum_engine_rejects_late_swing_short_with_mid_range_expansion() -> 
             crowded=False,
             squeeze_risk=False,
         ),
+        theory_overlay=TheoryOverlayAssessment(
+            passed=True,
+            stage="passed",
+            bias="short",
+            bias_source="momentum",
+            reason="theory overlay passed",
+        ),
         daily_ema_gap_pct=0.12,
         setup_ema_gap_pct=0.07,
     )
@@ -295,6 +476,13 @@ def test_momentum_engine_rejects_late_intraday_long_with_thin_setup_gap() -> Non
             funding_rate=0.0003,
             crowded=False,
             squeeze_risk=False,
+        ),
+        theory_overlay=TheoryOverlayAssessment(
+            passed=True,
+            stage="passed",
+            bias="long",
+            bias_source="momentum",
+            reason="theory overlay passed",
         ),
         daily_ema_gap_pct=0.105,
         setup_ema_gap_pct=0.044,

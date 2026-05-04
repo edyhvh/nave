@@ -1,0 +1,374 @@
+{
+  "generated_at": "2026-05-04T01:52:49.893968+00:00",
+  "mode": "replay",
+  "overlay_config": {
+    "enabled": true,
+    "min_weekly_velocity": 1.2,
+    "allow_range_breakout_bias": true,
+    "require_daily_confirmation": true,
+    "block_climax_cooldown": false,
+    "climax_atr_window": 20,
+    "climax_mult": 3.0,
+    "climax_cooldown_bars": 3,
+    "block_chase_on_swing": true,
+    "chase_min_expected_move_pct": 0.08,
+    "chase_min_retrace": 0.2,
+    "chase_max_retrace": 0.9,
+    "block_weekly_neutral_swing": true,
+    "weekly_neutral_swing_min_expected_move_pct": 0.1
+  },
+  "pooled": {
+    "trade_count": 213,
+    "kept_trades": 184,
+    "kept_win_rate": 0.8533,
+    "kept_expectancy": 2.2715,
+    "blocked_trades": 29,
+    "blocked_winners": 14,
+    "blocked_losers": 15,
+    "blocked_by_stage": {
+      "chase_gate": 6,
+      "weekly_neutral_swing": 23
+    }
+  },
+  "periods": [
+    {
+      "trade_count": 50,
+      "kept_trades": 42,
+      "kept_win_rate": 0.881,
+      "kept_expectancy": 2.2003,
+      "blocked_trades": 8,
+      "blocked_winners": 4,
+      "blocked_losers": 4,
+      "blocked_by_stage": {
+        "chase_gate": 2,
+        "weekly_neutral_swing": 6
+      },
+      "period": "2017-bull+2018-bear",
+      "blocked_examples": [
+        {
+          "period": "2017-bull+2018-bear",
+          "symbol": "BTC",
+          "side": "long",
+          "entry_time": "2018-01-05T21:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1672,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": 0.45376533768509
+        },
+        {
+          "period": "2017-bull+2018-bear",
+          "symbol": "BTC",
+          "side": "short",
+          "entry_time": "2018-02-01T17:00:00+00:00",
+          "r_multiple": 1.845,
+          "expected_move_pct": 0.2,
+          "passed": false,
+          "stage": "chase_gate",
+          "reason": "chase gate: retrace 2% < min 20%",
+          "retrace_fraction": 0.023279009094437753,
+          "weekly_velocity_atr": -1.4446772388045106
+        },
+        {
+          "period": "2017-bull+2018-bear",
+          "symbol": "BTC",
+          "side": "short",
+          "entry_time": "2018-03-15T01:00:00+00:00",
+          "r_multiple": 2.096,
+          "expected_move_pct": 0.1879,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.7444995230574367
+        }
+      ]
+    },
+    {
+      "trade_count": 36,
+      "kept_trades": 33,
+      "kept_win_rate": 0.8485,
+      "kept_expectancy": 1.9032,
+      "blocked_trades": 3,
+      "blocked_winners": 2,
+      "blocked_losers": 1,
+      "blocked_by_stage": {
+        "weekly_neutral_swing": 3
+      },
+      "period": "2019-recovery",
+      "blocked_examples": [
+        {
+          "period": "2019-recovery",
+          "symbol": "ETH",
+          "side": "long",
+          "entry_time": "2019-06-22T09:00:00+00:00",
+          "r_multiple": 1.657,
+          "expected_move_pct": 0.1016,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": 0.9394592128937438
+        },
+        {
+          "period": "2019-recovery",
+          "symbol": "ETH",
+          "side": "short",
+          "entry_time": "2019-09-25T09:00:00+00:00",
+          "r_multiple": 2.877,
+          "expected_move_pct": 0.1257,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.023691104445878772
+        },
+        {
+          "period": "2019-recovery",
+          "symbol": "ETH",
+          "side": "short",
+          "entry_time": "2019-12-17T21:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1328,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.9064360468759799
+        }
+      ]
+    },
+    {
+      "trade_count": 17,
+      "kept_trades": 16,
+      "kept_win_rate": 0.8125,
+      "kept_expectancy": 2.4909,
+      "blocked_trades": 1,
+      "blocked_winners": 0,
+      "blocked_losers": 1,
+      "blocked_by_stage": {
+        "weekly_neutral_swing": 1
+      },
+      "period": "2020-covid-crash",
+      "blocked_examples": [
+        {
+          "period": "2020-covid-crash",
+          "symbol": "ETH",
+          "side": "short",
+          "entry_time": "2019-12-17T21:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1328,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.9064360468759799
+        }
+      ]
+    },
+    {
+      "trade_count": 50,
+      "kept_trades": 45,
+      "kept_win_rate": 0.7556,
+      "kept_expectancy": 2.1635,
+      "blocked_trades": 5,
+      "blocked_winners": 2,
+      "blocked_losers": 3,
+      "blocked_by_stage": {
+        "weekly_neutral_swing": 5
+      },
+      "period": "2020-recovery+2021-ATH",
+      "blocked_examples": [
+        {
+          "period": "2020-recovery+2021-ATH",
+          "symbol": "BTC",
+          "side": "long",
+          "entry_time": "2021-02-06T13:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1073,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": 0.11642669352434686
+        },
+        {
+          "period": "2020-recovery+2021-ATH",
+          "symbol": "BTC",
+          "side": "long",
+          "entry_time": "2021-03-13T17:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1042,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": 1.1701217910316193
+        },
+        {
+          "period": "2020-recovery+2021-ATH",
+          "symbol": "BTC",
+          "side": "short",
+          "entry_time": "2021-06-21T05:00:00+00:00",
+          "r_multiple": 2.462,
+          "expected_move_pct": 0.1378,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.4442276618018177
+        }
+      ]
+    },
+    {
+      "trade_count": 28,
+      "kept_trades": 19,
+      "kept_win_rate": 0.9474,
+      "kept_expectancy": 2.8755,
+      "blocked_trades": 9,
+      "blocked_winners": 3,
+      "blocked_losers": 6,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 5
+      },
+      "period": "2022-bear",
+      "blocked_examples": [
+        {
+          "period": "2022-bear",
+          "symbol": "BTC",
+          "side": "short",
+          "entry_time": "2022-06-30T13:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.0855,
+          "passed": false,
+          "stage": "chase_gate",
+          "reason": "chase gate: retrace 16% < min 20%",
+          "retrace_fraction": 0.15701495567435875,
+          "weekly_velocity_atr": -2.2401680406697038
+        },
+        {
+          "period": "2022-bear",
+          "symbol": "BTC",
+          "side": "short",
+          "entry_time": "2022-11-21T21:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.08,
+          "passed": false,
+          "stage": "chase_gate",
+          "reason": "chase gate: retrace 3% < min 20%",
+          "retrace_fraction": 0.032801880308520076,
+          "weekly_velocity_atr": -2.5157337507024278
+        },
+        {
+          "period": "2022-bear",
+          "symbol": "ETH",
+          "side": "long",
+          "entry_time": "2021-12-01T05:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1187,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.04991611179760791
+        }
+      ]
+    },
+    {
+      "trade_count": 14,
+      "kept_trades": 13,
+      "kept_win_rate": 0.9231,
+      "kept_expectancy": 2.4695,
+      "blocked_trades": 1,
+      "blocked_winners": 1,
+      "blocked_losers": 0,
+      "blocked_by_stage": {
+        "weekly_neutral_swing": 1
+      },
+      "period": "2023-recovery",
+      "blocked_examples": [
+        {
+          "period": "2023-recovery",
+          "symbol": "BTC",
+          "side": "long",
+          "entry_time": "2023-03-14T05:00:00+00:00",
+          "r_multiple": 3.013,
+          "expected_move_pct": 0.1339,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": 0.14834571640812896
+        }
+      ]
+    },
+    {
+      "trade_count": 5,
+      "kept_trades": 5,
+      "kept_win_rate": 1.0,
+      "kept_expectancy": 2.6072,
+      "blocked_trades": 0,
+      "blocked_winners": 0,
+      "blocked_losers": 0,
+      "blocked_by_stage": {},
+      "period": "2024-ETF-approval",
+      "blocked_examples": []
+    },
+    {
+      "trade_count": 9,
+      "kept_trades": 7,
+      "kept_win_rate": 1.0,
+      "kept_expectancy": 2.6207,
+      "blocked_trades": 2,
+      "blocked_winners": 2,
+      "blocked_losers": 0,
+      "blocked_by_stage": {
+        "weekly_neutral_swing": 2
+      },
+      "period": "2024-2025-bull",
+      "blocked_examples": [
+        {
+          "period": "2024-2025-bull",
+          "symbol": "ETH",
+          "side": "short",
+          "entry_time": "2025-02-03T01:00:00+00:00",
+          "r_multiple": 3.935,
+          "expected_move_pct": 0.1278,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.6603624834334079
+        },
+        {
+          "period": "2024-2025-bull",
+          "symbol": "ETH",
+          "side": "short",
+          "entry_time": "2025-02-25T05:00:00+00:00",
+          "r_multiple": 2.79,
+          "expected_move_pct": 0.1031,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.7455481517291563
+        }
+      ]
+    },
+    {
+      "trade_count": 4,
+      "kept_trades": 4,
+      "kept_win_rate": 0.75,
+      "kept_expectancy": 1.8515,
+      "blocked_trades": 0,
+      "blocked_winners": 0,
+      "blocked_losers": 0,
+      "blocked_by_stage": {},
+      "period": "TODAY",
+      "blocked_examples": []
+    }
+  ]
+}
