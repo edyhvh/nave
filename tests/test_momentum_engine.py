@@ -107,7 +107,8 @@ def _build_long_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.D
 def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     daily, setup, trigger, oi = _build_long_frames()
     base_config = load_momentum_config()
-    engine = MomentumSetupEngine(base_config)
+    relaxed_overlay = replace(base_config.theory_overlay, block_long_intraday_extension=False)
+    engine = MomentumSetupEngine(replace(base_config, theory_overlay=relaxed_overlay))
 
     with patch.object(
         engine,
@@ -207,6 +208,80 @@ def test_theory_overlay_blocks_weekly_neutral_swing() -> None:
 
     assert overlay.passed is False
     assert overlay.stage == "weekly_neutral_swing"
+
+
+def test_theory_overlay_blocks_long_intraday_when_weekly_velocity_extended() -> None:
+    config = replace(load_momentum_config().theory_overlay, require_daily_confirmation=False)
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("long", 2.5)):
+        overlay = evaluate_theory_overlay(
+            side="long",
+            daily=normalize_frame(daily),
+            setup=normalize_frame(setup),
+            expected_move_pct=0.08,
+            config=config,
+        )
+
+    assert overlay.passed is False
+    assert overlay.stage == "long_intraday_extension"
+    assert overlay.weekly_velocity_atr == 2.5
+
+
+def test_theory_overlay_long_intraday_extension_does_not_block_swings() -> None:
+    config = replace(load_momentum_config().theory_overlay, require_daily_confirmation=False)
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("long", 2.5)):
+        with patch("trading.crypto.momentum.theory_overlay.chase_gate", return_value=(True, 0.5, "ok")):
+            overlay = evaluate_theory_overlay(
+                side="long",
+                daily=normalize_frame(daily),
+                setup=normalize_frame(setup),
+                expected_move_pct=0.12,
+                config=config,
+            )
+
+    assert overlay.passed is True
+    assert overlay.stage == "passed"
+
+
+def test_theory_overlay_long_intraday_extension_does_not_block_shorts() -> None:
+    config = replace(load_momentum_config().theory_overlay, require_daily_confirmation=False)
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("short", -2.5)):
+        overlay = evaluate_theory_overlay(
+            side="short",
+            daily=normalize_frame(daily),
+            setup=normalize_frame(setup),
+            expected_move_pct=0.08,
+            config=config,
+        )
+
+    assert overlay.passed is True
+    assert overlay.stage == "passed"
+
+
+def test_theory_overlay_long_intraday_extension_can_be_disabled() -> None:
+    config = replace(
+        load_momentum_config().theory_overlay,
+        require_daily_confirmation=False,
+        block_long_intraday_extension=False,
+    )
+    daily, setup, _, _ = _build_long_frames()
+
+    with patch("trading.crypto.momentum.theory_overlay.momentum_bias", return_value=("long", 2.5)):
+        overlay = evaluate_theory_overlay(
+            side="long",
+            daily=normalize_frame(daily),
+            setup=normalize_frame(setup),
+            expected_move_pct=0.08,
+            config=config,
+        )
+
+    assert overlay.passed is True
+    assert overlay.stage == "passed"
 
 
 def test_theory_overlay_weekly_neutral_swing_block_can_be_disabled() -> None:

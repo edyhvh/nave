@@ -126,12 +126,91 @@ actual. La regla theory-grounded es bloquearlos.
 - **2024-2025-bull**: bloquea 2 shorts ganadores (sesgo semanal -0.66 y
   -0.75); el WR del periodo se mantiene en 1.0 sobre los 7 que quedan.
 
+## Iteracion 4: ceiling de extension semanal para longs intraday
+
+### Hipotesis
+
+Despues del bloqueo de swings sin tailwind semanal, el cluster perdedor
+restante quedo dominado por **longs intraday tomados con la lectura
+semanal ya muy estirada al alza**. CriptoPana es explicito: cuando el
+weekly impulse esta exhausto, el siguiente movimiento natural es un
+reset diario, no otra extension intraday.
+
+### Diagnostico cuantitativo
+
+Sobre el pool conservado por iter 3 (184 trades, 27 perdedores), la
+asimetria long/short es marcada:
+
+- Longs conservados: 104 trades, WR 0.817, expectancy 2.155, 19 perdedores.
+- Shorts conservados: 80 trades, WR 0.900, expectancy 2.423, 8 perdedores.
+
+Bucketeando longs por `aligned_weekly_velocity_atr` (ATR-normalizado en
+direccion del trade):
+
+- (0, 1]: 18 trades, WR **0.889**, expectancy 2.290.
+- (1, 2]: 42 trades, WR 0.833, expectancy 2.214.
+- (2, 3]: 28 trades, WR 0.786, expectancy 2.072.
+- (3, 99]: 15 trades, WR 0.733, expectancy 1.938.
+
+Decay monotonico: a mas velocity stretched al alza, peor performance.
+Los shorts no muestran este patron en `(2, 3]` (WR 0.957 ahi); por eso
+la regla es asimetrica.
+
+Filtrando especificamente intraday longs con `aligned_velocity > 2.0`:
+17 trades, WR 0.706, 5 perdedores. Ese es el cluster perdedor concreto.
+
+### Regla adoptada
+
+- **Configuracion actual**:
+  - `block_long_intraday_extension = true`
+  - `long_intraday_extension_max_expected_move_pct = 0.10`
+  - `long_intraday_extension_max_weekly_velocity = 2.0`
+- Cuando `side == "long"`, `expected_move_pct < 0.10` y la velocity
+  semanal supera 2.0 ATR, el overlay rechaza con
+  `stage = "long_intraday_extension"`. El bloqueo se evalua *antes* del
+  `chase_gate`, por lo que ni el carve-out de overshoot ni el path de
+  swing chase se afectan.
+- Los shorts y los swings no se tocan; la regla solo afecta a longs
+  intraday en estado de extension semanal.
+
+### Resultado sobre replay
+
+- Pool conservado: **167 trades** (vs 184 en iter 3).
+- Win rate conservado: **0.8683** (vs 0.8533).
+- Expectancy conservada: **2.3056** (vs 2.2715).
+- Trades bloqueados: 46 (26 ganadores, 20 perdedores).
+- Distribucion de bloqueos: `chase_gate=6`, `weekly_neutral_swing=23`,
+  `long_intraday_extension=17`.
+
+### Donde mejora de verdad
+
+- **2020-recovery+2021-ATH**: 0.756 → **0.784** WR, expectancy 2.16 →
+  2.24. Esta era la peor cola del pool y se reduce.
+- **2017-bull+2018-bear**: 0.881 → **0.902** WR, expectancy 2.20 → 2.26.
+- **2020-covid-crash**: 0.812 → 0.833 WR.
+
+### Costo
+
+- 12 ganadores adicionales bloqueados sobre iter 3. La mayoria se
+  concentra en mercados muy alcistas donde el long intraday seguia
+  funcionando aun con weekly extendido (ej: rallies parabolicos del
+  bull market). Por eso el filtro reduce, pero no elimina, la cola
+  ganadora del segmento.
+- **2019-recovery**: 0.848 → 0.844 WR (1 ganador bloqueado, BTC
+  2019-04-03 con velocity 2.64 que entro en chase_overshoot).
+- **2023-recovery**: 0.923 → 0.909 WR (2 ganadores bloqueados, ambos
+  intraday-long con velocity ~2.6-3.7).
+- **2024-2025-bull**: 1.0 → 1.0 WR sobre 6 trades restantes (3 ganadores
+  bloqueados pero los demas siguen perfectos).
+
 ## Lectura practica
 
-- El overlay ya tiene dos capas teoricamente coherentes:
+- El overlay ya tiene tres capas teoricamente coherentes:
   1. **Weekly bias requerido**: swings sin tailwind semanal no entran.
   2. **Chase gate selectivo**: pullbacks demasiado superficiales sobre
      impulsos extendidos no entran (con carve-out para overshoots).
+  3. **Long intraday ceiling**: longs intraday cuando la lectura semanal
+     ya esta agotada no entran, esperando reset diario.
 - Cada capa esta calibrada con datos separables y direccion teorica,
   no con barridos ciegos.
 - El siguiente plano probable ya no es weekly velocity: es estructura

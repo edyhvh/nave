@@ -84,6 +84,9 @@ class TheoryOverlayConfig:
     chase_max_retrace: float
     block_weekly_neutral_swing: bool
     weekly_neutral_swing_min_expected_move_pct: float
+    block_long_intraday_extension: bool
+    long_intraday_extension_max_expected_move_pct: float
+    long_intraday_extension_max_weekly_velocity: float
 
 
 @dataclass(frozen=True)

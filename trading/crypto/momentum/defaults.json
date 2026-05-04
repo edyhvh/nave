@@ -65,7 +65,10 @@
     "chase_min_retrace": 0.2,
     "chase_max_retrace": 0.9,
     "block_weekly_neutral_swing": true,
-    "weekly_neutral_swing_min_expected_move_pct": 0.1
+    "weekly_neutral_swing_min_expected_move_pct": 0.1,
+    "block_long_intraday_extension": true,
+    "long_intraday_extension_max_expected_move_pct": 0.1,
+    "long_intraday_extension_max_weekly_velocity": 2.0
   },
   "cadence": {
     "baseline_trades_per_month": 3,
