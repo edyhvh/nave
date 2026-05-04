@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import typer
 
+from cli.commands.crypto import crypto_app
 from cli.commands.core import api_app, data_app, mcp_app, trading_app
 from cli.commands.cot import cot_app
 from cli.commands.hermes import hermes_app
@@ -22,6 +23,7 @@ app = ProfessionalTyper(
 )
 
 app.add_typer(data_app, name="data")
+app.add_typer(crypto_app, name="crypto")
 app.add_typer(trading_app, name="trading")
 app.add_typer(api_app, name="api")
 app.add_typer(mcp_app, name="mcp")

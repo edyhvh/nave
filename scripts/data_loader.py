@@ -257,7 +257,8 @@ def _infer_timeframe_from_index(ts: pd.Series) -> str | None:
     diffs = ts.sort_values().diff().dropna()
     if diffs.empty:
         return None
-    median_minutes = diffs.median().total_seconds() / 60
+    median_diff = pd.Timedelta(diffs.median())
+    median_minutes = median_diff.total_seconds() / 60
     # Snap to the closest canonical timeframe by log-distance.
     best, best_ratio = None, None
     for tf, minutes in TIMEFRAME_MINUTES.items():
@@ -413,7 +414,9 @@ def _openbb_symbol(coin: str) -> str:
 
 
 def _openbb_interval(timeframe: str) -> str:
-    return {"1H": "1h", "4H": "4h", "1D": "1d", "1W": "1W"}[timeframe]
+    # OpenBB does not expose a native 4H interval on this backend. Fetch 1H and
+    # let the existing resample path promote it to 4H.
+    return {"1H": "1h", "4H": "1h", "1D": "1d", "1W": "1W"}[timeframe]
 
 
 # --------------------------------------------------------------------------- #

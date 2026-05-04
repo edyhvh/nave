@@ -31,6 +31,7 @@ from trading.crypto.strategy import (
 )
 from trading.crypto.theory_v2 import TheoryV2Engine, TheoryV2Decision
 from trading.crypto.execution import ExecutionPlan, build_execution_plan
+from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, TradePlan
 
 __all__ = [
     "HyperliquidClient",
@@ -49,4 +50,7 @@ __all__ = [
     "TheoryV2Decision",
     "ExecutionPlan",
     "build_execution_plan",
+    "MomentumBacktester",
+    "MomentumSetupEngine",
+    "TradePlan",
 ]

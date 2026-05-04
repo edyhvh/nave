@@ -22,20 +22,46 @@ Wallet credentials are NEVER stored in this package or in environment
 variables. All secrets live in ~/.secrets/nave-wallets/ (Fernet-encrypted).
 """
 
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Any
+
 # Back-compat aliases must be installed BEFORE any re-export pulls a submodule,
 # so legacy paths like ``trading.client`` resolve to ``trading.crypto.client``.
 from trading import _compat as _compat
 
 _compat.install()
 
-from trading.crypto.vault import WalletVault
-from trading.crypto.client import HyperliquidClient
-from trading.crypto.signals import Signal, Direction, Timeframe
-from trading.crypto.strategy import BaseStrategy, CotWeeklyStrategy, TheoryV2Strategy
-from trading.crypto.theory_v2 import TheoryV2Engine, TheoryV2Decision
-from trading.crypto.execution import ExecutionPlan, build_execution_plan
-from trading.crypto.cot.cot_fetcher import fetch_latest_cot
-from trading.crypto.cot.cot_analyzer import COTAnalyzer
+_EXPORTS: dict[str, tuple[str, str]] = {
+    "HyperliquidClient": ("trading.crypto.client", "HyperliquidClient"),
+    "WalletVault": ("trading.crypto.vault", "WalletVault"),
+    "Signal": ("trading.crypto.signals", "Signal"),
+    "Direction": ("trading.crypto.signals", "Direction"),
+    "Timeframe": ("trading.crypto.signals", "Timeframe"),
+    "BaseStrategy": ("trading.crypto.strategy", "BaseStrategy"),
+    "CotWeeklyStrategy": ("trading.crypto.strategy", "CotWeeklyStrategy"),
+    "TheoryV2Strategy": ("trading.crypto.strategy", "TheoryV2Strategy"),
+    "TheoryV2Engine": ("trading.crypto.theory_v2", "TheoryV2Engine"),
+    "TheoryV2Decision": ("trading.crypto.theory_v2", "TheoryV2Decision"),
+    "ExecutionPlan": ("trading.crypto.execution", "ExecutionPlan"),
+    "build_execution_plan": ("trading.crypto.execution", "build_execution_plan"),
+    "fetch_latest_cot": ("trading.crypto.cot.cot_fetcher", "fetch_latest_cot"),
+    "COTAnalyzer": ("trading.crypto.cot.cot_analyzer", "COTAnalyzer"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _EXPORTS[name]
+    value = getattr(import_module(module_name), attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_EXPORTS))
 
 __all__ = [
     "HyperliquidClient",

@@ -335,17 +335,97 @@ def weekly_plan(
 
 @mcp.tool()
 def theory_v2_scan(coins: str = "BTC ETH") -> str:
-    """Run the daily top-down theory v2 scan (momentum → daily → 4H → 1H).
+    """Run the legacy secondary theory-v2 scan (momentum → daily → 4H → 1H).
 
     Returns per-coin decision trace: at which stage each coin was rejected
     (weekly / weekly_cot / daily / climax_cooldown / chase_gate / 4H / 1H)
     or, if fired, the entry / stop-loss / targets / zc1_rr / velocity.
-    The Hermes agent uses this as its primary daily signal source.
+    Use this when you explicitly want the older theory-v2 decision path.
 
     Args:
         coins: Whitespace-separated coin list, e.g. 'BTC ETH SOL'.
     """
     payload = hermes.theory_v2_scan(coins=coins)
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def momentum_scan(
+    symbols: str = "BTCUSDT,ETHUSDT",
+    tf: str = "4h,1h",
+    account_equity: float = 10000.0,
+    risk_pct: float = 0.005,
+    score_threshold: int = 75,
+) -> str:
+    """Primary default BTC/ETH derivatives market scan."""
+    payload = hermes.momentum_scan(
+        symbols=symbols,
+        tf=tf,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        score_threshold=score_threshold,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def market_scan(
+    symbols: str = "BTCUSDT,ETHUSDT",
+    tf: str = "4h,1h",
+    account_equity: float = 10000.0,
+    risk_pct: float = 0.005,
+    score_threshold: int = 75,
+) -> str:
+    """Default generic market scan alias. Internally routes to momentum_scan."""
+    payload = hermes.market_scan(
+        symbols=symbols,
+        tf=tf,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        score_threshold=score_threshold,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def momentum_playbook(
+    symbol: str,
+    side: str,
+    tf: str = "4h,1h",
+    account_equity: float = 10000.0,
+    risk_pct: float = 0.005,
+    score_threshold: int = 75,
+) -> str:
+    """Primary default BTC/ETH derivatives trade-plan builder."""
+    payload = hermes.momentum_playbook(
+        symbol=symbol,
+        side=side,
+        tf=tf,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        score_threshold=score_threshold,
+    )
+    return json.dumps(payload, indent=2)
+
+
+@mcp.tool()
+def market_playbook(
+    symbol: str,
+    side: str,
+    tf: str = "4h,1h",
+    account_equity: float = 10000.0,
+    risk_pct: float = 0.005,
+    score_threshold: int = 75,
+) -> str:
+    """Default generic trade-plan alias. Internally routes to momentum_playbook."""
+    payload = hermes.market_playbook(
+        symbol=symbol,
+        side=side,
+        tf=tf,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        score_threshold=score_threshold,
+    )
     return json.dumps(payload, indent=2)
 
 
