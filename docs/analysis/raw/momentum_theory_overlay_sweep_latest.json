@@ -1,0 +1,399 @@
+{
+  "generated_at": "2026-05-04T01:53:02.763362+00:00",
+  "mode": "sweep",
+  "base_overlay_config": {
+    "enabled": true,
+    "min_weekly_velocity": 1.2,
+    "allow_range_breakout_bias": true,
+    "require_daily_confirmation": true,
+    "block_climax_cooldown": false,
+    "climax_atr_window": 20,
+    "climax_mult": 3.0,
+    "climax_cooldown_bars": 3,
+    "block_chase_on_swing": true,
+    "chase_min_expected_move_pct": 0.08,
+    "chase_min_retrace": 0.2,
+    "chase_max_retrace": 0.9,
+    "block_weekly_neutral_swing": true,
+    "weekly_neutral_swing_min_expected_move_pct": 0.1
+  },
+  "results": [
+    {
+      "chase_min_retrace": 0.18,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 184,
+      "kept_win_rate": 0.8533,
+      "kept_expectancy": 2.2715,
+      "blocked_trades": 29,
+      "blocked_winners": 14,
+      "blocked_losers": 15,
+      "blocked_by_stage": {
+        "chase_gate": 6,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.2,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 184,
+      "kept_win_rate": 0.8533,
+      "kept_expectancy": 2.2715,
+      "blocked_trades": 29,
+      "blocked_winners": 14,
+      "blocked_losers": 15,
+      "blocked_by_stage": {
+        "chase_gate": 6,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.12,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 185,
+      "kept_win_rate": 0.8486,
+      "kept_expectancy": 2.2538,
+      "blocked_trades": 28,
+      "blocked_winners": 14,
+      "blocked_losers": 14,
+      "blocked_by_stage": {
+        "chase_gate": 5,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.15,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 185,
+      "kept_win_rate": 0.8486,
+      "kept_expectancy": 2.2538,
+      "blocked_trades": 28,
+      "blocked_winners": 14,
+      "blocked_losers": 14,
+      "blocked_by_stage": {
+        "chase_gate": 5,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.1,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.12,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.15,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.18,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.2,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.1,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 187,
+      "kept_win_rate": 0.8396,
+      "kept_expectancy": 2.219,
+      "blocked_trades": 26,
+      "blocked_winners": 14,
+      "blocked_losers": 12,
+      "blocked_by_stage": {
+        "chase_gate": 3,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.1,
+      "chase_min_expected_move_pct": 0.12,
+      "trade_count": 213,
+      "kept_trades": 189,
+      "kept_win_rate": 0.836,
+      "kept_expectancy": 2.2043,
+      "blocked_trades": 24,
+      "blocked_winners": 13,
+      "blocked_losers": 11,
+      "blocked_by_stage": {
+        "chase_gate": 1,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.12,
+      "chase_min_expected_move_pct": 0.12,
+      "trade_count": 213,
+      "kept_trades": 189,
+      "kept_win_rate": 0.836,
+      "kept_expectancy": 2.2043,
+      "blocked_trades": 24,
+      "blocked_winners": 13,
+      "blocked_losers": 11,
+      "blocked_by_stage": {
+        "chase_gate": 1,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.15,
+      "chase_min_expected_move_pct": 0.12,
+      "trade_count": 213,
+      "kept_trades": 189,
+      "kept_win_rate": 0.836,
+      "kept_expectancy": 2.2043,
+      "blocked_trades": 24,
+      "blocked_winners": 13,
+      "blocked_losers": 11,
+      "blocked_by_stage": {
+        "chase_gate": 1,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.18,
+      "chase_min_expected_move_pct": 0.12,
+      "trade_count": 213,
+      "kept_trades": 189,
+      "kept_win_rate": 0.836,
+      "kept_expectancy": 2.2043,
+      "blocked_trades": 24,
+      "blocked_winners": 13,
+      "blocked_losers": 11,
+      "blocked_by_stage": {
+        "chase_gate": 1,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.2,
+      "chase_min_expected_move_pct": 0.12,
+      "trade_count": 213,
+      "kept_trades": 189,
+      "kept_win_rate": 0.836,
+      "kept_expectancy": 2.2043,
+      "blocked_trades": 24,
+      "blocked_winners": 13,
+      "blocked_losers": 11,
+      "blocked_by_stage": {
+        "chase_gate": 1,
+        "weekly_neutral_swing": 23
+      }
+    }
+  ],
+  "top_candidates": [
+    {
+      "chase_min_retrace": 0.18,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 184,
+      "kept_win_rate": 0.8533,
+      "kept_expectancy": 2.2715,
+      "blocked_trades": 29,
+      "blocked_winners": 14,
+      "blocked_losers": 15,
+      "blocked_by_stage": {
+        "chase_gate": 6,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.2,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 184,
+      "kept_win_rate": 0.8533,
+      "kept_expectancy": 2.2715,
+      "blocked_trades": 29,
+      "blocked_winners": 14,
+      "blocked_losers": 15,
+      "blocked_by_stage": {
+        "chase_gate": 6,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.12,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 185,
+      "kept_win_rate": 0.8486,
+      "kept_expectancy": 2.2538,
+      "blocked_trades": 28,
+      "blocked_winners": 14,
+      "blocked_losers": 14,
+      "blocked_by_stage": {
+        "chase_gate": 5,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.15,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 185,
+      "kept_win_rate": 0.8486,
+      "kept_expectancy": 2.2538,
+      "blocked_trades": 28,
+      "blocked_winners": 14,
+      "blocked_losers": 14,
+      "blocked_by_stage": {
+        "chase_gate": 5,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.1,
+      "chase_min_expected_move_pct": 0.08,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.12,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.15,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.18,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.2,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 186,
+      "kept_win_rate": 0.8441,
+      "kept_expectancy": 2.2363,
+      "blocked_trades": 27,
+      "blocked_winners": 14,
+      "blocked_losers": 13,
+      "blocked_by_stage": {
+        "chase_gate": 4,
+        "weekly_neutral_swing": 23
+      }
+    },
+    {
+      "chase_min_retrace": 0.1,
+      "chase_min_expected_move_pct": 0.1,
+      "trade_count": 213,
+      "kept_trades": 187,
+      "kept_win_rate": 0.8396,
+      "kept_expectancy": 2.219,
+      "blocked_trades": 26,
+      "blocked_winners": 14,
+      "blocked_losers": 12,
+      "blocked_by_stage": {
+        "chase_gate": 3,
+        "weekly_neutral_swing": 23
+      }
+    }
+  ]
+}

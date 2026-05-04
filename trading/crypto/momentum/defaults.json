@@ -51,6 +51,22 @@
     "max_expected_move_pct": 0.2,
     "max_holding_bars": 72
   },
+  "theory_overlay": {
+    "enabled": true,
+    "min_weekly_velocity": 1.2,
+    "allow_range_breakout_bias": true,
+    "require_daily_confirmation": true,
+    "block_climax_cooldown": false,
+    "climax_atr_window": 20,
+    "climax_mult": 3.0,
+    "climax_cooldown_bars": 3,
+    "block_chase_on_swing": true,
+    "chase_min_expected_move_pct": 0.08,
+    "chase_min_retrace": 0.2,
+    "chase_max_retrace": 0.9,
+    "block_weekly_neutral_swing": true,
+    "weekly_neutral_swing_min_expected_move_pct": 0.1
+  },
   "cadence": {
     "baseline_trades_per_month": 3,
     "expansion_trades_per_month": 6,

@@ -27,6 +27,10 @@ from trading.crypto.momentum.structure import (
     assess_structure,
     build_invalidation,
 )
+from trading.crypto.momentum.theory_overlay import (
+    TheoryOverlayAssessment,
+    evaluate_theory_overlay,
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,7 @@ class MomentumSetupEngine:
         daily_frame: pd.DataFrame,
         setup_frame: pd.DataFrame,
         trigger_frame: pd.DataFrame,
+        weekly_frame: pd.DataFrame | None = None,
         open_interest: pd.DataFrame | pd.Series | None = None,
         funding_rate: float | None = None,
         account_equity: float = 10000.0,
@@ -55,12 +60,14 @@ class MomentumSetupEngine:
         daily = normalize_frame(daily_frame)
         setup = normalize_frame(setup_frame)
         trigger = normalize_frame(trigger_frame)
+        weekly = normalize_frame(weekly_frame) if weekly_frame is not None else None
         sides = [side.lower()] if side else ["long", "short"]
         plans: list[TradePlan] = []
         for requested_side in sides:
             evaluation = self._evaluate_side(
                 symbol=symbol,
                 side=requested_side,
+                weekly=weekly,
                 daily=daily,
                 setup=setup,
                 trigger=trigger,
@@ -77,6 +84,7 @@ class MomentumSetupEngine:
         *,
         symbol: str,
         side: str,
+        weekly: pd.DataFrame | None,
         daily: pd.DataFrame,
         setup: pd.DataFrame,
         trigger: pd.DataFrame,
@@ -119,6 +127,14 @@ class MomentumSetupEngine:
             breakout=breakout,
             volatility=volatility,
         )
+        theory_overlay = evaluate_theory_overlay(
+            side=side,
+            weekly=weekly,
+            daily=daily,
+            setup=setup,
+            expected_move_pct=expected_move_pct,
+            config=self.config.theory_overlay,
+        )
         score_breakdown = build_score_breakdown(
             trend_score=(
                 (daily_trend.score + setup_trend.score + structure.score) / 3.0),
@@ -138,6 +154,7 @@ class MomentumSetupEngine:
             score=score_breakdown.total,
             volatility=volatility,
             participation=participation,
+            theory_overlay=theory_overlay,
             daily_ema_gap_pct=daily_ema_gap_pct,
             setup_ema_gap_pct=setup_ema_gap_pct,
         )
@@ -160,6 +177,7 @@ class MomentumSetupEngine:
             retest=retest,
             volatility=volatility,
             participation=participation,
+            theory_overlay=theory_overlay,
             rr_estimated=rr_estimated,
             expected_move_pct=expected_move_pct,
         )
@@ -198,6 +216,7 @@ class MomentumSetupEngine:
                 oi_change_pct=round(participation.oi_change_pct, 4)
                 if participation.oi_change_pct is not None
                 else None,
+                theory_overlay=theory_overlay.to_dict(),
             ),
         )
         return MomentumEvaluation(plan=plan, score_breakdown=score_breakdown)
@@ -325,6 +344,7 @@ class MomentumSetupEngine:
         score: int,
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
+        theory_overlay: TheoryOverlayAssessment,
         daily_ema_gap_pct: float | None,
         setup_ema_gap_pct: float | None,
     ) -> bool:
@@ -370,6 +390,7 @@ class MomentumSetupEngine:
             and intraday_underextended_ok
             and intraday_late_long_ok
             and swing_short_exhaustion_ok
+            and theory_overlay.passed
             and not participation.crowded
         )
 
@@ -418,6 +439,7 @@ class MomentumSetupEngine:
         retest: RetestAssessment,
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
+        theory_overlay: TheoryOverlayAssessment,
         rr_estimated: float,
         expected_move_pct: float,
     ) -> dict[str, list[Any]]:
@@ -477,6 +499,12 @@ class MomentumSetupEngine:
                 "detail": "volume, OI, and funding quality",
             },
             {
+                "code": "theory_overlay",
+                "passed": theory_overlay.passed,
+                "value": theory_overlay.to_dict(),
+                "detail": "weekly theory bias plus anti-climax and anti-chase vetoes",
+            },
+            {
                 "code": "risk_efficiency",
                 "passed": rr_estimated >= self.config.min_rr,
                 "value": {
@@ -491,6 +519,7 @@ class MomentumSetupEngine:
             f"Breakout={'yes' if breakout.detected else 'no'} and retest={'confirmed' if retest.confirmed else retest.status} around {round(breakout.breakout_level, 2) if breakout.breakout_level is not None else 'n/a'}.",
             f"Volatility regime atr_ratio={volatility.atr_ratio:.2f}, range_expansion={volatility.range_expansion:.2f}; expected move {expected_move_pct*100:.1f}%.",
             f"Participation volume_ratio={participation.volume_ratio:.2f}, funding={participation.funding_rate if participation.funding_rate is not None else 'n/a'}, crowded={participation.crowded}.",
+            f"Theory overlay={theory_overlay.passed}; stage={theory_overlay.stage}; reason={theory_overlay.reason}.",
             f"Estimated R:R {rr_estimated:.2f} vs minimum {self.config.min_rr:.2f}.",
         ]
         return {"machine": machine, "human": human}
