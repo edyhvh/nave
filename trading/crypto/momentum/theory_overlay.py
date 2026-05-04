@@ -131,25 +131,6 @@ def evaluate_theory_overlay(
             weekly_velocity_atr=velocity,
         )
 
-    if (
-        side == "long"
-        and config.block_long_intraday_extension
-        and expected_move_pct < config.long_intraday_extension_max_expected_move_pct
-        and velocity is not None
-        and velocity > config.long_intraday_extension_max_weekly_velocity
-    ):
-        return TheoryOverlayAssessment(
-            passed=False,
-            stage="long_intraday_extension",
-            bias=bias,
-            bias_source=bias_source,
-            reason=(
-                f"intraday long but weekly velocity {velocity:.2f} ATR is exhausted; "
-                "wait for the daily to reset before chasing"
-            ),
-            weekly_velocity_atr=velocity,
-        )
-
     if config.block_climax_cooldown:
         in_cooldown, bars_since = detect_climax_cooldown(
             daily,

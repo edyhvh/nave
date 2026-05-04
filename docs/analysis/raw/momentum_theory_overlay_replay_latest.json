@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-04T01:54:22.356673+00:00",
+  "generated_at": "2026-05-04T01:52:49.893968+00:00",
   "mode": "replay",
   "overlay_config": {
     "enabled": true,
@@ -15,37 +15,32 @@
     "chase_min_retrace": 0.2,
     "chase_max_retrace": 0.9,
     "block_weekly_neutral_swing": true,
-    "weekly_neutral_swing_min_expected_move_pct": 0.1,
-    "block_long_intraday_extension": true,
-    "long_intraday_extension_max_expected_move_pct": 0.1,
-    "long_intraday_extension_max_weekly_velocity": 2.0
+    "weekly_neutral_swing_min_expected_move_pct": 0.1
   },
   "pooled": {
     "trade_count": 213,
-    "kept_trades": 167,
-    "kept_win_rate": 0.8683,
-    "kept_expectancy": 2.3056,
-    "blocked_trades": 46,
-    "blocked_winners": 26,
-    "blocked_losers": 20,
+    "kept_trades": 184,
+    "kept_win_rate": 0.8533,
+    "kept_expectancy": 2.2715,
+    "blocked_trades": 29,
+    "blocked_winners": 14,
+    "blocked_losers": 15,
     "blocked_by_stage": {
       "chase_gate": 6,
-      "long_intraday_extension": 17,
       "weekly_neutral_swing": 23
     }
   },
   "periods": [
     {
       "trade_count": 50,
-      "kept_trades": 41,
-      "kept_win_rate": 0.9024,
-      "kept_expectancy": 2.261,
-      "blocked_trades": 9,
+      "kept_trades": 42,
+      "kept_win_rate": 0.881,
+      "kept_expectancy": 2.2003,
+      "blocked_trades": 8,
       "blocked_winners": 4,
-      "blocked_losers": 5,
+      "blocked_losers": 4,
       "blocked_by_stage": {
         "chase_gate": 2,
-        "long_intraday_extension": 1,
         "weekly_neutral_swing": 6
       },
       "period": "2017-bull+2018-bear",
@@ -93,31 +88,17 @@
     },
     {
       "trade_count": 36,
-      "kept_trades": 32,
-      "kept_win_rate": 0.8438,
-      "kept_expectancy": 1.8357,
-      "blocked_trades": 4,
-      "blocked_winners": 3,
+      "kept_trades": 33,
+      "kept_win_rate": 0.8485,
+      "kept_expectancy": 1.9032,
+      "blocked_trades": 3,
+      "blocked_winners": 2,
       "blocked_losers": 1,
       "blocked_by_stage": {
-        "long_intraday_extension": 1,
         "weekly_neutral_swing": 3
       },
       "period": "2019-recovery",
       "blocked_examples": [
-        {
-          "period": "2019-recovery",
-          "symbol": "BTC",
-          "side": "long",
-          "entry_time": "2019-04-03T01:00:00+00:00",
-          "r_multiple": 4.064,
-          "expected_move_pct": 0.08,
-          "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 2.64 ATR is exhausted; wait for the daily to reset before chasing",
-          "retrace_fraction": null,
-          "weekly_velocity_atr": 2.636634707418764
-        },
         {
           "period": "2019-recovery",
           "symbol": "ETH",
@@ -143,36 +124,35 @@
           "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
           "retrace_fraction": null,
           "weekly_velocity_atr": -0.023691104445878772
+        },
+        {
+          "period": "2019-recovery",
+          "symbol": "ETH",
+          "side": "short",
+          "entry_time": "2019-12-17T21:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1328,
+          "passed": false,
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
+          "retrace_fraction": null,
+          "weekly_velocity_atr": -0.9064360468759799
         }
       ]
     },
     {
       "trade_count": 17,
-      "kept_trades": 12,
-      "kept_win_rate": 0.8333,
-      "kept_expectancy": 2.6055,
-      "blocked_trades": 5,
-      "blocked_winners": 3,
-      "blocked_losers": 2,
+      "kept_trades": 16,
+      "kept_win_rate": 0.8125,
+      "kept_expectancy": 2.4909,
+      "blocked_trades": 1,
+      "blocked_winners": 0,
+      "blocked_losers": 1,
       "blocked_by_stage": {
-        "long_intraday_extension": 4,
         "weekly_neutral_swing": 1
       },
       "period": "2020-covid-crash",
       "blocked_examples": [
-        {
-          "period": "2020-covid-crash",
-          "symbol": "BTC",
-          "side": "long",
-          "entry_time": "2020-05-07T21:00:00+00:00",
-          "r_multiple": -1.0,
-          "expected_move_pct": 0.0922,
-          "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 2.24 ATR is exhausted; wait for the daily to reset before chasing",
-          "retrace_fraction": null,
-          "weekly_velocity_atr": 2.242183550633717
-        },
         {
           "period": "2020-covid-crash",
           "symbol": "ETH",
@@ -185,32 +165,18 @@
           "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
           "retrace_fraction": null,
           "weekly_velocity_atr": -0.9064360468759799
-        },
-        {
-          "period": "2020-covid-crash",
-          "symbol": "ETH",
-          "side": "long",
-          "entry_time": "2020-02-12T05:00:00+00:00",
-          "r_multiple": 3.202,
-          "expected_move_pct": 0.0975,
-          "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 3.47 ATR is exhausted; wait for the daily to reset before chasing",
-          "retrace_fraction": null,
-          "weekly_velocity_atr": 3.4726913796885293
         }
       ]
     },
     {
       "trade_count": 50,
-      "kept_trades": 37,
-      "kept_win_rate": 0.7838,
-      "kept_expectancy": 2.2366,
-      "blocked_trades": 13,
-      "blocked_winners": 7,
-      "blocked_losers": 6,
+      "kept_trades": 45,
+      "kept_win_rate": 0.7556,
+      "kept_expectancy": 2.1635,
+      "blocked_trades": 5,
+      "blocked_winners": 2,
+      "blocked_losers": 3,
       "blocked_by_stage": {
-        "long_intraday_extension": 8,
         "weekly_neutral_swing": 5
       },
       "period": "2020-recovery+2021-ATH",
@@ -219,40 +185,40 @@
           "period": "2020-recovery+2021-ATH",
           "symbol": "BTC",
           "side": "long",
-          "entry_time": "2020-07-27T05:00:00+00:00",
-          "r_multiple": 4.787,
-          "expected_move_pct": 0.08,
+          "entry_time": "2021-02-06T13:00:00+00:00",
+          "r_multiple": -1.0,
+          "expected_move_pct": 0.1073,
           "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 2.58 ATR is exhausted; wait for the daily to reset before chasing",
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
           "retrace_fraction": null,
-          "weekly_velocity_atr": 2.582840129500999
+          "weekly_velocity_atr": 0.11642669352434686
         },
         {
           "period": "2020-recovery+2021-ATH",
           "symbol": "BTC",
           "side": "long",
-          "entry_time": "2020-08-01T21:00:00+00:00",
+          "entry_time": "2021-03-13T17:00:00+00:00",
           "r_multiple": -1.0,
-          "expected_move_pct": 0.08,
+          "expected_move_pct": 0.1042,
           "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 3.34 ATR is exhausted; wait for the daily to reset before chasing",
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
           "retrace_fraction": null,
-          "weekly_velocity_atr": 3.3422770345084953
+          "weekly_velocity_atr": 1.1701217910316193
         },
         {
           "period": "2020-recovery+2021-ATH",
           "symbol": "BTC",
-          "side": "long",
-          "entry_time": "2020-10-27T17:00:00+00:00",
-          "r_multiple": -1.0,
-          "expected_move_pct": 0.08,
+          "side": "short",
+          "entry_time": "2021-06-21T05:00:00+00:00",
+          "r_multiple": 2.462,
+          "expected_move_pct": 0.1378,
           "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 3.12 ATR is exhausted; wait for the daily to reset before chasing",
+          "stage": "weekly_neutral_swing",
+          "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
           "retrace_fraction": null,
-          "weekly_velocity_atr": 3.1233904027641546
+          "weekly_velocity_atr": -0.4442276618018177
         }
       ]
     },
@@ -313,14 +279,13 @@
     },
     {
       "trade_count": 14,
-      "kept_trades": 11,
-      "kept_win_rate": 0.9091,
-      "kept_expectancy": 2.5876,
-      "blocked_trades": 3,
-      "blocked_winners": 3,
+      "kept_trades": 13,
+      "kept_win_rate": 0.9231,
+      "kept_expectancy": 2.4695,
+      "blocked_trades": 1,
+      "blocked_winners": 1,
       "blocked_losers": 0,
       "blocked_by_stage": {
-        "long_intraday_extension": 2,
         "weekly_neutral_swing": 1
       },
       "period": "2023-recovery",
@@ -337,32 +302,6 @@
           "reason": "weekly theory bias is neutral; swing exposure requires a clear weekly tailwind",
           "retrace_fraction": null,
           "weekly_velocity_atr": 0.14834571640812896
-        },
-        {
-          "period": "2023-recovery",
-          "symbol": "BTC",
-          "side": "long",
-          "entry_time": "2023-10-24T01:00:00+00:00",
-          "r_multiple": 2.988,
-          "expected_move_pct": 0.08,
-          "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 2.63 ATR is exhausted; wait for the daily to reset before chasing",
-          "retrace_fraction": null,
-          "weekly_velocity_atr": 2.631382830912147
-        },
-        {
-          "period": "2023-recovery",
-          "symbol": "BTC",
-          "side": "long",
-          "entry_time": "2023-11-09T09:00:00+00:00",
-          "r_multiple": 0.651,
-          "expected_move_pct": 0.08,
-          "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 3.75 ATR is exhausted; wait for the daily to reset before chasing",
-          "retrace_fraction": null,
-          "weekly_velocity_atr": 3.7479013122349785
         }
       ]
     },
@@ -380,31 +319,17 @@
     },
     {
       "trade_count": 9,
-      "kept_trades": 6,
+      "kept_trades": 7,
       "kept_win_rate": 1.0,
-      "kept_expectancy": 2.671,
-      "blocked_trades": 3,
-      "blocked_winners": 3,
+      "kept_expectancy": 2.6207,
+      "blocked_trades": 2,
+      "blocked_winners": 2,
       "blocked_losers": 0,
       "blocked_by_stage": {
-        "long_intraday_extension": 1,
         "weekly_neutral_swing": 2
       },
       "period": "2024-2025-bull",
       "blocked_examples": [
-        {
-          "period": "2024-2025-bull",
-          "symbol": "BTC",
-          "side": "long",
-          "entry_time": "2024-11-06T17:00:00+00:00",
-          "r_multiple": 2.319,
-          "expected_move_pct": 0.08,
-          "passed": false,
-          "stage": "long_intraday_extension",
-          "reason": "intraday long but weekly velocity 2.08 ATR is exhausted; wait for the daily to reset before chasing",
-          "retrace_fraction": null,
-          "weekly_velocity_atr": 2.0810001996713114
-        },
         {
           "period": "2024-2025-bull",
           "symbol": "ETH",
