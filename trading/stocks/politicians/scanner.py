@@ -30,6 +30,8 @@ def run_daily_scan(
     """Fetch latest disclosures, return only those unseen since the last scan."""
     provider = provider or FMPPoliticianTradesProvider()
     store = store or SeenStore()
+    assert provider is not None
+    assert store is not None
 
     previous_scan_at = store.last_scan_at
     seen_count_before = store.size()

@@ -736,7 +736,8 @@ def politicians_scan(
     """
     from datetime import date
     from pathlib import Path
-    from trading.stocks.politicians import run_daily_scan
+
+    from trading.stocks.politicians.scanner import run_daily_scan
 
     payload = run_daily_scan(persist=not no_persist)
 

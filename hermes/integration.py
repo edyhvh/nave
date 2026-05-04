@@ -1068,10 +1068,8 @@ class HermesNaveIntegration:
         if lookback_days is not None and not 1 <= lookback_days <= 30:
             raise HermesIntegrationError("lookback_days must be between 1 and 30")
 
-        from trading.stocks.politicians import (
-            PoliticianTradesError,
-            run_daily_scan,
-        )
+        from trading.stocks.politicians.provider import PoliticianTradesError
+        from trading.stocks.politicians.scanner import run_daily_scan
 
         try:
             return run_daily_scan(persist=persist)
