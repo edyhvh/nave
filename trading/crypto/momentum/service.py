@@ -326,8 +326,11 @@ class MomentumMarketService:
         )
         response.raise_for_status()
         payload = response.json()
-        value = payload.get("lastFundingRate")
-        return float(value) if value is not None else None
+        try:
+            value = payload.get("lastFundingRate")
+            return float(value) if value is not None else None
+        except (AttributeError, TypeError, ValueError):
+            return None
 
     def fetch_open_interest_history(self, symbol: str, period: str) -> pd.DataFrame | None:
         binance_period = "4h" if period == "4h" else "1h"
@@ -344,12 +347,15 @@ class MomentumMarketService:
         payload = response.json()
         if not isinstance(payload, list) or not payload:
             return None
-        return pd.DataFrame(
-            {
-                "timestamp": [pd.to_datetime(entry["timestamp"], unit="ms", utc=True) for entry in payload],
-                "open_interest": [float(entry["sumOpenInterest"]) for entry in payload],
-            }
-        )
+        try:
+            return pd.DataFrame(
+                {
+                    "timestamp": [pd.to_datetime(entry["timestamp"], unit="ms", utc=True) for entry in payload],
+                    "open_interest": [float(entry["sumOpenInterest"]) for entry in payload],
+                }
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
 
     def parse_symbols(self, value: str | list[str]) -> list[str]:
         if isinstance(value, str):

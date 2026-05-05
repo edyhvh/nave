@@ -119,7 +119,7 @@ class MomentumSetupEngine:
         )
 
         entry_price = self._entry_price(side, trigger, breakout, retest)
-        invalidation = self._invalidation(
+        invalidation, invalidation_fallback_used = self._invalidation(
             trigger, side, breakout, retest, entry_price)
         expected_move_pct, stop_pct, rr_estimated = self._reward_profile(
             entry_price=entry_price,
@@ -216,6 +216,7 @@ class MomentumSetupEngine:
                 oi_change_pct=round(participation.oi_change_pct, 4)
                 if participation.oi_change_pct is not None
                 else None,
+                invalidation_fallback_used=True if invalidation_fallback_used else None,
                 theory_overlay=theory_overlay.to_dict(),
             ),
         )
@@ -290,15 +291,18 @@ class MomentumSetupEngine:
         breakout: BreakoutAssessment,
         retest: RetestAssessment,
         entry_price: float,
-    ) -> float:
+    ) -> tuple[float, bool]:
         level = breakout.breakout_level if breakout.breakout_level is not None else entry_price
         invalidation = build_invalidation(
             trigger, side, level, retest, self.config)
+        fallback_used = False
         if side == "long" and invalidation >= entry_price:
-            invalidation = entry_price * (1 - 0.02)
+            invalidation = entry_price * (1 - self.config.execution.invalidation_fallback_pct)
+            fallback_used = True
         if side == "short" and invalidation <= entry_price:
-            invalidation = entry_price * (1 + 0.02)
-        return float(invalidation)
+            invalidation = entry_price * (1 + self.config.execution.invalidation_fallback_pct)
+            fallback_used = True
+        return float(invalidation), fallback_used
 
     def _reward_profile(
         self,

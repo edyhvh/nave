@@ -46,6 +46,7 @@
   },
   "execution": {
     "stop_atr_buffer": 0.6,
+    "invalidation_fallback_pct": 0.02,
     "target_atr_multiple": 4.0,
     "min_expected_move_pct": 0.08,
     "max_expected_move_pct": 0.2,

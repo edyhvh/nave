@@ -62,28 +62,11 @@ class ParticipationConfig:
 @dataclass(frozen=True)
 class ExecutionConfig:
     stop_atr_buffer: float
+    invalidation_fallback_pct: float
     target_atr_multiple: float
     min_expected_move_pct: float
     max_expected_move_pct: float
     max_holding_bars: int
-
-
-@dataclass(frozen=True)
-class TheoryOverlayConfig:
-    enabled: bool
-    min_weekly_velocity: float
-    allow_range_breakout_bias: bool
-    require_daily_confirmation: bool
-    block_climax_cooldown: bool
-    climax_atr_window: int
-    climax_mult: float
-    climax_cooldown_bars: int
-    block_chase_on_swing: bool
-    chase_min_expected_move_pct: float
-    chase_min_retrace: float
-    chase_max_retrace: float
-    block_weekly_neutral_swing: bool
-    weekly_neutral_swing_min_expected_move_pct: float
 
 
 @dataclass(frozen=True)
@@ -160,7 +143,6 @@ class MomentumConfig:
     cadence: CadenceConfig
     risk: RiskConfig
     weights: ScoreWeights
-    theory_overlay: TheoryOverlayConfig
 
 
 def _config_path(config_path: str | Path | None = None) -> Path:
@@ -212,7 +194,6 @@ def load_momentum_config(config_path: str | Path | None = None) -> MomentumConfi
         structure=StructureConfig(**payload["structure"]),
         participation=ParticipationConfig(**payload["participation"]),
         execution=ExecutionConfig(**payload["execution"]),
-        theory_overlay=TheoryOverlayConfig(**payload["theory_overlay"]),
         cadence=CadenceConfig(**payload["cadence"]),
         risk=RiskConfig(**payload["risk"]),
         weights=ScoreWeights(**payload["weights"]),
