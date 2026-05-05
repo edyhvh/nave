@@ -95,7 +95,12 @@ class FMPPoliticianTradesProvider:
                 f"FMP rejected {path} (403). Check FMP_API_KEY and plan permissions."
             )
         resp.raise_for_status()
-        payload = resp.json()
+        try:
+            payload = resp.json()
+        except Exception as exc:
+            raise PoliticianTradesError(
+                f"FMP {path} returned non-JSON response ({resp.status_code})."
+            ) from exc
         if not isinstance(payload, list):
             raise PoliticianTradesError(
                 f"FMP {path} returned non-list payload: {type(payload).__name__}"

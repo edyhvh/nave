@@ -144,6 +144,15 @@ def test_provider_raises_on_non_list_payload():
         provider.fetch_house()
 
 
+def test_provider_raises_on_non_json_response():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"<html>maintenance</html>")
+
+    provider = _stub_provider(handler)
+    with pytest.raises(PoliticianTradesError, match="non-JSON"):
+        provider.fetch_house()
+
+
 def test_provider_requires_api_key(monkeypatch):
     monkeypatch.delenv("FMP_API_KEY", raising=False)
     with pytest.raises(PoliticianTradesError):
