@@ -150,6 +150,40 @@ def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     assert plan.entry_zone[1] <= breakout_level + tolerance + 1e-6
 
 
+def test_momentum_engine_uses_configured_invalidation_fallback_and_marks_diagnostics() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    base_config = load_momentum_config()
+    config = replace(
+        base_config,
+        execution=replace(base_config.execution, invalidation_fallback_pct=0.03),
+    )
+    engine = MomentumSetupEngine(config)
+
+    with patch.object(engine, "_entry_price", return_value=100.0), patch.object(
+        engine,
+        "_assess_volatility",
+        return_value=VolatilityAssessment(
+            passed=True,
+            atr_ratio=1.08,
+            range_expansion=2.36,
+            score=0.92,
+            atr_fast=0.75,
+        ),
+    ), patch("trading.crypto.momentum.engine.build_invalidation", return_value=101.0):
+        plan = engine.evaluate_symbol(
+            symbol="BTCUSDT",
+            daily_frame=daily,
+            setup_frame=setup,
+            trigger_frame=trigger,
+            open_interest=oi,
+            funding_rate=0.0002,
+            side="long",
+        )[0]
+
+    assert plan.invalidation == 97.0
+    assert plan.diagnostics["invalidation_fallback_used"] is True
+
+
 def test_theory_overlay_blocks_stretched_swing_chase() -> None:
     config = replace(load_momentum_config().theory_overlay, require_daily_confirmation=False)
     daily, setup, _, _ = _build_long_frames()

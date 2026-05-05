@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, cast
+from unittest.mock import Mock
 
 from trading.crypto.momentum import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService, MomentumTimeframes, build_cadence_policy
@@ -19,6 +20,17 @@ class _FakePlan:
             "tradeable": self.tradeable,
             "confidence_score": self.confidence_score,
         }
+
+
+@dataclass(frozen=True)
+class _FakeResponse:
+    payload: object
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> object:
+        return self.payload
 
 
 def test_build_cadence_policy_flags_quiet_market() -> None:
@@ -109,3 +121,21 @@ def test_scan_live_can_apply_cadence_recommended_threshold(monkeypatch) -> None:
     assert adaptive_payload["summary"]["tradeable_count"] == 4
     assert adaptive_payload["summary"]["effective_score_threshold"] == 88
     assert adaptive_payload["cadence"]["applied"] is True
+
+
+def test_fetch_funding_rate_returns_none_for_malformed_numeric_value() -> None:
+    session = Mock()
+    session.get.return_value = _FakeResponse({"lastFundingRate": "bad-value"})
+    service = MomentumMarketService(market_client=cast(Any, object()), session=cast(Any, session))
+
+    assert service.fetch_funding_rate("BTCUSDT") is None
+
+
+def test_fetch_open_interest_history_returns_none_for_malformed_payload_entry() -> None:
+    session = Mock()
+    session.get.return_value = _FakeResponse([
+        {"timestamp": "bad-timestamp", "sumOpenInterest": "oops"},
+    ])
+    service = MomentumMarketService(market_client=cast(Any, object()), session=cast(Any, session))
+
+    assert service.fetch_open_interest_history("BTCUSDT", "4h") is None
