@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import json
+from typing import Any
 
 import httpx
 import pytest
@@ -153,6 +155,71 @@ def test_provider_raises_on_non_json_response():
         provider.fetch_house()
 
 
+def test_provider_retries_429_then_succeeds(monkeypatch):
+    attempts = {"house": 0}
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/house-latest" not in request.url.path:
+            return httpx.Response(404, request=request)
+        attempts["house"] += 1
+        if attempts["house"] == 1:
+            return httpx.Response(
+                429,
+                headers={"Retry-After": "3"},
+                json={"error": "rate limit"},
+                request=request,
+            )
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "symbol": "NVDA",
+                    "firstName": "A",
+                    "lastName": "B",
+                    "type": "Purchase",
+                    "link": "https://house/1.pdf",
+                }
+            ],
+            request=request,
+        )
+
+    monkeypatch.setattr(
+        "trading.stocks.politicians.provider.time.sleep",
+        lambda seconds: sleeps.append(seconds),
+    )
+    provider = _stub_provider(handler)
+    trades = provider.fetch_house()
+
+    assert len(trades) == 1
+    assert attempts["house"] == 2
+    assert sleeps == [3.0]
+
+
+def test_provider_raises_after_429_retries_exhausted(monkeypatch):
+    attempts = {"house": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts["house"] += 1
+        return httpx.Response(
+            429,
+            headers={"Retry-After": "2"},
+            json={"error": "rate limit"},
+            request=request,
+        )
+
+    monkeypatch.setattr(
+        "trading.stocks.politicians.provider.time.sleep",
+        lambda _: None,
+    )
+    monkeypatch.setenv("FMP_POLITICIANS_429_RETRIES", "1")
+
+    provider = _stub_provider(handler)
+    with pytest.raises(PoliticianTradesError, match="rate-limited after 2 attempts"):
+        provider.fetch_house()
+    assert attempts["house"] == 2
+
+
 def test_provider_requires_api_key(monkeypatch):
     monkeypatch.delenv("FMP_API_KEY", raising=False)
     with pytest.raises(PoliticianTradesError):
@@ -207,8 +274,8 @@ class _StaticProvider:
         return list(self._trades)
 
 
-def _make_trade(link: str, **kwargs) -> PoliticianTrade:
-    base = dict(
+def _make_trade(link: str, **kwargs: Any) -> PoliticianTrade:
+    base = PoliticianTrade(
         chamber="house",
         symbol="NVDA",
         politician="Jane Doe",
@@ -224,8 +291,7 @@ def _make_trade(link: str, **kwargs) -> PoliticianTrade:
         disclosure_date="2026-04-28",
         link=link,
     )
-    base.update(kwargs)
-    return PoliticianTrade(**base)
+    return replace(base, **kwargs)
 
 
 def test_scanner_first_run_returns_everything(tmp_path):
@@ -253,7 +319,8 @@ def test_scanner_subsequent_run_filters_seen(tmp_path):
             _make_trade("link-c", symbol="MSFT", transaction_type="Sale"),
         ]
     )
-    result = run_daily_scan(provider=provider2, store=SeenStore(path=store_path))
+    result = run_daily_scan(
+        provider=provider2, store=SeenStore(path=store_path))
     assert result["fetched_total"] == 3
     assert result["new_total"] == 1
     assert result["new_trades"][0]["link"] == "link-c"
@@ -281,9 +348,12 @@ def test_scanner_summary_aggregates_correctly(tmp_path):
     store = SeenStore(path=tmp_path / "seen.json")
     provider = _StaticProvider(
         [
-            _make_trade("l1", chamber="house", symbol="NVDA", transaction_type="Purchase"),
-            _make_trade("l2", chamber="house", symbol="NVDA", transaction_type="Sale"),
-            _make_trade("l3", chamber="senate", symbol="AAPL", transaction_type="Purchase"),
+            _make_trade("l1", chamber="house", symbol="NVDA",
+                        transaction_type="Purchase"),
+            _make_trade("l2", chamber="house", symbol="NVDA",
+                        transaction_type="Sale"),
+            _make_trade("l3", chamber="senate", symbol="AAPL",
+                        transaction_type="Purchase"),
         ]
     )
     result = run_daily_scan(provider=provider, store=store)

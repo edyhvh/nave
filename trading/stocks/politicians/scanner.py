@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 
 from trading.stocks.politicians.provider import (
     FMPPoliticianTradesProvider,
@@ -21,9 +21,16 @@ from trading.stocks.politicians.store import SeenStore
 logger = logging.getLogger(__name__)
 
 
+class TradesProvider(Protocol):
+    """Provider contract for politician disclosures."""
+
+    def fetch_all(self) -> list[PoliticianTrade]:
+        ...
+
+
 def run_daily_scan(
     *,
-    provider: FMPPoliticianTradesProvider | None = None,
+    provider: TradesProvider | None = None,
     store: SeenStore | None = None,
     persist: bool = True,
 ) -> dict[str, Any]:
@@ -64,11 +71,13 @@ def _summarize(trades: list[PoliticianTrade]) -> dict[str, Any]:
     for t in trades:
         by_chamber[t.chamber] = by_chamber.get(t.chamber, 0) + 1
         if t.transaction_type:
-            by_type[t.transaction_type] = by_type.get(t.transaction_type, 0) + 1
+            by_type[t.transaction_type] = by_type.get(
+                t.transaction_type, 0) + 1
         if t.symbol:
             by_symbol[t.symbol] = by_symbol.get(t.symbol, 0) + 1
         politicians.add(t.politician)
-    top_symbols = sorted(by_symbol.items(), key=lambda kv: kv[1], reverse=True)[:10]
+    top_symbols = sorted(
+        by_symbol.items(), key=lambda kv: kv[1], reverse=True)[:10]
     return {
         "by_chamber": by_chamber,
         "by_type": by_type,

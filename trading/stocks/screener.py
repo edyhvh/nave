@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Literal, Mapping
+from typing import Iterable, Literal, Mapping, Protocol
 
 from trading.stocks.data_provider import (
     FundamentalSnapshot,
@@ -34,6 +34,21 @@ logger = logging.getLogger(__name__)
 
 
 ScreenerMode = Literal["manufacturing", "services"]
+
+
+class MassiveLike(Protocol):
+    """Minimal fundamentals client contract needed by the screener."""
+
+    def batch_fundamentals(self, symbols: Iterable[str]) -> list[FundamentalSnapshot]:
+        ...
+
+    def sector_average_pe(
+        self,
+        sector: str,
+        *,
+        symbols: Iterable[str] | None = None,
+    ) -> float | None:
+        ...
 
 
 class StockScreenerError(RuntimeError):
@@ -83,7 +98,7 @@ class SectorScreener:
 
     def __init__(
         self,
-        massive: MassiveClient,
+        massive: MassiveLike,
         universe: Mapping[str, list[str]],
     ):
         self.massive = massive
@@ -128,7 +143,8 @@ class SectorScreener:
         top_n: int = 5,
         side: str = "long",
         min_eps_growth_next_year: float | None = None,
-        industry_rankings_by_sector: Mapping[str, list[ISMIndustryRanking]] | None = None,
+        industry_rankings_by_sector: Mapping[str,
+                                             list[ISMIndustryRanking]] | None = None,
         min_confidence: float = 0.0,
         mode: ScreenerMode = "manufacturing",
     ) -> list[StockCandidate]:
@@ -137,7 +153,8 @@ class SectorScreener:
         for sector in sectors:
             tickers = self.universe.get(sector, [])
             if not tickers:
-                logger.info("No tickers configured for sector %r — skipping", sector)
+                logger.info(
+                    "No tickers configured for sector %r — skipping", sector)
                 continue
             try:
                 snapshots = self.massive.batch_fundamentals(tickers)
@@ -146,7 +163,8 @@ class SectorScreener:
                     "Failed to fetch fundamentals for sector %r — skipping: %s", sector, exc
                 )
                 continue
-            sector_rankings = (industry_rankings_by_sector or {}).get(sector, [])
+            sector_rankings = (
+                industry_rankings_by_sector or {}).get(sector, [])
 
             # Services mode uses sector-average PE as a secondary "company
             # PE < sector PE" filter. Manufacturing mode doesn't need it.
@@ -176,7 +194,8 @@ class SectorScreener:
                         # Too expensive vs peers — fails the PE relative check.
                         continue
 
-                driver_industry, match_confidence = best_ism_match(snap.industry, sector_rankings)
+                driver_industry, match_confidence = best_ism_match(
+                    snap.industry, sector_rankings)
                 if driver_industry is None and sector_rankings:
                     driver_industry = sector_rankings[0].industry
                 score, reason, confidence = self._score(
@@ -258,7 +277,8 @@ class SectorScreener:
             notes.append("EPS growth unavailable")
         notes.append(f"match conf {match_confidence:.2f}")
         notes.append(f"eps conf {snap.eps_growth_confidence:.2f}")
-        confidence = round(0.6 * match_confidence + 0.4 * snap.eps_growth_confidence, 4)
+        confidence = round(0.6 * match_confidence + 0.4 *
+                           snap.eps_growth_confidence, 4)
         notes.append(f"final conf {confidence:.2f}")
         score = -eps if side.lower().strip() == "short" else eps
         return score, "; ".join(notes), confidence
@@ -295,7 +315,8 @@ class SectorScreener:
 
         source_conf = _revenue_source_confidence(snap.revenue_growth_source)
         notes.append(f"match conf {match_confidence:.2f}")
-        notes.append(f"rev src={snap.revenue_growth_source or '?'} conf {source_conf:.2f}")
+        notes.append(
+            f"rev src={snap.revenue_growth_source or '?'} conf {source_conf:.2f}")
         confidence = round(0.6 * match_confidence + 0.4 * source_conf, 4)
         notes.append(f"final conf {confidence:.2f}")
         score = -rev if side.lower().strip() == "short" else rev
@@ -312,7 +333,7 @@ def _revenue_source_confidence(source: str | None) -> float:
     return 0.0
 
 
-def _safe_sector_avg_pe(massive: MassiveClient, sector: str) -> float | None:
+def _safe_sector_avg_pe(massive: MassiveLike, sector: str) -> float | None:
     """Call ``sector_average_pe`` without assuming the client exposes kwargs.
 
     Test doubles (e.g. ``_FakeMassive``) implement a simple ``(sector)``

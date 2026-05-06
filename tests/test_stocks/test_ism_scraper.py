@@ -86,6 +86,25 @@ def test_parse_services_report():
     assert "Health Care" in sectors
 
 
+def test_parse_prefers_kind_aligned_heading_month_over_body_mentions():
+    html = """
+        <html>
+            <head><title>April 2026 Services ISM Report On Business</title></head>
+            <body>
+                <p>Reference table from March 2026 is included below for context.</p>
+                <h1>April 2026 Services ISM Report On Business</h1>
+                <p>The Services PMI registered 54.8 percent.</p>
+            </body>
+        </html>
+        """
+    fetcher = ISMReportFetcher()
+    report = fetcher._parse(html, kind="services",
+                            source_url="fixture://mixed-months")
+
+    assert report.report_month == "April 2026"
+    assert report.pmi == 54.8
+
+
 def test_by_sector_deduplicates_preserving_order():
     fetcher = ISMReportFetcher()
     report = fetcher._parse(
@@ -98,7 +117,8 @@ def test_by_sector_deduplicates_preserving_order():
 
 def test_parse_industry_list_handles_trailing_and_and_semicolons():
     body = "Machinery; Chemical Products; and Computer & Electronic Products"
-    rankings = _parse_industry_list(f"industries reporting growth: {body}.", trend="expanding")
+    rankings = _parse_industry_list(
+        f"industries reporting growth: {body}.", trend="expanding")
     assert [r.industry for r in rankings] == [
         "machinery",
         "chemical products",
@@ -154,7 +174,8 @@ def test_extract_prnewswire_url_prefers_kind_specific_link(monkeypatch):
     """
     monkeypatch.setattr(fetcher, "_fetch_html", lambda url: html)
 
-    picked = fetcher._extract_prnewswire_url("https://www.ismworld.org/roundup", kind="services")
+    picked = fetcher._extract_prnewswire_url(
+        "https://www.ismworld.org/roundup", kind="services")
     assert picked is not None
     assert "services-pmi" in picked
 
@@ -166,5 +187,7 @@ def test_detects_ism_captcha_page():
     <script src="https://www.google.com/recaptcha/api.js?render=x"></script>
     </body></html>
     """
-    assert _looks_like_ism_captcha(captcha_html, url="https://www.ismworld.org/path")
-    assert not _looks_like_ism_captcha(captcha_html, url="https://example.com/path")
+    assert _looks_like_ism_captcha(
+        captcha_html, url="https://www.ismworld.org/path")
+    assert not _looks_like_ism_captcha(
+        captcha_html, url="https://example.com/path")

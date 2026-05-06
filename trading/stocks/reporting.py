@@ -3,23 +3,33 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, cast
+from typing import Any, Mapping, Protocol, cast
 
 from trading.stocks.data_provider import (
     FundamentalSnapshot,
     MassiveClient,
     MassiveRateLimitError,
 )
-from trading.stocks.ism_scraper import ISMReportFetcher
+from trading.stocks.ism_calendar import load_calendar
+from trading.stocks.ism_scraper import ISMReport, ISMReportFetcher
 from trading.stocks.screener import (
+    MassiveLike,
     ScreenerMode,
     SectorScreener,
     StockCandidate,
     StockScreenerError,
     _safe_sector_avg_pe,
 )
+
+
+class ISMReportFetcherLike(Protocol):
+    """Minimal fetcher contract needed by report builder."""
+
+    def fetch_report(self, *, kind: str) -> ISMReport:
+        ...
+
 
 # Keep this short so FMP daily-budget usage stays practical.
 # The default basket leans toward names whose public-company industries map
@@ -48,8 +58,8 @@ def build_ism_industry_report(
     min_eps_growth_next_year: float | None = None,
     min_confidence: float = 0.3,
     universe: Mapping[str, list[str]] | None = None,
-    fetcher: ISMReportFetcher | None = None,
-    massive: MassiveClient | None = None,
+    fetcher: ISMReportFetcherLike | None = None,
+    massive: MassiveLike | None = None,
     persist_snapshot: bool = False,
     snapshot_dir: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -226,6 +236,19 @@ def build_ism_industry_report(
             min_confidence=min_confidence,
         ),
     }
+
+    report_month_key = _month_key(payload)
+    expected_covers_month = _latest_expected_covers_month(kind=report.kind)
+    payload["report_month_key"] = report_month_key
+    payload["expected_covers_month"] = expected_covers_month
+    payload["is_expected_month"] = bool(
+        expected_covers_month and report_month_key == expected_covers_month
+    )
+    payload["freshness_status"] = (
+        "current"
+        if payload["is_expected_month"]
+        else ("stale" if expected_covers_month else "unknown")
+    )
 
     if persist_snapshot:
         saved_to = _persist_monthly_snapshot(
@@ -579,3 +602,29 @@ def _default_snapshot_dir() -> Path:
     # Repo-committed so monthly ISM rankings + reviewed-company data live
     # alongside the code (the local copy *is* the committed copy).
     return Path(__file__).resolve().parents[2] / "stocks_history"
+
+
+def _latest_expected_covers_month(*, kind: str, today: date | None = None) -> str | None:
+    """Return the latest expected data month for ``kind`` from stored calendars."""
+    today = today or datetime.now(timezone.utc).date()
+    latest_release_at: datetime | None = None
+    latest_covers_month: str | None = None
+
+    for year in (today.year - 1, today.year, today.year + 1):
+        calendar = load_calendar(year)
+        if calendar is None:
+            continue
+        for release in calendar.releases:
+            if release.kind != kind or not release.covers_month:
+                continue
+            try:
+                release_at = datetime.fromisoformat(release.release_at_utc)
+            except ValueError:
+                continue
+            if release_at.date() > today:
+                continue
+            if latest_release_at is None or release_at > latest_release_at:
+                latest_release_at = release_at
+                latest_covers_month = release.covers_month
+
+    return latest_covers_month

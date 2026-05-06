@@ -120,7 +120,8 @@ def test_theory_v2_scan_returns_decision_trace(monkeypatch: pytest.MonkeyPatch) 
     def fake_build(coins):
         return [fired.signal], [fired, neutral]
 
-    monkeypatch.setattr("trading.theory_v2.build_signals_for_coins", fake_build)
+    monkeypatch.setattr(
+        "trading.theory_v2.build_signals_for_coins", fake_build)
 
     payload = integration.theory_v2_scan(coins="BTC ETH")
 
@@ -191,7 +192,8 @@ def test_momentum_scan_routes_through_service(monkeypatch: pytest.MonkeyPatch) -
             "results": {"BTCUSDT": {"plans": [], "tradeable": []}},
         }
 
-    monkeypatch.setattr("trading.crypto.momentum.service.MomentumMarketService.scan_live", fake_scan_live)
+    monkeypatch.setattr(
+        "trading.crypto.momentum.service.MomentumMarketService.scan_live", fake_scan_live)
     payload = integration.momentum_scan(symbols="BTCUSDT")
 
     assert payload["strategy"] == "derivatives_momentum_v1"
@@ -211,7 +213,8 @@ def test_dispatch_tool_call_routes_momentum_tools(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(
         integration,
         "momentum_scan",
-        lambda **kwargs: {"strategy": "derivatives_momentum_v1", "args": kwargs},
+        lambda **kwargs: {"strategy": "derivatives_momentum_v1",
+                          "args": kwargs},
     )
     result = integration.dispatch_tool_call(
         "momentum_scan",
@@ -229,7 +232,8 @@ def test_market_scan_alias_routes_to_momentum(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         integration,
         "momentum_scan",
-        lambda **kwargs: {"strategy": "derivatives_momentum_v1", "args": kwargs},
+        lambda **kwargs: {"strategy": "derivatives_momentum_v1",
+                          "args": kwargs},
     )
     result = integration.dispatch_tool_call(
         "market_scan",
@@ -247,7 +251,8 @@ def test_market_playbook_alias_routes_to_momentum(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(
         integration,
         "momentum_playbook",
-        lambda **kwargs: {"strategy": "derivatives_momentum_v1", "plan": {"side": kwargs["side"]}},
+        lambda **kwargs: {"strategy": "derivatives_momentum_v1",
+                          "plan": {"side": kwargs["side"]}},
     )
     result = integration.dispatch_tool_call(
         "market_playbook",
@@ -281,6 +286,30 @@ def test_stocks_ism_report_validates_bounds() -> None:
         integration.stocks_ism_report(kind="bad")
     with pytest.raises(HermesIntegrationError):
         integration.stocks_ism_report(top_n=0)
+
+
+def test_stocks_ism_report_propagates_freshness_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        "trading.stocks.reporting.build_ism_industry_report",
+        lambda **kwargs: {
+            "kind": kwargs.get("kind", "services"),
+            "report_month": "March 2026",
+            "report_month_key": "2026-03",
+            "expected_covers_month": "2026-04",
+            "is_expected_month": False,
+            "freshness_status": "stale",
+            "criteria": {"top_n": kwargs.get("top_n", 5)},
+        },
+    )
+
+    payload = integration.stocks_ism_report(kind="services", top_n=5)
+    assert payload["freshness_status"] == "stale"
+    assert payload["expected_covers_month"] == "2026-04"
+    assert payload["report_month_key"] == "2026-03"
 
 
 def _fired_scan_entry() -> dict:
@@ -338,7 +367,8 @@ def test_recommend_position_sizes_from_fired_scan() -> None:
 def test_recommend_position_stand_aside_on_unfired_scan() -> None:
     integration = HermesNaveIntegration()
     result = integration.recommend_position(
-        coin_scan={"fired": False, "stage": "weekly", "reason": "neutral", "bias": "neutral"},
+        coin_scan={"fired": False, "stage": "weekly",
+                   "reason": "neutral", "bias": "neutral"},
         capital_usd=10000.0,
     )
     assert result["recommendation"] == "stand_aside"
@@ -352,9 +382,11 @@ def test_recommend_position_rejects_bad_inputs() -> None:
     with pytest.raises(HermesIntegrationError):
         integration.recommend_position(coin_scan=entry, capital_usd=0)
     with pytest.raises(HermesIntegrationError):
-        integration.recommend_position(coin_scan=entry, capital_usd=100, leverage=100)
+        integration.recommend_position(
+            coin_scan=entry, capital_usd=100, leverage=100)
     with pytest.raises(HermesIntegrationError):
-        integration.recommend_position(coin_scan=entry, capital_usd=100, risk_pct=0.5)
+        integration.recommend_position(
+            coin_scan=entry, capital_usd=100, risk_pct=0.5)
 
 
 def test_scan_history_reads_reports_dir(tmp_path: Path) -> None:

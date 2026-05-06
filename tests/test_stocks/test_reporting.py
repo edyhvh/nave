@@ -128,6 +128,78 @@ def test_ism_report_candidate_falls_back_to_ism_industry_hint() -> None:
     assert payload["summary"]["long_candidates"] == 1
 
 
+def test_ism_report_marks_current_when_month_matches_calendar(
+    monkeypatch,
+) -> None:
+    report = _make_report()
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            symbol="GE",
+            sector="Industrials",
+            pe_ratio=15.0,
+            forward_pe=13.5,
+            eps_growth_next_year=12.0,
+            raw={},
+            industry="Aerospace & Defense",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        )
+    }
+    monkeypatch.setattr(
+        "trading.stocks.reporting._latest_expected_covers_month",
+        lambda **kwargs: "2026-03",
+    )
+
+    payload = build_ism_industry_report(
+        fetcher=_StubFetcher(report),
+        massive=_StubMassive(snapshots, {"Industrials": 25.0}),
+        universe={"Industrials": ["GE"]},
+        top_n=1,
+        max_sectors_per_trend=1,
+    )
+
+    assert payload["report_month_key"] == "2026-03"
+    assert payload["expected_covers_month"] == "2026-03"
+    assert payload["is_expected_month"] is True
+    assert payload["freshness_status"] == "current"
+
+
+def test_ism_report_marks_stale_when_month_mismatches_calendar(
+    monkeypatch,
+) -> None:
+    report = _make_report()
+    snapshots = {
+        "GE": FundamentalSnapshot(
+            symbol="GE",
+            sector="Industrials",
+            pe_ratio=15.0,
+            forward_pe=13.5,
+            eps_growth_next_year=12.0,
+            raw={},
+            industry="Aerospace & Defense",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        )
+    }
+    monkeypatch.setattr(
+        "trading.stocks.reporting._latest_expected_covers_month",
+        lambda **kwargs: "2026-04",
+    )
+
+    payload = build_ism_industry_report(
+        fetcher=_StubFetcher(report),
+        massive=_StubMassive(snapshots, {"Industrials": 25.0}),
+        universe={"Industrials": ["GE"]},
+        top_n=1,
+        max_sectors_per_trend=1,
+    )
+
+    assert payload["report_month_key"] == "2026-03"
+    assert payload["expected_covers_month"] == "2026-04"
+    assert payload["is_expected_month"] is False
+    assert payload["freshness_status"] == "stale"
+
+
 def test_ism_report_filters_low_confidence_false_positive() -> None:
     report = ISMReport(
         kind="manufacturing",

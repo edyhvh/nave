@@ -140,7 +140,8 @@ class ISMReportFetcher:
             resp.raise_for_status()
             html = resp.text
         if _looks_like_ism_captcha(html, url=url):
-            logger.info("ISM anti-bot page detected for %s — retrying with curl fallback", url)
+            logger.info(
+                "ISM anti-bot page detected for %s — retrying with curl fallback", url)
             curl_html = self._fetch_with_curl(url)
             if curl_html:
                 return curl_html
@@ -159,7 +160,8 @@ class ISMReportFetcher:
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page(user_agent=self.user_agent)
-            page.goto(url, wait_until="networkidle", timeout=int(self.timeout_seconds * 1000))
+            page.goto(url, wait_until="networkidle",
+                      timeout=int(self.timeout_seconds * 1000))
             html = page.content()
             browser.close()
             return html
@@ -172,7 +174,8 @@ class ISMReportFetcher:
             check=False,
         )
         if proc.returncode != 0:
-            raise RuntimeError(f"curl fetch failed for {url!r}: exit={proc.returncode}")
+            raise RuntimeError(
+                f"curl fetch failed for {url!r}: exit={proc.returncode}")
         # Treat a suspiciously small response as a failure so the caller can
         # fall back to the landing URL rather than silently parsing an empty body.
         if len(proc.stdout) < 200:
@@ -193,7 +196,8 @@ class ISMReportFetcher:
         """
         roundup_url = self._resolve_latest_roundup_url(kind)
         if roundup_url:
-            prnewswire_url = self._extract_prnewswire_url(roundup_url, kind=kind)
+            prnewswire_url = self._extract_prnewswire_url(
+                roundup_url, kind=kind)
             if prnewswire_url:
                 return prnewswire_url
             return roundup_url
@@ -210,7 +214,8 @@ class ISMReportFetcher:
             logger.debug("ISM sitemap fetch failed: %s", exc)
             return None
 
-        all_urls = re.findall(r"<loc>(https://www\.ismworld\.org[^<]+)</loc>", sitemap)
+        all_urls = re.findall(
+            r"<loc>(https://www\.ismworld\.org[^<]+)</loc>", sitemap)
         roundup_urls = [
             u
             for u in all_urls
@@ -224,9 +229,11 @@ class ISMReportFetcher:
         try:
             html = self._fetch_html(roundup_url)
         except Exception as exc:
-            logger.debug("Failed to fetch ISM roundup page %s: %s", roundup_url, exc)
+            logger.debug("Failed to fetch ISM roundup page %s: %s",
+                         roundup_url, exc)
             return None
-        links = re.findall(r'https://www\.prnewswire\.com/news-releases/[^"\'\s<]+', html)
+        links = re.findall(
+            r'https://www\.prnewswire\.com/news-releases/[^"\'\s<]+', html)
         if not links:
             return None
         preferred = [u for u in links if f"{kind}-pmi" in u]
@@ -237,7 +244,7 @@ class ISMReportFetcher:
         """Extract PMI + expanding/contracting industry ordering from the HTML."""
         text = _strip_html(html)
 
-        month = _extract_report_month(text)
+        month = _extract_report_month(html, text=text, kind=kind)
         pmi = _extract_pmi(text, kind)
         expanding = _parse_industry_list(text, trend="expanding")
         contracting = _parse_industry_list(text, trend="contracting")
@@ -258,10 +265,13 @@ class ISMReportFetcher:
 # ── Parsing helpers ---------------------------------------------------
 _TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"\s+")
+_MONTH_PATTERN = (
+    r"(?:January|February|March|April|May|June|July|"
+    r"August|September|October|November|December)"
+)
 
 _MONTH_RE = re.compile(
-    r"(January|February|March|April|May|June|July|"
-    r"August|September|October|November|December)\s+\d{4}"
+    rf"(?P<month>{_MONTH_PATTERN})\s+\d{{4}}"
 )
 
 _PMI_RE_MANUF = re.compile(
@@ -293,9 +303,66 @@ def _looks_like_ism_captcha(html: str, *, url: str) -> bool:
     return "captcha_form" in lowered and "google.com/recaptcha/api.js" in lowered
 
 
-def _extract_report_month(text: str) -> str:
+def _extract_report_month(html: str, *, text: str, kind: ReportKind) -> str:
+    kind_label = "Manufacturing" if kind == "manufacturing" else "Services"
+
+    for heading in _extract_heading_texts(html):
+        month = _extract_kind_aligned_month(heading, kind_label)
+        if month:
+            return month
+
+    month = _extract_kind_aligned_month(text, kind_label)
+    if month:
+        return month
+
     match = _MONTH_RE.search(text)
-    return match.group(0) if match else "Unknown"
+    return match.group("month") if match else "Unknown"
+
+
+def _extract_kind_aligned_month(text: str, kind_label: str) -> str | None:
+    if not text:
+        return None
+    patterns = (
+        rf"(?P<month>{_MONTH_PATTERN}\s+\d{{4}})\s+{kind_label}\b",
+        rf"{kind_label}\s+(?:ISM(?:®)?\s+)?(?:Report\s+On\s+Business(?:®)?\s+)?(?:for\s+)?(?P<month>{_MONTH_PATTERN}\s+\d{{4}})",
+        rf"{kind_label}[^\n\r]{{0,120}}?(?P<month>{_MONTH_PATTERN}\s+\d{{4}})",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group("month")
+    return None
+
+
+def _extract_heading_texts(html: str) -> list[str]:
+    values: list[str] = []
+    try:
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, "html.parser")
+        title = soup.title.get_text(" ") if soup.title else ""
+        if title:
+            values.append(title)
+        for tag in soup.find_all(["h1", "h2"]):
+            heading = tag.get_text(" ")
+            if heading:
+                values.append(heading)
+    except ImportError:
+        title_match = re.search(
+            r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+        if title_match:
+            values.append(_strip_html(title_match.group(1)))
+        for heading_match in re.finditer(r"<h[12][^>]*>(.*?)</h[12]>", html, re.IGNORECASE | re.DOTALL):
+            values.append(_strip_html(heading_match.group(1)))
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        clean = _WHITESPACE_RE.sub(" ", value).strip()
+        if clean and clean not in seen:
+            normalized.append(clean)
+            seen.add(clean)
+    return normalized
 
 
 def _extract_pmi(text: str, kind: ReportKind) -> float | None:

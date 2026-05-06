@@ -117,13 +117,15 @@ class FMPClient:
         http: httpx.Client | None = None,
     ):
         _maybe_load_repo_dotenv_once()
-        self.api_key = api_key or os.getenv("FMP_API_KEY") or os.getenv("MASSIVE_API_KEY")
+        self.api_key = api_key or os.getenv(
+            "FMP_API_KEY") or os.getenv("MASSIVE_API_KEY")
         if not self.api_key:
             logger.warning(
                 "FMP_API_KEY is not set. FMPClient calls will fail at runtime."
             )
         self.base_url = (
-            base_url or os.getenv("FMP_BASE_URL") or os.getenv("MASSIVE_BASE_URL") or DEFAULT_BASE_URL
+            base_url or os.getenv("FMP_BASE_URL") or os.getenv(
+                "MASSIVE_BASE_URL") or DEFAULT_BASE_URL
         ).rstrip("/")
         rpm_value = rpm if rpm is not None else int(
             os.getenv("FMP_RATE_LIMIT_RPM")
@@ -143,7 +145,8 @@ class FMPClient:
         )
         self.cache_dir: Path | None = None
         if http is None:
-            default_cache_dir = Path(__file__).resolve().parents[2] / "var" / "fmp_cache"
+            default_cache_dir = Path(__file__).resolve(
+            ).parents[2] / "var" / "fmp_cache"
             self.cache_dir = Path(
                 os.getenv("FMP_CACHE_DIR")
                 or os.getenv("MASSIVE_CACHE_DIR")
@@ -196,7 +199,8 @@ class FMPClient:
                     "Raise FMP_RATE_LIMIT_RPM, reduce universe size, or upgrade the plan."
                 )
 
-            wait_seconds = max(1.0, min(retry_after, RATE_WINDOW_SECONDS + 5.0))
+            wait_seconds = max(
+                1.0, min(retry_after, RATE_WINDOW_SECONDS + 5.0))
             logger.warning(
                 "FMP 429 for %s (attempt %d/%d); sleeping %.1fs",
                 path,
@@ -214,7 +218,9 @@ class FMPClient:
         try:
             return self._get(path, params=params, max_retries=0)
         except FMPRateLimitError:
-            logger.debug("FMP rate-limited for optional endpoint %s; skipping", path)
+            self._unsupported_endpoints.add(path)
+            logger.debug(
+                "FMP rate-limited for optional endpoint %s; skipping", path)
             return {}
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code in {402, 404}:
@@ -229,8 +235,10 @@ class FMPClient:
 
     def _cache_path(self, namespace: str, key: str) -> Path:
         if self.cache_dir is None:
-            raise RuntimeError("Persistent cache is disabled for this client instance")
-        safe_key = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in key.lower())
+            raise RuntimeError(
+                "Persistent cache is disabled for this client instance")
+        safe_key = "".join(ch if ch.isalnum() or ch in {
+                           "-", "_"} else "_" for ch in key.lower())
         return self.cache_dir / f"{namespace}_{safe_key}.json"
 
     def _cache_get(self, namespace: str, key: str) -> Any | None:
@@ -261,7 +269,8 @@ class FMPClient:
         try:
             path.write_text(json.dumps(payload, default=str))
         except Exception:
-            logger.debug("Failed to persist FMP cache for %s:%s", namespace, key, exc_info=True)
+            logger.debug("Failed to persist FMP cache for %s:%s",
+                         namespace, key, exc_info=True)
 
     # ── Public API ---------------------------------------------------
     def fundamentals(self, symbol: str) -> FundamentalSnapshot:
@@ -287,14 +296,18 @@ class FMPClient:
                 self._fundamentals_cache[key] = snap
                 return snap
             except TypeError:
-                logger.debug("Ignoring stale fundamentals cache for %s", key, exc_info=True)
+                logger.debug(
+                    "Ignoring stale fundamentals cache for %s", key, exc_info=True)
 
         try:
-            profile = self._get("/profile", params={"symbol": key}, max_retries=0)
-            ratios_ttm = self._get_optional("/ratios-ttm", params={"symbol": key})
+            profile = self._get(
+                "/profile", params={"symbol": key}, max_retries=0)
+            ratios_ttm = self._get_optional(
+                "/ratios-ttm", params={"symbol": key})
             analyst_estimates = self._get_optional(
                 "/analyst-estimates",
-                params={"symbol": key, "period": "annual", "page": 0, "limit": 4},
+                params={"symbol": key, "period": "annual",
+                        "page": 0, "limit": 4},
             )
             raw = {
                 "profile": profile,
@@ -303,7 +316,8 @@ class FMPClient:
             }
             snap = _snapshot_from_payload(key, raw)
         except FMPRateLimitError:
-            logger.debug("FMP rate-limited for %s; falling back to yfinance", key)
+            logger.debug(
+                "FMP rate-limited for %s; falling back to yfinance", key)
             snap = _snapshot_from_payload(key, {})
 
         # FMP free tier omits pe/eps from /profile and gates /ratios-ttm
@@ -357,7 +371,8 @@ class FMPClient:
                         self._cache_put("sector_pe", sector, pe_value)
                         return pe_value
         except Exception:
-            logger.debug("FMP sector PE snapshot unavailable for %s", sector, exc_info=True)
+            logger.debug("FMP sector PE snapshot unavailable for %s",
+                         sector, exc_info=True)
 
         pe_values: list[float] = []
         for sym in symbols or []:
@@ -387,7 +402,8 @@ class FMPClient:
             except FMPRateLimitError:
                 raise
             except Exception as exc:
-                logger.warning("FMP fundamentals fetch failed for %s: %s", sym, exc)
+                logger.warning(
+                    "FMP fundamentals fetch failed for %s: %s", sym, exc)
         return out
 
 
@@ -404,11 +420,15 @@ def _snapshot_from_payload(symbol: str, payload: dict[str, Any]) -> FundamentalS
     if not isinstance(payload, dict):
         payload = {}
 
-    profile = _record_from_payload(payload.get("profile", payload.get("data", payload)))
-    ratios = _record_from_payload(payload.get("ratios_ttm", payload.get("ratios", {})))
-    estimate_row = _pick_best_analyst_estimate(payload.get("analyst_estimates", []))
+    profile = _record_from_payload(payload.get(
+        "profile", payload.get("data", payload)))
+    ratios = _record_from_payload(payload.get(
+        "ratios_ttm", payload.get("ratios", {})))
+    estimate_row = _pick_best_analyst_estimate(
+        payload.get("analyst_estimates", []))
 
-    sector = _first_non_empty_text(profile, "sector", "gicsSector", "gics_sector")
+    sector = _first_non_empty_text(
+        profile, "sector", "gicsSector", "gics_sector")
     industry = _first_non_empty_text(
         profile,
         "industry",
@@ -418,7 +438,8 @@ def _snapshot_from_payload(symbol: str, payload: dict[str, Any]) -> FundamentalS
         "gics_industry",
         "naics_description",
     )
-    company_name = _first_non_empty_text(profile, "companyName", "name", "company_name")
+    company_name = _first_non_empty_text(
+        profile, "companyName", "name", "company_name")
     pe_ratio = _first_float(
         ratios,
         "peRatioTTM",
@@ -478,7 +499,8 @@ def _snapshot_from_payload(symbol: str, payload: dict[str, Any]) -> FundamentalS
     if eps_growth_value is None:
         eps_growth_value, eps_growth_confidence = _sanitize_vendor_eps_growth(
             symbol,
-            _to_float(payload.get("eps_growth_next_year") or payload.get("eps_growth")),
+            _to_float(payload.get("eps_growth_next_year")
+                      or payload.get("eps_growth")),
         )
 
     return FundamentalSnapshot(
@@ -508,7 +530,8 @@ def _estimate_long_term_revenue_growth_from_fmp(payload: Any) -> float | None:
     rows = _records_from_payload(payload)
     revenue_by_year: list[tuple[int, float]] = []
     for row in rows:
-        year = _to_int(row.get("year") or row.get("calendarYear") or row.get("fiscalYear"))
+        year = _to_int(row.get("year") or row.get(
+            "calendarYear") or row.get("fiscalYear"))
         revenue = _first_float(
             row,
             "estimatedRevenueAvg",
@@ -561,7 +584,8 @@ def _yfinance_enrich(snap: FundamentalSnapshot) -> FundamentalSnapshot:
                 and forward_eps is not None
                 and abs(trailing_eps) > EPS_NEAR_ZERO_THRESHOLD
             ):
-                raw_pct = (forward_eps - trailing_eps) / abs(trailing_eps) * 100.0
+                raw_pct = (forward_eps - trailing_eps) / \
+                    abs(trailing_eps) * 100.0
                 if abs(raw_pct) <= EPS_GROWTH_HARD_CAP:
                     eps_growth = raw_pct
                     eps_conf = 0.8
@@ -580,7 +604,8 @@ def _yfinance_enrich(snap: FundamentalSnapshot) -> FundamentalSnapshot:
         )
         sector = snap.sector or (info.get("sector") or None)
         industry = snap.industry or (info.get("industry") or None)
-        company_name = snap.company_name or (info.get("longName") or info.get("shortName") or None)
+        company_name = snap.company_name or (
+            info.get("longName") or info.get("shortName") or None)
 
         # yfinance fallback for long-term revenue growth. ``revenueGrowth`` is
         # a trailing YoY figure (decimal, e.g. 0.12 = 12%), not a 5Y forecast —
@@ -653,7 +678,8 @@ def _pick_best_analyst_estimate(payload: Any) -> dict[str, Any]:
     best_row: dict[str, Any] | None = None
     best_score: tuple[int, int, int, str] | None = None
     for row in rows:
-        year = _to_int(row.get("year") or row.get("calendarYear") or row.get("fiscalYear"))
+        year = _to_int(row.get("year") or row.get(
+            "calendarYear") or row.get("fiscalYear"))
         has_eps = 1 if _first_float(
             row,
             "estimatedEpsAvg",
@@ -731,10 +757,13 @@ def _snapshot_from_v2_financials(symbol: str, payload: dict[str, Any]) -> Fundam
         if market_cap is not None and net_income not in (None, 0):
             pe_ratio = market_cap / net_income
 
-    eps_now = _first_float(latest, "earningsPerDilutedShare", "earningsPerBasicShare")
-    eps_prev = _first_float(previous, "earningsPerDilutedShare", "earningsPerBasicShare")
+    eps_now = _first_float(
+        latest, "earningsPerDilutedShare", "earningsPerBasicShare")
+    eps_prev = _first_float(
+        previous, "earningsPerDilutedShare", "earningsPerBasicShare")
 
-    eps_growth, eps_growth_confidence = _sanitize_derived_eps_growth(symbol, eps_now, eps_prev)
+    eps_growth, eps_growth_confidence = _sanitize_derived_eps_growth(
+        symbol, eps_now, eps_prev)
 
     forward_pe = None
     if pe_ratio is not None and eps_growth is not None and (1.0 + eps_growth / 100.0) > 0:

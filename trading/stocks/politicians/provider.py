@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -25,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://financialmodelingprep.com/stable"
 DEFAULT_TIMEOUT_SECONDS = 20.0
+DEFAULT_429_RETRIES = 2
+DEFAULT_RETRY_WAIT_SECONDS = 2.0
 HOUSE_ENDPOINT = "/house-latest"
 SENATE_ENDPOINT = "/senate-latest"
 
@@ -89,23 +92,60 @@ class FMPPoliticianTradesProvider:
         return self._http
 
     def _get_list(self, path: str) -> list[dict[str, Any]]:
-        resp = self._client().get(path, params={"apikey": self.api_key})
-        if resp.status_code == 403:
-            raise PoliticianTradesError(
-                f"FMP rejected {path} (403). Check FMP_API_KEY and plan permissions."
-            )
-        resp.raise_for_status()
-        try:
-            payload = resp.json()
-        except Exception as exc:
-            raise PoliticianTradesError(
-                f"FMP {path} returned non-JSON response ({resp.status_code})."
-            ) from exc
-        if not isinstance(payload, list):
-            raise PoliticianTradesError(
-                f"FMP {path} returned non-list payload: {type(payload).__name__}"
-            )
-        return payload
+        retries = int(
+            os.getenv("FMP_POLITICIANS_429_RETRIES")
+            or os.getenv("FMP_429_RETRIES")
+            or str(DEFAULT_429_RETRIES)
+        )
+        for attempt in range(retries + 1):
+            resp = self._client().get(path, params={"apikey": self.api_key})
+            if resp.status_code == 429:
+                retry_after_raw = resp.headers.get("Retry-After")
+                if attempt >= retries:
+                    raise PoliticianTradesError(
+                        f"FMP {path} rate-limited after {retries + 1} attempts "
+                        f"(Retry-After={retry_after_raw or '?'}). "
+                        "Quota likely exhausted; reduce frequency, split keys, or upgrade the plan."
+                    )
+                wait_seconds = _retry_wait_seconds(
+                    attempt=attempt,
+                    retry_after_raw=retry_after_raw,
+                )
+                logger.warning(
+                    "FMP 429 for %s (attempt %d/%d); sleeping %.1fs",
+                    path,
+                    attempt + 1,
+                    retries + 1,
+                    wait_seconds,
+                )
+                time.sleep(wait_seconds)
+                continue
+
+            if resp.status_code == 403:
+                raise PoliticianTradesError(
+                    f"FMP rejected {path} (403). Check FMP_API_KEY and plan permissions."
+                )
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise PoliticianTradesError(
+                    f"FMP {path} returned HTTP {resp.status_code}."
+                ) from exc
+
+            try:
+                payload = resp.json()
+            except Exception as exc:
+                raise PoliticianTradesError(
+                    f"FMP {path} returned non-JSON response ({resp.status_code})."
+                ) from exc
+            if not isinstance(payload, list):
+                raise PoliticianTradesError(
+                    f"FMP {path} returned non-list payload: {type(payload).__name__}"
+                )
+            return payload
+
+        raise PoliticianTradesError(
+            f"Unexpected retry termination for {path}.")
 
     def fetch_house(self) -> list[PoliticianTrade]:
         return [_parse_row("house", row) for row in self._get_list(HOUSE_ENDPOINT)]
@@ -120,7 +160,8 @@ class FMPPoliticianTradesProvider:
 def _parse_row(chamber: str, row: dict[str, Any]) -> PoliticianTrade:
     first = str(row.get("firstName") or "").strip()
     last = str(row.get("lastName") or "").strip()
-    name = (f"{first} {last}".strip()) or str(row.get("office") or "").strip() or "Unknown"
+    name = (f"{first} {last}".strip()) or str(
+        row.get("office") or "").strip() or "Unknown"
 
     district_raw = row.get("district")
     district = str(district_raw).strip() if district_raw else None
@@ -143,18 +184,24 @@ def _parse_row(chamber: str, row: dict[str, Any]) -> PoliticianTrade:
 
     return PoliticianTrade(
         chamber=chamber,
-        symbol=(str(row.get("symbol")).strip() or None) if row.get("symbol") else None,
+        symbol=(str(row.get("symbol")).strip()
+                or None) if row.get("symbol") else None,
         politician=name,
-        party=(str(row.get("party")).strip() or None) if row.get("party") else None,
+        party=(str(row.get("party")).strip()
+               or None) if row.get("party") else None,
         state=state,
         district=district,
-        owner=(str(row.get("owner")).strip() or None) if row.get("owner") else None,
+        owner=(str(row.get("owner")).strip()
+               or None) if row.get("owner") else None,
         asset_description=(
             str(row.get("assetDescription")).strip() or None
         ) if row.get("assetDescription") else None,
-        asset_type=(str(row.get("assetType")).strip() or None) if row.get("assetType") else None,
-        transaction_type=(str(row.get("type")).strip() or None) if row.get("type") else None,
-        amount_range=(str(row.get("amount")).strip() or None) if row.get("amount") else None,
+        asset_type=(str(row.get("assetType")).strip()
+                    or None) if row.get("assetType") else None,
+        transaction_type=(str(row.get("type")).strip()
+                          or None) if row.get("type") else None,
+        amount_range=(str(row.get("amount")).strip()
+                      or None) if row.get("amount") else None,
         transaction_date=(
             str(row.get("transactionDate")).strip() or None
         ) if row.get("transactionDate") else None,
@@ -163,3 +210,17 @@ def _parse_row(chamber: str, row: dict[str, Any]) -> PoliticianTrade:
         ) if row.get("disclosureDate") else None,
         link=link,
     )
+
+
+def _retry_wait_seconds(*, attempt: int, retry_after_raw: str | None) -> float:
+    retry_after = _to_float(retry_after_raw)
+    if retry_after is not None:
+        return max(1.0, min(retry_after, 65.0))
+    return min(DEFAULT_RETRY_WAIT_SECONDS * (2 ** attempt), 65.0)
+
+
+def _to_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None

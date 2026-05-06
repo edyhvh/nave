@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json as _json
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 import typer
 from rich.console import Console
@@ -30,6 +30,7 @@ from trading.stocks import (
     build_ism_industry_report,
 )
 from trading.stocks.ism_calendar import (
+    CalendarKind,
     ISMCalendarError,
     fetch_ism_calendar,
     load_calendar,
@@ -248,6 +249,14 @@ def ism_report(
         help="Override sector → tickers mapping as a JSON string.",
     ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON report."),
+    strict_current_month: bool = typer.Option(
+        False,
+        "--strict-current-month",
+        help=(
+            "Fail with exit code 2 when report_month does not match the latest "
+            "expected covers_month from stored ISM calendar."
+        ),
+    ),
     sheet: bool = typer.Option(
         False,
         "--sheet",
@@ -282,6 +291,20 @@ def ism_report(
         snapshot_dir=snapshot_dir,
     )
 
+    freshness_status = str(payload.get("freshness_status") or "unknown")
+    if strict_current_month and freshness_status == "stale":
+        if json_out and not sheet:
+            typer.echo(_json.dumps(payload, indent=2, default=str))
+        typer.echo(
+            "Report month is stale against stored ISM calendar. "
+            f"report_month_key={payload.get('report_month_key')} "
+            f"expected={payload.get('expected_covers_month')}",
+            err=True,
+        )
+        raise typer.Exit(
+            code=2,
+        )
+
     if json_out and not sheet:
         typer.echo(_json.dumps(payload, indent=2, default=str))
         return
@@ -300,6 +323,13 @@ def ism_report(
         f"min_eps_growth={payload['criteria']['min_eps_growth_next_year']}, "
         f"min_conf={payload['criteria']['min_confidence']}"
     )
+    if payload.get("expected_covers_month"):
+        typer.echo(
+            "Freshness: "
+            f"status={payload.get('freshness_status')} "
+            f"report_month_key={payload.get('report_month_key')} "
+            f"expected={payload.get('expected_covers_month')}"
+        )
     if payload.get("saved_to"):
         typer.echo(f"Snapshot saved: {payload['saved_to']}")
     typer.echo()
@@ -686,7 +716,8 @@ def ism_calendar_next(
     if kind is not None and kind not in {"manufacturing", "services"}:
         raise typer.BadParameter("--kind must be manufacturing or services")
 
-    release = next_release(kind=kind, snapshot_dir=snapshot_dir)  # type: ignore[arg-type]
+    kind_filter = cast("CalendarKind | None", kind)
+    release = next_release(kind=kind_filter, snapshot_dir=snapshot_dir)
     if release is None:
         raise typer.BadParameter(
             "No upcoming release found. Refresh the calendar first."

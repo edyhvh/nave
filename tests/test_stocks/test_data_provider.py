@@ -55,7 +55,8 @@ def test_snapshot_mapping_handles_partial_payloads():
 
 
 def test_snapshot_mapping_returns_none_for_missing_fields():
-    snap = _snapshot_from_payload("XYZ", {"profile": {"data": [{"sector": "Unknown"}]}})
+    snap = _snapshot_from_payload(
+        "XYZ", {"profile": {"data": [{"sector": "Unknown"}]}})
     assert snap.pe_ratio is None
     assert snap.forward_pe is None
     assert snap.eps_growth_next_year is None
@@ -110,7 +111,8 @@ def test_derived_eps_growth_discards_extreme_values():
 def test_client_raises_on_429(monkeypatch):
     """_get() should raise MassiveRateLimitError on 429, not httpx HTTPError.
     fundamentals() catches that and falls back gracefully (no exception)."""
-    monkeypatch.setattr("trading.stocks.data_provider.time.sleep", lambda _: None)
+    monkeypatch.setattr(
+        "trading.stocks.data_provider.time.sleep", lambda _: None)
 
     class StubTransport(httpx.BaseTransport):
         def handle_request(self, request):
@@ -121,7 +123,8 @@ def test_client_raises_on_429(monkeypatch):
                 request=request,
             )
 
-    http = httpx.Client(base_url="https://api.massive.com/v1", transport=StubTransport())
+    http = httpx.Client(base_url="https://api.massive.com/v1",
+                        transport=StubTransport())
     client = MassiveClient(api_key="test", http=http)
 
     # _get() itself still raises MassiveRateLimitError
@@ -144,9 +147,11 @@ def test_client_calls_go_through_bucket(monkeypatch):
         def handle_request(self, request):
             path = request.url.path
             if path.endswith("/profile"):
-                payload = {"data": [{"sector": "x", "industry": "y", "price": 100.0, "eps": 10.0}]}
+                payload = {
+                    "data": [{"sector": "x", "industry": "y", "price": 100.0, "eps": 10.0}]}
             elif path.endswith("/ratios-ttm"):
-                payload = {"data": [{"peRatioTTM": 10.0, "forwardPERatio": 9.0}]}
+                payload = {
+                    "data": [{"peRatioTTM": 10.0, "forwardPERatio": 9.0}]}
             else:
                 payload = {"data": [{"year": 2027, "estimatedEpsAvg": 11.0}]}
             return httpx.Response(
@@ -155,7 +160,8 @@ def test_client_calls_go_through_bucket(monkeypatch):
                 request=request,
             )
 
-    http = httpx.Client(base_url="https://api.massive.com/v1", transport=StubTransport())
+    http = httpx.Client(base_url="https://api.massive.com/v1",
+                        transport=StubTransport())
     client = MassiveClient(api_key="test", rpm=100, http=http)
     acquire = client._bucket.acquire
 
@@ -167,3 +173,28 @@ def test_client_calls_go_through_bucket(monkeypatch):
     client.fundamentals("AAPL")
     client.fundamentals("MSFT")
     assert len(calls) == 6
+
+
+def test_optional_endpoint_is_suppressed_after_first_429() -> None:
+    call_count = {"value": 0}
+
+    class StubTransport(httpx.BaseTransport):
+        def handle_request(self, request):
+            call_count["value"] += 1
+            return httpx.Response(
+                429,
+                headers={"Retry-After": "30"},
+                json={"error": "rate limit"},
+                request=request,
+            )
+
+    http = httpx.Client(base_url="https://api.massive.com/v1",
+                        transport=StubTransport())
+    client = MassiveClient(api_key="test", http=http)
+
+    first = client._get_optional("/ratios-ttm", params={"symbol": "AAPL"})
+    second = client._get_optional("/ratios-ttm", params={"symbol": "MSFT"})
+
+    assert first == {}
+    assert second == {}
+    assert call_count["value"] == 1
