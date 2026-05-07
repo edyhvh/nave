@@ -749,6 +749,11 @@ def politicians_scan(
     json_out: bool = typer.Option(
         False, "--json", help="Emit the full JSON payload."
     ),
+    telegram_markdown_v2: bool = typer.Option(
+        False,
+        "--telegram-markdown-v2",
+        help="Render Telegram-friendly MarkdownV2 digest (chunked).",
+    ),
     no_persist: bool = typer.Option(
         False,
         "--no-persist",
@@ -782,6 +787,21 @@ def politicians_scan(
 
     if json_out:
         typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    if telegram_markdown_v2:
+        from trading.stocks.politicians.formatters import (
+            render_politicians_scan_markdown_v2,
+        )
+
+        messages = render_politicians_scan_markdown_v2(payload, include_empty=True)
+        if not messages:
+            typer.echo("No Telegram digest generated.")
+            return
+        for idx, message in enumerate(messages, start=1):
+            if idx > 1:
+                typer.echo("\n---\n")
+            typer.echo(message)
         return
 
     console = Console()

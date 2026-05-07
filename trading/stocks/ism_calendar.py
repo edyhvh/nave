@@ -22,7 +22,7 @@ import logging
 import os
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
@@ -339,6 +339,38 @@ def next_release(
     if not candidates:
         return None
     candidates.sort(key=lambda r: r.release_at_utc)
+    return candidates[0]
+
+
+def recent_release(
+    *,
+    kind: CalendarKind | None = None,
+    today: date | None = None,
+    lookback_days: int = 2,
+    snapshot_dir: str | Path | None = None,
+) -> ISMCalendarRelease | None:
+    """Return the most recent release within a lookback window."""
+    if lookback_days < 0:
+        raise ValueError("lookback_days must be >= 0")
+
+    today = today or datetime.now(timezone.utc).date()
+    start_date = today - timedelta(days=lookback_days)
+
+    candidates: list[ISMCalendarRelease] = []
+    for year in (start_date.year, today.year):
+        calendar = load_calendar(year, snapshot_dir=snapshot_dir)
+        if calendar is None:
+            continue
+        for release in calendar.releases:
+            if kind is not None and release.kind != kind:
+                continue
+            release_date = datetime.fromisoformat(release.release_at_utc).date()
+            if start_date <= release_date <= today:
+                candidates.append(release)
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda r: r.release_at_utc, reverse=True)
     return candidates[0]
 
 

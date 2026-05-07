@@ -11,6 +11,7 @@ from trading.stocks.ism_calendar import (
     fetch_ism_calendar,
     load_calendar,
     next_release,
+    recent_release,
     release_for_month,
 )
 
@@ -145,6 +146,30 @@ def test_next_release_returns_first_after_today(tmp_path) -> None:
     )
     assert nxt_mfg is not None
     assert nxt_mfg.release_date == "2026-05-01"
+
+
+def test_recent_release_returns_latest_within_lookback(tmp_path) -> None:
+    fetch_ism_calendar(
+        2026, api_key="test",
+        http=_client_returning(_FMP_SAMPLE),
+        snapshot_dir=tmp_path,
+    )
+
+    rel = recent_release(today=date(2026, 4, 7), lookback_days=2, snapshot_dir=tmp_path)
+    assert rel is not None
+    assert rel.release_date == "2026-04-06"
+    assert rel.kind == "services"
+
+
+def test_recent_release_returns_none_outside_lookback(tmp_path) -> None:
+    fetch_ism_calendar(
+        2026, api_key="test",
+        http=_client_returning(_FMP_SAMPLE),
+        snapshot_dir=tmp_path,
+    )
+
+    rel = recent_release(today=date(2026, 4, 10), lookback_days=2, snapshot_dir=tmp_path)
+    assert rel is None
 
 
 def test_release_for_month_lookup(tmp_path) -> None:
