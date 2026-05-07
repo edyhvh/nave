@@ -141,6 +141,54 @@ def test_crypto_scan_can_apply_adaptive_threshold(monkeypatch) -> None:
     assert decoded["summary"]["cadence_policy_applied"] is True
 
 
+def test_crypto_momentum_scan_telegram_preview(monkeypatch) -> None:
+    payload = {
+        "strategy": "derivatives_momentum_v1",
+        "symbols": ["BTCUSDT"],
+        "summary": {
+            "tradeable_count": 0,
+            "cadence_state": "quiet",
+            "recommended_score_threshold": 90,
+            "effective_score_threshold": 90,
+            "cadence_policy_applied": False,
+        },
+        "cadence": {
+            "state": "quiet",
+            "recommended_threshold": 90,
+            "effective_threshold": 90,
+            "applied": False,
+        },
+        "results": {
+            "BTCUSDT": {
+                "plans": [{
+                    "side": "long",
+                    "tradeable": False,
+                    "confidence_score": 84,
+                    "setup_status": "pending",
+                    "entry_zone": [100.0, 101.0],
+                    "invalidation": 98.0,
+                    "tp1": 105.0,
+                    "tp2": 109.0,
+                    "tp3": 111.0,
+                    "rr_estimated": 2.2,
+                    "expected_move_pct": 0.08,
+                    "reasoning": {"blockers": ["falta trigger"]},
+                }],
+                "tradeable": [],
+            }
+        },
+    }
+
+    from trading.crypto.momentum.service import MomentumMarketService
+
+    monkeypatch.setattr(MomentumMarketService, "scan_live", lambda self, **kwargs: payload)
+    result = runner.invoke(app, ["crypto", "momentum-scan", "--symbols", "BTCUSDT", "--telegram-markdown-v2"])
+
+    assert result.exit_code == 0
+    assert "NAVE Crypto" in result.stdout
+    assert "BTCUSDT" in result.stdout
+
+
 def test_crypto_playbook_alias_defaults_to_momentum(monkeypatch) -> None:
     payload = {
         "strategy": "derivatives_momentum_v1",

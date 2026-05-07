@@ -48,6 +48,43 @@ Input:
 - `coins` (string)
 - `include_micro` (bool)
 
+### `momentum_scan`
+Returns BTC/ETH derivatives momentum scan data (4H setup + 1H trigger by default).
+
+Input:
+- `symbols` (string): comma-separated symbols, default `"BTCUSDT,ETHUSDT"`
+- `tf` (string): setup/trigger pair, default `"4h,1h"`
+- `account_equity` (number): sizing context
+- `risk_pct` (number): decimal risk per trade (default `0.005`)
+- `score_threshold` (integer): minimum score to classify setups as tradeable
+
+Output additions:
+- `telegram_markdown_v2[]`: pre-formatted digest chunks ready to send with
+  `parse_mode=MarkdownV2`
+
+Hermes behavior:
+- Use `telegram_markdown_v2` directly for Telegram delivery (send one chunk per message).
+- Keep the raw JSON (`summary`, `cadence`, `results`) for downstream logic and audits.
+- Even when `tradeable_count == 0`, the digest includes conditional watch plans so
+  the user can track pending zones.
+
+### `momentum_zone_watch`
+Monitors momentum entry zones and emits alerts when live price first touches a
+watched zone.
+
+Input:
+- `symbols` (string): comma-separated symbols, default `"BTCUSDT,ETHUSDT"`
+- `tf` (string): setup/trigger pair, default `"4h,1h"`
+- `score_threshold` (int): minimum plan score to watch
+- `account_equity` (number): sizing context for scan generation
+- `risk_pct` (number): risk decimal used by scan generation
+
+Output (key fields):
+- `alert_count`, `alerts[]`
+- `watch_candidates[]`
+- `scan_summary`
+- `telegram_markdown_v2[]`: alert chunks ready for Telegram `parse_mode=MarkdownV2`
+
 ### `stocks_ism_report`
 Returns ISM hottest/worst industries and filtered stock candidates using FMP fundamentals.
 
@@ -77,6 +114,8 @@ Output (key fields):
   `state`, `district`, `owner`, `transaction_type` (Purchase / Sale / Exchange),
   `amount_range` (bucketed string, e.g. `"$1,001 - $15,000"`), `transaction_date`,
   `disclosure_date`, and `link` (source PDF/eFD URL)
+- `telegram_markdown_v2[]`: pre-formatted digest chunks ready to send to
+  Telegram with `parse_mode=MarkdownV2` (empty when `new_total == 0`)
 
 Hermes behavior:
 - **Once per day.** Call as part of the daily routine. The provider returns the
@@ -93,6 +132,38 @@ Hermes behavior:
 - **Amounts are buckets, not exact values.** When the user asks about size,
   cite the bucket (e.g. `"$1,001 - $15,000"`) rather than inventing a midpoint.
 - **Always include the source `link`** so the user can verify the original filing.
+- **Telegram formatting:** send each `telegram_markdown_v2` chunk as a separate
+  message. The digest is ordered as summary first, then grouped details.
+
+### `stocks_ism_calendar`
+Returns the stored ISM release calendar, next release, or most recent release
+inside a retry window.
+
+Input:
+- `year` (int, optional): calendar year for full release listing.
+- `kind` (string, optional): `manufacturing` or `services`.
+- `next_only` (bool, default `false`): return the next upcoming release.
+- `recent_days` (int, default `0`): when `> 0`, return the most recent release
+  within the lookback window; useful for release-day retry jobs that run the
+  next day in local timezone.
+- `refresh` (bool, default `false`): re-fetch and overwrite stored calendar.
+
+## Entry-Zone Monitor (conditional setup alerts)
+
+For "notify me when price reaches planned entry zone" workflows, use:
+
+```bash
+python scripts/monitor_entry_zones.py --symbols BTCUSDT,ETHUSDT --tf 4h,1h --score-threshold 75 --json
+```
+
+Notes:
+- Designed for frequent scheduling (for example every 5 minutes).
+- Detects first touch into each candidate `entry_zone` and de-duplicates via state file.
+- Persists watch state in `var/state/entry_zone_watch.json`.
+- Optional Telegram dispatch with `--send-telegram` using:
+  - `TELEGRAM_BOT_TOKEN`
+  - `TELEGRAM_CHAT_ID`
+- This monitor does **not** place orders; notifications are informational.
 
 Example payload (truncated):
 ```json

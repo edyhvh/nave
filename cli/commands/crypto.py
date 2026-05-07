@@ -114,6 +114,11 @@ def momentum_scan(
         "--adaptive-threshold/--no-adaptive-threshold",
         help="Apply the cadence-recommended threshold instead of only reporting it.",
     ),
+    telegram_markdown_v2: bool = typer.Option(
+        False,
+        "--telegram-markdown-v2",
+        help="Render Telegram-friendly MarkdownV2 digest (chunked).",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Scan BTC/ETH derivatives for fresh momentum setups."""
@@ -127,6 +132,15 @@ def momentum_scan(
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2))
+        return
+    if telegram_markdown_v2:
+        from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
+
+        messages = render_momentum_scan_markdown_v2(payload)
+        for idx, message in enumerate(messages, start=1):
+            if idx > 1:
+                typer.echo("\n---\n")
+            typer.echo(message)
         return
     _render_scan(payload)
 
@@ -147,6 +161,11 @@ def scan(
         "--adaptive-threshold/--no-adaptive-threshold",
         help="Apply the cadence-recommended threshold instead of only reporting it.",
     ),
+    telegram_markdown_v2: bool = typer.Option(
+        False,
+        "--telegram-markdown-v2",
+        help="Render Telegram-friendly MarkdownV2 digest (chunked).",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Default market scan: routes to the momentum engine."""
@@ -160,6 +179,15 @@ def scan(
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2))
+        return
+    if telegram_markdown_v2:
+        from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
+
+        messages = render_momentum_scan_markdown_v2(payload)
+        for idx, message in enumerate(messages, start=1):
+            if idx > 1:
+                typer.echo("\n---\n")
+            typer.echo(message)
         return
     _render_scan(payload)
 

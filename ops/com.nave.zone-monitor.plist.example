@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nave.zone-monitor</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/env</string>
+    <string>python3</string>
+    <string>/Users/your-user/nave/scripts/monitor_entry_zones.py</string>
+    <string>--symbols</string>
+    <string>BTCUSDT,ETHUSDT</string>
+    <string>--tf</string>
+    <string>4h,1h</string>
+    <string>--score-threshold</string>
+    <string>75</string>
+    <string>--send-telegram</string>
+    <string>--json</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/your-user/nave</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/your-user/nave/var/logs/zone_monitor.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/your-user/nave/var/logs/zone_monitor.err.log</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>

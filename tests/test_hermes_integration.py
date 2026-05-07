@@ -13,6 +13,7 @@ from cli.main import app
 from core.exceptions import HermesIntegrationError
 from hermes.integration import HermesNaveIntegration
 from trading.signals import Direction, Signal, Timeframe
+from trading.stocks.ism_calendar import ISMCalendarRelease
 from trading.theory_v2 import TheoryV2Decision
 
 runner = CliRunner()
@@ -26,6 +27,7 @@ def test_list_tools_contains_required_toolset() -> None:
     tool_names = {tool["name"] for tool in payload["tools"]}
     assert {
         "momentum_scan",
+        "momentum_zone_watch",
         "market_scan",
         "momentum_playbook",
         "market_playbook",
@@ -194,10 +196,15 @@ def test_momentum_scan_routes_through_service(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(
         "trading.crypto.momentum.service.MomentumMarketService.scan_live", fake_scan_live)
+    monkeypatch.setattr(
+        "trading.crypto.momentum.formatters.render_momentum_scan_markdown_v2",
+        lambda payload: ["*digest*"]
+    )
     payload = integration.momentum_scan(symbols="BTCUSDT")
 
     assert payload["strategy"] == "derivatives_momentum_v1"
     assert payload["summary"]["tradeable_count"] == 1
+    assert payload["telegram_markdown_v2"] == ["*digest*"]
 
 
 def test_momentum_playbook_validates_side(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -224,6 +231,24 @@ def test_dispatch_tool_call_routes_momentum_tools(monkeypatch: pytest.MonkeyPatc
     assert result["ok"] is True
     assert result["tool"] == "momentum_scan"
     assert result["result"]["args"]["symbols"] == "BTCUSDT"
+
+
+def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "momentum_zone_watch",
+        lambda **kwargs: {"alert_count": 0, "args": kwargs},
+    )
+    result = integration.dispatch_tool_call(
+        "momentum_zone_watch",
+        {"symbols": "BTCUSDT", "score_threshold": 80},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "momentum_zone_watch"
+    assert result["result"]["args"]["score_threshold"] == 80
 
 
 def test_market_scan_alias_routes_to_momentum(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -426,3 +451,90 @@ def test_scan_history_rejects_out_of_range_days() -> None:
         integration.scan_history(days=0)
     with pytest.raises(HermesIntegrationError):
         integration.scan_history(days=100)
+
+
+def test_stocks_politicians_scan_adds_telegram_markdown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = HermesNaveIntegration()
+
+    payload = {
+        "generated_at": "2026-05-06T20:01:00+00:00",
+        "new_total": 1,
+        "summary": {"by_chamber": {"house": 1, "senate": 0}},
+        "new_trades": [
+            {
+                "chamber": "house",
+                "symbol": "NVDA",
+                "politician": "Jane Doe",
+                "state": "CA",
+                "amount_range": "$1,001 - $15,000",
+                "transaction_date": "2026-05-01",
+                "disclosure_date": "2026-05-06",
+                "link": "https://example.test/filing",
+            }
+        ],
+    }
+
+    monkeypatch.setattr(
+        "trading.stocks.politicians.scanner.run_daily_scan",
+        lambda persist=True: payload,
+    )
+
+    result = integration.stocks_politicians_scan(persist=False)
+
+    assert result["new_total"] == 1
+    assert isinstance(result["telegram_markdown_v2"], list)
+    assert result["telegram_markdown_v2"]
+    assert "NAVE STOCK Act" in result["telegram_markdown_v2"][0]
+
+
+def test_stocks_politicians_scan_empty_digest_when_no_new(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = HermesNaveIntegration()
+
+    payload = {
+        "generated_at": "2026-05-06T20:01:00+00:00",
+        "new_total": 0,
+        "summary": {},
+        "new_trades": [],
+    }
+    monkeypatch.setattr(
+        "trading.stocks.politicians.scanner.run_daily_scan",
+        lambda persist=True: payload,
+    )
+
+    result = integration.stocks_politicians_scan()
+    assert result["telegram_markdown_v2"] == []
+
+
+def test_stocks_ism_calendar_recent_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        "trading.stocks.ism_calendar.recent_release",
+        lambda **kwargs: ISMCalendarRelease(
+            kind="services",
+            release_at_utc="2026-05-05T14:00:00+00:00",
+            release_date="2026-05-05",
+            covers_month="2026-04",
+            event="ISM Services PMI (Apr)",
+            impact="High",
+        ),
+    )
+
+    result = integration.stocks_ism_calendar(kind="services", recent_days=2)
+
+    assert result["recent_days"] == 2
+    assert result["recent_release"]["release_date"] == "2026-05-05"
+    assert result["recent_release"]["covers_month"] == "2026-04"
+
+
+def test_stocks_ism_calendar_rejects_invalid_recent_days() -> None:
+    integration = HermesNaveIntegration()
+
+    with pytest.raises(HermesIntegrationError):
+        integration.stocks_ism_calendar(recent_days=-1)
+    with pytest.raises(HermesIntegrationError):
+        integration.stocks_ism_calendar(recent_days=31)

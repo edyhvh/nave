@@ -92,6 +92,23 @@ class HermesNaveIntegration:
                     },
                 },
                 {
+                    "name": "momentum_zone_watch",
+                    "description": (
+                        "Monitor momentum entry zones and emit alerts when live price first "
+                        "touches a watched zone. Returns Telegram MarkdownV2 chunks for direct delivery."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "symbols": {"type": "string", "default": "BTCUSDT,ETHUSDT"},
+                            "tf": {"type": "string", "default": "4h,1h"},
+                            "score_threshold": {"type": "integer", "default": 75},
+                            "account_equity": {"type": "number", "default": 10000.0},
+                            "risk_pct": {"type": "number", "default": 0.005},
+                        },
+                    },
+                },
+                {
                     "name": "momentum_playbook",
                     "description": (
                         "Build one concrete BTC/ETH derivatives trade plan with entry zone, "
@@ -286,6 +303,16 @@ class HermesNaveIntegration:
                                 "default": False,
                                 "description": "Return only the next upcoming release.",
                             },
+                            "recent_days": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 30,
+                                "default": 0,
+                                "description": (
+                                    "When > 0, return the most recent release within "
+                                    "the given day lookback window."
+                                ),
+                            },
                             "refresh": {
                                 "type": "boolean",
                                 "default": False,
@@ -457,10 +484,13 @@ class HermesNaveIntegration:
             raise HermesIntegrationError("score_threshold must be between 1 and 100")
 
         from trading.crypto.momentum.service import MomentumMarketService
+        from trading.crypto.momentum.formatters import (
+            render_momentum_scan_markdown_v2,
+        )
 
         service = MomentumMarketService()
         try:
-            return service.scan_live(
+            payload = service.scan_live(
                 symbols=service.parse_symbols(symbols),
                 timeframes=service.parse_timeframes(tf),
                 account_equity=account_equity,
@@ -469,6 +499,9 @@ class HermesNaveIntegration:
             )
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc
+
+        payload["telegram_markdown_v2"] = render_momentum_scan_markdown_v2(payload)
+        return payload
 
     def momentum_playbook(
         self,
@@ -503,6 +536,72 @@ class HermesNaveIntegration:
             )
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc
+
+    def momentum_zone_watch(
+        self,
+        *,
+        symbols: str = "BTCUSDT,ETHUSDT",
+        tf: str = "4h,1h",
+        score_threshold: int = 75,
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+    ) -> dict[str, Any]:
+        if account_equity <= 0:
+            raise HermesIntegrationError("account_equity must be positive")
+        if not 0.001 <= risk_pct <= 0.02:
+            raise HermesIntegrationError("risk_pct must be between 0.001 and 0.02")
+        if not 1 <= score_threshold <= 100:
+            raise HermesIntegrationError("score_threshold must be between 1 and 100")
+
+        from trading.alerts.entry_zone_monitor import (
+            EntryZoneMonitor,
+            build_zone_watch_candidates,
+        )
+        from trading.crypto.momentum.formatters import (
+            render_entry_zone_alert_markdown_v2,
+        )
+        from trading.crypto.momentum.service import MomentumMarketService
+
+        service = MomentumMarketService()
+        market_client = HyperliquidClient(wallet_name=None, testnet=False)
+
+        try:
+            payload = service.scan_live(
+                symbols=service.parse_symbols(symbols),
+                timeframes=service.parse_timeframes(tf),
+                account_equity=account_equity,
+                risk_pct=risk_pct,
+                score_threshold=score_threshold,
+            )
+        except ValueError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+        candidates = build_zone_watch_candidates(payload, min_score=score_threshold)
+        monitor = EntryZoneMonitor()
+        monitor_result = monitor.evaluate(
+            candidates,
+            price_lookup=lambda symbol: market_client.get_mid(symbol.replace("USDT", "")),
+        )
+
+        monitor_result["scan_summary"] = payload.get("summary")
+        monitor_result["watch_candidates"] = [
+            {
+                "symbol": candidate.symbol,
+                "side": candidate.side,
+                "entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
+                "invalidation": candidate.invalidation,
+                "confidence_score": candidate.confidence_score,
+                "rr_estimated": candidate.rr_estimated,
+                "setup_status": candidate.setup_status,
+            }
+            for candidate in candidates
+        ]
+        monitor_result["telegram_markdown_v2"] = [
+            render_entry_zone_alert_markdown_v2(alert)
+            for alert in monitor_result.get("alerts", [])
+            if isinstance(alert, dict)
+        ]
+        return monitor_result
 
     def market_scan(
         self,
@@ -997,6 +1096,7 @@ class HermesNaveIntegration:
         year: int | None = None,
         kind: str | None = None,
         next_only: bool = False,
+        recent_days: int = 0,
         refresh: bool = False,
     ) -> dict[str, Any]:
         """Return the stored ISM release calendar (or the next upcoming release)."""
@@ -1007,15 +1107,28 @@ class HermesNaveIntegration:
             fetch_ism_calendar,
             load_calendar,
             next_release,
+            recent_release,
         )
 
         if kind is not None and kind not in {"manufacturing", "services"}:
             raise HermesIntegrationError(
                 "kind must be manufacturing or services"
             )
+        if recent_days < 0 or recent_days > 30:
+            raise HermesIntegrationError("recent_days must be between 0 and 30")
+
+        kind_filter = kind
+
+        if recent_days > 0:
+            release = recent_release(kind=kind_filter, lookback_days=recent_days)  # type: ignore[arg-type]
+            return {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "recent_days": recent_days,
+                "recent_release": _to_jsonable(release) if release else None,
+            }
 
         if next_only:
-            release = next_release(kind=kind)  # type: ignore[arg-type]
+            release = next_release(kind=kind_filter)  # type: ignore[arg-type]
             return {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "next_release": _to_jsonable(release) if release else None,
@@ -1069,12 +1182,18 @@ class HermesNaveIntegration:
             raise HermesIntegrationError("lookback_days must be between 1 and 30")
 
         from trading.stocks.politicians.provider import PoliticianTradesError
+        from trading.stocks.politicians.formatters import (
+            render_politicians_scan_markdown_v2,
+        )
         from trading.stocks.politicians.scanner import run_daily_scan
 
         try:
-            return run_daily_scan(persist=persist)
+            payload = run_daily_scan(persist=persist)
         except PoliticianTradesError as exc:
             raise HermesIntegrationError(str(exc)) from exc
+
+        payload["telegram_markdown_v2"] = render_politicians_scan_markdown_v2(payload)
+        return payload
 
     def stocks_x_analyze(
         self,
@@ -1116,6 +1235,7 @@ class HermesNaveIntegration:
         args = arguments or {}
         handlers: dict[str, Callable[..., dict[str, Any]]] = {
             "momentum_scan": self.momentum_scan,
+            "momentum_zone_watch": self.momentum_zone_watch,
             "momentum_playbook": self.momentum_playbook,
             "market_scan": self.market_scan,
             "market_playbook": self.market_playbook,
