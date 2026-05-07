@@ -143,12 +143,13 @@ class MomentumMarketService:
             )
             serialized = [plan.to_dict() for plan in sorted(plans, key=lambda item: (-int(item.tradeable), -item.confidence_score))]
             confirmed_count += sum(1 for plan in serialized if plan["setup_status"] == "confirmed")
+            open_interest = frames.get("open_interest")
             plans_by_symbol[symbol] = {
                 "plans": serialized,
                 "tradeable": [],
                 "market_data": {
                     "funding_rate": frames.get("funding_rate"),
-                    "open_interest_points": len(frames.get("open_interest") or []),
+                    "open_interest_points": 0 if open_interest is None else len(open_interest),
                 },
             }
         cadence_policy = build_cadence_policy(

@@ -38,6 +38,12 @@ def _to_jsonable(value: Any) -> Any:
         return [_to_jsonable(item) for item in value]
     if isinstance(value, (datetime, date)):
         return value.isoformat()
+    item = getattr(value, "item", None)
+    if callable(item):
+        try:
+            return item()
+        except Exception:
+            pass
     return value
 
 

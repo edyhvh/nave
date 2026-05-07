@@ -1,6 +1,6 @@
 {
   "year": 2026,
-  "generated_at": "2026-04-26T20:37:52.729456+00:00",
+  "generated_at": "2026-05-05T05:25:11.486443+00:00",
   "source": "fmp_economic_calendar",
   "source_url": "https://financialmodelingprep.com/stable/economic-calendar",
   "releases": [
@@ -118,6 +118,15 @@
       "release_date": "2026-07-01",
       "covers_month": "2026-06",
       "event": "ISM Manufacturing PMI (Jun)",
+      "impact": "High",
+      "source": "fmp"
+    },
+    {
+      "kind": "services",
+      "release_at_utc": "2026-07-06T14:00:00+00:00",
+      "release_date": "2026-07-06",
+      "covers_month": "2026-06",
+      "event": "ISM Services PMI (Jun)",
       "impact": "High",
       "source": "fmp"
     },

@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 # Ensure nave root is on path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import json
 from mcp.server.fastmcp import FastMCP

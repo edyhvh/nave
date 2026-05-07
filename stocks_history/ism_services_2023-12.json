@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-05-03T23:25:32.926688+00:00",
+  "kind": "services",
+  "mode": "services",
+  "report_month": "December 2023",
+  "pmi": null,
+  "source_url": "https://www.ismworld.org/supply-management-news-and-reports/news-publications/inside-supply-management-magazine/blog/2026/2026-04/ism-pmi-reports-roundup-march-2026-services/",
+  "criteria": {
+    "top_n": 15,
+    "mode": "services",
+    "max_sectors_per_trend": 4,
+    "min_eps_growth_next_year": null,
+    "min_confidence": 0.3
+  },
+  "hottest_industries": [],
+  "worst_industries": [],
+  "candidates": {
+    "longs": [],
+    "shorts": [],
+    "expanding": [],
+    "contracting": []
+  },
+  "summary": {
+    "hottest_sector_count": 0,
+    "worst_sector_count": 0,
+    "long_candidates": 0,
+    "short_candidates": 0,
+    "screened_symbol_count": 0,
+    "expanding_candidates": 0,
+    "contracting_candidates": 0
+  },
+  "screened_universe": {
+    "expanding_by_sector": {
+      "sectors": [],
+      "by_sector": {},
+      "all_symbols": []
+    },
+    "contracting_by_sector": {
+      "sectors": [],
+      "by_sector": {},
+      "all_symbols": []
+    },
+    "all_symbols": []
+  },
+  "reviewed_companies": []
+}

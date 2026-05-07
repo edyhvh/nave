@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -14,6 +15,17 @@ from trading.crypto.momentum.service import MomentumMarketService
 
 crypto_app = ProfessionalTyper(help="Crypto derivatives momentum commands")
 DEFAULT_SCORE_THRESHOLD = load_momentum_config().score_tradeable_threshold
+
+
+def _json_default(value: Any) -> Any:
+    """Serialize numpy/pandas scalar values emitted by live market frames."""
+    item = getattr(value, "item", None)
+    if callable(item):
+        try:
+            return item()
+        except Exception:
+            pass
+    return str(value)
 
 
 def _build_scan_payload(
@@ -131,7 +143,7 @@ def momentum_scan(
         apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
-        typer.echo(json.dumps(payload, indent=2))
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
         return
     if telegram_markdown_v2:
         from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
@@ -178,7 +190,7 @@ def scan(
         apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
-        typer.echo(json.dumps(payload, indent=2))
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
         return
     if telegram_markdown_v2:
         from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
@@ -216,7 +228,7 @@ def momentum_playbook(
         score_threshold=score_threshold,
     )
     if json_out:
-        typer.echo(json.dumps(payload, indent=2))
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
         return
     _render_playbook(payload)
 
@@ -245,7 +257,7 @@ def playbook(
         score_threshold=score_threshold,
     )
     if json_out:
-        typer.echo(json.dumps(payload, indent=2))
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
         return
     _render_playbook(payload)
 
@@ -265,7 +277,7 @@ def momentum_backtest(
         lookback_days=lookback_days,
     )
     if json_out:
-        typer.echo(json.dumps(payload, indent=2))
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
         return
 
     console = Console()

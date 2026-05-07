@@ -141,8 +141,8 @@ def run_mcp() -> None:
     import subprocess
     import sys
 
-    typer.echo("Starting MCP server (uses trading/mcp_server)...")
-    subprocess.run([sys.executable, "-m", "trading.mcp_server"], check=False)
+    typer.echo("Starting MCP server (uses trading/crypto/mcp_server)...")
+    subprocess.run([sys.executable, "-m", "trading.crypto.mcp_server"], check=False)
 
 
 @mcp_app.command("fmp-connector")

@@ -144,7 +144,8 @@ def install_nave_cli_shim():
     shim_path = VENV_BIN_DIR / "nave"
     root = str(ROOT_DIR)
 
-    shim = f'''#!/usr/bin/env python3
+    venv_python = str(VENV_BIN_DIR / "python")
+    shim = f'''#!{venv_python}
 import sys
 
 # Ensure project root is importable even without editable install.
