@@ -67,7 +67,7 @@ def build_zone_watch_candidates(
 
             low = min(z0, z1)
             high = max(z0, z1)
-            key = f"{symbol}:{side}:{low:.6f}:{high:.6f}:{invalidation:.6f}"
+            key = f"{symbol}:{side}"
             candidates.append(
                 ZoneWatchCandidate(
                     key=key,
@@ -103,37 +103,71 @@ class EntryZoneMonitor:
         active_keys = {candidate.key for candidate in candidates}
 
         events: list[dict[str, Any]] = []
+        watch_states: list[dict[str, Any]] = []
         for candidate in candidates:
             price = float(price_lookup(candidate.symbol))
-            inside = candidate.entry_zone[0] <= price <= candidate.entry_zone[1]
-            invalidated = _is_invalidated(candidate, price)
-
             current = self.state.get(candidate.key) or {}
+            active_zone, active_invalidation, watch_status, rearmed = _resolve_watch(candidate, current)
+            inside = active_zone[0] <= price <= active_zone[1]
+            invalidated = _is_invalidated_level(candidate.side, active_invalidation, price)
+
             event = {
                 "symbol": candidate.symbol,
                 "side": candidate.side,
-                "entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
-                "invalidation": candidate.invalidation,
+                "entry_zone": [active_zone[0], active_zone[1]],
+                "scan_entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
+                "invalidation": active_invalidation,
+                "scan_invalidation": candidate.invalidation,
                 "price": price,
                 "confidence_score": candidate.confidence_score,
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
+                "watch_status": watch_status,
                 "event_at": now_iso,
             }
 
-            next_state = {
-                **current,
+            watch_states.append({
+                "key": candidate.key,
                 "symbol": candidate.symbol,
                 "side": candidate.side,
-                "entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
-                "invalidation": candidate.invalidation,
+                "entry_zone": [active_zone[0], active_zone[1]],
+                "scan_entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
+                "invalidation": active_invalidation,
+                "scan_invalidation": candidate.invalidation,
                 "confidence_score": candidate.confidence_score,
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
+                "watch_status": watch_status,
+                "price": price,
+                "inside": inside,
+                "invalidated": invalidated,
+            })
+
+            next_state = {
+                "symbol": candidate.symbol,
+                "side": candidate.side,
+                "entry_zone": [active_zone[0], active_zone[1]],
+                "scan_entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
+                "invalidation": active_invalidation,
+                "scan_invalidation": candidate.invalidation,
+                "confidence_score": candidate.confidence_score,
+                "rr_estimated": candidate.rr_estimated,
+                "setup_status": candidate.setup_status,
+                "watch_status": watch_status,
                 "last_price": price,
                 "last_checked_at": now_iso,
                 "expired_at": None,
             }
+            if not rearmed:
+                next_state.update(
+                    {
+                        key: value
+                        for key, value in current.items()
+                        if key in {"first_seen_at", "entry_touched_at", "invalidated_at", "alert_sent_at"}
+                    }
+                )
+            elif current:
+                next_state["rearmed_at"] = now_iso
 
             if inside and not current.get("entry_touched_at"):
                 next_state["entry_touched_at"] = now_iso
@@ -148,6 +182,8 @@ class EntryZoneMonitor:
 
             if not current.get("first_seen_at"):
                 next_state["first_seen_at"] = now_iso
+            elif rearmed:
+                next_state["first_seen_at"] = now_iso
 
             self.state.upsert(candidate.key, next_state)
 
@@ -160,13 +196,65 @@ class EntryZoneMonitor:
             "candidates": len(candidates),
             "alerts": events,
             "alert_count": len(events),
+            "watch_states": watch_states,
         }
 
 
 def _is_invalidated(candidate: ZoneWatchCandidate, price: float) -> bool:
-    if candidate.side == "long":
-        return price <= candidate.invalidation
-    return price >= candidate.invalidation
+    return _is_invalidated_level(candidate.side, candidate.invalidation, price)
+
+
+def _is_invalidated_level(side: str, invalidation: float, price: float) -> bool:
+    if side == "long":
+        return price <= invalidation
+    return price >= invalidation
+
+
+def _resolve_watch(
+    candidate: ZoneWatchCandidate,
+    current: dict[str, Any],
+) -> tuple[tuple[float, float], float, str, bool]:
+    stored_zone = _coerce_zone(current.get("entry_zone"))
+    stored_invalidation = _coerce_float(current.get("invalidation"))
+    current_active = (
+        stored_zone is not None
+        and stored_invalidation is not None
+        and not current.get("invalidated_at")
+        and not current.get("expired_at")
+    )
+    if current_active:
+        assert stored_zone is not None
+        assert stored_invalidation is not None
+        scan_zone = candidate.entry_zone
+        scan_changed = stored_zone != scan_zone or abs(stored_invalidation - candidate.invalidation) > 1e-9
+        watch_status = "holding_previous" if scan_changed else str(current.get("watch_status") or "armed")
+        return stored_zone, stored_invalidation, watch_status, False
+
+    if current.get("invalidated_at"):
+        watch_status = "rearmed_after_invalidation"
+    elif current.get("expired_at"):
+        watch_status = "rearmed_after_expiry"
+    else:
+        watch_status = "armed"
+    return candidate.entry_zone, candidate.invalidation, watch_status, bool(current)
+
+
+def _coerce_zone(value: Any) -> tuple[float, float] | None:
+    if not isinstance(value, list) or len(value) < 2:
+        return None
+    try:
+        first = float(value[0])
+        second = float(value[1])
+    except (TypeError, ValueError):
+        return None
+    return (min(first, second), max(first, second))
+
+
+def _coerce_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _safe_int(value: Any) -> int:

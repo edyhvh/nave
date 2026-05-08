@@ -251,6 +251,71 @@ def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.Monke
     assert result["result"]["args"]["score_threshold"] == 80
 
 
+def test_momentum_zone_watch_exposes_active_watch_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    def fake_scan_live(self, **kwargs):
+        return {
+            "summary": {"tradeable_count": 0},
+            "results": {
+                "BTCUSDT": {
+                    "plans": [
+                        {
+                            "side": "long",
+                            "confidence_score": 84,
+                            "entry_zone": [82550.0, 83800.0],
+                            "invalidation": 82480.0,
+                            "rr_estimated": 4.63,
+                            "setup_status": "pending",
+                        }
+                    ],
+                    "tradeable": [],
+                }
+            },
+        }
+
+    def fake_evaluate(self, candidates, *, price_lookup, now=None):
+        return {
+            "generated_at": "2026-05-08T12:00:00+00:00",
+            "candidates": len(candidates),
+            "alerts": [],
+            "alert_count": 0,
+            "watch_states": [
+                {
+                    "symbol": "BTCUSDT",
+                    "side": "long",
+                    "entry_zone": [81112.86, 82479.0],
+                    "scan_entry_zone": [82550.0, 83800.0],
+                    "invalidation": 81052.5,
+                    "scan_invalidation": 82480.0,
+                    "confidence_score": 84,
+                    "rr_estimated": 4.63,
+                    "setup_status": "pending",
+                    "watch_status": "holding_previous",
+                    "price": 82300.0,
+                    "inside": True,
+                    "invalidated": False,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        "trading.crypto.momentum.service.MomentumMarketService.scan_live", fake_scan_live,
+    )
+    monkeypatch.setattr(
+        "trading.alerts.entry_zone_monitor.EntryZoneMonitor.evaluate", fake_evaluate,
+    )
+    monkeypatch.setattr(
+        "trading.crypto.client.HyperliquidClient.get_mid", lambda self, coin: 82300.0,
+    )
+
+    payload = integration.momentum_zone_watch(symbols="BTCUSDT", score_threshold=75)
+
+    assert payload["watch_candidates"][0]["entry_zone"] == [81112.86, 82479.0]
+    assert payload["watch_candidates"][0]["scan_entry_zone"] == [82550.0, 83800.0]
+    assert payload["watch_candidates"][0]["watch_status"] == "holding_previous"
+
+
 def test_market_scan_alias_routes_to_momentum(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 

@@ -590,7 +590,7 @@ class HermesNaveIntegration:
         )
 
         monitor_result["scan_summary"] = payload.get("summary")
-        monitor_result["watch_candidates"] = [
+        monitor_result["watch_candidates"] = monitor_result.get("watch_states") or [
             {
                 "symbol": candidate.symbol,
                 "side": candidate.side,
