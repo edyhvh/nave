@@ -15,7 +15,8 @@ hermes_app = ProfessionalTyper(help="Hermes Agent integration commands")
 
 @hermes_app.command("tools")
 def list_tools(
-    json_out: bool = typer.Option(True, "--json/--no-json", help="Print JSON metadata"),
+    json_out: bool = typer.Option(
+        True, "--json/--no-json", help="Print JSON metadata"),
 ) -> None:
     """List Hermes skill/tool registration metadata."""
     integration = HermesNaveIntegration()
@@ -30,8 +31,10 @@ def list_tools(
 
 @hermes_app.command("call")
 def call_tool(
-    tool: str = typer.Option(..., "--tool", help="Tool name (cot_report|cot_history|weekly_plan)"),
-    args_json: str = typer.Option("{}", "--args-json", help="JSON object with tool arguments"),
+    tool: str = typer.Option(..., "--tool",
+                             help="Tool name from `nave hermes tools`"),
+    args_json: str = typer.Option(
+        "{}", "--args-json", help="JSON object with tool arguments"),
 ) -> None:
     """Invoke a Hermes-registered tool and print a structured JSON result."""
     integration = HermesNaveIntegration()
@@ -40,7 +43,8 @@ def call_tool(
         if not isinstance(arguments, dict):
             raise typer.BadParameter("--args-json must decode to an object")
     except json.JSONDecodeError as exc:
-        raise typer.BadParameter(f"Invalid JSON for --args-json: {exc}") from exc
+        raise typer.BadParameter(
+            f"Invalid JSON for --args-json: {exc}") from exc
 
     try:
         payload = integration.dispatch_tool_call(tool, arguments)
