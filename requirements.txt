@@ -36,10 +36,15 @@ openbb-yfinance>=1.5.0
 # Core data science and financial analysis
 pandas>=2.0.0
 numpy>=1.24.0
+scipy>=1.11.0
 requests>=2.31.0  # For HTTP requests (more reliable than urllib)
 python-dotenv>=1.0.0  # For loading .env files securely
 typer>=0.12.3
 pytest-html>=4.1.1
+pyarrow>=15.0.0
+yfinance>=0.2.54
+py_vollib>=1.0.1
+plotly>=5.22.0
 
 # Data visualization (optional but recommended for analysis)
 matplotlib>=3.7.0
