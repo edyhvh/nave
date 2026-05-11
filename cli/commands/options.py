@@ -17,6 +17,7 @@ from cli.professional_typer import ProfessionalTyper
 from options.analyzer import OptionsAnalyzer
 from options.exceptions import OptionsError
 from options.prompt_builder import build_llm_paths, build_llm_prompt
+from options.visualization import TerminalChartDependencyError, render_terminal_charts
 
 options_app = ProfessionalTyper(help="Options analytics commands")
 
@@ -191,6 +192,164 @@ def _render_strategy_comparison_table(console: Console, payload: dict) -> None:
     console.print(table)
 
 
+def _render_prompt_data_block(
+    console: Console,
+    payload: dict,
+    *,
+    report_path: Path | None,
+    llm_prompt_enabled: bool,
+) -> None:
+    """Render prompt/data block used by terminal chart mode."""
+    console.print("\n[bold cyan]=== Prompt and Data ===[/bold cyan]")
+
+    underlying = payload.get("underlying_analysis", {}) or {}
+    implied = underlying.get("implied_volatility", {}) or {}
+    expected_move = underlying.get("expected_move", {}) or {}
+    recommendations = list(payload.get("recommendations") or [])
+
+    data_table = Table(box=box.SIMPLE, show_header=True)
+    data_table.add_column("Field")
+    data_table.add_column("Value")
+    data_table.add_row("Ticker", str(payload.get("ticker") or "N/A"))
+    data_table.add_row("Generated At", str(
+        payload.get("generated_at") or "N/A"))
+    data_table.add_row("Underlying Price", str(underlying.get("price")))
+    data_table.add_row("IV Rank", str(implied.get("iv_rank")))
+    data_table.add_row("Expected Move (1sd)", str(
+        expected_move.get("one_std_move")))
+    data_table.add_row("Top Recommendations", str(len(recommendations[:3])))
+    if report_path is not None:
+        data_table.add_row("JSON Report", str(report_path))
+    console.print(data_table)
+
+    if llm_prompt_enabled:
+        prompt = str(payload.get("llm_prompt") or "")
+        llm_paths = payload.get("llm_paths") or {}
+        if prompt:
+            console.print(
+                Panel(prompt, title="LLM Prompt (Copy/Paste)",
+                      border_style="green")
+            )
+        console.print(
+            Panel(
+                json.dumps(llm_paths, indent=2, default=str),
+                title="LLM Paths (Separate Block)",
+                border_style="yellow",
+            )
+        )
+        return
+
+    console.print(
+        Panel(
+            "LLM prompt block is disabled. Re-run with --llm-prompt to include a copy-ready prompt and llm_paths payload.",
+            title="Prompt Hint",
+            border_style="cyan",
+        )
+    )
+
+
+def _render_sheet_output(
+    console: Console,
+    payload_out: dict,
+    *,
+    recommendations: list[dict],
+    risk_warnings: list[str],
+    report_path: Path | None,
+    include_llm_prompt_panels: bool,
+) -> None:
+    """Render Rich sheet output for options analysis."""
+    underlying = payload_out.get("underlying_analysis", {})
+    implied = underlying.get("implied_volatility", {}) or {}
+    expected_move = underlying.get("expected_move", {}) or {}
+    snapshot = underlying.get("options_market_snapshot", {}) or {}
+
+    summary = Table(
+        title=f"Options Summary - {payload_out.get('ticker')}", box=box.SIMPLE_HEAVY)
+    summary.add_column("Metric")
+    summary.add_column("Value")
+    summary.add_row("Price", str(underlying.get("price")))
+    summary.add_row("IV Mean", str(implied.get("iv_mean")))
+    summary.add_row("IV Rank", str(implied.get("iv_rank")))
+    summary.add_row("Expected Move (1sd)", str(
+        expected_move.get("one_std_move")))
+    summary.add_row("Contracts", str(snapshot.get("contracts")))
+    summary.add_row("Put/Call OI Ratio",
+                    str(snapshot.get("put_call_oi_ratio")))
+    console.print(summary)
+
+    _render_bias_tables(console, recommendations)
+    _render_strategy_comparison_table(console, payload_out)
+
+    for warning in risk_warnings:
+        console.print(
+            Panel(
+                warning,
+                title="Risk Warning",
+                border_style="red",
+            )
+        )
+
+    charts = payload_out.get("charts", {}) or {}
+    chart_table = Table(title="Chart Artifacts", box=box.SIMPLE)
+    chart_table.add_column("Chart")
+    chart_table.add_column("Path")
+    for key in ["strategy_ranking", "payoff", "greeks", "monte_carlo"]:
+        chart_table.add_row(key, str(charts.get(key)))
+    console.print(chart_table)
+
+    if report_path is not None:
+        copy_help = Text(
+            f"JSON report: {report_path}\n"
+            f"View: cat {report_path}\n"
+            f"Copy (macOS): pbcopy < {report_path}",
+        )
+        console.print(
+            Panel(copy_help, title="Copyable JSON", border_style="cyan"))
+
+    if include_llm_prompt_panels:
+        prompt = str(payload_out.get("llm_prompt") or "")
+        console.print(
+            Panel(prompt, title="LLM Prompt (Copy/Paste)", border_style="green"))
+        llm_paths = payload_out.get("llm_paths") or {}
+        console.print(
+            Panel(
+                json.dumps(llm_paths, indent=2, default=str),
+                title="LLM Paths (Separate Block)",
+                border_style="yellow",
+            )
+        )
+
+
+def _render_plain_output(
+    payload_out: dict,
+    *,
+    recommendations: list[dict],
+    report_path: Path | None,
+    risk_warnings: list[str],
+) -> None:
+    """Render minimal plain-text output."""
+    underlying = payload_out.get("underlying_analysis", {})
+    typer.echo(f"Ticker: {payload_out.get('ticker')}")
+    typer.echo(f"Price: {underlying.get('price')}")
+    if report_path is not None:
+        typer.echo(f"JSON report: {report_path}")
+    for warning in risk_warnings:
+        typer.echo(f"WARNING: {warning}")
+    for label, recs in _group_recommendations_by_bias(recommendations):
+        typer.echo(f"{label} strategies:")
+        for rec in recs:
+            strategy = (rec.get("strategy", {}) or {}).get("name", "unknown")
+            metrics = rec.get("metrics", {}) or {}
+            ev_value = _as_float(metrics.get("expected_value"))
+            ev_display = f"{ev_value:.2f}" if ev_value is not None else str(
+                metrics.get("expected_value"))
+            if ev_value is not None and ev_value < 0:
+                ev_display = f"NEG_EV:{ev_display}"
+            typer.echo(
+                f"- {strategy}: score={metrics.get('composite_score')} pop={metrics.get('pop')} ev={ev_display}"
+            )
+
+
 @options_app.command("analyze")
 def analyze(
     ticker: str = typer.Option(
@@ -210,6 +369,12 @@ def analyze(
         None,
         "--json-path",
         help="Optional output path for the saved .json report",
+    ),
+    terminal_mode: bool = typer.Option(
+        False,
+        "--terminal",
+        "--ascii",
+        help="Render terminal-native charts (plotext) in additive mode",
     ),
     llm_prompt: bool = typer.Option(
         False,
@@ -260,88 +425,57 @@ def analyze(
         typer.echo(json.dumps(payload_out, indent=2, default=str))
         return
 
-    underlying = payload_out.get("underlying_analysis", {})
-    implied = underlying.get("implied_volatility", {}) or {}
-    expected_move = underlying.get("expected_move", {}) or {}
-    snapshot = underlying.get("options_market_snapshot", {}) or {}
     recommendations = payload_out.get("recommendations", [])[:3]
     risk_warnings = _collect_risk_warnings(payload_out, recommendations)
 
-    if sheet:
-        summary = Table(
-            title=f"Options Summary - {payload_out.get('ticker')}", box=box.SIMPLE_HEAVY)
-        summary.add_column("Metric")
-        summary.add_column("Value")
-        summary.add_row("Price", str(underlying.get("price")))
-        summary.add_row("IV Mean", str(implied.get("iv_mean")))
-        summary.add_row("IV Rank", str(implied.get("iv_rank")))
-        summary.add_row("Expected Move (1sd)", str(
-            expected_move.get("one_std_move")))
-        summary.add_row("Contracts", str(snapshot.get("contracts")))
-        summary.add_row("Put/Call OI Ratio",
-                        str(snapshot.get("put_call_oi_ratio")))
-        console.print(summary)
+    if terminal_mode:
+        _render_prompt_data_block(
+            console,
+            payload_out,
+            report_path=report_path,
+            llm_prompt_enabled=llm_prompt,
+        )
 
-        _render_bias_tables(console, recommendations)
-        _render_strategy_comparison_table(console, payload_out)
+        console.print("\n[bold magenta]=== Graphs ===[/bold magenta]")
+        try:
+            render_terminal_charts(payload_out, console=console)
+        except TerminalChartDependencyError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
 
-        for warning in risk_warnings:
-            console.print(
-                Panel(
-                    warning,
-                    title="Risk Warning",
-                    border_style="red",
-                )
+        console.print("\n[bold green]=== Summary ===[/bold green]")
+        if sheet:
+            _render_sheet_output(
+                console,
+                payload_out,
+                recommendations=recommendations,
+                risk_warnings=risk_warnings,
+                report_path=report_path,
+                include_llm_prompt_panels=False,
             )
-
-        charts = payload_out.get("charts", {}) or {}
-        chart_table = Table(title="Chart Artifacts", box=box.SIMPLE)
-        chart_table.add_column("Chart")
-        chart_table.add_column("Path")
-        for key in ["strategy_ranking", "payoff", "greeks", "monte_carlo"]:
-            chart_table.add_row(key, str(charts.get(key)))
-        console.print(chart_table)
-
-        if report_path is not None:
-            copy_help = Text(
-                f"JSON report: {report_path}\n"
-                f"View: cat {report_path}\n"
-                f"Copy (macOS): pbcopy < {report_path}",
+        else:
+            _render_plain_output(
+                payload_out,
+                recommendations=recommendations,
+                report_path=report_path,
+                risk_warnings=risk_warnings,
             )
-            console.print(
-                Panel(copy_help, title="Copyable JSON", border_style="cyan"))
-
-        if llm_prompt:
-            prompt = str(payload_out.get("llm_prompt") or "")
-            console.print(
-                Panel(prompt, title="LLM Prompt (Copy/Paste)", border_style="green"))
-            llm_paths = payload_out.get("llm_paths") or {}
-            console.print(
-                Panel(
-                    json.dumps(llm_paths, indent=2, default=str),
-                    title="LLM Paths (Separate Block)",
-                    border_style="yellow",
-                )
-            )
-
         return
 
-    typer.echo(f"Ticker: {payload_out.get('ticker')}")
-    typer.echo(f"Price: {underlying.get('price')}")
-    if report_path is not None:
-        typer.echo(f"JSON report: {report_path}")
-    for warning in risk_warnings:
-        typer.echo(f"WARNING: {warning}")
-    for label, recs in _group_recommendations_by_bias(recommendations):
-        typer.echo(f"{label} strategies:")
-        for rec in recs:
-            strategy = (rec.get("strategy", {}) or {}).get("name", "unknown")
-            metrics = rec.get("metrics", {}) or {}
-            ev_value = _as_float(metrics.get("expected_value"))
-            ev_display = f"{ev_value:.2f}" if ev_value is not None else str(
-                metrics.get("expected_value"))
-            if ev_value is not None and ev_value < 0:
-                ev_display = f"NEG_EV:{ev_display}"
-            typer.echo(
-                f"- {strategy}: score={metrics.get('composite_score')} pop={metrics.get('pop')} ev={ev_display}"
-            )
+    if sheet:
+        _render_sheet_output(
+            console,
+            payload_out,
+            recommendations=recommendations,
+            risk_warnings=risk_warnings,
+            report_path=report_path,
+            include_llm_prompt_panels=llm_prompt,
+        )
+        return
+
+    _render_plain_output(
+        payload_out,
+        recommendations=recommendations,
+        report_path=report_path,
+        risk_warnings=risk_warnings,
+    )

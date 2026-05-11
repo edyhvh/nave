@@ -19,6 +19,11 @@ The options module provides equity options analytics with a first implementation
   - Payoff at expiration
   - Greeks by strike
   - Monte Carlo P/L distribution
+- Terminal-native charts with plotext (`--terminal` / `--ascii`):
+  - Strategy Payoff Diagram
+  - Greeks summary (Delta, Gamma, Theta, Vega)
+  - Monte Carlo P/L distribution
+  - Strategy ranking bar chart
 - Parquet + sqlite cache under data/options_cache.
 - Hermes integration via tool name options_scan.
 
@@ -54,5 +59,23 @@ The options module provides equity options analytics with a first implementation
 ```bash
 python -m options.analyzer
 nave options analyze --ticker MSFT --days-to-exp 30 --json
+nave options analyze --ticker MSFT --days-to-exp 30 --terminal
 nave hermes call --tool options_scan --args-json '{"ticker":"MSFT","days_to_exp":30}'
+```
+
+## Terminal output blocks
+
+When `--terminal` (or `--ascii`) is used, CLI output appears in this order:
+
+1. Prompt and data
+2. Graphs
+3. Summary (metrics, rankings, risk warnings)
+
+## Bull put spread payoff example
+
+If `bull_put_credit_spread` is ranked as the top setup, the terminal payoff
+chart will show capped upside credit and defined downside risk.
+
+```bash
+nave options analyze --ticker MSFT --days-to-exp 30 --terminal --llm-prompt
 ```

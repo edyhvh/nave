@@ -434,3 +434,156 @@ def test_options_analyze_includes_llm_prompt_in_json_mode(monkeypatch, tmp_path:
     assert '"json_report_path"' not in parsed["llm_prompt"]
     assert isinstance(parsed["llm_paths"].get("charts"), dict)
     assert "json_report_path" in parsed["llm_paths"]
+
+
+def test_options_analyze_terminal_mode_orders_blocks(monkeypatch, tmp_path: Path) -> None:
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def __init__(self) -> None:
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            return {
+                "ticker": ticker,
+                "generated_at": "2026-05-11T00:00:00+00:00",
+                "underlying_analysis": {
+                    "price": 420.0,
+                    "historical_volatility": {"hv_30": 0.24},
+                    "implied_volatility": {"iv_mean": 0.25, "iv_rank": 60.0},
+                    "expected_move": {"horizon_days": 30, "one_std_move": 11.0},
+                    "options_market_snapshot": {"contracts": 120.0, "put_call_oi_ratio": 0.95},
+                },
+                "recommendations": [
+                    {
+                        "strategy": {
+                            "name": "bull_put_credit_spread",
+                            "days_to_expiration": 30,
+                            "legs": [
+                                {
+                                    "instrument_type": "option",
+                                    "side": "sell",
+                                    "quantity": 1,
+                                    "premium": 2.5,
+                                    "strike": 400.0,
+                                    "option_type": "put",
+                                },
+                                {
+                                    "instrument_type": "option",
+                                    "side": "buy",
+                                    "quantity": 1,
+                                    "premium": 1.0,
+                                    "strike": 390.0,
+                                    "option_type": "put",
+                                },
+                            ],
+                        },
+                        "metrics": {
+                            "composite_score": 71.0,
+                            "pop": 65.0,
+                            "expected_value": 9.0,
+                            "probability_of_touch": 41.0,
+                            "theta_per_day": 0.14,
+                            "vega_exposure": 0.08,
+                        },
+                        "tradeoff_comment": "Defined-risk bullish credit spread.",
+                    }
+                ],
+                "all_recommendations_ranked": [
+                    {
+                        "strategy": {"name": "bull_put_credit_spread"},
+                        "metrics": {"composite_score": 71.0},
+                    },
+                    {
+                        "strategy": {"name": "iron_condor"},
+                        "metrics": {"composite_score": 63.0},
+                    },
+                ],
+                "analysis_overlay": {"warnings": ["Model warning example"]},
+                "charts": {"strategy_ranking": "/tmp/ranking.html"},
+            }
+
+    def _fake_terminal_renderer(report_json: dict, console):
+        _ = report_json
+        console.print("TERMINAL_CHART_RENDERED")
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(options_cmd, "render_terminal_charts",
+                        _fake_terminal_renderer)
+
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "analyze",
+            "--ticker",
+            "MSFT",
+            "--days-to-exp",
+            "30",
+            "--terminal",
+            "--llm-prompt",
+        ],
+    )
+
+    assert result.exit_code == 0
+    output = result.stdout
+    prompt_idx = output.index("=== Prompt and Data ===")
+    graph_idx = output.index("=== Graphs ===")
+    summary_idx = output.index("=== Summary ===")
+    assert prompt_idx < graph_idx < summary_idx
+    assert "TERMINAL_CHART_RENDERED" in output
+    assert "Options Summary - MSFT" in output
+    assert "Bullish Strategy Ranking" in output
+    assert "Risk Warning" in output
+
+
+def test_options_analyze_ascii_alias_matches_terminal_mode(monkeypatch, tmp_path: Path) -> None:
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def __init__(self) -> None:
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            _ = days_to_exp
+            return {
+                "ticker": ticker,
+                "generated_at": "2026-05-11T00:00:00+00:00",
+                "underlying_analysis": {
+                    "price": 420.0,
+                    "implied_volatility": {"iv_mean": 0.25, "iv_rank": 60.0},
+                    "expected_move": {"horizon_days": 30, "one_std_move": 11.0},
+                    "options_market_snapshot": {"contracts": 120.0, "put_call_oi_ratio": 0.95},
+                },
+                "recommendations": [],
+                "charts": {},
+            }
+
+    call_count = {"value": 0}
+
+    def _fake_terminal_renderer(report_json: dict, console):
+        _ = report_json
+        call_count["value"] += 1
+        console.print("ASCII_MODE_RENDER")
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(options_cmd, "render_terminal_charts",
+                        _fake_terminal_renderer)
+
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "analyze",
+            "--ticker",
+            "MSFT",
+            "--days-to-exp",
+            "30",
+            "--ascii",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert call_count["value"] == 1
+    assert "=== Graphs ===" in result.stdout
+    assert "ASCII_MODE_RENDER" in result.stdout

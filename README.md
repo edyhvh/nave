@@ -212,6 +212,21 @@ Run options analysis for a ticker and get a sheet-style ranked strategy summary 
 nave options analyze --ticker MSFT --days-to-exp 30
 ```
 
+Render terminal-native charts (no browser) with plotext while keeping the
+existing report flow and HTML chart artifacts:
+
+```bash
+nave options analyze --ticker MSFT --days-to-exp 30 --terminal
+# alias
+nave options analyze --ticker MSFT --days-to-exp 30 --ascii
+```
+
+When `--terminal` (or `--ascii`) is enabled, human output is grouped in this order:
+
+1. Prompt and data block
+2. Graphs (payoff, Greeks, Monte Carlo, strategy ranking)
+3. Summary (metrics table, rankings, risk warnings)
+
 The sheet run also saves a copyable JSON report file (path shown in terminal), so
 you can share or reuse the result in automation.
 
@@ -225,6 +240,12 @@ Print a ready-to-copy LLM prompt based on the generated report:
 
 ```bash
 nave options analyze --ticker MSFT --days-to-exp 30 --llm-prompt
+```
+
+Terminal charts + LLM prompt in one run:
+
+```bash
+nave options analyze --ticker MSFT --days-to-exp 30 --terminal --llm-prompt
 ```
 
 If you also pass `--json`, the output JSON includes `llm_prompt` plus the full

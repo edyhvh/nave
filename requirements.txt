@@ -45,6 +45,7 @@ pyarrow>=15.0.0
 yfinance>=0.2.54
 py_vollib>=1.0.1
 plotly>=5.22.0
+plotext>=5.3.2
 
 # Data visualization (optional but recommended for analysis)
 matplotlib>=3.7.0
