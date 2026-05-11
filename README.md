@@ -1,4 +1,8 @@
-# Nave
+<p align="center">
+	<img src="design/assets/logo_round.png" alt="NAVE logo" width="140" />
+</p>
+
+<h1 align="center">NAVE</h1>
 
 Nave is a terminal-first trading copilot with three main surfaces:
 
