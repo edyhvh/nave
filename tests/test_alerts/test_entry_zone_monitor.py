@@ -109,15 +109,17 @@ def test_entry_zone_monitor_keeps_armed_zone_when_fresh_scan_drifts(tmp_path) ->
     state = ZoneWatchStateStore(path=tmp_path / "state.json")
     monitor = EntryZoneMonitor(state)
     initial_candidates = build_zone_watch_candidates(
-        _scan_payload_with_zone(entry_zone=[81112.86, 82479.0], invalidation=81052.5)
+        _scan_payload_with_zone(
+            entry_zone=[81112.86, 82479.0], invalidation=81052.5)
     )
     shifted_candidates = build_zone_watch_candidates(
-        _scan_payload_with_zone(entry_zone=[82550.0, 83800.0], invalidation=82480.0)
+        _scan_payload_with_zone(
+            entry_zone=[82550.0, 83800.0], invalidation=82480.0)
     )
 
     first = monitor.evaluate(
         initial_candidates,
-        price_lookup=lambda symbol: 81000.0,
+        price_lookup=lambda symbol: 81080.0,
         now=datetime(2026, 5, 6, 9, 0, tzinfo=timezone.utc),
     )
     second = monitor.evaluate(
@@ -139,10 +141,12 @@ def test_entry_zone_monitor_rearms_after_invalidation(tmp_path) -> None:
     state = ZoneWatchStateStore(path=tmp_path / "state.json")
     monitor = EntryZoneMonitor(state)
     initial_candidates = build_zone_watch_candidates(
-        _scan_payload_with_zone(entry_zone=[81112.86, 82479.0], invalidation=81052.5)
+        _scan_payload_with_zone(
+            entry_zone=[81112.86, 82479.0], invalidation=81052.5)
     )
     replacement_candidates = build_zone_watch_candidates(
-        _scan_payload_with_zone(entry_zone=[82550.0, 83800.0], invalidation=82480.0)
+        _scan_payload_with_zone(
+            entry_zone=[82550.0, 83800.0], invalidation=82480.0)
     )
 
     invalidated = monitor.evaluate(

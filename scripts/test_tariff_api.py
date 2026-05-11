@@ -8,7 +8,23 @@ import urllib.parse
 import json
 from datetime import datetime, timedelta
 
-def test_tariff_api():
+import pytest
+
+
+def _is_connectivity_issue(error_msg: str) -> bool:
+    text = error_msg.lower()
+    patterns = (
+        "nodename nor servname provided",
+        "network",
+        "ssl",
+        "certificate verify failed",
+        "self-signed certificate",
+        "timed out",
+    )
+    return any(pattern in text for pattern in patterns)
+
+
+def _run_tariff_api_check() -> tuple[bool, str | None]:
     """Test the US Treasury FiscalData API for customs duties"""
 
     print("🔍 Testing US Treasury Tariff Revenue API")
@@ -50,28 +66,41 @@ def test_tariff_api():
                     for i, record in enumerate(data['data'][:3]):  # Show first 3
                         record_date = record.get('record_date', 'N/A')
                         customs_duties = record.get('customs_duties', 'N/A')
-                        print(f"  {i+1}. Date: {record_date}, Customs Duties: {customs_duties}")
+                        print(
+                            f"  {i+1}. Date: {record_date}, Customs Duties: {customs_duties}")
 
                     # Calculate totals if available
-                    valid_records = [r for r in data['data'] if r.get('customs_duties')]
+                    valid_records = [r for r in data['data']
+                                     if r.get('customs_duties')]
                     if valid_records:
-                        total = sum(float(r['customs_duties']) for r in valid_records if r['customs_duties'])
-                        print(f"\n💰 Total customs duties in sample: ${total:,.0f}")
+                        total = sum(float(r['customs_duties'])
+                                    for r in valid_records if r['customs_duties'])
+                        print(
+                            f"\n💰 Total customs duties in sample: ${total:,.0f}")
 
-                    return True
+                    return True, None
                 else:
                     print("⚠️  API returned success but no data found")
-                    print(f"Response structure: {list(data.keys()) if isinstance(data, dict) else type(data)}")
-                    return False
+                    print(
+                        f"Response structure: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                    return False, "API returned success but no data found"
             else:
                 print(f"❌ API call failed with status {response.getcode()}")
-                return False
+                return False, f"API call failed with status {response.getcode()}"
 
     except Exception as e:
         print(f"❌ Error testing API: {str(e)}")
-        return False
+        return False, str(e)
 
-def test_alternative_endpoints():
+
+def test_tariff_api() -> None:
+    success, error = _run_tariff_api_check()
+    if not success and error and _is_connectivity_issue(error):
+        pytest.skip(f"Connectivity issue while testing primary API: {error}")
+    assert success, error or "Primary API check failed"
+
+
+def _run_alternative_endpoints_check() -> tuple[bool, str | None]:
     """Test alternative API endpoints for customs data"""
 
     print("\n🔄 Testing alternative API endpoints")
@@ -81,7 +110,8 @@ def test_alternative_endpoints():
     mts_url = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/mts/mts_table_9"
 
     params = {
-        'filter': 'record_date:gte:2025-01-01,line_code_nbr:eq:120',  # Line 120 = customs duties
+        # Line 120 = customs duties
+        'filter': 'record_date:gte:2025-01-01,line_code_nbr:eq:120',
         'fields': 'record_date,line_code_nbr,line_description,amount',
         'sort': '-record_date',
         'page[size]': 5
@@ -95,17 +125,28 @@ def test_alternative_endpoints():
             if response.getcode() == 200:
                 data = json.loads(response.read().decode())
                 if 'data' in data and data['data']:
-                    print(f"✅ MTS endpoint works! Found {len(data['data'])} records")
+                    print(
+                        f"✅ MTS endpoint works! Found {len(data['data'])} records")
                     for record in data['data'][:2]:
-                        print(f"  Date: {record.get('record_date')}, Amount: {record.get('amount')}, Desc: {record.get('line_description')}")
-                    return True
+                        print(
+                            f"  Date: {record.get('record_date')}, Amount: {record.get('amount')}, Desc: {record.get('line_description')}")
+                    return True, None
 
         print(f"⚠️  MTS endpoint status: {response.getcode()}")
-        return False
+        return False, f"MTS endpoint status: {response.getcode()}"
 
     except Exception as e:
         print(f"❌ Error testing MTS endpoint: {str(e)}")
-        return False
+        return False, str(e)
+
+
+def test_alternative_endpoints() -> None:
+    success, error = _run_alternative_endpoints_check()
+    if not success and error and _is_connectivity_issue(error):
+        pytest.skip(
+            f"Connectivity issue while testing alternative API: {error}")
+    assert success, error or "Alternative endpoint check failed"
+
 
 def main():
     print("US TARIFF REVENUE API VERIFICATION")
@@ -118,10 +159,10 @@ def main():
     print()
 
     # Test the URL provided by user
-    primary_success = test_tariff_api()
+    primary_success, primary_error = _run_tariff_api_check()
 
     # Test alternative endpoints
-    alternative_success = test_alternative_endpoints()
+    alternative_success, alternative_error = _run_alternative_endpoints_check()
 
     # Summary
     print("\n" + "=" * 60)
@@ -133,10 +174,14 @@ def main():
         print("   The URL provided by user appears to be correct")
     else:
         print("❌ PRIMARY API ENDPOINT: ISSUES")
+        if primary_error:
+            print(f"   Reason: {primary_error}")
         if alternative_success:
             print("   But alternative MTS endpoint works")
         else:
             print("   Need to investigate API structure")
+            if alternative_error:
+                print(f"   Alternative endpoint reason: {alternative_error}")
 
     print("\n💡 RECOMMENDATIONS:")
     print("1. The source (US Treasury DTS) is correct")
@@ -147,10 +192,12 @@ def main():
 
     return primary_success or alternative_success
 
+
 if __name__ == "__main__":
     try:
         success = main()
-        print(f"\n🎯 Overall result: {'✅ VERIFIED' if success else '⚠️  NEEDS REVIEW'}")
+        print(
+            f"\n🎯 Overall result: {'✅ VERIFIED' if success else '⚠️  NEEDS REVIEW'}")
     except Exception as e:
         print(f"Script error: {e}")
         import traceback
