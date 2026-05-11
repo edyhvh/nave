@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
+from options import scoring
+from options.models import StrategyCandidate
 from options.scoring import rank_recommendations
 from options.strategies import build_strategy_candidates
 
@@ -98,3 +100,83 @@ def test_rank_recommendations_returns_top_three() -> None:
     assert all(rec.metrics.expected_profit >= 0.0 for rec in ranked)
     assert all(rec.metrics.expected_loss >= 0.0 for rec in ranked)
     assert all(rec.tradeoff_comment for rec in ranked)
+
+
+def test_rank_recommendations_penalizes_negative_ev_more_in_high_iv(monkeypatch) -> None:
+    frame = _sample_option_frame()
+    candidates = [
+        StrategyCandidate(
+            name="positive_edge",
+            expiration=frame.iloc[0]["expiration"],
+            days_to_expiration=30,
+            legs=[],
+            net_premium=0.0,
+            max_profit=120.0,
+            max_loss=60.0,
+            breakeven_points=[100.0],
+        ),
+        StrategyCandidate(
+            name="negative_edge",
+            expiration=frame.iloc[0]["expiration"],
+            days_to_expiration=30,
+            legs=[],
+            net_premium=0.0,
+            max_profit=250.0,
+            max_loss=60.0,
+            breakeven_points=[100.0],
+        ),
+    ]
+
+    distributions = {
+        "positive_edge": {
+            "pop": 58.0,
+            "expected_value": 22.0,
+            "expected_profit": 61.0,
+            "expected_loss": 19.0,
+            "probability_of_touch": 42.0,
+            "profit_range_low": 96.0,
+            "profit_range_high": 109.0,
+        },
+        "negative_edge": {
+            "pop": 75.0,
+            "expected_value": -8.0,
+            "expected_profit": 52.0,
+            "expected_loss": 12.0,
+            "probability_of_touch": 30.0,
+            "profit_range_low": 92.0,
+            "profit_range_high": 108.0,
+        },
+    }
+
+    def _fake_distribution(candidate, underlying_price: float, implied_volatility: float):
+        return distributions[candidate.name]
+
+    monkeypatch.setattr(
+        scoring, "evaluate_strategy_distribution", _fake_distribution)
+    monkeypatch.setattr(scoring, "_aggregate_greek_exposure",
+                        lambda option_frame, candidate: (0.0, 0.0))
+
+    ranked_low_iv = scoring.rank_recommendations(
+        candidates=candidates,
+        option_frame=frame,
+        underlying_price=100.0,
+        iv_atm=0.26,
+        iv_rank=20.0,
+        iv_percentile=35.0,
+        top_n=2,
+    )
+    ranked_high_iv = scoring.rank_recommendations(
+        candidates=candidates,
+        option_frame=frame,
+        underlying_price=100.0,
+        iv_atm=0.26,
+        iv_rank=75.0,
+        iv_percentile=85.0,
+        top_n=2,
+    )
+
+    by_name_low = {rec.strategy.name: rec for rec in ranked_low_iv}
+    by_name_high = {rec.strategy.name: rec for rec in ranked_high_iv}
+
+    assert ranked_high_iv[0].strategy.name == "positive_edge"
+    assert by_name_high["negative_edge"].metrics.composite_score < by_name_low["negative_edge"].metrics.composite_score

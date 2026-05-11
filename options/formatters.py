@@ -9,9 +9,12 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
     """Render a compact Telegram MarkdownV2 digest for Hermes output."""
     ticker = str(payload.get("ticker") or "?")
     underlying = payload.get("underlying_analysis") or {}
+    overlay = payload.get("analysis_overlay") or {}
     price = underlying.get("price")
     iv = (underlying.get("implied_volatility") or {}).get("iv_mean")
     hv = (underlying.get("historical_volatility") or {}).get("hv_30")
+    final_recs = overlay.get("final_recommendations") or {}
+    executive_summary = list(overlay.get("executive_summary") or [])
 
     recs = payload.get("recommendations") or []
     lines = [
@@ -20,6 +23,26 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
         f"Price: {price}",
         f"IV mean / HV30: {iv} / {hv}",
     ]
+
+    if executive_summary:
+        lines.append("Executive summary:")
+        for bullet in executive_summary[:2]:
+            lines.append(f"- {bullet}")
+
+    conservative = final_recs.get("best_conservative_executable_setup") or {}
+    aggressive = final_recs.get("best_aggressive_setup") or {}
+    if conservative:
+        lines.append(
+            "Conservative: "
+            f"{str(conservative.get('strategy_name') or 'n/a').replace('_', ' ')}"
+            f" | EV {(conservative.get('metrics') or {}).get('expected_value')}"
+        )
+    if aggressive:
+        lines.append(
+            "Aggressive: "
+            f"{str(aggressive.get('strategy_name') or 'n/a').replace('_', ' ')}"
+            f" | EV {(aggressive.get('metrics') or {}).get('expected_value')}"
+        )
 
     if recs:
         lines.append("Top strategies:")

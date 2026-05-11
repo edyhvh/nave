@@ -55,17 +55,132 @@ def _write_json_report(*, payload: dict, out_path: Path) -> Path:
     return out_path
 
 
+def _as_float(value: object) -> float | None:
+    try:
+        if isinstance(value, bool):
+            return float(int(value))
+        if isinstance(value, (int, float, str)):
+            return float(value)
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+def _filtered_prompt_strategy_names(recs: list[dict]) -> list[str]:
+    names: list[str] = []
+    for rec in recs[:3]:
+        strategy = (rec.get("strategy") or {}).get("name")
+        metrics = rec.get("metrics") or {}
+        score = _as_float(metrics.get("composite_score"))
+        expected_value = _as_float(metrics.get("expected_value"))
+        if not strategy:
+            continue
+        if (score is not None and score > 30.0) or (expected_value is not None and expected_value > 0.0):
+            names.append(str(strategy))
+    return names
+
+
+def _expected_value_cell(value: object) -> Text:
+    expected_value = _as_float(value)
+    if expected_value is None:
+        return Text(str(value))
+    if expected_value < 0:
+        return Text(f"NEG EV {expected_value:.2f}", style="red bold")
+    return Text(f"{expected_value:.2f}", style="green")
+
+
+def _negative_ev_warning(recommendations: list[dict]) -> str | None:
+    if not recommendations:
+        return None
+    top_metrics = recommendations[0].get("metrics") or {}
+    top_strategy = (recommendations[0].get(
+        "strategy") or {}).get("name", "top strategy")
+    top_ev = _as_float(top_metrics.get("expected_value"))
+    if top_ev is None or top_ev >= 0:
+        return None
+    return (
+        f"Top-ranked strategy {top_strategy} has negative modeled expected value ({top_ev:.2f}). "
+        "Treat the setup as a pass-or-recheck candidate before sizing risk."
+    )
+
+
+def _strategy_bias_label(strategy_name: str) -> str:
+    if strategy_name in {
+        "bull_put_credit_spread",
+        "bull_call_debit_spread",
+        "cash_secured_put",
+        "covered_call",
+    }:
+        return "Bullish"
+    if strategy_name in {"iron_condor", "call_butterfly"}:
+        return "Neutral"
+    if strategy_name in {"long_strangle", "long_straddle"}:
+        return "Long Volatility"
+    return "Other"
+
+
+def _group_recommendations_by_bias(recommendations: list[dict]) -> list[tuple[str, list[dict]]]:
+    grouped: dict[str, list[dict]] = {}
+    for rec in recommendations:
+        strategy_name = str(
+            (rec.get("strategy") or {}).get("name") or "unknown")
+        label = _strategy_bias_label(strategy_name)
+        grouped.setdefault(label, []).append(rec)
+    order = ["Bullish", "Neutral", "Long Volatility", "Other"]
+    return [(label, grouped[label]) for label in order if grouped.get(label)]
+
+
+def _render_bias_tables(console: Console, recommendations: list[dict]) -> None:
+    rank = 1
+    for label, recs in _group_recommendations_by_bias(recommendations):
+        rec_table = Table(
+            title=f"{label} Strategy Ranking", box=box.SIMPLE_HEAVY)
+        rec_table.add_column("Rank", justify="right")
+        rec_table.add_column("Strategy")
+        rec_table.add_column("Score", justify="right")
+        rec_table.add_column("PoP %", justify="right")
+        rec_table.add_column("EV", justify="right")
+        rec_table.add_column("Touch %", justify="right")
+        rec_table.add_column("Tradeoff")
+        for rec in recs:
+            strategy = (rec.get("strategy", {}) or {}).get("name", "unknown")
+            metrics = rec.get("metrics", {}) or {}
+            rec_table.add_row(
+                str(rank),
+                str(strategy),
+                str(metrics.get("composite_score")),
+                str(metrics.get("pop")),
+                _expected_value_cell(metrics.get("expected_value")),
+                str(metrics.get("probability_of_touch")),
+                str(rec.get("tradeoff_comment") or ""),
+            )
+            rank += 1
+        console.print(rec_table)
+
+
 def _build_llm_prompt(payload: dict) -> str:
     ticker = str(payload.get("ticker") or "UNKNOWN")
     underlying = payload.get("underlying_analysis") or {}
+    overlay = payload.get("analysis_overlay") or {}
     recs = payload.get("recommendations") or []
 
-    top_names: list[str] = []
-    for rec in recs[:3]:
-        strategy = (rec.get("strategy") or {}).get("name")
-        if strategy:
-            top_names.append(str(strategy))
-    strategy_list = ", ".join(top_names) if top_names else "none"
+    top_names = _filtered_prompt_strategy_names(recs)
+    strategy_list = ", ".join(
+        top_names) if top_names else "none met the quality filter"
+    overlay_sections = [
+        name
+        for name in [
+            "executive_summary",
+            "volatility_market_context",
+            "strategy_comparison",
+            "final_recommendations",
+            "risk_management_framework",
+            "what_to_monitor_next",
+        ]
+        if overlay.get(name)
+    ]
+    overlay_summary = ", ".join(
+        overlay_sections) if overlay_sections else "none"
 
     payload_for_prompt = _strip_paths_for_prompt(payload)
     payload_blob = json.dumps(payload_for_prompt, indent=2, default=str)
@@ -76,12 +191,15 @@ def _build_llm_prompt(payload: dict) -> str:
             f"Analyze ticker: {ticker}",
             f"Current price: {underlying.get('price')}",
             f"Top strategies in report: {strategy_list}",
+            f"Structured practical overlay sections: {overlay_summary}",
             "Input data will be provided separately as JSON payload and llm_paths block.",
+            "Use the analyzer's structured overlay as the preferred practical interpretation layer when it is present.",
             "Tasks:",
             "1. Summarize volatility regime and market context from the report.",
-            "2. Compare top strategies by PoP, expected value, max loss, and touch probability.",
-            "3. Recommend one conservative and one aggressive setup with tradeoff rationale.",
+            "2. Compare top strategies by PoP, expected value, max loss, touch probability, and realism versus expected move.",
+            "3. Distinguish clearly between the highest modeled setup, the best conservative executable setup, and the best aggressive setup.",
             "4. Provide invalidation logic, risk guardrails, and position-sizing guidance.",
+            "5. Warn the user if the highest-ranked strategy has negative expected value.",
             "Output format:",
             "- Executive summary (3 bullets)",
             "- Strategy comparison table",
@@ -195,6 +313,8 @@ def analyze(
     implied = underlying.get("implied_volatility", {}) or {}
     expected_move = underlying.get("expected_move", {}) or {}
     snapshot = underlying.get("options_market_snapshot", {}) or {}
+    recommendations = payload_out.get("recommendations", [])[:3]
+    negative_ev_warning = _negative_ev_warning(recommendations)
 
     if sheet:
         summary = Table(
@@ -211,27 +331,16 @@ def analyze(
                         str(snapshot.get("put_call_oi_ratio")))
         console.print(summary)
 
-        rec_table = Table(title="Top Strategy Ranking", box=box.SIMPLE_HEAVY)
-        rec_table.add_column("Rank", justify="right")
-        rec_table.add_column("Strategy")
-        rec_table.add_column("Score", justify="right")
-        rec_table.add_column("PoP %", justify="right")
-        rec_table.add_column("EV", justify="right")
-        rec_table.add_column("Touch %", justify="right")
-        rec_table.add_column("Tradeoff")
-        for idx, rec in enumerate(payload_out.get("recommendations", [])[:3], start=1):
-            strategy = (rec.get("strategy", {}) or {}).get("name", "unknown")
-            metrics = rec.get("metrics", {}) or {}
-            rec_table.add_row(
-                str(idx),
-                str(strategy),
-                str(metrics.get("composite_score")),
-                str(metrics.get("pop")),
-                str(metrics.get("expected_value")),
-                str(metrics.get("probability_of_touch")),
-                str(rec.get("tradeoff_comment") or ""),
+        _render_bias_tables(console, recommendations)
+
+        if negative_ev_warning:
+            console.print(
+                Panel(
+                    negative_ev_warning,
+                    title="Risk Warning",
+                    border_style="red",
+                )
             )
-        console.print(rec_table)
 
         charts = payload_out.get("charts", {}) or {}
         chart_table = Table(title="Chart Artifacts", box=box.SIMPLE)
@@ -269,10 +378,18 @@ def analyze(
     typer.echo(f"Price: {underlying.get('price')}")
     if report_path is not None:
         typer.echo(f"JSON report: {report_path}")
-    typer.echo("Top strategies:")
-    for rec in payload_out.get("recommendations", [])[:3]:
-        strategy = (rec.get("strategy", {}) or {}).get("name", "unknown")
-        metrics = rec.get("metrics", {}) or {}
-        typer.echo(
-            f"- {strategy}: score={metrics.get('composite_score')} pop={metrics.get('pop')} ev={metrics.get('expected_value')}"
-        )
+    if negative_ev_warning:
+        typer.echo(f"WARNING: {negative_ev_warning}")
+    for label, recs in _group_recommendations_by_bias(recommendations):
+        typer.echo(f"{label} strategies:")
+        for rec in recs:
+            strategy = (rec.get("strategy", {}) or {}).get("name", "unknown")
+            metrics = rec.get("metrics", {}) or {}
+            ev_value = _as_float(metrics.get("expected_value"))
+            ev_display = f"{ev_value:.2f}" if ev_value is not None else str(
+                metrics.get("expected_value"))
+            if ev_value is not None and ev_value < 0:
+                ev_display = f"NEG_EV:{ev_display}"
+            typer.echo(
+                f"- {strategy}: score={metrics.get('composite_score')} pop={metrics.get('pop')} ev={ev_display}"
+            )

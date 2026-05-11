@@ -254,6 +254,61 @@ def test_dispatch_tool_call_routes_options_scan(monkeypatch: pytest.MonkeyPatch)
     assert result["result"]["args"]["days_to_exp"] == 30
 
 
+def test_options_scan_exposes_overlay_and_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    class _DummyAnalyzer:
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            return {
+                "ticker": ticker,
+                "underlying_analysis": {
+                    "price": 412.0,
+                    "historical_volatility": {"hv_30": 0.299},
+                    "implied_volatility": {"iv_mean": 0.307},
+                },
+                "analysis_overlay": {
+                    "executive_summary": [
+                        "IV is mildly rich to realized volatility.",
+                        "Expected move is wide enough that tight condors are fragile.",
+                    ],
+                    "final_recommendations": {
+                        "best_conservative_executable_setup": {
+                            "strategy_name": "bull_put_credit_spread",
+                            "metrics": {"expected_value": 11.0},
+                        },
+                        "best_aggressive_setup": {
+                            "strategy_name": "long_strangle",
+                            "metrics": {"expected_value": 8.0},
+                        },
+                    },
+                },
+                "recommendations": [
+                    {
+                        "strategy": {"name": "iron_condor"},
+                        "metrics": {
+                            "composite_score": 71.0,
+                            "pop": 61.7,
+                            "expected_value": -12.0,
+                            "probability_of_touch": 78.4,
+                        },
+                        "tradeoff_comment": "Range-bound premium collection setup.",
+                    }
+                ],
+                "charts": {},
+                "cache": {"used_cache": False},
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+
+    payload = integration.options_scan(ticker="MSFT", days_to_exp=30)
+
+    assert payload["analysis_overlay"]["final_recommendations"]["best_conservative_executable_setup"]["strategy_name"] == "bull_put_credit_spread"
+    digest = payload["telegram_markdown_v2"][0]
+    assert "Executive summary:" in digest
+    assert "Conservative: bull put credit spread | EV 11.0" in digest
+    assert "Aggressive: long strangle | EV 8.0" in digest
+
+
 def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 

@@ -40,6 +40,27 @@ def _risk_reward(candidate: StrategyCandidate) -> float:
     return float(max(0.0, candidate.max_profit / candidate.max_loss))
 
 
+def _edge_score(*, expected_value: float, risk_reward: float) -> float:
+    ev_component = np.tanh(expected_value / 300.0) * 30.0 + 30.0
+    rr_component = min(40.0, max(0.0, risk_reward) * 20.0)
+    return float(max(0.0, min(100.0, ev_component + rr_component)))
+
+
+def _negative_ev_penalty(*, expected_value: float, iv_rank: float | None, iv_percentile: float | None) -> float:
+    if expected_value >= 0:
+        return 0.0
+
+    base_penalty = 8.0 + min(20.0, abs(expected_value) / 25.0)
+    elevated_iv = 0.0
+
+    if iv_rank is not None and np.isfinite(iv_rank) and iv_rank >= 40.0:
+        elevated_iv = max(elevated_iv, min(1.0, (iv_rank - 40.0) / 40.0))
+    if iv_percentile is not None and np.isfinite(iv_percentile) and iv_percentile >= 60.0:
+        elevated_iv = max(elevated_iv, min(1.0, (iv_percentile - 60.0) / 40.0))
+
+    return float(base_penalty * (1.0 + (0.6 * elevated_iv)))
+
+
 def _composite_score(
     *,
     pop: float,
@@ -50,22 +71,33 @@ def _composite_score(
     theta_per_day: float,
     vega_exposure: float,
     probability_of_touch: float,
+    iv_rank: float | None = None,
+    iv_percentile: float | None = None,
 ) -> float:
     ev_scaled = np.tanh(expected_value / 500.0) * 100.0
     rr_scaled = min(100.0, risk_reward * 35.0)
+    edge_score = _edge_score(
+        expected_value=expected_value, risk_reward=risk_reward)
     loss_penalty = max(0.0, min(100.0, (max_loss + expected_loss) / 35.0))
     theta_scaled = np.tanh(theta_per_day / 2.0) * 50.0 + 50.0
     vega_penalty = max(0.0, min(100.0, abs(vega_exposure) * 8.0))
     touch_scaled = max(0.0, min(100.0, probability_of_touch))
+    negative_ev_penalty = _negative_ev_penalty(
+        expected_value=expected_value,
+        iv_rank=iv_rank,
+        iv_percentile=iv_percentile,
+    )
 
     raw = (
-        0.30 * pop
-        + 0.23 * ev_scaled
-        + 0.18 * rr_scaled
-        + 0.14 * theta_scaled
+        0.27 * pop
+        + 0.18 * ev_scaled
+        + 0.14 * rr_scaled
+        + 0.12 * theta_scaled
         + 0.08 * touch_scaled
+        + 0.11 * edge_score
         - 0.05 * loss_penalty
         - 0.02 * vega_penalty
+        - negative_ev_penalty
     )
     return float(max(0.0, min(100.0, raw)))
 
@@ -129,6 +161,8 @@ def rank_recommendations(
     option_frame: pd.DataFrame,
     underlying_price: float,
     iv_atm: float,
+    iv_rank: float | None = None,
+    iv_percentile: float | None = None,
     top_n: int = 3,
 ) -> list[StrategyRecommendation]:
     """Rank strategy candidates and return top recommendations."""
@@ -159,6 +193,8 @@ def rank_recommendations(
             theta_per_day=theta_per_day,
             vega_exposure=vega_exposure,
             probability_of_touch=probability_of_touch,
+            iv_rank=iv_rank,
+            iv_percentile=iv_percentile,
         )
 
         pnl_samples = [expected_value - max_loss, expected_value,
