@@ -79,7 +79,20 @@ def _tradeoff_comment(
     max_loss: float,
     risk_reward: float,
 ) -> str:
+    strategy_key = strategy_name.lower().strip()
     tone: list[str] = []
+
+    if strategy_key == "long_straddle":
+        tone.append("ATM volatility expansion setup")
+    elif strategy_key == "long_strangle":
+        tone.append("OTM volatility expansion setup with wider strikes")
+    elif strategy_key == "covered_call":
+        tone.append("Income-oriented overlay with upside cap")
+    elif strategy_key == "cash_secured_put":
+        tone.append("Income + discounted-entry style setup")
+    elif strategy_key == "iron_condor":
+        tone.append("Range-bound premium collection setup")
+
     if pop >= 60.0:
         tone.append("Higher win-probability profile")
     elif pop <= 40.0:
@@ -102,8 +115,10 @@ def _tradeoff_comment(
     elif probability_of_touch <= 35.0:
         tone.append("lower path-risk before expiration")
 
+    tone.append(f"PoP {pop:.1f}% | touch {probability_of_touch:.1f}%")
+
     if max_loss > 0:
-        tone.append(f"defined downside up to about ${max_loss:,.0f}")
+        tone.append(f"max loss about ${max_loss:,.0f} per 1-lot position")
 
     return f"{strategy_name.replace('_', ' ')}: " + "; ".join(tone) + "."
 

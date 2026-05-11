@@ -98,9 +98,25 @@ class OptionsCacheStore:
 
     def load_snapshot_frame(self, metadata: CacheSnapshotMetadata) -> pd.DataFrame:
         path = Path(metadata.path)
-        if not path.exists():
+        if path.is_dir():
+            # Backward compatibility: if an old cache row accidentally points to
+            # a directory, pick the latest ticker-specific parquet only.
+            candidates = sorted(
+                path.glob(f"{metadata.ticker.upper()}_*.parquet"),
+                key=lambda item: item.stat().st_mtime,
+                reverse=True,
+            )
+            if not candidates:
+                return pd.DataFrame()
+            path = candidates[0]
+        if not path.exists() or path.suffix.lower() != ".parquet":
             return pd.DataFrame()
-        return pd.read_parquet(path)
+        frame = pd.read_parquet(path)
+        if "ticker" not in frame.columns:
+            return frame
+        ticker_col = frame["ticker"].astype("string").str.upper()
+        filtered = frame[ticker_col == metadata.ticker.upper()].copy()
+        return filtered.reset_index(drop=True)
 
     def iv_history(self, ticker: str, *, lookback_days: int) -> pd.Series:
         """Return average IV history from cache metadata for the ticker."""

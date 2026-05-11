@@ -206,16 +206,41 @@ nave stocks screen --kind manufacturing --top-n 5 --capital 10000
 
 ### Options workflow
 
-Run options analysis for a ticker and get ranked strategy output with charts:
+Run options analysis for a ticker and get a sheet-style ranked strategy summary in the terminal:
 
 ```bash
-nave options analyze --ticker MSFT --days-to-exp 30 --json
+nave options analyze --ticker MSFT --days-to-exp 30
 ```
 
-Render a concise human-readable terminal summary instead of JSON:
+The sheet run also saves a copyable JSON report file (path shown in terminal), so
+you can share or reuse the result in automation.
+
+Use a custom report path when needed:
 
 ```bash
-nave options analyze --ticker AAPL --days-to-exp 45 --no-json
+nave options analyze --ticker MSFT --days-to-exp 30 --json-path ./msft_options.json
+```
+
+Print a ready-to-copy LLM prompt based on the generated report:
+
+```bash
+nave options analyze --ticker MSFT --days-to-exp 30 --llm-prompt
+```
+
+If you also pass `--json`, the output JSON includes `llm_prompt` plus the full
+`charts` paths in a separate `llm_paths` block so downstream agents can consume everything from one payload:
+
+```bash
+nave options analyze --ticker MSFT --days-to-exp 30 --json --llm-prompt
+```
+
+`llm_prompt` contains embedded JSON analysis data with paths omitted, while
+`llm_paths` contains the actual file/chart paths.
+
+Emit full machine JSON only when you explicitly need automation payloads:
+
+```bash
+nave options analyze --ticker AAPL --days-to-exp 45 --json
 ```
 
 ### Agent and service workflow
