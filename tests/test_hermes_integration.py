@@ -31,6 +31,7 @@ def test_list_tools_contains_required_toolset() -> None:
         "market_scan",
         "momentum_playbook",
         "market_playbook",
+        "options_scan",
         "cot_report",
         "cot_history",
         "weekly_plan",
@@ -233,6 +234,26 @@ def test_dispatch_tool_call_routes_momentum_tools(monkeypatch: pytest.MonkeyPatc
     assert result["result"]["args"]["symbols"] == "BTCUSDT"
 
 
+def test_dispatch_tool_call_routes_options_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "options_scan",
+        lambda **kwargs: {"ticker": "MSFT",
+                          "args": kwargs, "recommendations": []},
+    )
+    result = integration.dispatch_tool_call(
+        "options_scan",
+        {"ticker": "MSFT", "days_to_exp": 30},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "options_scan"
+    assert result["result"]["ticker"] == "MSFT"
+    assert result["result"]["args"]["days_to_exp"] == 30
+
+
 def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 
@@ -309,10 +330,12 @@ def test_momentum_zone_watch_exposes_active_watch_state(monkeypatch: pytest.Monk
         "trading.crypto.client.HyperliquidClient.get_mid", lambda self, coin: 82300.0,
     )
 
-    payload = integration.momentum_zone_watch(symbols="BTCUSDT", score_threshold=75)
+    payload = integration.momentum_zone_watch(
+        symbols="BTCUSDT", score_threshold=75)
 
     assert payload["watch_candidates"][0]["entry_zone"] == [81112.86, 82479.0]
-    assert payload["watch_candidates"][0]["scan_entry_zone"] == [82550.0, 83800.0]
+    assert payload["watch_candidates"][0]["scan_entry_zone"] == [
+        82550.0, 83800.0]
     assert payload["watch_candidates"][0]["watch_status"] == "holding_previous"
 
 
