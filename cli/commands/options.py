@@ -350,6 +350,60 @@ def _render_plain_output(
             )
 
 
+def _parse_coin_list(value: str) -> list[str]:
+    raw = value.replace(" ", ",").split(",")
+    return [item.strip().upper() for item in raw if item.strip()]
+
+
+def _render_opportunities_sheet(console: Console, payload: dict) -> None:
+    summary = payload.get("summary") or {}
+    momentum = payload.get("momentum") or {}
+    tf = momentum.get("timeframes") or {}
+
+    header = Table(title="Options Opportunities Summary", box=box.SIMPLE_HEAVY)
+    header.add_column("Metric")
+    header.add_column("Value")
+    header.add_row("Coins Requested", str(summary.get("coins_requested")))
+    header.add_row("Coins Supported", str(summary.get("coins_supported")))
+    header.add_row("Momentum Allowed", str(summary.get("momentum_allowed")))
+    header.add_row("Options Ready", str(summary.get("options_ready")))
+    if tf:
+        header.add_row(
+            "Timeframes",
+            f"bias={tf.get('bias')} setup={tf.get('setup')} trigger={tf.get('trigger')}",
+        )
+    console.print(header)
+
+    table = Table(title="BTC/ETH Opportunity Details", box=box.SIMPLE_HEAVY)
+    table.add_column("Coin")
+    table.add_column("Status")
+    table.add_column("Momentum")
+    table.add_column("Top Strategy")
+    table.add_column("EV", justify="right")
+    table.add_column("Notes")
+
+    opportunities = payload.get("opportunities") or {}
+    for coin in sorted(opportunities.keys()):
+        entry = opportunities.get(coin) or {}
+        status = str(entry.get("status") or "unknown")
+        momentum_ctx = entry.get("momentum") or {}
+        momentum_value = momentum_ctx.get("confidence_score")
+        momentum_display = str(
+            momentum_value) if momentum_value is not None else "n/a"
+        top_strategy = str(entry.get("top_strategy") or "-").replace("_", " ")
+        ev = (entry.get("top_metrics") or {}).get("expected_value")
+        notes = entry.get("reason") or entry.get("error") or ""
+        table.add_row(
+            coin,
+            status,
+            momentum_display,
+            top_strategy,
+            "-" if ev is None else str(ev),
+            str(notes),
+        )
+    console.print(table)
+
+
 @options_app.command("analyze")
 def analyze(
     ticker: str = typer.Option(
@@ -479,3 +533,95 @@ def analyze(
         report_path=report_path,
         risk_warnings=risk_warnings,
     )
+
+
+@options_app.command("opportunities")
+def opportunities(
+    coins: str = typer.Option(
+        "BTC,ETH",
+        "--coins",
+        help="Comma-separated coin list (currently supports BTC,ETH)",
+    ),
+    days_to_exp: int = typer.Option(
+        30,
+        "--days-to-exp",
+        min=1,
+        max=365,
+        help="Target days to expiration",
+    ),
+    tf: str = typer.Option(
+        "4h,1h",
+        "--tf",
+        help="Momentum setup/trigger timeframe pair (e.g. 4h,1h)",
+    ),
+    score_threshold: int = typer.Option(
+        75,
+        "--score-threshold",
+        min=1,
+        max=100,
+        help="Minimum momentum score threshold",
+    ),
+    account_equity: float = typer.Option(
+        10000.0,
+        "--account-equity",
+        min=1.0,
+        help="Account equity context used by momentum sizing",
+    ),
+    risk_pct: float = typer.Option(
+        0.005,
+        "--risk-pct",
+        min=0.001,
+        max=0.02,
+        help="Risk percentage passed to momentum filtering",
+    ),
+    require_tradeable: bool = typer.Option(
+        True,
+        "--require-tradeable/--allow-watchlist",
+        help="Only run options analysis for momentum-tradeable setups",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-stable JSON output",
+    ),
+    sheet: bool = typer.Option(
+        False,
+        "--sheet",
+        help="Render report as Rich terminal tables (human-readable).",
+    ),
+) -> None:
+    """Scan BTC/ETH options opportunities using momentum as an upstream filter."""
+    analyzer = OptionsAnalyzer()
+    console = Console()
+
+    try:
+        payload = analyzer.scan_crypto_opportunities(
+            coins=_parse_coin_list(coins),
+            days_to_exp=days_to_exp,
+            tf=tf,
+            account_equity=account_equity,
+            risk_pct=risk_pct,
+            score_threshold=score_threshold,
+            require_tradeable=require_tradeable,
+        )
+    except OptionsError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    if json_out and not sheet:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+
+    if sheet:
+        _render_opportunities_sheet(console, payload)
+        return
+
+    summary = payload.get("summary") or {}
+    typer.echo("Options opportunities")
+    typer.echo(f"- coins_requested={summary.get('coins_requested')}")
+    typer.echo(f"- momentum_allowed={summary.get('momentum_allowed')}")
+    typer.echo(f"- options_ready={summary.get('options_ready')}")
+    for coin, entry in sorted((payload.get("opportunities") or {}).items()):
+        status = entry.get("status")
+        strategy = entry.get("top_strategy")
+        typer.echo(f"- {coin}: status={status} top_strategy={strategy}")

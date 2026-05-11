@@ -24,7 +24,7 @@ from options.analytics.probability import expected_move_one_std
 from options.analysis_overlay import build_narrative_overlay
 from options.cache import OptionsCacheStore
 from options.config import OptionsConfig, load_options_config
-from options.exceptions import OptionsComputationError, OptionsDataError, OptionsStrategyError
+from options.exceptions import OptionsComputationError, OptionsDataError, OptionsError, OptionsStrategyError
 from options.fetchers import YFinanceOptionsFetcher
 from options.scoring import rank_recommendations
 from options.strategies import build_strategy_candidates_with_audit
@@ -36,6 +36,11 @@ from options.visualization import (
 )
 
 logger = configure_logger(__name__)
+
+_CRYPTO_SPOT_PROXY_TICKERS = {
+    "BTC": "BTC-USD",
+    "ETH": "ETH-USD",
+}
 
 
 class OptionsAnalyzer:
@@ -146,6 +151,178 @@ class OptionsAnalyzer:
             "put_call_volume_ratio": put_call_volume_ratio,
             "put_call_oi_ratio": put_call_oi_ratio,
             "avg_spread_pct": avg_spread_pct,
+        }
+
+    def _momentum_context(self, symbol_entry: dict[str, Any]) -> dict[str, Any]:
+        plans = list(symbol_entry.get("plans") or [])
+        tradeable = list(symbol_entry.get("tradeable") or [])
+        selected = tradeable[0] if tradeable else (plans[0] if plans else {})
+
+        return {
+            "has_plan": bool(selected),
+            "tradeable": bool(tradeable),
+            "tradeable_count": len(tradeable),
+            "setup_status": selected.get("setup_status"),
+            "side": selected.get("side"),
+            "confidence_score": selected.get("confidence_score"),
+            "entry_zone": selected.get("entry_zone"),
+            "invalidation": selected.get("invalidation"),
+            "rr_estimated": selected.get("rr_estimated"),
+        }
+
+    def scan_crypto_opportunities(
+        self,
+        *,
+        coins: list[str] | None = None,
+        days_to_exp: int = 30,
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+        require_tradeable: bool = True,
+    ) -> dict[str, Any]:
+        """Scan BTC/ETH opportunities by applying momentum gating before options analysis."""
+        requested = [str(coin).strip().upper()
+                     for coin in (coins or ["BTC", "ETH"]) if str(coin).strip()]
+        if not requested:
+            raise OptionsComputationError(
+                "coins must include at least one symbol")
+        if not 1 <= days_to_exp <= 365:
+            raise OptionsComputationError(
+                "days_to_exp must be between 1 and 365")
+
+        supported = [
+            coin for coin in requested if coin in _CRYPTO_SPOT_PROXY_TICKERS]
+
+        momentum_payload: dict[str, Any] = {
+            "summary": {},
+            "timeframes": {},
+            "results": {},
+        }
+        if supported:
+            from trading.crypto.momentum.service import MomentumMarketService
+
+            service = MomentumMarketService()
+            try:
+                timeframes = service.parse_timeframes(tf)
+                momentum_payload = service.scan_live(
+                    symbols=[f"{coin}USDT" for coin in supported],
+                    timeframes=timeframes,
+                    account_equity=account_equity,
+                    risk_pct=risk_pct,
+                    score_threshold=score_threshold,
+                )
+            except ValueError as exc:
+                raise OptionsComputationError(str(exc)) from exc
+
+        opportunities: dict[str, Any] = {}
+        ranked: list[dict[str, Any]] = []
+        momentum_allowed = 0
+        options_ready = 0
+
+        for coin in requested:
+            mapped_ticker = _CRYPTO_SPOT_PROXY_TICKERS.get(coin)
+            if mapped_ticker is None:
+                opportunities[coin] = {
+                    "coin": coin,
+                    "status": "unsupported_coin",
+                    "reason": "Only BTC and ETH are supported in this scan.",
+                }
+                continue
+
+            momentum_entry = (momentum_payload.get("results")
+                              or {}).get(f"{coin}USDT") or {}
+            context = self._momentum_context(momentum_entry)
+            allowed = bool(context.get("has_plan"))
+            if require_tradeable:
+                allowed = allowed and bool(context.get("tradeable"))
+
+            if not allowed:
+                opportunities[coin] = {
+                    "coin": coin,
+                    "ticker": mapped_ticker,
+                    "status": "filtered_by_momentum",
+                    "momentum": context,
+                    "reason": "No momentum-qualified setup met the current gate.",
+                }
+                continue
+
+            momentum_allowed += 1
+            try:
+                options_payload = self.run(
+                    ticker=mapped_ticker,
+                    days_to_exp=days_to_exp,
+                )
+            except OptionsError as exc:
+                opportunities[coin] = {
+                    "coin": coin,
+                    "ticker": mapped_ticker,
+                    "status": "options_unavailable",
+                    "momentum": context,
+                    "error": str(exc),
+                }
+                continue
+
+            options_ready += 1
+            top = (options_payload.get("recommendations") or [{}])[0]
+            metrics = top.get("metrics") or {}
+            strategy = (top.get("strategy") or {}).get("name")
+
+            opportunities[coin] = {
+                "coin": coin,
+                "ticker": mapped_ticker,
+                "status": "ready",
+                "momentum": context,
+                "options": options_payload,
+                "top_strategy": strategy,
+                "top_metrics": {
+                    "composite_score": metrics.get("composite_score"),
+                    "pop": metrics.get("pop"),
+                    "expected_value": metrics.get("expected_value"),
+                    "probability_of_touch": metrics.get("probability_of_touch"),
+                },
+            }
+            ranked.append(
+                {
+                    "coin": coin,
+                    "ticker": mapped_ticker,
+                    "strategy_name": strategy,
+                    "momentum_confidence": context.get("confidence_score"),
+                    "strategy_score": metrics.get("composite_score"),
+                    "expected_value": metrics.get("expected_value"),
+                    "status": "ready",
+                }
+            )
+
+        ranked = sorted(
+            ranked,
+            key=lambda item: (
+                float(item.get("momentum_confidence") or 0.0),
+                float(item.get("strategy_score") or 0.0),
+                float(item.get("expected_value") or -1e9),
+            ),
+            reverse=True,
+        )
+
+        return {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "strategy": "options_momentum_bridge_v1",
+            "coins": requested,
+            "score_threshold": score_threshold,
+            "require_tradeable": require_tradeable,
+            "days_to_exp": days_to_exp,
+            "momentum": {
+                "timeframes": momentum_payload.get("timeframes") or {},
+                "summary": momentum_payload.get("summary") or {},
+            },
+            "summary": {
+                "coins_requested": len(requested),
+                "coins_supported": len(supported),
+                "momentum_allowed": momentum_allowed,
+                "options_ready": options_ready,
+            },
+            "opportunities": opportunities,
+            "ranked": ranked,
         }
 
     def run(self, ticker: str = "MSFT", days_to_exp: int = 30) -> dict[str, Any]:

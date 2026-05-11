@@ -32,6 +32,7 @@ def test_list_tools_contains_required_toolset() -> None:
         "momentum_playbook",
         "market_playbook",
         "options_scan",
+        "options_opportunities",
         "cot_report",
         "cot_history",
         "weekly_plan",
@@ -254,6 +255,26 @@ def test_dispatch_tool_call_routes_options_scan(monkeypatch: pytest.MonkeyPatch)
     assert result["result"]["args"]["days_to_exp"] == 30
 
 
+def test_dispatch_tool_call_routes_options_opportunities(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "options_opportunities",
+        lambda **kwargs: {"strategy": "options_momentum_bridge_v1",
+                          "args": kwargs},
+    )
+    result = integration.dispatch_tool_call(
+        "options_opportunities",
+        {"coins": "BTC,ETH", "days_to_exp": 30},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "options_opportunities"
+    assert result["result"]["strategy"] == "options_momentum_bridge_v1"
+    assert result["result"]["args"]["coins"] == "BTC,ETH"
+
+
 def test_options_scan_exposes_overlay_and_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 
@@ -307,6 +328,48 @@ def test_options_scan_exposes_overlay_and_telegram_digest(monkeypatch: pytest.Mo
     assert "Executive summary:" in digest
     assert "Conservative: bull put credit spread | EV 11.0" in digest
     assert "Aggressive: long strangle | EV 8.0" in digest
+
+
+def test_options_opportunities_exposes_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    class _DummyAnalyzer:
+        def scan_crypto_opportunities(self, **kwargs):
+            assert kwargs["coins"] == ["BTC", "ETH"]
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "momentum": {
+                    "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"}
+                },
+                "ranked": [
+                    {
+                        "coin": "BTC",
+                        "strategy_name": "bull_put_credit_spread",
+                        "strategy_score": 81.0,
+                        "expected_value": 12.0,
+                    }
+                ],
+                "opportunities": {
+                    "BTC": {"status": "ready"},
+                    "ETH": {"status": "filtered_by_momentum"},
+                },
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+
+    payload = integration.options_opportunities(
+        coins="BTC,ETH", days_to_exp=30)
+
+    assert payload["summary"]["options_ready"] == 1
+    digest = payload["telegram_markdown_v2"][0]
+    assert "NAVE Options Opportunities" in digest
+    assert "Top opportunities:" in digest
+    assert "Momentum filtered: ETH" in digest
 
 
 def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -10,7 +10,7 @@ import json
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from core.config import CliDefaults
 from core.exceptions import HermesIntegrationError
@@ -163,6 +163,50 @@ class HermesNaveIntegration:
                         "properties": {
                             "ticker": {"type": "string", "default": "MSFT"},
                             "days_to_exp": {"type": "integer", "minimum": 1, "maximum": 365, "default": 30},
+                        },
+                    },
+                },
+                {
+                    "name": "options_opportunities",
+                    "description": (
+                        "Scan BTC/ETH options opportunities by first applying the momentum "
+                        "filter, then running options analysis for momentum-qualified setups."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "coins": {
+                                "type": "string",
+                                "default": "BTC,ETH",
+                            },
+                            "days_to_exp": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 365,
+                                "default": 30,
+                            },
+                            "tf": {
+                                "type": "string",
+                                "default": "4h,1h",
+                            },
+                            "account_equity": {
+                                "type": "number",
+                                "default": 10000.0,
+                            },
+                            "risk_pct": {
+                                "type": "number",
+                                "default": 0.005,
+                            },
+                            "score_threshold": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100,
+                                "default": 75,
+                            },
+                            "require_tradeable": {
+                                "type": "boolean",
+                                "default": True,
+                            },
                         },
                     },
                 },
@@ -699,6 +743,57 @@ class HermesNaveIntegration:
             payload)
         return payload
 
+    def options_opportunities(
+        self,
+        *,
+        coins: str = "BTC,ETH",
+        days_to_exp: int = 30,
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+        require_tradeable: bool = True,
+    ) -> dict[str, Any]:
+        """Scan momentum-filtered BTC/ETH options opportunities."""
+        if not 1 <= days_to_exp <= 365:
+            raise HermesIntegrationError(
+                "days_to_exp must be between 1 and 365")
+        if account_equity <= 0:
+            raise HermesIntegrationError("account_equity must be positive")
+        if not 0.001 <= risk_pct <= 0.02:
+            raise HermesIntegrationError(
+                "risk_pct must be between 0.001 and 0.02")
+        if not 1 <= score_threshold <= 100:
+            raise HermesIntegrationError(
+                "score_threshold must be between 1 and 100")
+
+        from options.analyzer import OptionsAnalyzer
+        from options.exceptions import OptionsError
+        from options.formatters import render_options_opportunities_markdown_v2
+
+        coin_list = [item.strip().upper() for item in coins.replace(
+            " ", ",").split(",") if item.strip()]
+        if not coin_list:
+            raise HermesIntegrationError(
+                "coins must include at least one symbol")
+
+        try:
+            payload = OptionsAnalyzer().scan_crypto_opportunities(
+                coins=coin_list,
+                days_to_exp=days_to_exp,
+                tf=tf,
+                account_equity=account_equity,
+                risk_pct=risk_pct,
+                score_threshold=score_threshold,
+                require_tradeable=require_tradeable,
+            )
+        except OptionsError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+        payload["telegram_markdown_v2"] = render_options_opportunities_markdown_v2(
+            payload)
+        return payload
+
     def cot_history(
         self,
         *,
@@ -1174,6 +1269,7 @@ class HermesNaveIntegration:
         from datetime import date
 
         from trading.stocks.ism_calendar import (
+            CalendarKind,
             ISMCalendarError,
             fetch_ism_calendar,
             load_calendar,
@@ -1189,10 +1285,9 @@ class HermesNaveIntegration:
             raise HermesIntegrationError(
                 "recent_days must be between 0 and 30")
 
-        kind_filter = kind
+        kind_filter = cast(CalendarKind | None, kind)
 
         if recent_days > 0:
-            # type: ignore[arg-type]
             release = recent_release(
                 kind=kind_filter, lookback_days=recent_days)
             return {
@@ -1202,7 +1297,7 @@ class HermesNaveIntegration:
             }
 
         if next_only:
-            release = next_release(kind=kind_filter)  # type: ignore[arg-type]
+            release = next_release(kind=kind_filter)
             return {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "next_release": _to_jsonable(release) if release else None,
@@ -1223,8 +1318,8 @@ class HermesNaveIntegration:
                     raise HermesIntegrationError(str(exc)) from exc
 
         releases = (
-            calendar.by_kind(kind)  # type: ignore[arg-type]
-            if kind is not None
+            calendar.by_kind(kind_filter)
+            if kind_filter is not None
             else calendar.releases
         )
         return {
@@ -1318,6 +1413,7 @@ class HermesNaveIntegration:
             "market_scan": self.market_scan,
             "market_playbook": self.market_playbook,
             "options_scan": self.options_scan,
+            "options_opportunities": self.options_opportunities,
             "cot_report": self.cot_report,
             "cot_history": self.cot_history,
             "weekly_plan": self.weekly_plan,

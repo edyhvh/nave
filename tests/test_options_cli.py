@@ -587,3 +587,174 @@ def test_options_analyze_ascii_alias_matches_terminal_mode(monkeypatch, tmp_path
     assert call_count["value"] == 1
     assert "=== Graphs ===" in result.stdout
     assert "ASCII_MODE_RENDER" in result.stdout
+
+
+def test_options_opportunities_command_outputs_json(monkeypatch) -> None:
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def scan_crypto_opportunities(self, **kwargs):
+            assert kwargs["coins"] == ["BTC", "ETH"]
+            return {
+                "strategy": "options_momentum_bridge_v1",
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "opportunities": {
+                    "BTC": {
+                        "status": "ready",
+                        "top_strategy": "bull_put_credit_spread",
+                        "top_metrics": {"expected_value": 11.0},
+                        "momentum": {"confidence_score": 84},
+                    },
+                    "ETH": {
+                        "status": "filtered_by_momentum",
+                        "reason": "No momentum-qualified setup met the current gate.",
+                    },
+                },
+                "ranked": [
+                    {
+                        "coin": "BTC",
+                        "strategy_name": "bull_put_credit_spread",
+                        "strategy_score": 80.0,
+                        "expected_value": 11.0,
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "opportunities",
+            "--coins",
+            "BTC,ETH",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["strategy"] == "options_momentum_bridge_v1"
+    assert parsed["summary"]["options_ready"] == 1
+    assert parsed["opportunities"]["BTC"]["status"] == "ready"
+    assert parsed["opportunities"]["ETH"]["status"] == "filtered_by_momentum"
+
+
+def test_options_opportunities_command_sheet_render(monkeypatch) -> None:
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def scan_crypto_opportunities(self, **kwargs):
+            _ = kwargs
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "momentum": {
+                    "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"}
+                },
+                "opportunities": {
+                    "BTC": {
+                        "status": "ready",
+                        "top_strategy": "bull_put_credit_spread",
+                        "top_metrics": {"expected_value": 11.0},
+                        "momentum": {"confidence_score": 84},
+                    },
+                    "ETH": {
+                        "status": "options_unavailable",
+                        "error": "No options expirations available",
+                        "momentum": {"confidence_score": 79},
+                    },
+                },
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app, ["options", "opportunities", "--coins", "BTC,ETH", "--sheet"])
+
+    assert result.exit_code == 0
+    assert "Options Opportunities Summary" in result.stdout
+    assert "BTC/ETH Opportunity Details" in result.stdout
+    assert "BTC" in result.stdout
+    assert "ETH" in result.stdout
+    assert "ready" in result.stdout
+
+
+def test_options_opportunities_command_defaults_to_plain_output(monkeypatch) -> None:
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def scan_crypto_opportunities(self, **kwargs):
+            _ = kwargs
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "opportunities": {
+                    "BTC": {
+                        "status": "ready",
+                        "top_strategy": "bull_put_credit_spread",
+                    },
+                    "ETH": {
+                        "status": "filtered_by_momentum",
+                        "top_strategy": None,
+                    },
+                },
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app, ["options", "opportunities", "--coins", "BTC,ETH"])
+
+    assert result.exit_code == 0
+    assert "Options opportunities" in result.stdout
+    assert "- coins_requested=2" in result.stdout
+    assert "- BTC: status=ready top_strategy=bull_put_credit_spread" in result.stdout
+
+
+def test_options_opportunities_sheet_takes_precedence_over_json(monkeypatch) -> None:
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def scan_crypto_opportunities(self, **kwargs):
+            _ = kwargs
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "momentum": {
+                    "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"}
+                },
+                "opportunities": {
+                    "BTC": {
+                        "status": "ready",
+                        "top_strategy": "bull_put_credit_spread",
+                        "top_metrics": {"expected_value": 11.0},
+                        "momentum": {"confidence_score": 84},
+                    }
+                },
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app,
+        ["options", "opportunities", "--coins", "BTC,ETH", "--json", "--sheet"],
+    )
+
+    assert result.exit_code == 0
+    assert "Options Opportunities Summary" in result.stdout
+    assert not result.stdout.strip().startswith("{")

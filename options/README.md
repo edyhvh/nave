@@ -26,6 +26,7 @@ The options module provides equity options analytics with a first implementation
   - Strategy ranking bar chart
 - Parquet + sqlite cache under data/options_cache.
 - Hermes integration via tool name options_scan.
+- BTC/ETH opportunities workflow: momentum filter first, then options analysis.
 
 ## Environment Variables
 
@@ -61,6 +62,9 @@ python -m options.analyzer
 nave options analyze --ticker MSFT --days-to-exp 30 --json
 nave options analyze --ticker MSFT --days-to-exp 30 --terminal
 nave hermes call --tool options_scan --args-json '{"ticker":"MSFT","days_to_exp":30}'
+nave options opportunities --coins BTC,ETH
+nave options opportunities --coins BTC,ETH --sheet
+nave hermes call --tool options_opportunities --args-json '{"coins":"BTC,ETH","days_to_exp":30}'
 ```
 
 ## Terminal output blocks

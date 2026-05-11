@@ -264,6 +264,14 @@ Emit full machine JSON only when you explicitly need automation payloads:
 nave options analyze --ticker AAPL --days-to-exp 45 --json
 ```
 
+Scan BTC/ETH momentum-filtered options opportunities from the options module:
+
+```bash
+nave options opportunities --coins BTC,ETH
+nave options opportunities --coins BTC,ETH --sheet
+nave options opportunities --coins BTC,ETH --json
+```
+
 ### Agent and service workflow
 
 Useful operational commands:
@@ -271,6 +279,7 @@ Useful operational commands:
 ```bash
 nave hermes tools
 nave hermes call --tool options_scan --args-json '{"ticker": "MSFT", "days_to_exp": 30}'
+nave hermes call --tool options_opportunities --args-json '{"coins": "BTC,ETH", "days_to_exp": 30}'
 nave mcp run
 nave api start --reload
 nave data fetch all

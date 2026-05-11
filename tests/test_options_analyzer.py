@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -408,3 +409,97 @@ def test_options_analyzer_warns_when_top_modeled_touch_is_too_high(monkeypatch, 
     payload = analyzer.run(ticker="MSFT", days_to_exp=30)
     warnings = payload["analysis_overlay"].get("warnings") or []
     assert any("probability of touch" in item.lower() for item in warnings)
+
+
+def test_scan_crypto_opportunities_applies_momentum_gate_before_options(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        analyzer_module, "YFinanceOptionsFetcher", _DummyFetcher)
+
+    analyzer = OptionsAnalyzer(config=_config(tmp_path))
+    run_calls: list[str] = []
+
+    def _fake_run(*, ticker: str = "MSFT", days_to_exp: int = 30):
+        run_calls.append(ticker)
+        return {
+            "ticker": ticker,
+            "recommendations": [
+                {
+                    "strategy": {"name": "bull_put_credit_spread"},
+                    "metrics": {
+                        "composite_score": 81.0,
+                        "pop": 64.0,
+                        "expected_value": 12.0,
+                        "probability_of_touch": 44.0,
+                    },
+                }
+            ],
+        }
+
+    monkeypatch.setattr(analyzer, "run", _fake_run)
+
+    class _FakeMomentumService:
+        def parse_timeframes(self, tf: str):
+            assert tf == "4h,1h"
+            return SimpleNamespace(bias="1d", setup="4h", trigger="1h")
+
+        def scan_live(self, **kwargs):
+            assert kwargs["symbols"] == ["BTCUSDT", "ETHUSDT"]
+            return {
+                "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"},
+                "summary": {"tradeable_count": 1},
+                "results": {
+                    "BTCUSDT": {
+                        "plans": [
+                            {
+                                "side": "long",
+                                "setup_status": "confirmed",
+                                "confidence_score": 88,
+                                "entry_zone": [70000.0, 71000.0],
+                                "invalidation": 69500.0,
+                                "rr_estimated": 3.2,
+                            }
+                        ],
+                        "tradeable": [
+                            {
+                                "side": "long",
+                                "setup_status": "confirmed",
+                                "confidence_score": 88,
+                                "entry_zone": [70000.0, 71000.0],
+                                "invalidation": 69500.0,
+                                "rr_estimated": 3.2,
+                            }
+                        ],
+                    },
+                    "ETHUSDT": {
+                        "plans": [
+                            {
+                                "side": "long",
+                                "setup_status": "pending",
+                                "confidence_score": 63,
+                                "entry_zone": [3500.0, 3575.0],
+                                "invalidation": 3450.0,
+                                "rr_estimated": 2.1,
+                            }
+                        ],
+                        "tradeable": [],
+                    },
+                },
+            }
+
+    monkeypatch.setattr(
+        "trading.crypto.momentum.service.MomentumMarketService", _FakeMomentumService)
+
+    payload = analyzer.scan_crypto_opportunities(
+        coins=["BTC", "ETH"],
+        days_to_exp=30,
+        tf="4h,1h",
+        require_tradeable=True,
+    )
+
+    assert payload["summary"]["coins_requested"] == 2
+    assert payload["summary"]["momentum_allowed"] == 1
+    assert payload["summary"]["options_ready"] == 1
+    assert run_calls == ["BTC-USD"]
+    assert payload["opportunities"]["BTC"]["status"] == "ready"
+    assert payload["opportunities"]["ETH"]["status"] == "filtered_by_momentum"
+    assert payload["ranked"][0]["coin"] == "BTC"
