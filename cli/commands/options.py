@@ -16,6 +16,7 @@ from rich.text import Text
 from cli.professional_typer import ProfessionalTyper
 from options.analyzer import OptionsAnalyzer
 from options.exceptions import OptionsError
+from options.prompt_builder import build_llm_paths, build_llm_prompt
 
 options_app = ProfessionalTyper(help="Options analytics commands")
 
@@ -66,20 +67,6 @@ def _as_float(value: object) -> float | None:
     return None
 
 
-def _filtered_prompt_strategy_names(recs: list[dict]) -> list[str]:
-    names: list[str] = []
-    for rec in recs[:3]:
-        strategy = (rec.get("strategy") or {}).get("name")
-        metrics = rec.get("metrics") or {}
-        score = _as_float(metrics.get("composite_score"))
-        expected_value = _as_float(metrics.get("expected_value"))
-        if not strategy:
-            continue
-        if (score is not None and score > 30.0) or (expected_value is not None and expected_value > 0.0):
-            names.append(str(strategy))
-    return names
-
-
 def _expected_value_cell(value: object) -> Text:
     expected_value = _as_float(value)
     if expected_value is None:
@@ -102,6 +89,21 @@ def _negative_ev_warning(recommendations: list[dict]) -> str | None:
         f"Top-ranked strategy {top_strategy} has negative modeled expected value ({top_ev:.2f}). "
         "Treat the setup as a pass-or-recheck candidate before sizing risk."
     )
+
+
+def _collect_risk_warnings(payload: dict, recommendations: list[dict]) -> list[str]:
+    warnings: list[str] = []
+    negative_warning = _negative_ev_warning(recommendations)
+    if negative_warning:
+        warnings.append(negative_warning)
+
+    overlay = payload.get("analysis_overlay") or {}
+    overlay_warnings = overlay.get("warnings") or []
+    for warning in overlay_warnings:
+        text = str(warning).strip()
+        if text and text not in warnings:
+            warnings.append(text)
+    return warnings
 
 
 def _strategy_bias_label(strategy_name: str) -> str:
@@ -158,86 +160,35 @@ def _render_bias_tables(console: Console, recommendations: list[dict]) -> None:
         console.print(rec_table)
 
 
-def _build_llm_prompt(payload: dict) -> str:
-    ticker = str(payload.get("ticker") or "UNKNOWN")
-    underlying = payload.get("underlying_analysis") or {}
+def _render_strategy_comparison_table(console: Console, payload: dict) -> None:
     overlay = payload.get("analysis_overlay") or {}
-    recs = payload.get("recommendations") or []
+    rows = list(overlay.get("strategy_comparison_table") or [])
+    if not rows:
+        return
 
-    top_names = _filtered_prompt_strategy_names(recs)
-    strategy_list = ", ".join(
-        top_names) if top_names else "none met the quality filter"
-    overlay_sections = [
-        name
-        for name in [
-            "executive_summary",
-            "volatility_market_context",
-            "strategy_comparison",
-            "final_recommendations",
-            "risk_management_framework",
-            "what_to_monitor_next",
-        ]
-        if overlay.get(name)
-    ]
-    overlay_summary = ", ".join(
-        overlay_sections) if overlay_sections else "none"
+    table = Table(title="Strategy Comparison", box=box.SIMPLE_HEAVY)
+    table.add_column("Strategy")
+    table.add_column("PoP", justify="right")
+    table.add_column("EV", justify="right")
+    table.add_column("Max Loss", justify="right")
+    table.add_column("Prob. Touch", justify="right")
+    table.add_column("Forgivingness", justify="right")
+    table.add_column("Theta/Day", justify="right")
+    table.add_column("Key Commentary")
 
-    payload_for_prompt = _strip_paths_for_prompt(payload)
-    payload_blob = json.dumps(payload_for_prompt, indent=2, default=str)
-
-    return "\n".join(
-        [
-            "You are an options strategy analyst.",
-            f"Analyze ticker: {ticker}",
-            f"Current price: {underlying.get('price')}",
-            f"Top strategies in report: {strategy_list}",
-            f"Structured practical overlay sections: {overlay_summary}",
-            "Input data will be provided separately as JSON payload and llm_paths block.",
-            "Use the analyzer's structured overlay as the preferred practical interpretation layer when it is present.",
-            "Tasks:",
-            "1. Summarize volatility regime and market context from the report.",
-            "2. Compare top strategies by PoP, expected value, max loss, touch probability, and realism versus expected move.",
-            "3. Distinguish clearly between the highest modeled setup, the best conservative executable setup, and the best aggressive setup.",
-            "4. Provide invalidation logic, risk guardrails, and position-sizing guidance.",
-            "5. Warn the user if the highest-ranked strategy has negative expected value.",
-            "Output format:",
-            "- Executive summary (3 bullets)",
-            "- Strategy comparison table",
-            "- Final recommendation",
-            "- Risks and what to monitor next",
-            "JSON data (paths removed):",
-            "```json",
-            payload_blob,
-            "```",
-        ]
-    )
-
-
-def _strip_paths_for_prompt(value: object) -> object:
-    if isinstance(value, dict):
-        cleaned: dict[str, object] = {}
-        for key, item in value.items():
-            k = str(key).lower()
-            if k == "llm_paths":
-                continue
-            if k == "charts" and isinstance(item, dict):
-                cleaned[str(key)] = {
-                    str(name): "[path omitted]" for name in item.keys()}
-                continue
-            if "path" in k:
-                continue
-            cleaned[str(key)] = _strip_paths_for_prompt(item)
-        return cleaned
-    if isinstance(value, list):
-        return [_strip_paths_for_prompt(item) for item in value]
-    return value
-
-
-def _build_llm_paths(payload: dict, json_report_path: Path | None) -> dict:
-    return {
-        "json_report_path": str(json_report_path) if json_report_path is not None else None,
-        "charts": payload.get("charts") or {},
-    }
+    for row in rows:
+        strategy = str(row.get("strategy") or "unknown")
+        table.add_row(
+            strategy,
+            str(row.get("pop")),
+            str(row.get("expected_value")),
+            str(row.get("max_loss")),
+            str(row.get("probability_of_touch")),
+            str(row.get("forgivingness_score")),
+            str(row.get("theta_per_day")),
+            str(row.get("key_commentary") or ""),
+        )
+    console.print(table)
 
 
 @options_app.command("analyze")
@@ -292,8 +243,8 @@ def analyze(
 
     if llm_prompt:
         prompt_source = dict(payload_out)
-        payload_out["llm_prompt"] = _build_llm_prompt(prompt_source)
-        payload_out["llm_paths"] = _build_llm_paths(payload_out, report_path)
+        payload_out["llm_prompt"] = build_llm_prompt(prompt_source)
+        payload_out["llm_paths"] = build_llm_paths(payload_out, report_path)
 
     if save_json:
         report_path = _write_json_report(
@@ -314,7 +265,7 @@ def analyze(
     expected_move = underlying.get("expected_move", {}) or {}
     snapshot = underlying.get("options_market_snapshot", {}) or {}
     recommendations = payload_out.get("recommendations", [])[:3]
-    negative_ev_warning = _negative_ev_warning(recommendations)
+    risk_warnings = _collect_risk_warnings(payload_out, recommendations)
 
     if sheet:
         summary = Table(
@@ -332,11 +283,12 @@ def analyze(
         console.print(summary)
 
         _render_bias_tables(console, recommendations)
+        _render_strategy_comparison_table(console, payload_out)
 
-        if negative_ev_warning:
+        for warning in risk_warnings:
             console.print(
                 Panel(
-                    negative_ev_warning,
+                    warning,
                     title="Risk Warning",
                     border_style="red",
                 )
@@ -378,8 +330,8 @@ def analyze(
     typer.echo(f"Price: {underlying.get('price')}")
     if report_path is not None:
         typer.echo(f"JSON report: {report_path}")
-    if negative_ev_warning:
-        typer.echo(f"WARNING: {negative_ev_warning}")
+    for warning in risk_warnings:
+        typer.echo(f"WARNING: {warning}")
     for label, recs in _group_recommendations_by_bias(recommendations):
         typer.echo(f"{label} strategies:")
         for rec in recs:

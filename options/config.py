@@ -59,6 +59,12 @@ class OptionsConfig:
     monte_carlo_seed: int = 42
     default_history_period: str = "1y"
     enable_plotly: bool = True
+    bull_put_otm_min_pct: float = 0.03
+    bull_put_otm_max_pct: float = 0.06
+    spread_width_min_points: float = 8.0
+    spread_width_max_points: float = 15.0
+    conservative_touch_max_pct: float = 75.0
+    modeled_touch_warning_pct: float = 85.0
 
     @property
     def hv_windows(self) -> tuple[int, int]:
@@ -103,4 +109,16 @@ def load_options_config() -> OptionsConfig:
         monte_carlo_seed=_as_int("NAVE_OPTIONS_MC_SEED", 42),
         default_history_period=os.getenv("NAVE_OPTIONS_HISTORY_PERIOD", "1y"),
         enable_plotly=_as_bool("NAVE_OPTIONS_ENABLE_PLOTLY", True),
+        bull_put_otm_min_pct=_as_float(
+            "NAVE_OPTIONS_BULL_PUT_OTM_MIN_PCT", 0.03),
+        bull_put_otm_max_pct=_as_float(
+            "NAVE_OPTIONS_BULL_PUT_OTM_MAX_PCT", 0.06),
+        spread_width_min_points=_as_float(
+            "NAVE_OPTIONS_SPREAD_WIDTH_MIN_POINTS", 8.0),
+        spread_width_max_points=_as_float(
+            "NAVE_OPTIONS_SPREAD_WIDTH_MAX_POINTS", 15.0),
+        conservative_touch_max_pct=_as_float(
+            "NAVE_OPTIONS_CONSERVATIVE_TOUCH_MAX_PCT", 75.0),
+        modeled_touch_warning_pct=_as_float(
+            "NAVE_OPTIONS_MODELED_TOUCH_WARNING_PCT", 85.0),
     )

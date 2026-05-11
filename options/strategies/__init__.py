@@ -1,5 +1,8 @@
 """Strategy builders for options analysis."""
 
-from options.strategies.builders import build_strategy_candidates
+from options.strategies.builders import (
+    build_strategy_candidates,
+    build_strategy_candidates_with_audit,
+)
 
-__all__ = ["build_strategy_candidates"]
+__all__ = ["build_strategy_candidates", "build_strategy_candidates_with_audit"]

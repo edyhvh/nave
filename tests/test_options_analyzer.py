@@ -135,6 +135,13 @@ def test_options_analyzer_run_returns_expected_payload(monkeypatch, tmp_path: Pa
     assert "analysis_overlay" in payload
     assert "executive_summary" in payload["analysis_overlay"]
     assert "final_recommendations" in payload["analysis_overlay"]
+    assert "all_recommendations_ranked" in payload
+    assert payload["all_recommendations_ranked"]
+    assert "generation_audit" in payload
+    assert "strategy_generation" in payload["generation_audit"] or payload["generation_audit"].get(
+        "status") == "no_chain"
+    assert "ranking_audit" in payload["analysis_overlay"]
+    assert "strategy_comparison_table" in payload["analysis_overlay"]
     assert set(payload["charts"].keys()) == {
         "payoff", "greeks", "monte_carlo", "strategy_ranking"}
 
@@ -306,7 +313,98 @@ def test_options_analyzer_overlay_can_prefer_bull_put_as_conservative_setup(monk
     conservative = overlay["final_recommendations"]["best_conservative_executable_setup"]
     assert conservative["strategy_name"] == "bull_put_credit_spread"
     assert "tight condor" in conservative["rationale"] or "condor" in conservative["rationale"]
-    comparison = {item["strategy_name"]: item for item in overlay["strategy_comparison"]}
+    warnings = overlay.get("warnings") or []
+    assert any("negative expected value" in item.lower() for item in warnings)
+    ranking_audit = overlay.get("ranking_audit") or []
+    assert ranking_audit
+    assert all(
+        "modeled_rank" in item and "executable_rank" in item for item in ranking_audit)
+    comparison = {item["strategy_name"]
+        : item for item in overlay["strategy_comparison"]}
     assert comparison["iron_condor"]["flags"]["range_too_tight_vs_expected_move"] is True
     assert comparison["iron_condor"]["flags"]["negative_ev_despite_high_pop"] is True
     assert comparison["bull_put_credit_spread"]["flags"]["puts_rich_supportive"] is True
+
+
+def test_options_analyzer_warns_when_top_modeled_touch_is_too_high(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        analyzer_module, "YFinanceOptionsFetcher", _DummyFetcher)
+
+    analyzer = OptionsAnalyzer(config=_config(tmp_path))
+    frame = _sample_chain()
+
+    monkeypatch.setattr(
+        analyzer,
+        "_load_or_fetch",
+        lambda ticker: (
+            frame,
+            120.0,
+            sorted(frame["expiration"].unique().tolist()),
+            {"used_cache": False, "metadata": {"ticker": ticker}},
+        ),
+    )
+    monkeypatch.setattr(
+        analyzer,
+        "_underlying_history",
+        lambda ticker: pd.Series(np.linspace(100.0, 122.0, 365)),
+    )
+    monkeypatch.setattr(analyzer_module, "build_payoff_chart",
+                        lambda **kwargs: str(tmp_path / "payoff.html"))
+    monkeypatch.setattr(analyzer_module, "build_greeks_chart",
+                        lambda **kwargs: str(tmp_path / "greeks.html"))
+    monkeypatch.setattr(
+        analyzer_module,
+        "build_pnl_distribution_chart",
+        lambda **kwargs: str(tmp_path / "monte_carlo.html"),
+    )
+    monkeypatch.setattr(
+        analyzer_module,
+        "build_strategy_ranking_chart",
+        lambda **kwargs: str(tmp_path / "ranking.html"),
+    )
+
+    expiration = frame.iloc[0]["expiration"]
+
+    monkeypatch.setattr(
+        analyzer_module,
+        "rank_recommendations",
+        lambda **kwargs: [
+            StrategyRecommendation(
+                strategy=StrategyCandidate(
+                    name="iron_condor",
+                    expiration=expiration,
+                    days_to_expiration=30,
+                    legs=[
+                        StrategyLeg("option", "sell", 1, 4.0, 120.0, "put"),
+                        StrategyLeg("option", "buy", 1, 1.5, 110.0, "put"),
+                        StrategyLeg("option", "sell", 1, 4.1, 120.0, "call"),
+                        StrategyLeg("option", "buy", 1, 1.6, 130.0, "call"),
+                    ],
+                    net_premium=500.0,
+                    max_profit=500.0,
+                    max_loss=950.0,
+                    breakeven_points=[116.0, 124.0],
+                ),
+                metrics=StrategyMetrics(
+                    pop=60.0,
+                    expected_value=9.0,
+                    expected_profit=50.0,
+                    expected_loss=25.0,
+                    risk_reward=1.0,
+                    max_loss=950.0,
+                    theta_per_day=0.2,
+                    vega_exposure=0.1,
+                    probability_of_touch=89.0,
+                    profit_range_low=116.0,
+                    profit_range_high=124.0,
+                    composite_score=70.0,
+                ),
+                pnl_samples=[-950.0, 9.0, 500.0],
+                tradeoff_comment="Tight range premium setup.",
+            )
+        ],
+    )
+
+    payload = analyzer.run(ticker="MSFT", days_to_exp=30)
+    warnings = payload["analysis_overlay"].get("warnings") or []
+    assert any("probability of touch" in item.lower() for item in warnings)

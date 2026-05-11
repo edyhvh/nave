@@ -7,7 +7,10 @@ import pandas as pd
 from options import scoring
 from options.models import StrategyCandidate
 from options.scoring import rank_recommendations
-from options.strategies import build_strategy_candidates
+from options.strategies import (
+    build_strategy_candidates,
+    build_strategy_candidates_with_audit,
+)
 
 
 def _sample_option_frame() -> pd.DataFrame:
@@ -180,3 +183,34 @@ def test_rank_recommendations_penalizes_negative_ev_more_in_high_iv(monkeypatch)
 
     assert ranked_high_iv[0].strategy.name == "positive_edge"
     assert by_name_high["negative_edge"].metrics.composite_score < by_name_low["negative_edge"].metrics.composite_score
+
+
+def test_build_strategy_candidates_with_audit_exposes_generation_details() -> None:
+    frame = _sample_option_frame()
+    candidates, audit = build_strategy_candidates_with_audit(
+        frame,
+        underlying_price=100.0,
+        target_dte=30,
+    )
+
+    assert candidates
+    assert audit["status"] == "ok"
+    assert "template_config" in audit
+    assert "strategy_generation" in audit
+    bull_put_entries = [
+        entry for entry in audit["strategy_generation"]
+        if entry.get("strategy_family") == "bull_put_credit_spread"
+    ]
+    assert bull_put_entries
+    assert bull_put_entries[0]["status"] in {"built", "dropped"}
+
+
+def test_build_strategy_candidates_with_audit_returns_no_chain_status_on_empty_frame() -> None:
+    candidates, audit = build_strategy_candidates_with_audit(
+        pd.DataFrame(),
+        underlying_price=100.0,
+        target_dte=30,
+    )
+
+    assert candidates == []
+    assert audit["status"] == "no_chain"

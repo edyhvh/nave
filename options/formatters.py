@@ -15,6 +15,7 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
     hv = (underlying.get("historical_volatility") or {}).get("hv_30")
     final_recs = overlay.get("final_recommendations") or {}
     executive_summary = list(overlay.get("executive_summary") or [])
+    warnings = list(overlay.get("warnings") or [])
 
     recs = payload.get("recommendations") or []
     lines = [
@@ -31,6 +32,13 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
 
     conservative = final_recs.get("best_conservative_executable_setup") or {}
     aggressive = final_recs.get("best_aggressive_setup") or {}
+    modeled = final_recs.get("best_modeled_setup") or {}
+    if modeled:
+        lines.append(
+            "Modeled: "
+            f"{str(modeled.get('strategy_name') or 'n/a').replace('_', ' ')}"
+            f" | EV {(modeled.get('metrics') or {}).get('expected_value')}"
+        )
     if conservative:
         lines.append(
             "Conservative: "
@@ -58,5 +66,10 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
                 f"{idx}. {strategy} | score {score} | PoP {pop}% | EV {ev} | Touch {touch}%")
             if tradeoff:
                 lines.append(f"   - {tradeoff}")
+
+    if warnings:
+        lines.append("Warnings:")
+        for warning in warnings[:3]:
+            lines.append(f"- {warning}")
 
     return ["\n".join(lines)]
