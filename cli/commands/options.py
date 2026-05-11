@@ -21,7 +21,8 @@ options_app = ProfessionalTyper(help="Options analytics commands")
 
 
 def _slug(value: str) -> str:
-    keep = [ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in value.strip()]
+    keep = [ch if ch.isalnum() or ch in {
+        "_", "-"} else "_" for ch in value.strip()]
     normalized = "".join(keep).strip("_")
     return normalized or "ticker"
 
@@ -49,7 +50,8 @@ def _resolve_json_report_path(
 
 def _write_json_report(*, payload: dict, out_path: Path) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    out_path.write_text(json.dumps(payload, indent=2,
+                        default=str), encoding="utf-8")
     return out_path
 
 
@@ -101,7 +103,8 @@ def _strip_paths_for_prompt(value: object) -> object:
             if k == "llm_paths":
                 continue
             if k == "charts" and isinstance(item, dict):
-                cleaned[str(key)] = {str(name): "[path omitted]" for name in item.keys()}
+                cleaned[str(key)] = {
+                    str(name): "[path omitted]" for name in item.keys()}
                 continue
             if "path" in k:
                 continue
@@ -165,7 +168,8 @@ def analyze(
 
     payload_out = dict(payload)
     artifacts = dict(payload_out.get("artifacts") or {})
-    artifacts["json_report_path"] = str(report_path) if report_path is not None else None
+    artifacts["json_report_path"] = str(
+        report_path) if report_path is not None else None
     payload_out["artifacts"] = artifacts
 
     if llm_prompt:
@@ -193,15 +197,18 @@ def analyze(
     snapshot = underlying.get("options_market_snapshot", {}) or {}
 
     if sheet:
-        summary = Table(title=f"Options Summary - {payload_out.get('ticker')}", box=box.SIMPLE_HEAVY)
+        summary = Table(
+            title=f"Options Summary - {payload_out.get('ticker')}", box=box.SIMPLE_HEAVY)
         summary.add_column("Metric")
         summary.add_column("Value")
         summary.add_row("Price", str(underlying.get("price")))
         summary.add_row("IV Mean", str(implied.get("iv_mean")))
         summary.add_row("IV Rank", str(implied.get("iv_rank")))
-        summary.add_row("Expected Move (1sd)", str(expected_move.get("one_std_move")))
+        summary.add_row("Expected Move (1sd)", str(
+            expected_move.get("one_std_move")))
         summary.add_row("Contracts", str(snapshot.get("contracts")))
-        summary.add_row("Put/Call OI Ratio", str(snapshot.get("put_call_oi_ratio")))
+        summary.add_row("Put/Call OI Ratio",
+                        str(snapshot.get("put_call_oi_ratio")))
         console.print(summary)
 
         rec_table = Table(title="Top Strategy Ranking", box=box.SIMPLE_HEAVY)
@@ -240,11 +247,13 @@ def analyze(
                 f"View: cat {report_path}\n"
                 f"Copy (macOS): pbcopy < {report_path}",
             )
-            console.print(Panel(copy_help, title="Copyable JSON", border_style="cyan"))
+            console.print(
+                Panel(copy_help, title="Copyable JSON", border_style="cyan"))
 
         if llm_prompt:
             prompt = str(payload_out.get("llm_prompt") or "")
-            console.print(Panel(prompt, title="LLM Prompt (Copy/Paste)", border_style="green"))
+            console.print(
+                Panel(prompt, title="LLM Prompt (Copy/Paste)", border_style="green"))
             llm_paths = payload_out.get("llm_paths") or {}
             console.print(
                 Panel(

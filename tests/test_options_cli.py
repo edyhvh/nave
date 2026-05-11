@@ -85,7 +85,8 @@ def test_options_analyze_command_defaults_to_sheet(monkeypatch, tmp_path: Path) 
             }
 
     monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
-    result = runner.invoke(app, ["options", "analyze", "--ticker", "MSFT", "--days-to-exp", "30"])
+    result = runner.invoke(
+        app, ["options", "analyze", "--ticker", "MSFT", "--days-to-exp", "30"])
 
     assert result.exit_code == 0
     assert "Options Summary - MSFT" in result.stdout
@@ -129,7 +130,8 @@ def test_options_analyze_llm_prompt(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
     result = runner.invoke(
         app,
-        ["options", "analyze", "--ticker", "MSFT", "--days-to-exp", "30", "--llm-prompt"],
+        ["options", "analyze", "--ticker", "MSFT",
+            "--days-to-exp", "30", "--llm-prompt"],
     )
 
     assert result.exit_code == 0
@@ -170,7 +172,8 @@ def test_options_analyze_includes_llm_prompt_in_json_mode(monkeypatch, tmp_path:
     monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
     result = runner.invoke(
         app,
-        ["options", "analyze", "--ticker", "MSFT", "--days-to-exp", "30", "--json", "--llm-prompt"],
+        ["options", "analyze", "--ticker", "MSFT",
+            "--days-to-exp", "30", "--json", "--llm-prompt"],
     )
 
     assert result.exit_code == 0
