@@ -216,6 +216,19 @@ Run options analysis for a ticker and get a sheet-style ranked strategy summary 
 nave options analyze --ticker MSFT --days-to-exp 30
 ```
 
+Evaluate an exact manual bull put credit spread when you already have target
+strikes/premiums:
+
+```bash
+nave options analyze --ticker MSFT --strategy bull-put \
+  --short-put 395 --long-put 390 \
+  --short-premium 8.50 --long-premium 6.90 \
+  --expiration 2026-06-18
+```
+
+If you omit `--short-premium` or `--long-premium`, the analyzer uses the option
+chain mid price for that leg when the strike is available.
+
 Render terminal-native charts (no browser) with plotext while keeping the
 existing report flow and HTML chart artifacts:
 
@@ -267,6 +280,22 @@ Emit full machine JSON only when you explicitly need automation payloads:
 ```bash
 nave options analyze --ticker AAPL --days-to-exp 45 --json
 ```
+
+Scan the default liquid S&P 500 top-100 options universe and return only
+tickers whose analysis passes the executable trade quality gate:
+
+```bash
+nave options analyze --sp500-scan --sp500-limit 100 --top-trades 3
+nave options analyze --sp500-scan --sp500-limit 100 --top-trades 3 --json
+nave options analyze --sp500-scan --sp500-limit 100 --top-trades 3 --scan-workers 8 --terminal
+```
+
+This keeps single-ticker analysis unchanged. In scan mode, the command runs the
+same per-ticker analyzer, filters for `trade_decision.status=trade_candidate`,
+and ranks the top executable setups by score, EV, PoP, and lower touch risk. For
+human output, the scan shows live progress and then prints detail panels for the
+top trades. Use `--scan-workers` to tune concurrency; lower it if your data
+provider starts rate-limiting.
 
 Use Deribit-backed options data for BTC/ETH while keeping the same options output flow:
 

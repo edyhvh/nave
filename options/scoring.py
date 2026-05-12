@@ -63,6 +63,7 @@ def _negative_ev_penalty(*, expected_value: float, iv_rank: float | None, iv_per
 
 def _composite_score(
     *,
+    strategy_name: str,
     pop: float,
     expected_value: float,
     expected_loss: float,
@@ -82,22 +83,27 @@ def _composite_score(
     theta_scaled = np.tanh(theta_per_day / 2.0) * 50.0 + 50.0
     vega_penalty = max(0.0, min(100.0, abs(vega_exposure) * 8.0))
     touch_scaled = max(0.0, min(100.0, probability_of_touch))
+    touch_comfort_scaled = 100.0 - touch_scaled
     negative_ev_penalty = _negative_ev_penalty(
         expected_value=expected_value,
         iv_rank=iv_rank,
         iv_percentile=iv_percentile,
     )
+    high_touch_penalty = max(0.0, touch_scaled - 85.0) * 0.9
+    if strategy_name in {"long_straddle", "long_strangle"} and touch_scaled > 85.0:
+        high_touch_penalty += min(15.0, (touch_scaled - 85.0) * 1.2)
 
     raw = (
         0.27 * pop
         + 0.18 * ev_scaled
         + 0.14 * rr_scaled
         + 0.12 * theta_scaled
-        + 0.08 * touch_scaled
+        + 0.08 * touch_comfort_scaled
         + 0.11 * edge_score
         - 0.05 * loss_penalty
         - 0.02 * vega_penalty
         - negative_ev_penalty
+        - high_touch_penalty
     )
     return float(max(0.0, min(100.0, raw)))
 
@@ -185,6 +191,7 @@ def rank_recommendations(
         risk_reward = _risk_reward(candidate)
         max_loss = float(candidate.max_loss or 0.0)
         score = _composite_score(
+            strategy_name=candidate.name,
             pop=pop,
             expected_value=expected_value,
             expected_loss=expected_loss,

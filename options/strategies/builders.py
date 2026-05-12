@@ -11,6 +11,9 @@ import pandas as pd
 from options.config import OptionsConfig, load_options_config
 from options.models import StrategyCandidate, StrategyLeg
 
+MAX_ATM_STRIKE_DISTANCE_PCT = 0.08
+MAX_OTM_STRIKE_DISTANCE_PCT = 0.15
+
 
 @dataclass(frozen=True)
 class _ChainSlice:
@@ -36,25 +39,82 @@ def _nearest_expiration(frame: pd.DataFrame, target_dte: int) -> _ChainSlice | N
 
     pairs: list[tuple[str, int]] = [
         (exp, _days_to_expiration(exp)) for exp in expirations]
-    selected, dte = min(pairs, key=lambda item: abs(item[1] - target_dte))
-    expiry_frame = frame[frame["expiration"] == selected]
-    calls = expiry_frame[expiry_frame["option_type"]
-                         == "call"].sort_values("strike")
-    puts = expiry_frame[expiry_frame["option_type"]
-                        == "put"].sort_values("strike")
-    if calls.empty or puts.empty:
-        return None
-    return _ChainSlice(expiration=selected, dte=dte, calls=calls, puts=puts)
+    ordered_pairs = sorted(pairs, key=lambda item: (
+        abs(item[1] - target_dte), item[1]))
+
+    for selected, dte in ordered_pairs:
+        expiry_frame = frame[frame["expiration"] == selected]
+        calls = expiry_frame[expiry_frame["option_type"]
+                             == "call"].sort_values("strike")
+        puts = expiry_frame[expiry_frame["option_type"]
+                            == "put"].sort_values("strike")
+        if calls.empty or puts.empty:
+            continue
+        return _ChainSlice(expiration=selected, dte=dte, calls=calls, puts=puts)
+
+    return None
 
 
-def _nearest_strike_row(side: pd.DataFrame, *, underlying_price: float) -> pd.Series | None:
+def _strike_distance_pct(strike: float, underlying_price: float) -> float:
+    if underlying_price <= 0:
+        return float("inf")
+    return abs(strike - underlying_price) / underlying_price
+
+
+def _is_near_underlying(
+    row: pd.Series | None,
+    *,
+    underlying_price: float,
+    max_distance_pct: float,
+) -> bool:
+    if row is None:
+        return False
+    return _strike_distance_pct(float(row["strike"]), underlying_price) <= max_distance_pct
+
+
+def _nearest_strike_row(
+    side: pd.DataFrame,
+    *,
+    underlying_price: float,
+    max_distance_pct: float | None = None,
+) -> pd.Series | None:
     if side.empty:
         return None
     ordered = side.reset_index(drop=True)
     idx = int((ordered["strike"] - underlying_price).abs().idxmin())
     if idx < 0 or idx >= len(ordered):
         return None
-    return ordered.iloc[idx]
+    row = ordered.iloc[idx]
+    if max_distance_pct is not None and not _is_near_underlying(
+        row,
+        underlying_price=underlying_price,
+        max_distance_pct=max_distance_pct,
+    ):
+        return None
+    return row
+
+
+def _nearest_common_atm_option_pair(
+    calls: pd.DataFrame,
+    puts: pd.DataFrame,
+    *,
+    underlying_price: float,
+) -> tuple[pd.Series, pd.Series] | None:
+    call_strikes = set(float(strike)
+                       for strike in calls["strike"].dropna().tolist())
+    put_strikes = set(float(strike)
+                      for strike in puts["strike"].dropna().tolist())
+    common = sorted(call_strikes & put_strikes)
+    if not common:
+        return None
+
+    strike = min(common, key=lambda item: abs(item - underlying_price))
+    if _strike_distance_pct(strike, underlying_price) > MAX_ATM_STRIKE_DISTANCE_PCT:
+        return None
+
+    call_row = calls[calls["strike"] == strike].iloc[0]
+    put_row = puts[puts["strike"] == strike].iloc[0]
+    return call_row, put_row
 
 
 def _row_by_offset(side: pd.DataFrame, *, strike: float, offset: int) -> pd.Series | None:
@@ -97,6 +157,56 @@ def _row_nearest_to_strike(
     return ordered.iloc[idx]
 
 
+def _lower_put_candidates(
+    puts: pd.DataFrame,
+    *,
+    short_strike: float,
+    target_width: float,
+    width_min: float,
+    width_max: float,
+) -> tuple[list[tuple[pd.Series, str]], dict[str, Any]]:
+    lower_puts = puts[puts["strike"] < short_strike].sort_values("strike")
+    if lower_puts.empty:
+        return [], {
+            "available_lower_puts": 0,
+            "nearest_lower_strike": None,
+        }
+
+    in_width = lower_puts[
+        (lower_puts["strike"] >= short_strike - width_max)
+        & (lower_puts["strike"] <= short_strike - width_min)
+    ]
+    selections: list[tuple[pd.Series, str]] = []
+    if not in_width.empty:
+        ordered_width = in_width.assign(
+            _target_distance=(in_width["strike"] -
+                              (short_strike - target_width)).abs()
+        ).sort_values(["_target_distance", "strike"])
+        selections.extend(
+            (row.drop(labels=["_target_distance"],
+             errors="ignore"), "template_width_range")
+            for _, row in ordered_width.iterrows()
+        )
+
+    fallback = lower_puts.assign(
+        _target_distance=(lower_puts["strike"] -
+                          (short_strike - target_width)).abs()
+    ).sort_values(["_target_distance", "strike"])
+    seen = {float(row["strike"]) for row, _ in selections}
+    for _, row in fallback.iterrows():
+        if float(row["strike"]) in seen:
+            continue
+        selections.append(
+            (row.drop(labels=["_target_distance"],
+             errors="ignore"), "fallback_available_lower_put")
+        )
+
+    return selections, {
+        "available_lower_puts": int(len(lower_puts)),
+        "nearest_lower_strike": float(lower_puts.iloc[-1]["strike"]),
+    }
+
+
 def _option_leg(row: pd.Series, *, side: str, quantity: int) -> StrategyLeg:
     return StrategyLeg(
         instrument_type="option",
@@ -118,15 +228,20 @@ def _stock_leg(*, side: str, quantity: int, price: float) -> StrategyLeg:
 
 
 def _build_covered_call(chain: _ChainSlice, *, underlying_price: float) -> StrategyCandidate | None:
-    atm_call = _nearest_strike_row(
-        chain.calls, underlying_price=underlying_price)
-    if atm_call is None:
+    target_strike = underlying_price * 1.03
+    call = _row_nearest_to_strike(
+        chain.calls,
+        target_strike=target_strike,
+        strike_min=underlying_price,
+        strike_max=underlying_price * (1.0 + MAX_OTM_STRIKE_DISTANCE_PCT),
+    )
+    if call is None:
         return None
-    premium = float(atm_call["mid_price"])
-    strike = float(atm_call["strike"])
+    premium = float(call["mid_price"])
+    strike = float(call["strike"])
     legs = [
         _stock_leg(side="buy", quantity=100, price=underlying_price),
-        _option_leg(atm_call, side="sell", quantity=1),
+        _option_leg(call, side="sell", quantity=1),
     ]
     max_profit = (strike - underlying_price) * 100.0 + premium * 100.0
     max_loss = max(0.0, (underlying_price - premium) * 100.0)
@@ -139,13 +254,16 @@ def _build_covered_call(chain: _ChainSlice, *, underlying_price: float) -> Strat
         max_profit=max_profit,
         max_loss=max_loss,
         breakeven_points=[underlying_price - premium],
-        notes=["Long 100 shares, short 1 call near ATM."],
+        notes=["Long 100 shares, short 1 OTM call."],
     )
 
 
 def _build_cash_secured_put(chain: _ChainSlice, *, underlying_price: float) -> StrategyCandidate | None:
     atm_put = _nearest_strike_row(
-        chain.puts, underlying_price=underlying_price)
+        chain.puts,
+        underlying_price=underlying_price,
+        max_distance_pct=MAX_ATM_STRIKE_DISTANCE_PCT,
+    )
     if atm_put is None:
         return None
     premium = float(atm_put["mid_price"])
@@ -167,9 +285,15 @@ def _build_cash_secured_put(chain: _ChainSlice, *, underlying_price: float) -> S
 
 def _build_iron_condor(chain: _ChainSlice, *, underlying_price: float) -> StrategyCandidate | None:
     short_call = _nearest_strike_row(
-        chain.calls, underlying_price=underlying_price)
+        chain.calls,
+        underlying_price=underlying_price,
+        max_distance_pct=MAX_ATM_STRIKE_DISTANCE_PCT,
+    )
     short_put = _nearest_strike_row(
-        chain.puts, underlying_price=underlying_price)
+        chain.puts,
+        underlying_price=underlying_price,
+        max_distance_pct=MAX_ATM_STRIKE_DISTANCE_PCT,
+    )
     if short_call is None or short_put is None:
         return None
 
@@ -214,7 +338,10 @@ def _build_iron_condor(chain: _ChainSlice, *, underlying_price: float) -> Strate
 
 def _build_butterfly(chain: _ChainSlice, *, underlying_price: float) -> StrategyCandidate | None:
     atm_call = _nearest_strike_row(
-        chain.calls, underlying_price=underlying_price)
+        chain.calls,
+        underlying_price=underlying_price,
+        max_distance_pct=MAX_ATM_STRIKE_DISTANCE_PCT,
+    )
     if atm_call is None:
         return None
 
@@ -249,12 +376,14 @@ def _build_butterfly(chain: _ChainSlice, *, underlying_price: float) -> Strategy
 
 
 def _build_straddle(chain: _ChainSlice, *, underlying_price: float) -> StrategyCandidate | None:
-    atm_call = _nearest_strike_row(
-        chain.calls, underlying_price=underlying_price)
-    atm_put = _nearest_strike_row(
-        chain.puts, underlying_price=underlying_price)
-    if atm_call is None or atm_put is None:
+    atm_pair = _nearest_common_atm_option_pair(
+        chain.calls,
+        chain.puts,
+        underlying_price=underlying_price,
+    )
+    if atm_pair is None:
         return None
+    atm_call, atm_put = atm_pair
 
     debit = float(atm_call["mid_price"]) + float(atm_put["mid_price"])
     strike = float(atm_call["strike"])
@@ -275,8 +404,14 @@ def _build_straddle(chain: _ChainSlice, *, underlying_price: float) -> StrategyC
 
 
 def _build_strangle(chain: _ChainSlice, *, underlying_price: float) -> StrategyCandidate | None:
-    otm_call = chain.calls[chain.calls["strike"] > underlying_price].head(1)
-    otm_put = chain.puts[chain.puts["strike"] < underlying_price].tail(1)
+    otm_call = chain.calls[
+        (chain.calls["strike"] > underlying_price)
+        & (chain.calls["strike"] <= underlying_price * (1.0 + MAX_OTM_STRIKE_DISTANCE_PCT))
+    ].head(1)
+    otm_put = chain.puts[
+        (chain.puts["strike"] < underlying_price)
+        & (chain.puts["strike"] >= underlying_price * (1.0 - MAX_OTM_STRIKE_DISTANCE_PCT))
+    ].tail(1)
     if otm_call.empty or otm_put.empty:
         return None
 
@@ -310,7 +445,10 @@ def _build_vertical_spreads(
     audit_entries: list[dict[str, Any]] = []
 
     atm_call = _nearest_strike_row(
-        chain.calls, underlying_price=underlying_price)
+        chain.calls,
+        underlying_price=underlying_price,
+        max_distance_pct=MAX_ATM_STRIKE_DISTANCE_PCT,
+    )
     if atm_call is not None:
         higher_call = _row_by_offset(
             chain.calls, strike=float(atm_call["strike"]), offset=1)
@@ -362,103 +500,129 @@ def _build_vertical_spreads(
         (1.0 - ((config.bull_put_otm_min_pct + config.bull_put_otm_max_pct) / 2.0))
     short_strike_min = underlying_price * (1.0 - config.bull_put_otm_max_pct)
     short_strike_max = underlying_price * (1.0 - config.bull_put_otm_min_pct)
-    template_short_put = _row_nearest_to_strike(
-        chain.puts[chain.puts["strike"] < underlying_price],
-        target_strike=target_short_center,
-        strike_min=short_strike_min,
-        strike_max=short_strike_max,
-    )
 
-    short_put = template_short_put
-    short_selection = "template_3_6pct_otm"
-    if short_put is None:
-        short_put = _nearest_strike_row(
-            chain.puts[chain.puts["strike"] < underlying_price], underlying_price=underlying_price)
-        short_selection = "fallback_nearest_put_below_spot"
+    otm_puts = chain.puts[chain.puts["strike"] < underlying_price].copy()
+    in_template_band = otm_puts[
+        (otm_puts["strike"] >= short_strike_min)
+        & (otm_puts["strike"] <= short_strike_max)
+    ]
 
-    if short_put is not None:
-        short_strike = float(short_put["strike"])
-        target_long_center = short_strike - \
-            ((config.spread_width_min_points + config.spread_width_max_points) / 2.0)
-        long_put = _row_nearest_to_strike(
-            chain.puts,
-            target_strike=target_long_center,
-            strike_min=short_strike - config.spread_width_max_points,
-            strike_max=short_strike - config.spread_width_min_points,
+    short_choices: list[tuple[pd.Series, str]] = []
+    if not in_template_band.empty:
+        ordered_shorts = in_template_band.assign(
+            _target_distance=(
+                in_template_band["strike"] - target_short_center).abs()
+        ).sort_values(["_target_distance", "strike"])
+        short_choices.extend(
+            (row.drop(labels=["_target_distance"],
+             errors="ignore"), "template_3_6pct_otm")
+            for _, row in ordered_shorts.iterrows()
         )
 
-        width_selection = "template_8_15_points"
-        if long_put is None:
-            long_put = _row_by_offset(
-                chain.puts,
-                strike=short_strike,
-                offset=-1,
-            )
-            width_selection = "fallback_nearest_lower_put"
-
-        if long_put is not None:
-            credit = float(short_put["mid_price"]) - \
-                float(long_put["mid_price"])
-            width = float(short_put["strike"] - long_put["strike"])
-            candidates.append(
-                StrategyCandidate(
-                    name="bull_put_credit_spread",
-                    expiration=chain.expiration,
-                    days_to_expiration=chain.dte,
-                    legs=[
-                        _option_leg(short_put, side="sell", quantity=1),
-                        _option_leg(long_put, side="buy", quantity=1),
-                    ],
-                    net_premium=credit * 100.0,
-                    max_profit=max(0.0, credit * 100.0),
-                    max_loss=max(0.0, (width - credit) * 100.0),
-                    breakeven_points=[float(short_put["strike"]) - credit],
-                    notes=[
-                        "Directional bullish credit spread.",
-                        f"Short leg selection: {short_selection}.",
-                        f"Width selection: {width_selection}.",
-                    ],
+    if not otm_puts.empty:
+        fallback_shorts = otm_puts.assign(
+            _target_distance=(otm_puts["strike"] - target_short_center).abs()
+        ).sort_values(["_target_distance", "strike"])
+        seen_short_strikes = {float(row["strike"]) for row, _ in short_choices}
+        for _, row in fallback_shorts.iterrows():
+            if float(row["strike"]) in seen_short_strikes:
+                continue
+            short_choices.append(
+                (
+                    row.drop(labels=["_target_distance"], errors="ignore"),
+                    "fallback_nearest_put_below_spot",
                 )
             )
 
-            short_otm_pct = ((underlying_price - short_strike) /
-                             underlying_price) if underlying_price > 0 else 0.0
-            audit_entries.append(
-                {
-                    "strategy_family": "bull_put_credit_spread",
-                    "status": "built",
-                    "short_selection": short_selection,
-                    "width_selection": width_selection,
-                    "short_strike": short_strike,
-                    "long_strike": float(long_put["strike"]),
-                    "short_otm_pct": short_otm_pct,
-                    "width_points": width,
-                    "target_short_otm_pct_range": [
-                        config.bull_put_otm_min_pct,
-                        config.bull_put_otm_max_pct,
-                    ],
-                    "target_width_points_range": [
-                        config.spread_width_min_points,
-                        config.spread_width_max_points,
-                    ],
-                }
+    target_width = (config.spread_width_min_points +
+                    config.spread_width_max_points) / 2.0
+    chosen: tuple[pd.Series, pd.Series, str, str, float] | None = None
+    attempts: list[dict[str, Any]] = []
+
+    for short_put, short_selection in short_choices:
+        short_strike = float(short_put["strike"])
+        long_choices, long_context = _lower_put_candidates(
+            chain.puts,
+            short_strike=short_strike,
+            target_width=target_width,
+            width_min=config.spread_width_min_points,
+            width_max=config.spread_width_max_points,
+        )
+        attempts.append(
+            {
+                "short_strike": short_strike,
+                "short_selection": short_selection,
+                **long_context,
+            }
+        )
+        for long_put, width_selection in long_choices:
+            credit = float(short_put["mid_price"]) - \
+                float(long_put["mid_price"])
+            width = float(short_put["strike"] - long_put["strike"])
+            if width <= 0.0 or credit <= 0.0:
+                continue
+            chosen = (short_put, long_put, short_selection,
+                      width_selection, width)
+            break
+        if chosen is not None:
+            break
+
+    if chosen is not None:
+        short_put, long_put, short_selection, width_selection, width = chosen
+        short_strike = float(short_put["strike"])
+        credit = float(short_put["mid_price"]) - float(long_put["mid_price"])
+        candidates.append(
+            StrategyCandidate(
+                name="bull_put_credit_spread",
+                expiration=chain.expiration,
+                days_to_expiration=chain.dte,
+                legs=[
+                    _option_leg(short_put, side="sell", quantity=1),
+                    _option_leg(long_put, side="buy", quantity=1),
+                ],
+                net_premium=credit * 100.0,
+                max_profit=max(0.0, credit * 100.0),
+                max_loss=max(0.0, (width - credit) * 100.0),
+                breakeven_points=[float(short_put["strike"]) - credit],
+                notes=[
+                    "Directional bullish credit spread.",
+                    f"Short leg selection: {short_selection}.",
+                    f"Width selection: {width_selection}.",
+                ],
             )
-        else:
-            audit_entries.append(
-                {
-                    "strategy_family": "bull_put_credit_spread",
-                    "status": "dropped",
-                    "reason": "missing_long_put_for_width",
-                    "short_selection": short_selection,
-                    "short_strike": short_strike,
-                }
-            )
+        )
+
+        short_otm_pct = ((underlying_price - short_strike) /
+                         underlying_price) if underlying_price > 0 else 0.0
+        audit_entries.append(
+            {
+                "strategy_family": "bull_put_credit_spread",
+                "status": "built",
+                "short_selection": short_selection,
+                "width_selection": width_selection,
+                "short_strike": short_strike,
+                "long_strike": float(long_put["strike"]),
+                "short_otm_pct": short_otm_pct,
+                "width_points": width,
+                "net_credit": credit * 100.0,
+                "candidate_attempts": attempts,
+                "target_short_otm_pct_range": [
+                    config.bull_put_otm_min_pct,
+                    config.bull_put_otm_max_pct,
+                ],
+                "target_width_points_range": [
+                    config.spread_width_min_points,
+                    config.spread_width_max_points,
+                ],
+            }
+        )
     else:
         audit_entries.append(
             {
                 "strategy_family": "bull_put_credit_spread",
                 "status": "dropped",
-                "reason": "missing_otm_or_fallback_short_put",
+                "reason": "missing_executable_short_put_or_lower_hedge",
+                "candidate_attempts": attempts,
             }
         )
 

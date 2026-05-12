@@ -798,6 +798,226 @@ def test_options_analyze_accepts_positional_ticker_and_source(monkeypatch) -> No
     assert captured["source"] == "deribit"
 
 
+def test_options_analyze_forwards_manual_bull_put_strategy(monkeypatch, tmp_path: Path) -> None:
+    from cli.commands import options as options_cmd
+
+    captured: dict[str, object] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self) -> None:
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+        def run(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "ticker": kwargs["ticker"],
+                "underlying_analysis": {
+                    "price": 410.0,
+                    "manual_strategy": {
+                        "strategy": "bull_put",
+                        "expiration": kwargs["expiration"],
+                        "net_credit": 160.0,
+                        "max_loss": 340.0,
+                        "breakeven": 393.4,
+                    },
+                    "implied_volatility": {"iv_mean": 0.25, "iv_rank": 60.0},
+                    "expected_move": {"one_std_move": 11.0},
+                    "options_market_snapshot": {"contracts": 120.0, "put_call_oi_ratio": 0.95},
+                },
+                "analysis_overlay": {
+                    "trade_decision": {
+                        "status": "trade_candidate",
+                        "reason": "manual",
+                    },
+                    "warnings": [],
+                },
+                "recommendations": [
+                    {
+                        "strategy": {"name": "bull_put_credit_spread"},
+                        "metrics": {
+                            "composite_score": 65.0,
+                            "pop": 62.0,
+                            "expected_value": 8.0,
+                            "probability_of_touch": 42.0,
+                        },
+                        "tradeoff_comment": "Manual bull put.",
+                    }
+                ],
+                "charts": {},
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "analyze",
+            "--ticker",
+            "MSFT",
+            "--strategy",
+            "bull-put",
+            "--short-put",
+            "395",
+            "--long-put",
+            "390",
+            "--short-premium",
+            "8.50",
+            "--long-premium",
+            "6.90",
+            "--expiration",
+            "2026-06-18",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["strategy"] == "bull-put"
+    assert captured["short_put"] == 395.0
+    assert captured["long_put"] == 390.0
+    assert captured["short_premium"] == 8.5
+    assert captured["long_premium"] == 6.9
+    parsed = json.loads(result.stdout)
+    assert parsed["underlying_analysis"]["manual_strategy"]["net_credit"] == 160.0
+
+
+def test_options_analyze_sp500_scan_returns_top_trade_candidates(monkeypatch, tmp_path: Path) -> None:
+    from cli.commands import options as options_cmd
+
+    monkeypatch.setattr(options_cmd, "SP500_TOP_100_TICKERS", ("AAA", "BBB", "CCC"))
+
+    class _DummyAnalyzer:
+        def __init__(self) -> None:
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            _ = days_to_exp
+            candidates = {
+                "AAA": {
+                    "status": "trade_candidate",
+                    "strategy": "bull_put_credit_spread",
+                    "score": 72.0,
+                    "ev": 14.0,
+                    "touch": 41.0,
+                },
+                "BBB": {
+                    "status": "no_trade",
+                    "strategy": "bull_call_debit_spread",
+                    "score": 20.0,
+                    "ev": -2.57,
+                    "touch": 87.6,
+                },
+                "CCC": {
+                    "status": "trade_candidate",
+                    "strategy": "covered_call",
+                    "score": 81.0,
+                    "ev": 20.0,
+                    "touch": 38.0,
+                },
+            }
+            item = candidates[ticker]
+            executable = (
+                {
+                    "strategy_name": item["strategy"],
+                    "metrics": {
+                        "composite_score": item["score"],
+                        "expected_value": item["ev"],
+                        "pop": 63.0,
+                        "probability_of_touch": item["touch"],
+                        "theta_per_day": 0.2,
+                        "max_loss": 700.0,
+                    },
+                }
+                if item["status"] == "trade_candidate"
+                else None
+            )
+            return {
+                "ticker": ticker,
+                "analysis_overlay": {
+                    "trade_decision": {
+                        "status": item["status"],
+                        "reason": item["status"],
+                    },
+                    "final_recommendations": {
+                        "best_overall_executable_setup": executable,
+                    },
+                    "warnings": [],
+                },
+                "recommendations": [
+                    {
+                        "strategy": {"name": item["strategy"]},
+                        "metrics": {
+                            "composite_score": item["score"],
+                            "expected_value": item["ev"],
+                            "pop": 55.0,
+                            "probability_of_touch": item["touch"],
+                        },
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "analyze",
+            "--sp500-scan",
+            "--sp500-limit",
+            "3",
+            "--top-trades",
+            "2",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["strategy"] == "options_equity_universe_scan_v1"
+    assert parsed["summary"]["tickers_scanned"] == 3
+    assert parsed["summary"]["trade_candidates"] == 2
+    assert [item["ticker"] for item in parsed["ranked"]] == ["CCC", "AAA"]
+    assert parsed["results"]["BBB"]["status"] == "no_trade"
+    assert parsed["results"]["BBB"]["executable_strategy"] is None
+
+
+def test_options_analyze_sp500_scan_sheet_keeps_single_ticker_mode_additive(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from cli.commands import options as options_cmd
+
+    monkeypatch.setattr(options_cmd, "SP500_TOP_100_TICKERS", ("AAA",))
+
+    class _DummyAnalyzer:
+        def __init__(self) -> None:
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            _ = days_to_exp
+            return {
+                "ticker": ticker,
+                "analysis_overlay": {
+                    "trade_decision": {"status": "no_trade", "reason": "no setup"},
+                    "final_recommendations": {
+                        "best_overall_executable_setup": None,
+                    },
+                    "warnings": ["No trade"],
+                },
+                "recommendations": [],
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app,
+        ["options", "analyze", "--sp500-scan", "--sp500-limit", "1"],
+    )
+
+    assert result.exit_code == 0
+    assert "Options Equity Universe Scan" in result.stdout
+    assert "Top Executable Trades" in result.stdout
+    assert "Trade Candidates" in result.stdout
+
+
 def test_options_opportunities_forwards_source(monkeypatch) -> None:
     from cli.commands import options as options_cmd
 

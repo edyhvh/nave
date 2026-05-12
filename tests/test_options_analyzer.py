@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 import options.analyzer as analyzer_module
+from options.analysis_overlay import build_narrative_overlay
 from options.analyzer import OptionsAnalyzer
 from options.config import OptionsConfig
 from options.models import StrategyCandidate, StrategyLeg, StrategyMetrics, StrategyRecommendation
@@ -145,6 +146,64 @@ def test_options_analyzer_run_returns_expected_payload(monkeypatch, tmp_path: Pa
     assert "strategy_comparison_table" in payload["analysis_overlay"]
     assert set(payload["charts"].keys()) == {
         "payoff", "greeks", "monte_carlo", "strategy_ranking"}
+
+
+def test_options_analyzer_can_evaluate_manual_bull_put(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        analyzer_module, "YFinanceOptionsFetcher", _DummyFetcher)
+
+    analyzer = OptionsAnalyzer(config=_config(tmp_path))
+    frame = _sample_chain()
+    expiration = str(frame.iloc[0]["expiration"])
+
+    monkeypatch.setattr(
+        analyzer,
+        "_load_or_fetch",
+        lambda ticker: (
+            frame,
+            100.0,
+            sorted(frame["expiration"].unique().tolist()),
+            {"used_cache": False, "metadata": {"ticker": ticker}},
+        ),
+    )
+    monkeypatch.setattr(
+        analyzer,
+        "_underlying_history",
+        lambda ticker: pd.Series(np.linspace(80.0, 102.0, 365)),
+    )
+    monkeypatch.setattr(analyzer_module, "build_payoff_chart",
+                        lambda **kwargs: str(tmp_path / "payoff.html"))
+    monkeypatch.setattr(analyzer_module, "build_greeks_chart",
+                        lambda **kwargs: str(tmp_path / "greeks.html"))
+    monkeypatch.setattr(
+        analyzer_module,
+        "build_pnl_distribution_chart",
+        lambda **kwargs: str(tmp_path / "monte_carlo.html"),
+    )
+    monkeypatch.setattr(
+        analyzer_module,
+        "build_strategy_ranking_chart",
+        lambda **kwargs: str(tmp_path / "ranking.html"),
+    )
+
+    payload = analyzer.run(
+        ticker="MSFT",
+        strategy="bull-put",
+        expiration=expiration,
+        short_put=100.0,
+        long_put=95.0,
+        short_premium=2.0,
+        long_premium=0.7,
+    )
+
+    assert payload["generation_audit"]["status"] == "manual"
+    manual = payload["underlying_analysis"]["manual_strategy"]
+    assert manual["net_credit"] == 130.0
+    assert manual["max_loss"] == 370.0
+    rec = payload["all_recommendations_ranked"][0]
+    assert rec["strategy"]["name"] == "bull_put_credit_spread"
+    assert rec["strategy"]["legs"][0]["strike"] == 100.0
+    assert rec["strategy"]["legs"][1]["strike"] == 95.0
 
 
 def test_options_analyzer_overlay_can_prefer_bull_put_as_conservative_setup(monkeypatch, tmp_path: Path) -> None:
@@ -408,6 +467,282 @@ def test_options_analyzer_warns_when_top_modeled_touch_is_too_high(monkeypatch, 
     payload = analyzer.run(ticker="MSFT", days_to_exp=30)
     warnings = payload["analysis_overlay"].get("warnings") or []
     assert any("probability of touch" in item.lower() for item in warnings)
+
+
+def test_overlay_rejects_negative_ev_cash_secured_put_as_conservative() -> None:
+    def _rec(name: str, expected_value: float, touch: float, max_loss: float) -> dict:
+        return {
+            "strategy": {
+                "name": name,
+                "legs": [
+                    {
+                        "instrument_type": "option",
+                        "side": "sell",
+                        "quantity": 1,
+                        "premium": 4.0,
+                        "strike": 400.0,
+                        "option_type": "put",
+                    }
+                ],
+                "breakeven_points": [396.0],
+            },
+            "metrics": {
+                "composite_score": 72.0,
+                "pop": 64.0,
+                "expected_value": expected_value,
+                "probability_of_touch": touch,
+                "theta_per_day": 0.2,
+                "vega_exposure": 0.1,
+                "risk_reward": 0.02,
+                "max_loss": max_loss,
+            },
+            "tradeoff_comment": "Income + discounted-entry style setup.",
+        }
+
+    overlay = build_narrative_overlay(
+        ticker="SPY",
+        underlying_analysis={
+            "historical_volatility": {"hv_30": 0.18},
+            "implied_volatility": {"iv_mean": 0.36, "iv_rank": 100.0, "iv_percentile": 100.0},
+            "expected_move": {"one_std_move": 42.8, "one_std_move_pct": 0.104},
+            "hv_vs_iv": {"iv_rich_vs_hv_short": True},
+            "put_call_skew": {"skew_diff": -0.236},
+            "options_market_snapshot": {"put_call_oi_ratio": 1.0, "put_call_volume_ratio": 1.0},
+        },
+        all_ranked=[_rec("cash_secured_put", -572.0, 72.0, 39670.0)],
+    )
+
+    assert overlay["final_recommendations"]["best_conservative_executable_setup"] is None
+    assert any("no conservative income setup" in item.lower()
+               for item in overlay["warnings"])
+
+
+def test_overlay_demotes_high_touch_straddle_below_bull_put_for_executable_ranking() -> None:
+    ranked = [
+        {
+            "strategy": {
+                "name": "long_straddle",
+                "legs": [
+                    {
+                        "instrument_type": "option",
+                        "side": "buy",
+                        "quantity": 1,
+                        "premium": 20.0,
+                        "strike": 412.0,
+                        "option_type": "call",
+                    },
+                    {
+                        "instrument_type": "option",
+                        "side": "buy",
+                        "quantity": 1,
+                        "premium": 20.0,
+                        "strike": 412.0,
+                        "option_type": "put",
+                    },
+                ],
+                "breakeven_points": [372.0, 452.0],
+            },
+            "metrics": {
+                "composite_score": 82.0,
+                "pop": 52.0,
+                "expected_value": 30.0,
+                "probability_of_touch": 91.7,
+                "theta_per_day": -0.6,
+                "vega_exposure": 0.6,
+                "risk_reward": 1.0,
+                "max_loss": 4000.0,
+            },
+            "tradeoff_comment": "ATM volatility expansion setup.",
+        },
+        {
+            "strategy": {
+                "name": "bull_put_credit_spread",
+                "legs": [
+                    {
+                        "instrument_type": "option",
+                        "side": "sell",
+                        "quantity": 1,
+                        "premium": 3.4,
+                        "strike": 395.0,
+                        "option_type": "put",
+                    },
+                    {
+                        "instrument_type": "option",
+                        "side": "buy",
+                        "quantity": 1,
+                        "premium": 1.2,
+                        "strike": 385.0,
+                        "option_type": "put",
+                    },
+                ],
+                "breakeven_points": [392.8],
+            },
+            "metrics": {
+                "composite_score": 60.0,
+                "pop": 64.0,
+                "expected_value": 12.0,
+                "probability_of_touch": 48.0,
+                "theta_per_day": 0.18,
+                "vega_exposure": -0.1,
+                "risk_reward": 0.28,
+                "max_loss": 780.0,
+            },
+            "tradeoff_comment": "Directional bullish credit spread.",
+        },
+    ]
+
+    overlay = build_narrative_overlay(
+        ticker="SPY",
+        underlying_analysis={
+            "historical_volatility": {"hv_30": 0.18},
+            "implied_volatility": {"iv_mean": 0.366, "iv_rank": 100.0, "iv_percentile": 100.0},
+            "expected_move": {"one_std_move": 42.8, "one_std_move_pct": 0.104},
+            "hv_vs_iv": {"iv_rich_vs_hv_short": True},
+            "put_call_skew": {"skew_diff": -0.236},
+            "options_market_snapshot": {"put_call_oi_ratio": 1.0, "put_call_volume_ratio": 1.0},
+        },
+        all_ranked=ranked,
+    )
+
+    conservative = overlay["final_recommendations"]["best_conservative_executable_setup"]
+    assert conservative["strategy_name"] == "bull_put_credit_spread"
+    audit = {item["strategy_name"]: item for item in overlay["ranking_audit"]}
+    assert (
+        audit["bull_put_credit_spread"]["executable_rank"]
+        < audit["long_straddle"]["executable_rank"]
+    )
+    assert any("probability of touch" in item.lower() for item in overlay["warnings"])
+
+
+def test_overlay_marks_low_quality_top_rank_as_no_trade() -> None:
+    overlay = build_narrative_overlay(
+        ticker="SPY",
+        underlying_analysis={
+            "historical_volatility": {"hv_30": 0.18},
+            "implied_volatility": {
+                "iv_mean": 0.36,
+                "iv_rank": 100.0,
+                "iv_percentile": 100.0,
+            },
+            "expected_move": {"one_std_move": 42.8, "one_std_move_pct": 0.104},
+            "hv_vs_iv": {"iv_rich_vs_hv_short": True},
+            "put_call_skew": {"skew_diff": -0.236},
+            "options_market_snapshot": {
+                "put_call_oi_ratio": 1.0,
+                "put_call_volume_ratio": 1.0,
+            },
+        },
+        all_ranked=[
+            {
+                "strategy": {
+                    "name": "bull_call_debit_spread",
+                    "legs": [
+                        {
+                            "instrument_type": "option",
+                            "side": "buy",
+                            "quantity": 1,
+                            "premium": 4.4,
+                            "strike": 410.0,
+                            "option_type": "call",
+                        },
+                        {
+                            "instrument_type": "option",
+                            "side": "sell",
+                            "quantity": 1,
+                            "premium": 2.2,
+                            "strike": 420.0,
+                            "option_type": "call",
+                        },
+                    ],
+                    "breakeven_points": [412.2],
+                },
+                "metrics": {
+                    "composite_score": 20.0093,
+                    "pop": 43.9642,
+                    "expected_value": -2.57,
+                    "probability_of_touch": 87.5996,
+                    "theta_per_day": -0.04,
+                    "vega_exposure": 0.07,
+                    "risk_reward": 3.54,
+                    "max_loss": 220.0,
+                },
+                "tradeoff_comment": (
+                    "bull call debit spread: Balanced probability profile; "
+                    "negative modeled expectancy; high path-risk."
+                ),
+            }
+        ],
+    )
+
+    assert overlay["trade_decision"]["status"] == "no_trade"
+    assert overlay["final_recommendations"]["best_overall_executable_setup"] is None
+    assert overlay["final_recommendations"]["best_aggressive_setup"] is None
+    audit = overlay["ranking_audit"][0]
+    assert audit["quality_gate"]["actionable"] is False
+    assert "composite_score_below_actionable_threshold" in audit["quality_gate"]["blockers"]
+    assert "negative_expected_value" in audit["quality_gate"]["blockers"]
+    assert "probability_of_touch_above_model_warning" in audit["quality_gate"]["blockers"]
+
+
+def test_overlay_rejects_capital_intensive_covered_call_scan_candidate() -> None:
+    overlay = build_narrative_overlay(
+        ticker="KLAC",
+        underlying_analysis={
+            "historical_volatility": {"hv_30": 0.18},
+            "implied_volatility": {
+                "iv_mean": 0.25,
+                "iv_rank": 65.0,
+                "iv_percentile": 70.0,
+            },
+            "expected_move": {"one_std_move": 42.8, "one_std_move_pct": 0.024},
+            "hv_vs_iv": {"iv_rich_vs_hv_short": True},
+            "put_call_skew": {"skew_diff": 0.01},
+            "options_market_snapshot": {
+                "put_call_oi_ratio": 1.0,
+                "put_call_volume_ratio": 1.0,
+            },
+        },
+        all_ranked=[
+            {
+                "strategy": {
+                    "name": "covered_call",
+                    "legs": [
+                        {
+                            "instrument_type": "stock",
+                            "side": "buy",
+                            "quantity": 100,
+                            "premium": 1764.58,
+                        },
+                        {
+                            "instrument_type": "option",
+                            "side": "sell",
+                            "quantity": 1,
+                            "premium": 10.0,
+                            "strike": 1820.0,
+                            "option_type": "call",
+                        },
+                    ],
+                    "breakeven_points": [1754.58],
+                },
+                "metrics": {
+                    "composite_score": 62.0,
+                    "pop": 99.0,
+                    "expected_value": 616.0,
+                    "probability_of_touch": 1.0,
+                    "theta_per_day": 0.2,
+                    "vega_exposure": -0.1,
+                    "risk_reward": 0.1,
+                    "max_loss": 175458.0,
+                },
+                "tradeoff_comment": "Covered call requires long stock.",
+            }
+        ],
+    )
+
+    assert overlay["trade_decision"]["status"] == "no_trade"
+    assert overlay["final_recommendations"]["best_overall_executable_setup"] is None
+    blockers = overlay["ranking_audit"][0]["quality_gate"]["blockers"]
+    assert "requires_existing_position_or_large_cash_reserve" in blockers
 
 
 def test_scan_crypto_opportunities_applies_momentum_gate_before_options(monkeypatch, tmp_path: Path) -> None:

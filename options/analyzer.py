@@ -27,6 +27,7 @@ from options.config import OptionsConfig, load_options_config
 from options.exceptions import OptionsComputationError, OptionsDataError, OptionsError, OptionsStrategyError
 from options.fetchers.deribit_fetcher import DeribitOptionsFetcher
 from options.fetchers.yfinance_fetcher import YFinanceOptionsFetcher
+from options.models import StrategyCandidate, StrategyLeg
 from options.scoring import rank_recommendations
 from options.strategies import build_strategy_candidates_with_audit
 from options.visualization import (
@@ -47,6 +48,12 @@ _CRYPTO_DERIBIT_TICKERS = {
     "BTC": "BTC",
     "ETH": "ETH",
 }
+
+
+def _days_to_expiration(expiration: str) -> int:
+    exp_date = datetime.fromisoformat(expiration).date()
+    now_date = datetime.now(timezone.utc).date()
+    return max(1, (exp_date - now_date).days)
 
 
 class OptionsAnalyzer:
@@ -183,6 +190,122 @@ class OptionsAnalyzer:
             "avg_spread_pct": avg_spread_pct,
         }
 
+    def _manual_bull_put_credit_spread(
+        self,
+        frame: pd.DataFrame,
+        *,
+        expiration: str,
+        short_put: float,
+        long_put: float,
+        short_premium: float | None,
+        long_premium: float | None,
+    ) -> tuple[StrategyCandidate, dict[str, Any]]:
+        if short_put <= long_put:
+            raise OptionsComputationError(
+                "bull-put manual strategy requires --short-put above --long-put"
+            )
+
+        expiry = str(expiration).strip()
+        if not expiry:
+            raise OptionsComputationError(
+                "manual strategy requires --expiration YYYY-MM-DD"
+            )
+        try:
+            dte = _days_to_expiration(expiry)
+        except ValueError as exc:
+            raise OptionsComputationError(
+                "expiration must use YYYY-MM-DD format"
+            ) from exc
+
+        expiry_frame = frame[frame["expiration"] == expiry]
+
+        def _row_for_strike(strike: float) -> pd.Series | None:
+            rows = expiry_frame[
+                (expiry_frame["option_type"] == "put")
+                & (pd.to_numeric(expiry_frame["strike"], errors="coerce") == float(strike))
+            ]
+            if rows.empty:
+                return None
+            return rows.iloc[0]
+
+        short_row = _row_for_strike(short_put)
+        long_row = _row_for_strike(long_put)
+
+        if short_premium is None:
+            if short_row is None:
+                raise OptionsComputationError(
+                    f"missing short put strike {short_put:g} for {expiry}; pass --short-premium"
+                )
+            short_premium = float(short_row["mid_price"])
+        if long_premium is None:
+            if long_row is None:
+                raise OptionsComputationError(
+                    f"missing long put strike {long_put:g} for {expiry}; pass --long-premium"
+                )
+            long_premium = float(long_row["mid_price"])
+
+        credit = float(short_premium) - float(long_premium)
+        width = float(short_put) - float(long_put)
+        if credit <= 0.0:
+            raise OptionsComputationError(
+                "bull-put manual strategy requires a positive net credit"
+            )
+        if credit >= width:
+            raise OptionsComputationError(
+                "net credit must be lower than spread width"
+            )
+
+        candidate = StrategyCandidate(
+            name="bull_put_credit_spread",
+            expiration=expiry,
+            days_to_expiration=dte,
+            legs=[
+                StrategyLeg(
+                    instrument_type="option",
+                    side="sell",
+                    quantity=1,
+                    premium=float(short_premium),
+                    strike=float(short_put),
+                    option_type="put",
+                ),
+                StrategyLeg(
+                    instrument_type="option",
+                    side="buy",
+                    quantity=1,
+                    premium=float(long_premium),
+                    strike=float(long_put),
+                    option_type="put",
+                ),
+            ],
+            net_premium=credit * 100.0,
+            max_profit=credit * 100.0,
+            max_loss=max(0.0, (width - credit) * 100.0),
+            breakeven_points=[float(short_put) - credit],
+            notes=[
+                "Manual bull put credit spread.",
+                f"Sell {short_put:g} put @ {float(short_premium):.2f}.",
+                f"Buy {long_put:g} put @ {float(long_premium):.2f}.",
+            ],
+        )
+        audit = {
+            "status": "manual",
+            "strategy_generation": [
+                {
+                    "strategy_family": "bull_put_credit_spread",
+                    "status": "built",
+                    "selection": "manual_strikes",
+                    "expiration": expiry,
+                    "short_strike": float(short_put),
+                    "long_strike": float(long_put),
+                    "short_premium": float(short_premium),
+                    "long_premium": float(long_premium),
+                    "net_credit": credit * 100.0,
+                    "max_loss": max(0.0, (width - credit) * 100.0),
+                }
+            ],
+        }
+        return candidate, audit
+
     def _momentum_context(self, symbol_entry: dict[str, Any]) -> dict[str, Any]:
         plans = list(symbol_entry.get("plans") or [])
         tradeable = list(symbol_entry.get("tradeable") or [])
@@ -295,8 +418,16 @@ class OptionsAnalyzer:
 
             options_ready += 1
             top = (options_payload.get("recommendations") or [{}])[0]
+            overlay = options_payload.get("analysis_overlay") or {}
+            trade_decision = overlay.get("trade_decision") or {}
+            final_recs = overlay.get("final_recommendations") or {}
+            executable = final_recs.get("best_overall_executable_setup") or {}
             metrics = top.get("metrics") or {}
             strategy = (top.get("strategy") or {}).get("name")
+            executable_metrics = executable.get("metrics") or {}
+            executable_strategy = executable.get("strategy_name")
+            has_trade_decision = bool(trade_decision)
+            is_trade_candidate = trade_decision.get("status") == "trade_candidate"
 
             opportunities[coin] = {
                 "coin": coin,
@@ -305,21 +436,51 @@ class OptionsAnalyzer:
                 "momentum": context,
                 "options": options_payload,
                 "top_strategy": strategy,
+                "trade_decision": trade_decision,
+                "executable_strategy": executable_strategy,
                 "top_metrics": {
                     "composite_score": metrics.get("composite_score"),
                     "pop": metrics.get("pop"),
                     "expected_value": metrics.get("expected_value"),
                     "probability_of_touch": metrics.get("probability_of_touch"),
                 },
+                "executable_metrics": {
+                    "composite_score": executable_metrics.get("composite_score"),
+                    "pop": executable_metrics.get("pop"),
+                    "expected_value": executable_metrics.get("expected_value"),
+                    "probability_of_touch": executable_metrics.get("probability_of_touch"),
+                },
             }
             ranked.append(
                 {
                     "coin": coin,
                     "ticker": mapped_ticker,
-                    "strategy_name": strategy,
+                    "strategy_name": (
+                        executable_strategy
+                        if executable_strategy or has_trade_decision
+                        else strategy
+                    ),
+                    "trade_decision": trade_decision.get("status"),
                     "momentum_confidence": context.get("confidence_score"),
-                    "strategy_score": metrics.get("composite_score"),
-                    "expected_value": metrics.get("expected_value"),
+                    "strategy_score": (
+                        executable_metrics.get("composite_score")
+                        if executable_strategy
+                        else (
+                            0.0
+                            if has_trade_decision and not is_trade_candidate
+                            else metrics.get("composite_score")
+                        )
+                    ),
+                    "expected_value": (
+                        executable_metrics.get("expected_value")
+                        if executable_strategy
+                        else (
+                            None
+                            if has_trade_decision and not is_trade_candidate
+                            else metrics.get("expected_value")
+                        )
+                    ),
+                    "modeled_top_strategy": strategy,
                     "status": "ready",
                 }
             )
@@ -327,6 +488,7 @@ class OptionsAnalyzer:
         ranked = sorted(
             ranked,
             key=lambda item: (
+                1 if item.get("trade_decision") == "trade_candidate" else 0,
                 float(item.get("momentum_confidence") or 0.0),
                 float(item.get("strategy_score") or 0.0),
                 float(item.get("expected_value") or -1e9),
@@ -356,11 +518,23 @@ class OptionsAnalyzer:
             "ranked": ranked,
         }
 
-    def run(self, ticker: str = "MSFT", days_to_exp: int = 30) -> dict[str, Any]:
+    def run(
+        self,
+        ticker: str = "MSFT",
+        days_to_exp: int = 30,
+        *,
+        strategy: str | None = None,
+        expiration: str | None = None,
+        short_put: float | None = None,
+        long_put: float | None = None,
+        short_premium: float | None = None,
+        long_premium: float | None = None,
+    ) -> dict[str, Any]:
         """Run complete options analysis and return a JSON-ready payload."""
         symbol = ticker.upper().strip()
         if not symbol:
             raise OptionsComputationError("ticker must be a non-empty value")
+        manual_strategy = str(strategy or "").strip().lower().replace("-", "_")
 
         frame, underlying_price, expirations, cache_info = self._load_or_fetch(
             symbol)
@@ -393,12 +567,32 @@ class OptionsAnalyzer:
             frame, underlying_price=underlying_price, config=self.config)
         skew = compute_put_call_skew(frame, underlying_price=underlying_price)
 
-        candidates, generation_audit = build_strategy_candidates_with_audit(
-            frame,
-            underlying_price=underlying_price,
-            target_dte=days_to_exp,
-            config=self.config,
-        )
+        manual_candidate: StrategyCandidate | None = None
+        if manual_strategy:
+            if manual_strategy not in {"bull_put", "bull_put_credit_spread"}:
+                raise OptionsComputationError(
+                    "manual --strategy currently supports bull_put only"
+                )
+            if expiration is None or short_put is None or long_put is None:
+                raise OptionsComputationError(
+                    "bull_put manual strategy requires --expiration, --short-put, and --long-put"
+                )
+            manual_candidate, generation_audit = self._manual_bull_put_credit_spread(
+                frame,
+                expiration=expiration,
+                short_put=float(short_put),
+                long_put=float(long_put),
+                short_premium=short_premium,
+                long_premium=long_premium,
+            )
+            candidates = [manual_candidate]
+        else:
+            candidates, generation_audit = build_strategy_candidates_with_audit(
+                frame,
+                underlying_price=underlying_price,
+                target_dte=days_to_exp,
+                config=self.config,
+            )
         if not candidates:
             raise OptionsStrategyError(
                 f"No strategy candidates found for {symbol}")
@@ -477,6 +671,15 @@ class OptionsAnalyzer:
             "expirations_available": expirations,
             "contracts_analyzed": int(len(frame)),
         }
+        if manual_candidate is not None:
+            underlying_analysis["manual_strategy"] = {
+                "strategy": manual_strategy,
+                "expiration": manual_candidate.expiration,
+                "days_to_expiration": manual_candidate.days_to_expiration,
+                "net_credit": manual_candidate.net_premium,
+                "max_loss": manual_candidate.max_loss,
+                "breakeven": manual_candidate.breakeven_points[0],
+            }
         all_ranked_dicts = [rec.to_dict() for rec in all_ranked]
         ranked_dicts = all_ranked_dicts[:3]
         narrative_overlay = build_narrative_overlay(
