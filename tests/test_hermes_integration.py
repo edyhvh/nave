@@ -31,6 +31,8 @@ def test_list_tools_contains_required_toolset() -> None:
         "market_scan",
         "momentum_playbook",
         "market_playbook",
+        "options_scan",
+        "options_opportunities",
         "cot_report",
         "cot_history",
         "weekly_plan",
@@ -233,6 +235,208 @@ def test_dispatch_tool_call_routes_momentum_tools(monkeypatch: pytest.MonkeyPatc
     assert result["result"]["args"]["symbols"] == "BTCUSDT"
 
 
+def test_dispatch_tool_call_routes_options_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "options_scan",
+        lambda **kwargs: {"ticker": "MSFT",
+                          "args": kwargs, "recommendations": []},
+    )
+    result = integration.dispatch_tool_call(
+        "options_scan",
+        {"ticker": "MSFT", "days_to_exp": 30},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "options_scan"
+    assert result["result"]["ticker"] == "MSFT"
+    assert result["result"]["args"]["days_to_exp"] == 30
+
+
+def test_dispatch_tool_call_routes_options_opportunities(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "options_opportunities",
+        lambda **kwargs: {"strategy": "options_momentum_bridge_v1",
+                          "args": kwargs},
+    )
+    result = integration.dispatch_tool_call(
+        "options_opportunities",
+        {"coins": "BTC,ETH", "days_to_exp": 30},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "options_opportunities"
+    assert result["result"]["strategy"] == "options_momentum_bridge_v1"
+    assert result["result"]["args"]["coins"] == "BTC,ETH"
+
+
+def test_options_scan_exposes_overlay_and_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    class _DummyAnalyzer:
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            return {
+                "ticker": ticker,
+                "underlying_analysis": {
+                    "price": 412.0,
+                    "historical_volatility": {"hv_30": 0.299},
+                    "implied_volatility": {"iv_mean": 0.307},
+                },
+                "analysis_overlay": {
+                    "executive_summary": [
+                        "IV is mildly rich to realized volatility.",
+                        "Expected move is wide enough that tight condors are fragile.",
+                    ],
+                    "final_recommendations": {
+                        "best_conservative_executable_setup": {
+                            "strategy_name": "bull_put_credit_spread",
+                            "metrics": {"expected_value": 11.0},
+                        },
+                        "best_aggressive_setup": {
+                            "strategy_name": "long_strangle",
+                            "metrics": {"expected_value": 8.0},
+                        },
+                    },
+                },
+                "recommendations": [
+                    {
+                        "strategy": {"name": "iron_condor"},
+                        "metrics": {
+                            "composite_score": 71.0,
+                            "pop": 61.7,
+                            "expected_value": -12.0,
+                            "probability_of_touch": 78.4,
+                        },
+                        "tradeoff_comment": "Range-bound premium collection setup.",
+                    }
+                ],
+                "charts": {},
+                "cache": {"used_cache": False},
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+
+    payload = integration.options_scan(ticker="MSFT", days_to_exp=30)
+
+    assert payload["analysis_overlay"]["final_recommendations"]["best_conservative_executable_setup"]["strategy_name"] == "bull_put_credit_spread"
+    digest = payload["telegram_markdown_v2"][0]
+    assert "Executive summary:" in digest
+    assert "Conservative: bull put credit spread | EV 11.0" in digest
+    assert "Aggressive: long strangle | EV 8.0" in digest
+
+
+def test_options_opportunities_exposes_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    class _DummyAnalyzer:
+        def scan_crypto_opportunities(self, **kwargs):
+            assert kwargs["coins"] == ["BTC", "ETH"]
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "momentum": {
+                    "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"}
+                },
+                "ranked": [
+                    {
+                        "coin": "BTC",
+                        "strategy_name": "bull_put_credit_spread",
+                        "strategy_score": 81.0,
+                        "expected_value": 12.0,
+                    }
+                ],
+                "opportunities": {
+                    "BTC": {"status": "ready"},
+                    "ETH": {"status": "filtered_by_momentum"},
+                },
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+
+    payload = integration.options_opportunities(
+        coins="BTC,ETH", days_to_exp=30)
+
+    assert payload["summary"]["options_ready"] == 1
+    digest = payload["telegram_markdown_v2"][0]
+    assert "NAVE Options Opportunities" in digest
+    assert "Top opportunities:" in digest
+    assert "Momentum filtered: ETH" in digest
+
+
+def test_options_scan_forwards_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+    captured: dict[str, str] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            captured["source"] = fetcher_source
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            _ = days_to_exp
+            return {
+                "ticker": ticker,
+                "recommendations": [],
+                "underlying_analysis": {},
+                "charts": {},
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(
+        "options.formatters.render_options_scan_markdown_v2", lambda payload: [
+            "*digest*"]
+    )
+
+    payload = integration.options_scan(ticker="BTC", source="deribit")
+
+    assert payload["ticker"] == "BTC"
+    assert payload["telegram_markdown_v2"] == ["*digest*"]
+    assert captured["source"] == "deribit"
+
+
+def test_options_opportunities_forwards_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+    captured: dict[str, str] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            captured["source"] = fetcher_source
+
+        def scan_crypto_opportunities(self, **kwargs):
+            _ = kwargs
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "momentum": {"timeframes": {}},
+                "ranked": [],
+                "opportunities": {},
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(
+        "options.formatters.render_options_opportunities_markdown_v2",
+        lambda payload: ["*opps*"],
+    )
+
+    payload = integration.options_opportunities(
+        coins="BTC,ETH", source="deribit")
+
+    assert payload["telegram_markdown_v2"] == ["*opps*"]
+    assert captured["source"] == "deribit"
+
+
 def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 
@@ -309,10 +513,12 @@ def test_momentum_zone_watch_exposes_active_watch_state(monkeypatch: pytest.Monk
         "trading.crypto.client.HyperliquidClient.get_mid", lambda self, coin: 82300.0,
     )
 
-    payload = integration.momentum_zone_watch(symbols="BTCUSDT", score_threshold=75)
+    payload = integration.momentum_zone_watch(
+        symbols="BTCUSDT", score_threshold=75)
 
     assert payload["watch_candidates"][0]["entry_zone"] == [81112.86, 82479.0]
-    assert payload["watch_candidates"][0]["scan_entry_zone"] == [82550.0, 83800.0]
+    assert payload["watch_candidates"][0]["scan_entry_zone"] == [
+        82550.0, 83800.0]
     assert payload["watch_candidates"][0]["watch_status"] == "holding_previous"
 
 

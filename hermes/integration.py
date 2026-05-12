@@ -10,7 +10,7 @@ import json
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from core.config import CliDefaults
 from core.exceptions import HermesIntegrationError
@@ -45,6 +45,15 @@ def _to_jsonable(value: Any) -> Any:
         except Exception:
             pass
     return value
+
+
+def _build_options_analyzer(*, source: str):
+    from options.analyzer import OptionsAnalyzer
+
+    try:
+        return OptionsAnalyzer(fetcher_source=source)
+    except TypeError:
+        return OptionsAnalyzer()
 
 
 class HermesNaveIntegration:
@@ -150,6 +159,74 @@ class HermesNaveIntegration:
                             "score_threshold": {"type": "integer", "default": 75},
                         },
                         "required": ["symbol", "side"],
+                    },
+                },
+                {
+                    "name": "options_scan",
+                    "description": (
+                        "Analyze equity options chains (MSFT default), rank strategies, "
+                        "and return top recommendations with risk metrics and chart paths."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "ticker": {"type": "string", "default": "MSFT"},
+                            "days_to_exp": {"type": "integer", "minimum": 1, "maximum": 365, "default": 30},
+                            "source": {
+                                "type": "string",
+                                "enum": ["yfinance", "deribit"],
+                                "default": "yfinance",
+                            },
+                        },
+                    },
+                },
+                {
+                    "name": "options_opportunities",
+                    "description": (
+                        "Scan BTC/ETH options opportunities by first applying the momentum "
+                        "filter, then running options analysis for momentum-qualified setups."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "coins": {
+                                "type": "string",
+                                "default": "BTC,ETH",
+                            },
+                            "days_to_exp": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 365,
+                                "default": 30,
+                            },
+                            "tf": {
+                                "type": "string",
+                                "default": "4h,1h",
+                            },
+                            "account_equity": {
+                                "type": "number",
+                                "default": 10000.0,
+                            },
+                            "risk_pct": {
+                                "type": "number",
+                                "default": 0.005,
+                            },
+                            "score_threshold": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100,
+                                "default": 75,
+                            },
+                            "require_tradeable": {
+                                "type": "boolean",
+                                "default": True,
+                            },
+                            "source": {
+                                "type": "string",
+                                "enum": ["yfinance", "deribit"],
+                                "default": "yfinance",
+                            },
+                        },
                     },
                 },
                 {
@@ -409,9 +486,11 @@ class HermesNaveIntegration:
         report_type: str = "futures_and_options",
     ) -> dict[str, Any]:
         """Return latest COT bias and section metrics for requested assets."""
-        coin_list = [coin.strip().upper() for coin in coins.split() if coin.strip()]
+        coin_list = [coin.strip().upper()
+                     for coin in coins.split() if coin.strip()]
         if not coin_list:
-            raise HermesIntegrationError("At least one coin is required for cot_report")
+            raise HermesIntegrationError(
+                "At least one coin is required for cot_report")
 
         primary_report_type = (
             "futures_only" if report_type == "futures_only" else "futures_and_options"
@@ -485,9 +564,11 @@ class HermesNaveIntegration:
         if account_equity <= 0:
             raise HermesIntegrationError("account_equity must be positive")
         if not 0.001 <= risk_pct <= 0.02:
-            raise HermesIntegrationError("risk_pct must be between 0.001 and 0.02")
+            raise HermesIntegrationError(
+                "risk_pct must be between 0.001 and 0.02")
         if not 1 <= score_threshold <= 100:
-            raise HermesIntegrationError("score_threshold must be between 1 and 100")
+            raise HermesIntegrationError(
+                "score_threshold must be between 1 and 100")
 
         from trading.crypto.momentum.service import MomentumMarketService
         from trading.crypto.momentum.formatters import (
@@ -506,7 +587,8 @@ class HermesNaveIntegration:
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc
 
-        payload["telegram_markdown_v2"] = render_momentum_scan_markdown_v2(payload)
+        payload["telegram_markdown_v2"] = render_momentum_scan_markdown_v2(
+            payload)
         return payload
 
     def momentum_playbook(
@@ -524,9 +606,11 @@ class HermesNaveIntegration:
         if side not in {"long", "short"}:
             raise HermesIntegrationError("side must be long or short")
         if not 0.001 <= risk_pct <= 0.02:
-            raise HermesIntegrationError("risk_pct must be between 0.001 and 0.02")
+            raise HermesIntegrationError(
+                "risk_pct must be between 0.001 and 0.02")
         if not 1 <= score_threshold <= 100:
-            raise HermesIntegrationError("score_threshold must be between 1 and 100")
+            raise HermesIntegrationError(
+                "score_threshold must be between 1 and 100")
 
         from trading.crypto.momentum.service import MomentumMarketService
 
@@ -555,9 +639,11 @@ class HermesNaveIntegration:
         if account_equity <= 0:
             raise HermesIntegrationError("account_equity must be positive")
         if not 0.001 <= risk_pct <= 0.02:
-            raise HermesIntegrationError("risk_pct must be between 0.001 and 0.02")
+            raise HermesIntegrationError(
+                "risk_pct must be between 0.001 and 0.02")
         if not 1 <= score_threshold <= 100:
-            raise HermesIntegrationError("score_threshold must be between 1 and 100")
+            raise HermesIntegrationError(
+                "score_threshold must be between 1 and 100")
 
         from trading.alerts.entry_zone_monitor import (
             EntryZoneMonitor,
@@ -582,11 +668,13 @@ class HermesNaveIntegration:
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc
 
-        candidates = build_zone_watch_candidates(payload, min_score=score_threshold)
+        candidates = build_zone_watch_candidates(
+            payload, min_score=score_threshold)
         monitor = EntryZoneMonitor()
         monitor_result = monitor.evaluate(
             candidates,
-            price_lookup=lambda symbol: market_client.get_mid(symbol.replace("USDT", "")),
+            price_lookup=lambda symbol: market_client.get_mid(
+                symbol.replace("USDT", "")),
         )
 
         monitor_result["scan_summary"] = payload.get("summary")
@@ -647,6 +735,87 @@ class HermesNaveIntegration:
             score_threshold=score_threshold,
         )
 
+    def options_scan(
+        self,
+        *,
+        ticker: str = "MSFT",
+        days_to_exp: int = 30,
+        source: str = "yfinance",
+    ) -> dict[str, Any]:
+        """Run options analysis and return ranked strategies with charts."""
+        symbol = ticker.strip().upper()
+        if not symbol:
+            raise HermesIntegrationError("ticker must be a non-empty symbol")
+        if not 1 <= days_to_exp <= 365:
+            raise HermesIntegrationError(
+                "days_to_exp must be between 1 and 365")
+
+        from options.exceptions import OptionsError
+        from options.formatters import render_options_scan_markdown_v2
+
+        try:
+            payload = _build_options_analyzer(source=source).run(
+                ticker=symbol,
+                days_to_exp=days_to_exp,
+            )
+        except OptionsError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+        payload["telegram_markdown_v2"] = render_options_scan_markdown_v2(
+            payload)
+        return payload
+
+    def options_opportunities(
+        self,
+        *,
+        coins: str = "BTC,ETH",
+        days_to_exp: int = 30,
+        tf: str = "4h,1h",
+        account_equity: float = 10000.0,
+        risk_pct: float = 0.005,
+        score_threshold: int = 75,
+        require_tradeable: bool = True,
+        source: str = "yfinance",
+    ) -> dict[str, Any]:
+        """Scan momentum-filtered BTC/ETH options opportunities."""
+        if not 1 <= days_to_exp <= 365:
+            raise HermesIntegrationError(
+                "days_to_exp must be between 1 and 365")
+        if account_equity <= 0:
+            raise HermesIntegrationError("account_equity must be positive")
+        if not 0.001 <= risk_pct <= 0.02:
+            raise HermesIntegrationError(
+                "risk_pct must be between 0.001 and 0.02")
+        if not 1 <= score_threshold <= 100:
+            raise HermesIntegrationError(
+                "score_threshold must be between 1 and 100")
+
+        from options.exceptions import OptionsError
+        from options.formatters import render_options_opportunities_markdown_v2
+
+        coin_list = [item.strip().upper() for item in coins.replace(
+            " ", ",").split(",") if item.strip()]
+        if not coin_list:
+            raise HermesIntegrationError(
+                "coins must include at least one symbol")
+
+        try:
+            payload = _build_options_analyzer(source=source).scan_crypto_opportunities(
+                coins=coin_list,
+                days_to_exp=days_to_exp,
+                tf=tf,
+                account_equity=account_equity,
+                risk_pct=risk_pct,
+                score_threshold=score_threshold,
+                require_tradeable=require_tradeable,
+            )
+        except OptionsError as exc:
+            raise HermesIntegrationError(str(exc)) from exc
+
+        payload["telegram_markdown_v2"] = render_options_opportunities_markdown_v2(
+            payload)
+        return payload
+
     def cot_history(
         self,
         *,
@@ -660,7 +829,8 @@ class HermesNaveIntegration:
             raise HermesIntegrationError("months must be between 1 and 12")
 
         history_weeks = max(16, months * 6 + 4)
-        coin_list = [coin.strip().upper() for coin in coins.split() if coin.strip()]
+        coin_list = [coin.strip().upper()
+                     for coin in coins.split() if coin.strip()]
 
         historical_data = fetch_latest_cot(
             report_type="futures_only" if report_type == "futures_only" else "futures_and_options",
@@ -668,7 +838,8 @@ class HermesNaveIntegration:
             debug=False,
             history_weeks=history_weeks,
         )
-        filtered = {coin: historical_data[coin] for coin in coin_list if coin in historical_data}
+        filtered = {coin: historical_data[coin]
+                    for coin in coin_list if coin in historical_data}
 
         historical = COTAnalyzer().generate_historical_variation_report(
             months=months, cot_data=filtered
@@ -695,7 +866,8 @@ class HermesNaveIntegration:
         if capital <= 0:
             raise HermesIntegrationError("capital must be positive")
 
-        coin_list = [coin.strip().upper() for coin in coins.split() if coin.strip()]
+        coin_list = [coin.strip().upper()
+                     for coin in coins.split() if coin.strip()]
         cot_data_futures_only = fetch_latest_cot(
             report_type="futures_only",
             include_micro=include_micro,
@@ -720,14 +892,16 @@ class HermesNaveIntegration:
             bias = biases.get(coin)
             if bias is None:
                 continue
-            as_of_raw = str(bias.metadata.get("as_of_date") or date.today().isoformat())
+            as_of_raw = str(bias.metadata.get("as_of_date")
+                            or date.today().isoformat())
             market_data_4h[coin] = self._market_structure_4h(
                 client=market_client,
                 coin=coin,
                 as_of_date=as_of_raw,
             )
 
-        coin_sections = {coin: sections[coin] for coin in coin_list if coin in sections}
+        coin_sections = {coin: sections[coin]
+                         for coin in coin_list if coin in sections}
         plans = COTPositionGenerator(default_risk_pct=0.01).generate_weekly_plan(
             coin_sections,
             market_data_4h,
@@ -753,9 +927,11 @@ class HermesNaveIntegration:
         a signal fires — the full entry/stop/target geometry. The caller
         (Hermes / MCP client) uses this to decide whether to open positions.
         """
-        coin_list = [coin.strip().upper() for coin in coins.split() if coin.strip()]
+        coin_list = [coin.strip().upper()
+                     for coin in coins.split() if coin.strip()]
         if not coin_list:
-            raise HermesIntegrationError("At least one coin is required for theory_v2_scan")
+            raise HermesIntegrationError(
+                "At least one coin is required for theory_v2_scan")
 
         from trading.theory_v2 import build_signals_for_coins  # local to keep import light
 
@@ -827,7 +1003,8 @@ class HermesNaveIntegration:
             ),
             "pipeline": [
                 {"timeframe": "1W", "gate": "momentum_bias", "role": "direction"},
-                {"timeframe": "1W", "gate": "range_breakout_bias", "role": "direction_fallback"},
+                {"timeframe": "1W", "gate": "range_breakout_bias",
+                    "role": "direction_fallback"},
                 {"timeframe": "1W", "gate": "weekly_cot_filter", "role": "positioning"},
                 {"timeframe": "1D", "gate": "daily_confirms", "role": "confirmation"},
                 {"timeframe": "1D", "gate": "climax_cooldown", "role": "risk_gate"},
@@ -926,7 +1103,8 @@ class HermesNaveIntegration:
         if not 0.001 <= risk_pct <= 0.1:
             raise HermesIntegrationError("risk_pct must be in [0.001, 0.1]")
         if not isinstance(coin_scan, dict):
-            raise HermesIntegrationError("coin_scan must be a dict from theory_v2_scan output")
+            raise HermesIntegrationError(
+                "coin_scan must be a dict from theory_v2_scan output")
 
         if not coin_scan.get("fired"):
             return {
@@ -950,7 +1128,8 @@ class HermesNaveIntegration:
 
         stop_distance = abs(entry - stop)
         if stop_distance <= 0:
-            raise HermesIntegrationError("stop_loss must differ from entry_price")
+            raise HermesIntegrationError(
+                "stop_loss must differ from entry_price")
 
         risk_usd = capital_usd * risk_pct
         coin_qty = risk_usd / stop_distance  # size so loss at stop = risk_usd
@@ -960,9 +1139,11 @@ class HermesNaveIntegration:
         zc1 = targets[0]
         zc2 = targets[1] if len(targets) > 1 else None
         reward_zc1_usd = abs(zc1 - entry) * coin_qty
-        reward_zc2_usd = abs(zc2 - entry) * coin_qty if zc2 is not None else None
+        reward_zc2_usd = abs(zc2 - entry) * \
+            coin_qty if zc2 is not None else None
         rr_zc1 = reward_zc1_usd / risk_usd if risk_usd > 0 else None
-        rr_zc2 = (reward_zc2_usd / risk_usd) if reward_zc2_usd is not None else None
+        rr_zc2 = (reward_zc2_usd /
+                  risk_usd) if reward_zc2_usd is not None else None
 
         coin = coin_scan.get("coin") or "COIN"
         human = (
@@ -1081,7 +1262,8 @@ class HermesNaveIntegration:
     ) -> dict[str, Any]:
         """Return ISM industry heatmap + filtered stock candidates."""
         if kind not in {"manufacturing", "services"}:
-            raise HermesIntegrationError("kind must be manufacturing or services")
+            raise HermesIntegrationError(
+                "kind must be manufacturing or services")
         if top_n < 1 or top_n > 20:
             raise HermesIntegrationError("top_n must be in [1, 20]")
 
@@ -1109,6 +1291,7 @@ class HermesNaveIntegration:
         from datetime import date
 
         from trading.stocks.ism_calendar import (
+            CalendarKind,
             ISMCalendarError,
             fetch_ism_calendar,
             load_calendar,
@@ -1121,12 +1304,14 @@ class HermesNaveIntegration:
                 "kind must be manufacturing or services"
             )
         if recent_days < 0 or recent_days > 30:
-            raise HermesIntegrationError("recent_days must be between 0 and 30")
+            raise HermesIntegrationError(
+                "recent_days must be between 0 and 30")
 
-        kind_filter = kind
+        kind_filter = cast(CalendarKind | None, kind)
 
         if recent_days > 0:
-            release = recent_release(kind=kind_filter, lookback_days=recent_days)  # type: ignore[arg-type]
+            release = recent_release(
+                kind=kind_filter, lookback_days=recent_days)
             return {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "recent_days": recent_days,
@@ -1134,7 +1319,7 @@ class HermesNaveIntegration:
             }
 
         if next_only:
-            release = next_release(kind=kind_filter)  # type: ignore[arg-type]
+            release = next_release(kind=kind_filter)
             return {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "next_release": _to_jsonable(release) if release else None,
@@ -1155,8 +1340,8 @@ class HermesNaveIntegration:
                     raise HermesIntegrationError(str(exc)) from exc
 
         releases = (
-            calendar.by_kind(kind)  # type: ignore[arg-type]
-            if kind is not None
+            calendar.by_kind(kind_filter)
+            if kind_filter is not None
             else calendar.releases
         )
         return {
@@ -1185,7 +1370,8 @@ class HermesNaveIntegration:
         by the local seen-cache.
         """
         if lookback_days is not None and not 1 <= lookback_days <= 30:
-            raise HermesIntegrationError("lookback_days must be between 1 and 30")
+            raise HermesIntegrationError(
+                "lookback_days must be between 1 and 30")
 
         from trading.stocks.politicians.provider import PoliticianTradesError
         from trading.stocks.politicians.formatters import (
@@ -1198,7 +1384,8 @@ class HermesNaveIntegration:
         except PoliticianTradesError as exc:
             raise HermesIntegrationError(str(exc)) from exc
 
-        payload["telegram_markdown_v2"] = render_politicians_scan_markdown_v2(payload)
+        payload["telegram_markdown_v2"] = render_politicians_scan_markdown_v2(
+            payload)
         return payload
 
     def stocks_x_analyze(
@@ -1216,11 +1403,13 @@ class HermesNaveIntegration:
         its own model to produce the final markdown sentiment report.
         """
         if not isinstance(tickers, list) or not tickers:
-            raise HermesIntegrationError("tickers must be a non-empty list of strings")
+            raise HermesIntegrationError(
+                "tickers must be a non-empty list of strings")
         if not 1 <= days <= 30:
             raise HermesIntegrationError("days must be between 1 and 30")
         if not 5 <= limit_per_ticker <= 200:
-            raise HermesIntegrationError("limit_per_ticker must be between 5 and 200")
+            raise HermesIntegrationError(
+                "limit_per_ticker must be between 5 and 200")
 
         from trading.stocks.social_analyzer import analyze_tickers
 
@@ -1245,6 +1434,8 @@ class HermesNaveIntegration:
             "momentum_playbook": self.momentum_playbook,
             "market_scan": self.market_scan,
             "market_playbook": self.market_playbook,
+            "options_scan": self.options_scan,
+            "options_opportunities": self.options_opportunities,
             "cot_report": self.cot_report,
             "cot_history": self.cot_history,
             "weekly_plan": self.weekly_plan,
@@ -1265,7 +1456,8 @@ class HermesNaveIntegration:
         try:
             result = handler(**args)
         except TypeError as exc:
-            raise HermesIntegrationError(f"Invalid arguments for {tool_name}: {exc}") from exc
+            raise HermesIntegrationError(
+                f"Invalid arguments for {tool_name}: {exc}") from exc
 
         return {
             "tool": tool_name,
@@ -1294,7 +1486,8 @@ class HermesNaveIntegration:
     ) -> dict[str, Any]:
         """Build lightweight 4H structure snapshot from real candles."""
         try:
-            as_of = datetime.fromisoformat(as_of_date).replace(tzinfo=timezone.utc)
+            as_of = datetime.fromisoformat(
+                as_of_date).replace(tzinfo=timezone.utc)
         except ValueError:
             as_of = datetime.now(timezone.utc)
 

@@ -2,13 +2,25 @@
 Basic tests for OpenBB Treasury extension
 """
 
+from openbb_treasury import TreasuryAPI, tariff_revenue, fiscal_summary
 import sys
 from pathlib import Path
 
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from openbb_treasury import TreasuryAPI, tariff_revenue, fiscal_summary
+
+def _is_connectivity_issue(error_msg: str) -> bool:
+    text = error_msg.lower()
+    patterns = (
+        "nodename nor servname provided",
+        "network",
+        "ssl",
+        "certificate verify failed",
+        "self-signed certificate",
+        "timed out",
+    )
+    return any(pattern in text for pattern in patterns)
 
 
 def test_imports():
@@ -19,8 +31,10 @@ def test_imports():
 
     # Test class instantiation
     api = TreasuryAPI()
-    assert hasattr(api, 'get_tariff_revenue'), "Should have get_tariff_revenue method"
-    assert hasattr(api, 'get_fiscal_summary'), "Should have get_fiscal_summary method"
+    assert hasattr(
+        api, 'get_tariff_revenue'), "Should have get_tariff_revenue method"
+    assert hasattr(
+        api, 'get_fiscal_summary'), "Should have get_fiscal_summary method"
 
     print("✅ Import test passed")
 
@@ -35,7 +49,7 @@ def test_api_connection():
     # Check if we have internet connection
     if "error" in result:
         error_msg = result.get('error', 'Unknown error')
-        if "nodename nor servname provided" in error_msg or "network" in error_msg.lower():
+        if _is_connectivity_issue(error_msg):
             print("⚠️  API connection test skipped (no internet connection)")
             return  # Skip test gracefully
         else:
@@ -60,7 +74,7 @@ def test_tariff_revenue_function():
 
     if "error" in result:
         error_msg = result.get('error', 'Unknown error')
-        if "nodename nor servname provided" in error_msg or "network" in error_msg.lower():
+        if _is_connectivity_issue(error_msg):
             print("⚠️  tariff_revenue function test skipped (no internet connection)")
             return  # Skip test gracefully
         else:
@@ -79,7 +93,7 @@ def test_fiscal_summary_function():
 
     if "error" in result:
         error_msg = result.get('error', 'Unknown error')
-        if "nodename nor servname provided" in error_msg or "network" in error_msg.lower():
+        if _is_connectivity_issue(error_msg):
             print("⚠️  fiscal_summary function test skipped (no internet connection)")
             return  # Skip test gracefully
 

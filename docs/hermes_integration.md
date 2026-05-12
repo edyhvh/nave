@@ -16,42 +16,50 @@ Nave exposes Hermes-compatible interfaces through:
    - `nave hermes call`
    - `nave hermes gateway-invoke`
 3. `trading/mcp_server.py`
-    - Existing account/execution tools
-    - COT + scan tools (`cot_report`, `cot_history`, `weekly_plan`, `theory_v2_scan`, `scan_history`)
-    - Stocks macro report tool (`stocks_ism_report`)
+   - Existing account/execution tools
+   - COT + scan tools (`cot_report`, `cot_history`, `weekly_plan`, `theory_v2_scan`, `scan_history`)
+   - Stocks macro report tool (`stocks_ism_report`)
 
 ## Tool Contracts
 
 ### `cot_report`
+
 Returns latest COT metrics and bias for selected assets.
 
 Input:
+
 - `coins` (string): space-separated symbols, default `"BTC ETH"`
 - `include_micro` (bool): include micro contracts
 - `report_type` (string): `futures_only` or `futures_and_options`
 
 ### `cot_history`
+
 Returns historical COT variation report for calendar windows.
 
 Input:
+
 - `months` (int): `1..12`
 - `coins` (string)
 - `include_micro` (bool)
 - `report_type` (string)
 
 ### `weekly_plan`
+
 Generates a weekly plan from real COT and 4H structure.
 
 Input:
+
 - `capital` (float)
 - `wallet` (string)
 - `coins` (string)
 - `include_micro` (bool)
 
 ### `momentum_scan`
+
 Returns BTC/ETH derivatives momentum scan data (4H setup + 1H trigger by default).
 
 Input:
+
 - `symbols` (string): comma-separated symbols, default `"BTCUSDT,ETHUSDT"`
 - `tf` (string): setup/trigger pair, default `"4h,1h"`
 - `account_equity` (number): sizing context
@@ -59,20 +67,24 @@ Input:
 - `score_threshold` (integer): minimum score to classify setups as tradeable
 
 Output additions:
+
 - `telegram_markdown_v2[]`: pre-formatted digest chunks ready to send with
   `parse_mode=MarkdownV2`
 
 Hermes behavior:
+
 - Use `telegram_markdown_v2` directly for Telegram delivery (send one chunk per message).
 - Keep the raw JSON (`summary`, `cadence`, `results`) for downstream logic and audits.
 - Even when `tradeable_count == 0`, the digest includes conditional watch plans so
   the user can track pending zones.
 
 ### `momentum_zone_watch`
+
 Monitors momentum entry zones and emits alerts when live price first touches a
 watched zone.
 
 Input:
+
 - `symbols` (string): comma-separated symbols, default `"BTCUSDT,ETHUSDT"`
 - `tf` (string): setup/trigger pair, default `"4h,1h"`
 - `score_threshold` (int): minimum plan score to watch
@@ -80,32 +92,63 @@ Input:
 - `risk_pct` (number): risk decimal used by scan generation
 
 Output (key fields):
+
 - `alert_count`, `alerts[]`
 - `watch_candidates[]`
 - `scan_summary`
 - `telegram_markdown_v2[]`: alert chunks ready for Telegram `parse_mode=MarkdownV2`
 
+### `options_opportunities`
+
+Returns BTC/ETH options opportunities from the options module by combining:
+
+1. Momentum setup filtering (4H/1H path by default)
+2. Options analysis on momentum-qualified symbols
+
+Input:
+
+- `coins` (string): comma-separated symbols, default `"BTC,ETH"`
+- `days_to_exp` (int): target DTE for options ranking
+- `tf` (string): momentum setup/trigger pair, default `"4h,1h"`
+- `account_equity` (number): sizing context used by momentum filters
+- `risk_pct` (number): risk decimal used by momentum filters
+- `score_threshold` (int): momentum score threshold for tradeable gating
+- `require_tradeable` (bool): if `true`, only analyze options for momentum-tradeable setups
+
+Output (key fields):
+
+- `summary`: requested/supported coins, momentum-allowed count, options-ready count
+- `momentum`: timeframes and momentum summary metadata
+- `opportunities[COIN]`: per-coin status (`ready`, `filtered_by_momentum`, `options_unavailable`, `unsupported_coin`)
+- `ranked[]`: top ready opportunities with strategy score and expected value
+- `telegram_markdown_v2[]`: compact digest chunks for Telegram delivery
+
 ### `stocks_ism_report`
+
 Returns ISM hottest/worst industries and filtered stock candidates using FMP fundamentals.
 
 Input:
+
 - `kind` (string): `manufacturing` or `services`
 - `top_n` (int): top candidates per trend bucket
 - `max_pe_ratio` (number, optional): keep only names with `PE <= max_pe_ratio`
 - `min_eps_growth_next_year` (number, optional): keep only names with `EPS growth >= threshold`
 
 ### `stocks_politicians_scan`
+
 Returns newly-disclosed Congressional STOCK Act trades (House + Senate) since
 the previous scan. Designed for **autonomous daily invocation** — Hermes should
 call this once per day as part of its standing routine.
 
 Input:
+
 - `lookback_days` (int, optional): reserved for future filtering. Currently
   ignored by the provider; novelty is gated entirely by the local seen-cache.
 - `persist` (bool, default `true`): update the seen-cache with this scan's
   results. Set `false` for a dry-run preview.
 
 Output (key fields):
+
 - `generated_at`, `previous_scan_at`
 - `fetched_total`: total disclosures returned by FMP `/house-latest` + `/senate-latest`
 - `new_total`: count not seen in any prior scan — **the notification trigger**
@@ -118,6 +161,7 @@ Output (key fields):
   Telegram with `parse_mode=MarkdownV2` (empty when `new_total == 0`)
 
 Hermes behavior:
+
 - **Once per day.** Call as part of the daily routine. The provider returns the
   same "latest" window regardless of when called; cadence faster than daily
   buys nothing.
@@ -136,10 +180,12 @@ Hermes behavior:
   message. The digest is ordered as summary first, then grouped details.
 
 ### `stocks_ism_calendar`
+
 Returns the stored ISM release calendar, next release, or most recent release
 inside a retry window.
 
 Input:
+
 - `year` (int, optional): calendar year for full release listing.
 - `kind` (string, optional): `manufacturing` or `services`.
 - `next_only` (bool, default `false`): return the next upcoming release.
@@ -157,6 +203,7 @@ python scripts/monitor_entry_zones.py --symbols BTCUSDT,ETHUSDT --tf 4h,1h --sco
 ```
 
 Notes:
+
 - Designed for frequent scheduling (for example every 5 minutes).
 - Detects first touch into each candidate `entry_zone` and de-duplicates via state file.
 - Persists watch state in `var/state/entry_zone_watch.json`.
@@ -166,6 +213,7 @@ Notes:
 - This monitor does **not** place orders; notifications are informational.
 
 Example payload (truncated):
+
 ```json
 {
   "generated_at": "2026-04-29T12:00:00+00:00",
@@ -173,9 +221,9 @@ Example payload (truncated):
   "fetched_total": 80,
   "new_total": 3,
   "summary": {
-    "by_chamber": {"house": 2, "senate": 1},
-    "by_type": {"Purchase": 2, "Sale": 1},
-    "top_symbols": [{"symbol": "NVDA", "count": 2}]
+    "by_chamber": { "house": 2, "senate": 1 },
+    "by_type": { "Purchase": 2, "Sale": 1 },
+    "top_symbols": [{ "symbol": "NVDA", "count": 2 }]
   },
   "new_trades": [
     {
