@@ -268,6 +268,16 @@ Emit full machine JSON only when you explicitly need automation payloads:
 nave options analyze --ticker AAPL --days-to-exp 45 --json
 ```
 
+Use Deribit-backed options data for BTC/ETH while keeping the same options output flow:
+
+```bash
+nave options analyze BTC --source deribit --days-to-exp 30
+nave options analyze ETH --source deribit --days-to-exp 30 --json
+nave options opportunities --coins BTC,ETH --source deribit
+nave options opportunities --coins BTC,ETH --source deribit --json
+nave options analyze BTC --source deribit --terminal
+```
+
 Scan BTC/ETH momentum-filtered options opportunities from the options module:
 
 ```bash
@@ -283,7 +293,9 @@ Useful operational commands:
 ```bash
 nave hermes tools
 nave hermes call --tool options_scan --args-json '{"ticker": "MSFT", "days_to_exp": 30}'
+nave hermes call --tool options_scan --args-json '{"ticker": "BTC", "days_to_exp": 30, "source": "deribit"}'
 nave hermes call --tool options_opportunities --args-json '{"coins": "BTC,ETH", "days_to_exp": 30}'
+nave hermes call --tool options_opportunities --args-json '{"coins": "BTC,ETH", "days_to_exp": 30, "source": "deribit"}'
 nave mcp run
 nave api start --reload
 nave data fetch all

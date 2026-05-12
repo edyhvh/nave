@@ -25,7 +25,8 @@ from options.analysis_overlay import build_narrative_overlay
 from options.cache import OptionsCacheStore
 from options.config import OptionsConfig, load_options_config
 from options.exceptions import OptionsComputationError, OptionsDataError, OptionsError, OptionsStrategyError
-from options.fetchers import YFinanceOptionsFetcher
+from options.fetchers.deribit_fetcher import DeribitOptionsFetcher
+from options.fetchers.yfinance_fetcher import YFinanceOptionsFetcher
 from options.scoring import rank_recommendations
 from options.strategies import build_strategy_candidates_with_audit
 from options.visualization import (
@@ -42,17 +43,41 @@ _CRYPTO_SPOT_PROXY_TICKERS = {
     "ETH": "ETH-USD",
 }
 
+_CRYPTO_DERIBIT_TICKERS = {
+    "BTC": "BTC",
+    "ETH": "ETH",
+}
+
 
 class OptionsAnalyzer:
     """Analyze option chains and rank strategy opportunities."""
 
-    def __init__(self, config: OptionsConfig | None = None):
+    def __init__(self, config: OptionsConfig | None = None, fetcher_source: str = "yfinance"):
         self.config = config or load_options_config()
         self.cache = OptionsCacheStore(self.config)
-        self.fetcher = YFinanceOptionsFetcher(self.config)
+        self.fetcher_source = self._normalize_source(fetcher_source)
+        self.fetcher = self._build_fetcher(self.fetcher_source)
+
+    def _normalize_source(self, source: str) -> str:
+        normalized = str(source or "yfinance").strip().lower()
+        if normalized not in {"yfinance", "deribit"}:
+            raise OptionsComputationError(
+                "source must be one of: yfinance, deribit"
+            )
+        return normalized
+
+    def _build_fetcher(self, source: str) -> YFinanceOptionsFetcher | DeribitOptionsFetcher:
+        if source == "deribit":
+            return DeribitOptionsFetcher(self.config)
+        return YFinanceOptionsFetcher(self.config)
+
+    def _coin_mapping(self) -> dict[str, str]:
+        if self.fetcher_source == "deribit":
+            return _CRYPTO_DERIBIT_TICKERS
+        return _CRYPTO_SPOT_PROXY_TICKERS
 
     def _load_or_fetch(self, ticker: str) -> tuple[pd.DataFrame, float, list[str], dict[str, Any]]:
-        cached = self.cache.latest_snapshot(ticker)
+        cached = self.cache.latest_snapshot(ticker, source=self.fetcher_source)
         if cached is not None:
             frame = self.cache.load_snapshot_frame(cached)
             if not frame.empty:
@@ -72,7 +97,7 @@ class OptionsAnalyzer:
             frame=fetched.frame,
             underlying_price=fetched.underlying_price,
             expirations=fetched.expirations,
-            source="yfinance",
+            source=self.fetcher_source,
         )
         return (
             fetched.frame,
@@ -89,11 +114,16 @@ class OptionsAnalyzer:
             raise OptionsDataError(
                 "yfinance is not installed. Install dependency 'yfinance' to fetch underlying history."
             )
-        hist = yf.Ticker(ticker).history(
+        history_symbol = ticker
+        if self.fetcher_source == "deribit" and ticker.upper() in _CRYPTO_DERIBIT_TICKERS.values():
+            history_symbol = _CRYPTO_SPOT_PROXY_TICKERS.get(
+                ticker.upper(), ticker)
+
+        hist = yf.Ticker(history_symbol).history(
             period=self.config.default_history_period, interval="1d")
         if hist.empty or "Close" not in hist:
             raise OptionsComputationError(
-                f"No daily close history available for {ticker}")
+                f"No daily close history available for {history_symbol}")
         return hist["Close"].dropna()
 
     def _options_market_snapshot(self, frame: pd.DataFrame) -> dict[str, float]:
@@ -191,8 +221,8 @@ class OptionsAnalyzer:
             raise OptionsComputationError(
                 "days_to_exp must be between 1 and 365")
 
-        supported = [
-            coin for coin in requested if coin in _CRYPTO_SPOT_PROXY_TICKERS]
+        mapping = self._coin_mapping()
+        supported = [coin for coin in requested if coin in mapping]
 
         momentum_payload: dict[str, Any] = {
             "summary": {},
@@ -221,7 +251,7 @@ class OptionsAnalyzer:
         options_ready = 0
 
         for coin in requested:
-            mapped_ticker = _CRYPTO_SPOT_PROXY_TICKERS.get(coin)
+            mapped_ticker = mapping.get(coin)
             if mapped_ticker is None:
                 opportunities[coin] = {
                     "coin": coin,
@@ -307,6 +337,7 @@ class OptionsAnalyzer:
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "strategy": "options_momentum_bridge_v1",
+            "data_source": self.fetcher_source,
             "coins": requested,
             "score_threshold": score_threshold,
             "require_tradeable": require_tradeable,
@@ -346,7 +377,10 @@ class OptionsAnalyzer:
         iv_series = pd.to_numeric(
             frame["implied_volatility"], errors="coerce").dropna()
         iv_history = self.cache.iv_history(
-            symbol, lookback_days=self.config.iv_history_lookback_days)
+            symbol,
+            lookback_days=self.config.iv_history_lookback_days,
+            source=self.fetcher_source,
+        )
         if not iv_series.empty:
             iv_history = pd.concat([iv_history, pd.Series(
                 [float(iv_series.mean())], dtype=float)], ignore_index=True)
@@ -456,6 +490,7 @@ class OptionsAnalyzer:
 
         payload = {
             "ticker": symbol,
+            "data_source": self.fetcher_source,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "underlying_analysis": underlying_analysis,
             "recommendations": ranked_dicts,

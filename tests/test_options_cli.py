@@ -758,3 +758,75 @@ def test_options_opportunities_sheet_takes_precedence_over_json(monkeypatch) -> 
     assert result.exit_code == 0
     assert "Options Opportunities Summary" in result.stdout
     assert not result.stdout.strip().startswith("{")
+
+
+def test_options_analyze_accepts_positional_ticker_and_source(monkeypatch) -> None:
+    from cli.commands import options as options_cmd
+
+    captured: dict[str, str] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            captured["source"] = fetcher_source
+            self.config = SimpleNamespace(reports_dir=Path("."))
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            _ = days_to_exp
+            return {
+                "ticker": ticker,
+                "underlying_analysis": {
+                    "price": 420.0,
+                    "implied_volatility": {"iv_mean": 0.25, "iv_rank": 60.0},
+                    "expected_move": {"one_std_move": 11.0},
+                    "options_market_snapshot": {"contracts": 120.0, "put_call_oi_ratio": 0.95},
+                },
+                "recommendations": [],
+                "charts": {},
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+
+    result = runner.invoke(
+        app,
+        ["options", "analyze", "BTC", "--source",
+            "deribit", "--json", "--no-save-json"],
+    )
+
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["ticker"] == "BTC"
+    assert captured["source"] == "deribit"
+
+
+def test_options_opportunities_forwards_source(monkeypatch) -> None:
+    from cli.commands import options as options_cmd
+
+    captured: dict[str, str] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            captured["source"] = fetcher_source
+
+        def scan_crypto_opportunities(self, **kwargs):
+            _ = kwargs
+            return {
+                "strategy": "options_momentum_bridge_v1",
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "opportunities": {},
+                "ranked": [],
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app,
+        ["options", "opportunities", "--coins",
+            "BTC,ETH", "--json", "--source", "deribit"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["source"] == "deribit"

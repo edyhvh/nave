@@ -320,8 +320,7 @@ def test_options_analyzer_overlay_can_prefer_bull_put_as_conservative_setup(monk
     assert ranking_audit
     assert all(
         "modeled_rank" in item and "executable_rank" in item for item in ranking_audit)
-    comparison = {item["strategy_name"]
-        : item for item in overlay["strategy_comparison"]}
+    comparison = {item["strategy_name"]                  : item for item in overlay["strategy_comparison"]}
     assert comparison["iron_condor"]["flags"]["range_too_tight_vs_expected_move"] is True
     assert comparison["iron_condor"]["flags"]["negative_ev_despite_high_pop"] is True
     assert comparison["bull_put_credit_spread"]["flags"]["puts_rich_supportive"] is True
@@ -503,3 +502,64 @@ def test_scan_crypto_opportunities_applies_momentum_gate_before_options(monkeypa
     assert payload["opportunities"]["BTC"]["status"] == "ready"
     assert payload["opportunities"]["ETH"]["status"] == "filtered_by_momentum"
     assert payload["ranked"][0]["coin"] == "BTC"
+
+
+def test_scan_crypto_opportunities_deribit_source_uses_coin_tickers(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        analyzer_module, "DeribitOptionsFetcher", _DummyFetcher)
+
+    analyzer = OptionsAnalyzer(config=_config(
+        tmp_path), fetcher_source="deribit")
+    run_calls: list[str] = []
+
+    def _fake_run(*, ticker: str = "BTC", days_to_exp: int = 30):
+        _ = days_to_exp
+        run_calls.append(ticker)
+        return {
+            "ticker": ticker,
+            "recommendations": [
+                {
+                    "strategy": {"name": "bull_put_credit_spread"},
+                    "metrics": {
+                        "composite_score": 80.0,
+                        "pop": 62.0,
+                        "expected_value": 10.0,
+                        "probability_of_touch": 41.0,
+                    },
+                }
+            ],
+        }
+
+    monkeypatch.setattr(analyzer, "run", _fake_run)
+
+    class _FakeMomentumService:
+        def parse_timeframes(self, tf: str):
+            _ = tf
+            return SimpleNamespace(bias="1d", setup="4h", trigger="1h")
+
+        def scan_live(self, **kwargs):
+            assert kwargs["symbols"] == ["BTCUSDT"]
+            return {
+                "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"},
+                "summary": {"tradeable_count": 1},
+                "results": {
+                    "BTCUSDT": {
+                        "plans": [{"side": "long", "confidence_score": 80}],
+                        "tradeable": [{"side": "long", "confidence_score": 80}],
+                    }
+                },
+            }
+
+    monkeypatch.setattr(
+        "trading.crypto.momentum.service.MomentumMarketService", _FakeMomentumService
+    )
+
+    payload = analyzer.scan_crypto_opportunities(
+        coins=["BTC"],
+        days_to_exp=30,
+        tf="4h,1h",
+        require_tradeable=True,
+    )
+
+    assert run_calls == ["BTC"]
+    assert payload["data_source"] == "deribit"

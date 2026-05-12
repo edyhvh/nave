@@ -22,6 +22,14 @@ from options.visualization import TerminalChartDependencyError, render_terminal_
 options_app = ProfessionalTyper(help="Options analytics commands")
 
 
+def _build_options_analyzer(*, source: str) -> OptionsAnalyzer:
+    try:
+        return OptionsAnalyzer(fetcher_source=source)
+    except TypeError:
+        # Test doubles in unit tests may still expose the legacy constructor.
+        return OptionsAnalyzer()
+
+
 def _slug(value: str) -> str:
     keep = [ch if ch.isalnum() or ch in {
         "_", "-"} else "_" for ch in value.strip()]
@@ -406,8 +414,18 @@ def _render_opportunities_sheet(console: Console, payload: dict) -> None:
 
 @options_app.command("analyze")
 def analyze(
-    ticker: str = typer.Option(
-        "MSFT", "--ticker", help="Underlying ticker symbol"),
+    symbol: str | None = typer.Argument(
+        None,
+        metavar="TICKER",
+        help="Optional ticker symbol positional argument (e.g. MSFT or BTC)",
+    ),
+    ticker: str | None = typer.Option(
+        None, "--ticker", help="Underlying ticker symbol"),
+    source: str = typer.Option(
+        "yfinance",
+        "--source",
+        help="Data source for chain fetch (yfinance|deribit)",
+    ),
     days_to_exp: int = typer.Option(
         30, "--days-to-exp", min=1, max=365, help="Target days to expiration"),
     json_out: bool = typer.Option(
@@ -437,11 +455,12 @@ def analyze(
     ),
 ) -> None:
     """Run options analysis and print recommendations."""
-    analyzer = OptionsAnalyzer()
+    resolved_ticker = (symbol or ticker or "MSFT").strip().upper()
+    analyzer = _build_options_analyzer(source=source)
     console = Console()
 
     try:
-        payload = analyzer.run(ticker=ticker, days_to_exp=days_to_exp)
+        payload = analyzer.run(ticker=resolved_ticker, days_to_exp=days_to_exp)
     except OptionsError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -450,7 +469,7 @@ def analyze(
     if save_json:
         report_path = _resolve_json_report_path(
             analyzer=analyzer,
-            ticker=str(payload.get("ticker") or ticker),
+            ticker=str(payload.get("ticker") or resolved_ticker),
             json_path=json_path,
         )
 
@@ -470,7 +489,7 @@ def analyze(
             payload=payload_out,
             out_path=report_path if report_path is not None else _resolve_json_report_path(
                 analyzer=analyzer,
-                ticker=str(payload.get("ticker") or ticker),
+                ticker=str(payload.get("ticker") or resolved_ticker),
                 json_path=json_path,
             ),
         )
@@ -589,9 +608,14 @@ def opportunities(
         "--sheet",
         help="Render report as Rich terminal tables (human-readable).",
     ),
+    source: str = typer.Option(
+        "yfinance",
+        "--source",
+        help="Data source for option chains (yfinance|deribit)",
+    ),
 ) -> None:
     """Scan BTC/ETH options opportunities using momentum as an upstream filter."""
-    analyzer = OptionsAnalyzer()
+    analyzer = _build_options_analyzer(source=source)
     console = Console()
 
     try:

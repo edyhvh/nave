@@ -67,19 +67,20 @@ class OptionsCacheStore:
     def _cache_fresh_threshold(self) -> datetime:
         return datetime.now(timezone.utc) - timedelta(minutes=self.config.cache_ttl_minutes)
 
-    def latest_snapshot(self, ticker: str) -> CacheSnapshotMetadata | None:
+    def latest_snapshot(self, ticker: str, *, source: str | None = None) -> CacheSnapshotMetadata | None:
         threshold = self._cache_fresh_threshold().isoformat()
-        with self._connect() as conn:
-            row = conn.execute(
-                """
+        query = """
                 SELECT ticker, fetched_at, snapshot_path, underlying_price, expirations_json, row_count, source
                 FROM option_chain_cache
                 WHERE ticker = ? AND fetched_at >= ?
-                ORDER BY fetched_at DESC
-                LIMIT 1
-                """,
-                (ticker.upper(), threshold),
-            ).fetchone()
+                """
+        params: list[str] = [ticker.upper(), threshold]
+        if source:
+            query += " AND source = ?"
+            params.append(source)
+        query += " ORDER BY fetched_at DESC LIMIT 1"
+        with self._connect() as conn:
+            row = conn.execute(query, tuple(params)).fetchone()
         if row is None:
             return None
 
@@ -118,22 +119,24 @@ class OptionsCacheStore:
         filtered = frame[ticker_col == metadata.ticker.upper()].copy()
         return filtered.reset_index(drop=True)
 
-    def iv_history(self, ticker: str, *, lookback_days: int) -> pd.Series:
+    def iv_history(self, ticker: str, *, lookback_days: int, source: str | None = None) -> pd.Series:
         """Return average IV history from cache metadata for the ticker."""
         threshold = (datetime.now(timezone.utc) -
                      timedelta(days=max(1, lookback_days))).isoformat()
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
+        query = """
                 SELECT fetched_at, avg_iv
                 FROM option_chain_cache
                 WHERE ticker = ?
                   AND fetched_at >= ?
                   AND avg_iv IS NOT NULL
-                ORDER BY fetched_at ASC
-                """,
-                (ticker.upper(), threshold),
-            ).fetchall()
+                """
+        params: list[str] = [ticker.upper(), threshold]
+        if source:
+            query += " AND source = ?"
+            params.append(source)
+        query += " ORDER BY fetched_at ASC"
+        with self._connect() as conn:
+            rows = conn.execute(query, tuple(params)).fetchall()
         if not rows:
             return pd.Series(dtype=float)
         values = [float(row["avg_iv"])

@@ -47,6 +47,15 @@ def _to_jsonable(value: Any) -> Any:
     return value
 
 
+def _build_options_analyzer(*, source: str):
+    from options.analyzer import OptionsAnalyzer
+
+    try:
+        return OptionsAnalyzer(fetcher_source=source)
+    except TypeError:
+        return OptionsAnalyzer()
+
+
 class HermesNaveIntegration:
     """Dispatches Nave tools for Hermes via MCP and gateway-compatible contracts."""
 
@@ -163,6 +172,11 @@ class HermesNaveIntegration:
                         "properties": {
                             "ticker": {"type": "string", "default": "MSFT"},
                             "days_to_exp": {"type": "integer", "minimum": 1, "maximum": 365, "default": 30},
+                            "source": {
+                                "type": "string",
+                                "enum": ["yfinance", "deribit"],
+                                "default": "yfinance",
+                            },
                         },
                     },
                 },
@@ -206,6 +220,11 @@ class HermesNaveIntegration:
                             "require_tradeable": {
                                 "type": "boolean",
                                 "default": True,
+                            },
+                            "source": {
+                                "type": "string",
+                                "enum": ["yfinance", "deribit"],
+                                "default": "yfinance",
                             },
                         },
                     },
@@ -721,6 +740,7 @@ class HermesNaveIntegration:
         *,
         ticker: str = "MSFT",
         days_to_exp: int = 30,
+        source: str = "yfinance",
     ) -> dict[str, Any]:
         """Run options analysis and return ranked strategies with charts."""
         symbol = ticker.strip().upper()
@@ -730,12 +750,14 @@ class HermesNaveIntegration:
             raise HermesIntegrationError(
                 "days_to_exp must be between 1 and 365")
 
-        from options.analyzer import OptionsAnalyzer
         from options.exceptions import OptionsError
         from options.formatters import render_options_scan_markdown_v2
 
         try:
-            payload = OptionsAnalyzer().run(ticker=symbol, days_to_exp=days_to_exp)
+            payload = _build_options_analyzer(source=source).run(
+                ticker=symbol,
+                days_to_exp=days_to_exp,
+            )
         except OptionsError as exc:
             raise HermesIntegrationError(str(exc)) from exc
 
@@ -753,6 +775,7 @@ class HermesNaveIntegration:
         risk_pct: float = 0.005,
         score_threshold: int = 75,
         require_tradeable: bool = True,
+        source: str = "yfinance",
     ) -> dict[str, Any]:
         """Scan momentum-filtered BTC/ETH options opportunities."""
         if not 1 <= days_to_exp <= 365:
@@ -767,7 +790,6 @@ class HermesNaveIntegration:
             raise HermesIntegrationError(
                 "score_threshold must be between 1 and 100")
 
-        from options.analyzer import OptionsAnalyzer
         from options.exceptions import OptionsError
         from options.formatters import render_options_opportunities_markdown_v2
 
@@ -778,7 +800,7 @@ class HermesNaveIntegration:
                 "coins must include at least one symbol")
 
         try:
-            payload = OptionsAnalyzer().scan_crypto_opportunities(
+            payload = _build_options_analyzer(source=source).scan_crypto_opportunities(
                 coins=coin_list,
                 days_to_exp=days_to_exp,
                 tf=tf,

@@ -372,6 +372,71 @@ def test_options_opportunities_exposes_telegram_digest(monkeypatch: pytest.Monke
     assert "Momentum filtered: ETH" in digest
 
 
+def test_options_scan_forwards_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+    captured: dict[str, str] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            captured["source"] = fetcher_source
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+            _ = days_to_exp
+            return {
+                "ticker": ticker,
+                "recommendations": [],
+                "underlying_analysis": {},
+                "charts": {},
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(
+        "options.formatters.render_options_scan_markdown_v2", lambda payload: [
+            "*digest*"]
+    )
+
+    payload = integration.options_scan(ticker="BTC", source="deribit")
+
+    assert payload["ticker"] == "BTC"
+    assert payload["telegram_markdown_v2"] == ["*digest*"]
+    assert captured["source"] == "deribit"
+
+
+def test_options_opportunities_forwards_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+    captured: dict[str, str] = {}
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            captured["source"] = fetcher_source
+
+        def scan_crypto_opportunities(self, **kwargs):
+            _ = kwargs
+            return {
+                "summary": {
+                    "coins_requested": 2,
+                    "coins_supported": 2,
+                    "momentum_allowed": 1,
+                    "options_ready": 1,
+                },
+                "momentum": {"timeframes": {}},
+                "ranked": [],
+                "opportunities": {},
+            }
+
+    monkeypatch.setattr("options.analyzer.OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(
+        "options.formatters.render_options_opportunities_markdown_v2",
+        lambda payload: ["*opps*"],
+    )
+
+    payload = integration.options_opportunities(
+        coins="BTC,ETH", source="deribit")
+
+    assert payload["telegram_markdown_v2"] == ["*opps*"]
+    assert captured["source"] == "deribit"
+
+
 def test_dispatch_tool_call_routes_momentum_zone_watch(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 

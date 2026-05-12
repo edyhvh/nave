@@ -65,6 +65,8 @@ class OptionsConfig:
     spread_width_max_points: float = 15.0
     conservative_touch_max_pct: float = 75.0
     modeled_touch_warning_pct: float = 85.0
+    deribit_base_url: str = "https://test.deribit.com/api/v2"
+    deribit_timeout_seconds: int = 20
 
     @property
     def hv_windows(self) -> tuple[int, int]:
@@ -121,4 +123,10 @@ def load_options_config() -> OptionsConfig:
             "NAVE_OPTIONS_CONSERVATIVE_TOUCH_MAX_PCT", 75.0),
         modeled_touch_warning_pct=_as_float(
             "NAVE_OPTIONS_MODELED_TOUCH_WARNING_PCT", 85.0),
+        deribit_base_url=os.getenv(
+            "NAVE_OPTIONS_DERIBIT_BASE_URL", "https://test.deribit.com/api/v2"
+        ),
+        deribit_timeout_seconds=_as_int(
+            "NAVE_OPTIONS_DERIBIT_TIMEOUT_SECONDS", 20
+        ),
     )
