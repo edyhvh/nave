@@ -207,6 +207,7 @@ class MomentumSetupEngine:
                 setup_trend_slope_bps=round(setup_trend.slope_bps, 2),
                 daily_ema_gap_pct=round(daily_ema_gap_pct, 4) if daily_ema_gap_pct is not None else None,
                 setup_ema_gap_pct=round(setup_ema_gap_pct, 4) if setup_ema_gap_pct is not None else None,
+                breakout_status=breakout.status,
                 breakout_level=round(
                     breakout.breakout_level, 6) if breakout.breakout_level is not None else None,
                 breakout_volume_ratio=round(participation.volume_ratio, 3),
@@ -280,6 +281,11 @@ class MomentumSetupEngine:
             return float(breakout.breakout_level - tolerance)
         if retest.entry_price is not None:
             return float(retest.entry_price)
+        if breakout.status == "extended" and breakout.breakout_level is not None:
+            tolerance = breakout.breakout_level * self.config.breakout.retest_tolerance
+            if side == "long":
+                return float(breakout.breakout_level + tolerance)
+            return float(breakout.breakout_level - tolerance)
         if breakout.breakout_close is not None:
             return float(breakout.breakout_close)
         return float(trigger["close"].iloc[-1])
@@ -332,6 +338,8 @@ class MomentumSetupEngine:
 
     def _breakout_score(self, breakout: BreakoutAssessment, retest: RetestAssessment) -> float:
         base = 1.0 if breakout.detected else 0.35 if breakout.near_trigger else 0.0
+        if breakout.status == "extended":
+            base = 0.0
         if retest.confirmed:
             base = min(base + 0.2, 1.0)
         if retest.status == "invalid":
@@ -518,6 +526,21 @@ class MomentumSetupEngine:
                 "detail": "expected move vs stop distance",
             },
         ]
+        if breakout.status == "extended":
+            machine.append(
+                {
+                    "code": "no_trailing_fresh_setup",
+                    "passed": False,
+                    "value": {
+                        "status": breakout.status,
+                        "retest_anchor": round(breakout.breakout_level, 4)
+                        if breakout.breakout_level is not None
+                        else None,
+                    },
+                    "detail": "price is already extended from the 4H range; do not trail a fresh setup at the current continuation price",
+                }
+            )
+
         human = [
             f"{side.upper()} setup is {setup_status}; 1D/4H trend alignment={'yes' if daily_trend.passed and setup_trend.passed else 'no'}.",
             f"Breakout={'yes' if breakout.detected else 'no'} and retest={'confirmed' if retest.confirmed else retest.status} around {round(breakout.breakout_level, 2) if breakout.breakout_level is not None else 'n/a'}.",
@@ -526,4 +549,8 @@ class MomentumSetupEngine:
             f"Theory overlay={theory_overlay.passed}; stage={theory_overlay.stage}; reason={theory_overlay.reason}.",
             f"Estimated R:R {rr_estimated:.2f} vs minimum {self.config.min_rr:.2f}.",
         ]
+        if breakout.status == "extended":
+            human.append(
+                "Fresh setup is extended from the 4H range; keep the prior thesis only on a pullback/retest, not by trailing a new continuation entry."
+            )
         return {"machine": machine, "human": human}

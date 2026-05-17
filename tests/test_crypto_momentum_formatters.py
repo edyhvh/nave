@@ -124,6 +124,17 @@ def test_render_momentum_scan_markdown_chunks_when_needed() -> None:
     assert messages[0].startswith("*Parte 1/")
 
 
+def test_render_momentum_scan_markdown_flags_extended_setup() -> None:
+    payload = _scan_payload()
+    payload["results"]["BTCUSDT"]["plans"][0]["diagnostics"]["breakout_status"] = "extended"
+
+    messages = render_momentum_scan_markdown_v2(payload)
+
+    joined = "\n".join(messages)
+    assert "movimiento extendido" in joined
+    assert "no trail de entrada fresca" in joined
+
+
 def test_render_entry_zone_alert_markdown() -> None:
     message = render_entry_zone_alert_markdown_v2(
         {

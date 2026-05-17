@@ -13,6 +13,10 @@ INCOME_STRATEGIES = {
     "iron_condor",
 }
 
+MIN_ACTIONABLE_COMPOSITE_SCORE = 50.0
+MAX_ACTIONABLE_MAX_LOSS = 2500.0
+CAPITAL_INTENSIVE_STRATEGIES = {"covered_call", "cash_secured_put"}
+
 AGGRESSIVE_STRATEGIES = {
     "long_strangle",
     "long_straddle",
@@ -126,6 +130,7 @@ def _strategy_flags(
             "cash_secured_put",
             "iron_condor",
         },
+        "calls_rich_bullish_skew": skew_diff < 0.0,
         "defined_risk_income_candidate": strategy_name in {
             "bull_put_credit_spread",
             "iron_condor",
@@ -157,8 +162,12 @@ def _forgivingness_score(
         score += 8.0
     if strategy_name in {"long_straddle", "long_strangle"}:
         score -= 10.0
+    if strategy_name == "long_straddle" and touch > 85.0:
+        score -= min(25.0, (touch - 85.0) * 1.4 + 10.0)
     if iv_rich and strategy_name in INCOME_STRATEGIES:
         score += 4.0
+    if iv_rich and strategy_name == "bull_put_credit_spread":
+        score += 5.0
 
     if flags.get("range_too_tight_vs_expected_move"):
         score -= 15.0
@@ -196,6 +205,55 @@ def _income_reason_codes(
     return reasons
 
 
+def _quality_gate(
+    rec: dict[str, Any],
+    *,
+    flags: dict[str, bool],
+    conservative_touch_max_pct: float,
+    modeled_touch_warning_pct: float,
+) -> dict[str, Any]:
+    metrics = _strategy_metrics(rec)
+    strategy_name = _strategy_name(rec)
+    composite = _safe_float(metrics.get("composite_score")) or 0.0
+    expected_value = _safe_float(metrics.get("expected_value")) or 0.0
+    touch = _safe_float(metrics.get("probability_of_touch")) or 0.0
+    theta_per_day = _safe_float(metrics.get("theta_per_day")) or 0.0
+    max_loss = _safe_float(metrics.get("max_loss")) or 0.0
+
+    blockers: list[str] = []
+    warnings: list[str] = []
+
+    if composite < MIN_ACTIONABLE_COMPOSITE_SCORE:
+        blockers.append("composite_score_below_actionable_threshold")
+    if expected_value < 0.0:
+        blockers.append("negative_expected_value")
+    if touch > modeled_touch_warning_pct:
+        blockers.append("probability_of_touch_above_model_warning")
+    elif touch > conservative_touch_max_pct:
+        warnings.append("probability_of_touch_above_income_comfort")
+    if strategy_name in INCOME_STRATEGIES and theta_per_day < 0.0:
+        blockers.append("negative_theta_for_income_structure")
+    if strategy_name in INCOME_STRATEGIES and flags.get("range_too_tight_vs_expected_move"):
+        blockers.append("range_too_tight_vs_expected_move")
+    if strategy_name in CAPITAL_INTENSIVE_STRATEGIES:
+        blockers.append("requires_existing_position_or_large_cash_reserve")
+    elif max_loss > MAX_ACTIONABLE_MAX_LOSS:
+        blockers.append("max_loss_above_scan_risk_threshold")
+
+    return {
+        "actionable": not blockers,
+        "blockers": blockers,
+        "warnings": warnings,
+        "thresholds": {
+            "min_composite_score": MIN_ACTIONABLE_COMPOSITE_SCORE,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": modeled_touch_warning_pct,
+            "income_touch_comfort": conservative_touch_max_pct,
+            "max_loss": MAX_ACTIONABLE_MAX_LOSS,
+        },
+    }
+
+
 def _income_executable_score(
     rec: dict[str, Any],
     *,
@@ -214,10 +272,14 @@ def _income_executable_score(
 
     if strategy_name in INCOME_STRATEGIES:
         score += 8.0
+    if strategy_name == "bull_put_credit_spread":
+        score += 6.0
     if strategy_name in {"long_strangle", "long_straddle"}:
         score -= 8.0
+    if strategy_name == "long_straddle" and touch > 85.0:
+        score -= min(28.0, (touch - 85.0) * 1.5 + 8.0)
     if expected_value < 0.0:
-        score -= 8.0
+        score -= min(30.0, 8.0 + abs(expected_value) / 30.0)
     if touch > conservative_touch_max_pct:
         score -= min(18.0, (touch - conservative_touch_max_pct) * 0.7)
     if theta_per_day < 0.0:
@@ -226,6 +288,44 @@ def _income_executable_score(
         score -= 12.0
 
     return score
+
+
+def _is_conservative_executable(
+    rec: dict[str, Any],
+    *,
+    flags: dict[str, bool],
+    conservative_touch_max_pct: float,
+    modeled_touch_warning_pct: float = 85.0,
+) -> bool:
+    gate = _quality_gate(
+        rec,
+        flags=flags,
+        conservative_touch_max_pct=conservative_touch_max_pct,
+        modeled_touch_warning_pct=modeled_touch_warning_pct,
+    )
+    if gate["blockers"]:
+        return False
+
+    metrics = _strategy_metrics(rec)
+    strategy_name = _strategy_name(rec)
+    expected_value = _safe_float(metrics.get("expected_value")) or 0.0
+    touch = _safe_float(metrics.get("probability_of_touch")) or 0.0
+    theta_per_day = _safe_float(metrics.get("theta_per_day")) or 0.0
+    max_loss = _safe_float(metrics.get("max_loss")) or 0.0
+
+    if strategy_name not in INCOME_STRATEGIES:
+        return False
+    if expected_value < -25.0:
+        return False
+    if touch > min(80.0, conservative_touch_max_pct + 5.0):
+        return False
+    if theta_per_day < 0.0:
+        return False
+    if flags.get("range_too_tight_vs_expected_move"):
+        return False
+    if strategy_name == "cash_secured_put" and expected_value < 0.0 and max_loss > 10000.0:
+        return False
+    return True
 
 
 def _aggressive_pick_score(
@@ -238,14 +338,35 @@ def _aggressive_pick_score(
     score = _safe_float(metrics.get("composite_score")) or 0.0
     strategy_name = _strategy_name(rec)
     theta_per_day = _safe_float(metrics.get("theta_per_day")) or 0.0
+    touch = _safe_float(metrics.get("probability_of_touch")) or 0.0
 
     if strategy_name == "long_strangle":
         score += 8.0
     if strategy_name == "long_straddle" and (iv_rank >= 40.0 or iv_percentile >= 80.0):
         score -= 6.0
+    if strategy_name == "long_straddle" and touch > 85.0:
+        score -= min(30.0, (touch - 85.0) * 1.6 + 8.0)
     if theta_per_day < 0.0:
         score += max(-8.0, theta_per_day * 10.0)
     return score
+
+
+def _is_aggressive_executable(
+    rec: dict[str, Any],
+    *,
+    flags: dict[str, bool],
+    conservative_touch_max_pct: float,
+    modeled_touch_warning_pct: float,
+) -> bool:
+    if _strategy_name(rec) not in AGGRESSIVE_STRATEGIES:
+        return False
+    gate = _quality_gate(
+        rec,
+        flags=flags,
+        conservative_touch_max_pct=conservative_touch_max_pct,
+        modeled_touch_warning_pct=modeled_touch_warning_pct,
+    )
+    return not gate["blockers"]
 
 
 def _pick_recommendation(
@@ -445,6 +566,12 @@ def build_narrative_overlay(
             flags=flags,
             conservative_touch_max_pct=conservative_touch_max_pct,
         )
+        quality_gate = _quality_gate(
+            rec,
+            flags=flags,
+            conservative_touch_max_pct=conservative_touch_max_pct,
+            modeled_touch_warning_pct=modeled_touch_warning_pct,
+        )
 
         ranking_work.append(
             {
@@ -453,6 +580,7 @@ def build_narrative_overlay(
                 "forgivingness_score": forgivingness,
                 "executable_score": executable_score,
                 "reason_codes": reason_codes,
+                "quality_gate": quality_gate,
             }
         )
 
@@ -494,12 +622,22 @@ def build_narrative_overlay(
                 "forgivingness_score": item["forgivingness_score"],
                 "executable_score": item["executable_score"],
                 "reason_codes": item["reason_codes"],
+                "quality_gate": item["quality_gate"],
             }
         )
 
     best_modeled = all_ranked[0] if all_ranked else None
+    conservative_pool = [
+        rec for rec in all_ranked
+        if _is_conservative_executable(
+            rec,
+            flags=flags_by_name[_strategy_name(rec)],
+            conservative_touch_max_pct=conservative_touch_max_pct,
+            modeled_touch_warning_pct=modeled_touch_warning_pct,
+        )
+    ]
     best_conservative = _pick_recommendation(
-        all_ranked,
+        conservative_pool,
         names=INCOME_STRATEGIES,
         scorer=lambda rec: _income_executable_score(
             rec,
@@ -514,10 +652,32 @@ def build_narrative_overlay(
         ),
     )
     best_aggressive = _pick_recommendation(
-        all_ranked,
+        [
+            rec for rec in all_ranked
+            if _is_aggressive_executable(
+                rec,
+                flags=flags_by_name[_strategy_name(rec)],
+                conservative_touch_max_pct=conservative_touch_max_pct,
+                modeled_touch_warning_pct=modeled_touch_warning_pct,
+            )
+        ],
         names=AGGRESSIVE_STRATEGIES,
         scorer=lambda rec: _aggressive_pick_score(
             rec, iv_rank=iv_rank, iv_percentile=iv_percentile),
+    )
+    actionable_pool = [
+        rec for rec in all_ranked
+        if _quality_gate(
+            rec,
+            flags=flags_by_name[_strategy_name(rec)],
+            conservative_touch_max_pct=conservative_touch_max_pct,
+            modeled_touch_warning_pct=modeled_touch_warning_pct,
+        )["actionable"]
+    ]
+    best_overall = max(
+        actionable_pool,
+        key=lambda rec: _safe_float(_strategy_metrics(rec).get("composite_score")) or 0.0,
+        default=None,
     )
 
     conservative_rationale = (
@@ -564,6 +724,45 @@ def build_narrative_overlay(
         best_modeled,
         modeled_touch_warning_pct=modeled_touch_warning_pct,
     )
+    if best_conservative is None:
+        warnings.append(
+            "No conservative income setup passed the executable filter for EV, touch risk, theta, and structure."
+        )
+    if best_overall is None:
+        warnings.append(
+            "No trade: every ranked strategy failed the actionable quality gate for score, EV, touch risk, or structure."
+        )
+
+    trade_decision = {
+        "status": "trade_candidate" if best_overall is not None else "no_trade",
+        "strategy_name": _strategy_name(best_overall) if best_overall is not None else None,
+        "reason": (
+            "At least one ranked strategy passed the actionable quality gate."
+            if best_overall is not None
+            else "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards."
+        ),
+        "quality_gate": (
+            _quality_gate(
+                best_overall,
+                flags=flags_by_name[_strategy_name(best_overall)],
+                conservative_touch_max_pct=conservative_touch_max_pct,
+                modeled_touch_warning_pct=modeled_touch_warning_pct,
+            )
+            if best_overall is not None
+            else {
+                "actionable": False,
+                "blockers": ["no_ranked_strategy_passed_quality_gate"],
+                "warnings": [],
+                "thresholds": {
+                    "min_composite_score": MIN_ACTIONABLE_COMPOSITE_SCORE,
+                    "min_expected_value": 0.0,
+                    "max_touch_for_actionable": modeled_touch_warning_pct,
+                    "income_touch_comfort": conservative_touch_max_pct,
+                    "max_loss": MAX_ACTIONABLE_MAX_LOSS,
+                },
+            }
+        ),
+    }
 
     practical_lens_summary = {
         "core_principle": (
@@ -587,6 +786,7 @@ def build_narrative_overlay(
             "highest_modeled": _strategy_name(best_modeled) if best_modeled else None,
             "best_conservative_executable": _strategy_name(best_conservative) if best_conservative else None,
             "best_aggressive": _strategy_name(best_aggressive) if best_aggressive else None,
+            "trade_decision": trade_decision["status"],
         },
     }
 
@@ -609,6 +809,7 @@ def build_narrative_overlay(
         "strategy_comparison_table": strategy_comparison_table,
         "practical_trader_lens": practical_lens_summary,
         "warnings": warnings,
+        "trade_decision": trade_decision,
         "volatility_market_context": {
             "regime_summary": (
                 "Implied volatility is slightly richer than realized volatility, which supports selective short premium, but the percentile backdrop argues against selling too-tight ranges."
@@ -644,6 +845,15 @@ def build_narrative_overlay(
                     rationale=conservative_rationale,
                 )
                 if best_conservative is not None
+                else None
+            ),
+            "best_overall_executable_setup": (
+                _recommendation_snapshot(
+                    best_overall,
+                    thesis="Highest-ranked setup that passed the actionable quality gate.",
+                    rationale="This setup passed minimum score, non-negative EV, and touch-risk checks.",
+                )
+                if best_overall is not None
                 else None
             ),
             "best_aggressive_setup": (

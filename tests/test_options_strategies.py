@@ -205,6 +205,133 @@ def test_build_strategy_candidates_with_audit_exposes_generation_details() -> No
     assert bull_put_entries[0]["status"] in {"built", "dropped"}
 
 
+def test_bull_put_builder_tries_alternate_short_when_template_lacks_lower_hedge() -> None:
+    expiration = (datetime.now(timezone.utc) +
+                  timedelta(days=32)).date().isoformat()
+    rows: list[dict[str, object]] = []
+    for strike in [390.0, 400.0, 410.0, 420.0]:
+        rows.append(
+            {
+                "ticker": "SPY",
+                "contract_symbol": f"SPYC{int(strike)}",
+                "option_type": "call",
+                "expiration": expiration,
+                "strike": strike,
+                "last_price": 1.0,
+                "bid": 0.9,
+                "ask": 1.1,
+                "mid_price": 1.0,
+                "volume": 250,
+                "open_interest": 900,
+                "implied_volatility": 0.36,
+                "in_the_money": strike < 412.0,
+                "last_trade_date": "2026-05-10",
+                "spread_pct": 0.08,
+                "liquidity_score": 500.0,
+            }
+        )
+    put_prices = {390.0: 1.2, 400.0: 3.4, 410.0: 8.8, 420.0: 13.6}
+    for strike, mid in put_prices.items():
+        rows.append(
+            {
+                "ticker": "SPY",
+                "contract_symbol": f"SPYP{int(strike)}",
+                "option_type": "put",
+                "expiration": expiration,
+                "strike": strike,
+                "last_price": mid,
+                "bid": max(0.1, mid - 0.1),
+                "ask": mid + 0.1,
+                "mid_price": mid,
+                "volume": 250,
+                "open_interest": 900,
+                "implied_volatility": 0.36,
+                "in_the_money": strike > 412.0,
+                "last_trade_date": "2026-05-10",
+                "spread_pct": 0.08,
+                "liquidity_score": 500.0,
+            }
+        )
+
+    candidates, audit = build_strategy_candidates_with_audit(
+        pd.DataFrame(rows),
+        underlying_price=412.0,
+        target_dte=30,
+    )
+
+    bull_put = next(
+        candidate for candidate in candidates if candidate.name == "bull_put_credit_spread"
+    )
+    strikes = [leg.strike for leg in bull_put.legs]
+    assert strikes == [400.0, 390.0]
+
+    entry = next(
+        item for item in audit["strategy_generation"]
+        if item.get("strategy_family") == "bull_put_credit_spread"
+    )
+    assert entry["status"] == "built"
+    assert entry["short_strike"] == 400.0
+    assert entry["width_selection"] == "template_width_range"
+    assert len(entry["candidate_attempts"]) >= 2
+
+
+def test_straddle_requires_common_atm_strike_near_underlying() -> None:
+    expiration = (datetime.now(timezone.utc) +
+                  timedelta(days=32)).date().isoformat()
+    rows: list[dict[str, object]] = []
+    for strike in [195.0, 200.0]:
+        rows.append(
+            {
+                "ticker": "DE",
+                "contract_symbol": f"DEC{int(strike)}",
+                "option_type": "call",
+                "expiration": expiration,
+                "strike": strike,
+                "last_price": 1.0,
+                "bid": 0.9,
+                "ask": 1.1,
+                "mid_price": 1.0,
+                "volume": 250,
+                "open_interest": 900,
+                "implied_volatility": 0.3,
+                "in_the_money": False,
+                "last_trade_date": "2026-05-10",
+                "spread_pct": 0.08,
+                "liquidity_score": 500.0,
+            }
+        )
+    for strike in [600.0, 610.0]:
+        rows.append(
+            {
+                "ticker": "DE",
+                "contract_symbol": f"DEP{int(strike)}",
+                "option_type": "put",
+                "expiration": expiration,
+                "strike": strike,
+                "last_price": 1.0,
+                "bid": 0.9,
+                "ask": 1.1,
+                "mid_price": 1.0,
+                "volume": 250,
+                "open_interest": 900,
+                "implied_volatility": 0.3,
+                "in_the_money": False,
+                "last_trade_date": "2026-05-10",
+                "spread_pct": 0.08,
+                "liquidity_score": 500.0,
+            }
+        )
+
+    candidates = build_strategy_candidates(
+        pd.DataFrame(rows),
+        underlying_price=405.0,
+        target_dte=30,
+    )
+
+    assert "long_straddle" not in {candidate.name for candidate in candidates}
+    assert "long_strangle" not in {candidate.name for candidate in candidates}
+
+
 def test_build_strategy_candidates_with_audit_returns_no_chain_status_on_empty_frame() -> None:
     candidates, audit = build_strategy_candidates_with_audit(
         pd.DataFrame(),

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,6 +12,7 @@ import typer
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -17,6 +20,7 @@ from cli.professional_typer import ProfessionalTyper
 from options.analyzer import OptionsAnalyzer
 from options.exceptions import OptionsError
 from options.prompt_builder import build_llm_paths, build_llm_prompt
+from options.universe import SP500_TOP_100_TICKERS
 from options.visualization import TerminalChartDependencyError, render_terminal_charts
 
 options_app = ProfessionalTyper(help="Options analytics commands")
@@ -113,6 +117,11 @@ def _collect_risk_warnings(payload: dict, recommendations: list[dict]) -> list[s
         if text and text not in warnings:
             warnings.append(text)
     return warnings
+
+
+def _trade_decision(payload: dict) -> dict:
+    overlay = payload.get("analysis_overlay") or {}
+    return dict(overlay.get("trade_decision") or {})
 
 
 def _strategy_bias_label(strategy_name: str) -> str:
@@ -285,6 +294,18 @@ def _render_sheet_output(
                     str(snapshot.get("put_call_oi_ratio")))
     console.print(summary)
 
+    decision = _trade_decision(payload_out)
+    if decision:
+        status = str(decision.get("status") or "unknown").replace("_", " ").upper()
+        style = "green" if decision.get("status") == "trade_candidate" else "red"
+        console.print(
+            Panel(
+                str(decision.get("reason") or ""),
+                title=f"Trade Decision: {status}",
+                border_style=style,
+            )
+        )
+
     _render_bias_tables(console, recommendations)
     _render_strategy_comparison_table(console, payload_out)
 
@@ -339,6 +360,11 @@ def _render_plain_output(
     underlying = payload_out.get("underlying_analysis", {})
     typer.echo(f"Ticker: {payload_out.get('ticker')}")
     typer.echo(f"Price: {underlying.get('price')}")
+    decision = _trade_decision(payload_out)
+    if decision:
+        typer.echo(
+            f"Decision: {decision.get('status')} - {decision.get('reason')}"
+        )
     if report_path is not None:
         typer.echo(f"JSON report: {report_path}")
     for warning in risk_warnings:
@@ -398,9 +424,19 @@ def _render_opportunities_sheet(console: Console, payload: dict) -> None:
         momentum_value = momentum_ctx.get("confidence_score")
         momentum_display = str(
             momentum_value) if momentum_value is not None else "n/a"
-        top_strategy = str(entry.get("top_strategy") or "-").replace("_", " ")
+        decision = entry.get("trade_decision") or {}
+        top_strategy = str(
+            entry.get("executable_strategy") or entry.get("top_strategy") or "-"
+        ).replace("_", " ")
         ev = (entry.get("top_metrics") or {}).get("expected_value")
-        notes = entry.get("reason") or entry.get("error") or ""
+        if entry.get("executable_strategy"):
+            ev = (entry.get("executable_metrics") or {}).get("expected_value")
+        notes = (
+            decision.get("status")
+            or entry.get("reason")
+            or entry.get("error")
+            or ""
+        )
         table.add_row(
             coin,
             status,
@@ -410,6 +446,260 @@ def _render_opportunities_sheet(console: Console, payload: dict) -> None:
             str(notes),
         )
     console.print(table)
+
+
+def _payload_trade_candidate(payload: dict) -> dict | None:
+    overlay = payload.get("analysis_overlay") or {}
+    decision = overlay.get("trade_decision") or {}
+    if decision.get("status") != "trade_candidate":
+        return None
+    final_recs = overlay.get("final_recommendations") or {}
+    executable = final_recs.get("best_overall_executable_setup") or {}
+    if not executable:
+        return None
+    return executable
+
+
+def _scan_equity_options_universe(
+    *,
+    analyzer: OptionsAnalyzer,
+    analyzer_factory: Callable[[], OptionsAnalyzer] | None = None,
+    tickers: list[str],
+    days_to_exp: int,
+    top_trades: int,
+    workers: int = 1,
+    progress_callback: Callable[[dict], None] | None = None,
+) -> dict:
+    results: dict[str, dict] = {}
+    ranked: list[dict] = []
+    errors = 0
+    scanned = 0
+
+    def _scan_one(ticker: str) -> dict:
+        symbol = ticker.strip().upper()
+        if not symbol:
+            return {"ticker": symbol, "status": "skipped"}
+        worker_analyzer = analyzer_factory() if analyzer_factory is not None else analyzer
+        try:
+            payload = worker_analyzer.run(ticker=symbol, days_to_exp=days_to_exp)
+        except OptionsError as exc:
+            return {
+                "ticker": symbol,
+                "status": "error",
+                "error": str(exc),
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ticker": symbol,
+                "status": "error",
+                "error": str(exc),
+            }
+
+        executable = _payload_trade_candidate(payload)
+        top = (payload.get("recommendations") or [{}])[0]
+        top_metrics = top.get("metrics") or {}
+        top_strategy = (top.get("strategy") or {}).get("name")
+        overlay = payload.get("analysis_overlay") or {}
+        decision = overlay.get("trade_decision") or {"status": "unknown"}
+
+        row = {
+            "ticker": symbol,
+            "status": "trade_candidate" if executable else "no_trade",
+            "trade_decision": decision,
+            "top_modeled_strategy": top_strategy,
+            "top_modeled_metrics": {
+                "composite_score": top_metrics.get("composite_score"),
+                "pop": top_metrics.get("pop"),
+                "expected_value": top_metrics.get("expected_value"),
+                "probability_of_touch": top_metrics.get("probability_of_touch"),
+            },
+            "executable_strategy": None,
+            "executable_metrics": {},
+            "executable_setup": None,
+            "warnings": list(overlay.get("warnings") or [])[:5],
+        }
+
+        if executable:
+            metrics = executable.get("metrics") or {}
+            row["executable_strategy"] = executable.get("strategy_name")
+            row["executable_setup"] = {
+                "strategy_name": executable.get("strategy_name"),
+                "bias": executable.get("bias"),
+                "thesis": executable.get("thesis"),
+                "rationale": executable.get("rationale"),
+                "setup_summary": executable.get("setup_summary"),
+            }
+            row["executable_metrics"] = {
+                "composite_score": metrics.get("composite_score"),
+                "pop": metrics.get("pop"),
+                "expected_value": metrics.get("expected_value"),
+                "probability_of_touch": metrics.get("probability_of_touch"),
+                "theta_per_day": metrics.get("theta_per_day"),
+                "max_loss": metrics.get("max_loss"),
+            }
+            ranked.append(
+                {
+                    "ticker": symbol,
+                    "strategy_name": executable.get("strategy_name"),
+                    "composite_score": metrics.get("composite_score"),
+                    "expected_value": metrics.get("expected_value"),
+                    "pop": metrics.get("pop"),
+                    "probability_of_touch": metrics.get("probability_of_touch"),
+                    "max_loss": metrics.get("max_loss"),
+                    "setup_summary": executable.get("setup_summary"),
+                    "rationale": executable.get("rationale"),
+                }
+            )
+        return row
+
+    symbols = [ticker.strip().upper() for ticker in tickers if ticker.strip()]
+    max_workers = max(1, min(workers, len(symbols) or 1))
+
+    if max_workers == 1:
+        for symbol in symbols:
+            row = _scan_one(symbol)
+            if row.get("status") == "error":
+                errors += 1
+            elif row.get("status") != "skipped":
+                scanned += 1
+            if row.get("ticker"):
+                results[str(row["ticker"])] = row
+            if progress_callback is not None:
+                progress_callback(row)
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_scan_one, symbol): symbol for symbol in symbols}
+            for future in as_completed(futures):
+                row = future.result()
+                if row.get("status") == "error":
+                    errors += 1
+                elif row.get("status") != "skipped":
+                    scanned += 1
+                if row.get("ticker"):
+                    results[str(row["ticker"])] = row
+                if progress_callback is not None:
+                    progress_callback(row)
+
+    ranked = sorted(
+        ranked,
+        key=lambda item: (
+            float(item.get("composite_score") or 0.0),
+            float(item.get("expected_value") or 0.0),
+            float(item.get("pop") or 0.0),
+            -float(item.get("probability_of_touch") or 100.0),
+        ),
+        reverse=True,
+    )
+
+    return {
+        "strategy": "options_equity_universe_scan_v1",
+        "universe": "sp500_top_100",
+        "days_to_exp": days_to_exp,
+        "summary": {
+            "tickers_requested": len(tickers),
+            "tickers_scanned": scanned,
+            "trade_candidates": len(ranked),
+            "errors": errors,
+            "top_trades_returned": min(top_trades, len(ranked)),
+            "workers": max_workers,
+        },
+        "ranked": ranked[:top_trades],
+        "results": results,
+    }
+
+
+def _render_equity_scan_sheet(console: Console, payload: dict) -> None:
+    summary = payload.get("summary") or {}
+    header = Table(title="Options Equity Universe Scan", box=box.SIMPLE_HEAVY)
+    header.add_column("Metric")
+    header.add_column("Value")
+    header.add_row("Universe", str(payload.get("universe")))
+    header.add_row("Days To Exp", str(payload.get("days_to_exp")))
+    header.add_row("Tickers Requested", str(summary.get("tickers_requested")))
+    header.add_row("Tickers Scanned", str(summary.get("tickers_scanned")))
+    header.add_row("Trade Candidates", str(summary.get("trade_candidates")))
+    header.add_row("Errors", str(summary.get("errors")))
+    console.print(header)
+
+    table = Table(title="Top Executable Trades", box=box.SIMPLE_HEAVY)
+    table.add_column("Rank", justify="right")
+    table.add_column("Ticker")
+    table.add_column("Strategy")
+    table.add_column("Score", justify="right")
+    table.add_column("EV", justify="right")
+    table.add_column("PoP", justify="right")
+    table.add_column("Touch", justify="right")
+    table.add_column("Max Loss", justify="right")
+
+    ranked = list(payload.get("ranked") or [])
+    if not ranked:
+        table.add_row(
+            "-",
+            "-",
+            "No trade candidates passed the quality gate",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+        )
+    for idx, item in enumerate(ranked, start=1):
+        table.add_row(
+            str(idx),
+            str(item.get("ticker")),
+            str(item.get("strategy_name") or "").replace("_", " "),
+            str(item.get("composite_score")),
+            str(item.get("expected_value")),
+            str(item.get("pop")),
+            str(item.get("probability_of_touch")),
+            str(item.get("max_loss")),
+        )
+    console.print(table)
+
+    results = payload.get("results") or {}
+    for idx, item in enumerate(ranked, start=1):
+        ticker = str(item.get("ticker") or "")
+        detail = results.get(ticker) or {}
+        setup = detail.get("executable_setup") or {}
+        warnings = list(detail.get("warnings") or [])
+        lines = [
+            f"Strategy: {str(item.get('strategy_name') or '').replace('_', ' ')}",
+            f"Setup: {setup.get('setup_summary') or item.get('setup_summary') or 'n/a'}",
+            f"Rationale: {setup.get('rationale') or item.get('rationale') or 'n/a'}",
+            (
+                "Metrics: "
+                f"score={item.get('composite_score')} "
+                f"EV={item.get('expected_value')} "
+                f"PoP={item.get('pop')} "
+                f"touch={item.get('probability_of_touch')} "
+                f"max_loss={item.get('max_loss')}"
+            ),
+            (
+                f"Deep dive: nave options analyze --ticker {ticker} "
+                f"--days-to-exp {payload.get('days_to_exp')}"
+            ),
+        ]
+        if warnings:
+            lines.append("Warnings: " + " | ".join(str(warning) for warning in warnings[:2]))
+        console.print(
+            Panel(
+                "\n".join(lines),
+                title=f"#{idx} {ticker} Trade Detail",
+                border_style="green",
+            )
+        )
+
+    error_rows = [
+        row for row in results.values()
+        if isinstance(row, dict) and row.get("status") == "error"
+    ]
+    if error_rows:
+        error_table = Table(title="Scan Errors (first 10)", box=box.SIMPLE)
+        error_table.add_column("Ticker")
+        error_table.add_column("Error")
+        for row in error_rows[:10]:
+            error_table.add_row(str(row.get("ticker")), str(row.get("error")))
+        console.print(error_table)
 
 
 @options_app.command("analyze")
@@ -453,14 +743,174 @@ def analyze(
         "--llm-prompt",
         help="Print a copy-ready prompt for another LLM using the saved JSON report",
     ),
+    sp500_scan: bool = typer.Option(
+        False,
+        "--sp500-scan",
+        help="Scan a liquid S&P 500 top-100 ticker universe and return executable trades",
+    ),
+    sp500_limit: int = typer.Option(
+        100,
+        "--sp500-limit",
+        min=1,
+        max=100,
+        help="Number of default S&P 500 universe tickers to scan",
+    ),
+    top_trades: int = typer.Option(
+        3,
+        "--top-trades",
+        min=1,
+        max=20,
+        help="Number of executable trade candidates to return in universe scan mode",
+    ),
+    scan_workers: int = typer.Option(
+        6,
+        "--scan-workers",
+        min=1,
+        max=16,
+        help="Concurrent workers for S&P 500 scan mode; use 1 for sequential debugging",
+    ),
+    strategy: str | None = typer.Option(
+        None,
+        "--strategy",
+        help="Evaluate a manual strategy instead of auto-generated candidates; currently bull-put",
+    ),
+    expiration: str | None = typer.Option(
+        None,
+        "--expiration",
+        help="Manual strategy expiration in YYYY-MM-DD format",
+    ),
+    short_put: float | None = typer.Option(
+        None,
+        "--short-put",
+        help="Manual bull-put short put strike",
+    ),
+    long_put: float | None = typer.Option(
+        None,
+        "--long-put",
+        help="Manual bull-put long put strike",
+    ),
+    short_premium: float | None = typer.Option(
+        None,
+        "--short-premium",
+        help="Manual short-leg premium; uses chain mid price if omitted",
+    ),
+    long_premium: float | None = typer.Option(
+        None,
+        "--long-premium",
+        help="Manual long-leg premium; uses chain mid price if omitted",
+    ),
 ) -> None:
     """Run options analysis and print recommendations."""
     resolved_ticker = (symbol or ticker or "MSFT").strip().upper()
     analyzer = _build_options_analyzer(source=source)
     console = Console()
 
+    if sp500_scan:
+        scan_tickers = list(SP500_TOP_100_TICKERS[:sp500_limit])
+        show_progress = not json_out
+
+        if show_progress:
+            progress = Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("{task.completed}/{task.total}"),
+                TimeElapsedColumn(),
+                console=console,
+            )
+            with progress:
+                task_id = progress.add_task(
+                    f"Scanning S&P 500 options universe ({scan_workers} workers)",
+                    total=len(scan_tickers),
+                )
+
+                def _on_progress(row: dict) -> None:
+                    status = str(row.get("status") or "unknown")
+                    ticker_name = str(row.get("ticker") or "")
+                    progress.update(
+                        task_id,
+                        advance=1,
+                        description=f"{ticker_name}: {status}",
+                    )
+
+                payload = _scan_equity_options_universe(
+                    analyzer=analyzer,
+                    analyzer_factory=lambda: _build_options_analyzer(source=source),
+                    tickers=scan_tickers,
+                    days_to_exp=days_to_exp,
+                    top_trades=top_trades,
+                    workers=scan_workers,
+                    progress_callback=_on_progress,
+                )
+        else:
+            payload = _scan_equity_options_universe(
+                analyzer=analyzer,
+                analyzer_factory=lambda: _build_options_analyzer(source=source),
+                tickers=scan_tickers,
+                days_to_exp=days_to_exp,
+                top_trades=top_trades,
+                workers=scan_workers,
+            )
+
+        report_path: Path | None = None
+        if save_json:
+            report_path = _resolve_json_report_path(
+                analyzer=analyzer,
+                ticker=f"sp500_top_{sp500_limit}_options_scan",
+                json_path=json_path,
+            )
+            payload = dict(payload)
+            artifacts = dict(payload.get("artifacts") or {})
+            artifacts["json_report_path"] = str(report_path)
+            payload["artifacts"] = artifacts
+            report_path = _write_json_report(payload=payload, out_path=report_path)
+
+        if json_out:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+            return
+
+        if sheet:
+            _render_equity_scan_sheet(console, payload)
+            if report_path is not None:
+                console.print(
+                    Panel(
+                        f"JSON report: {report_path}",
+                        title="Scan Report",
+                        border_style="cyan",
+                    )
+                )
+            return
+
+        typer.echo("Options equity universe scan")
+        summary = payload.get("summary") or {}
+        typer.echo(
+            f"- scanned={summary.get('tickers_scanned')} "
+            f"trade_candidates={summary.get('trade_candidates')} "
+            f"errors={summary.get('errors')}"
+        )
+        for item in payload.get("ranked") or []:
+            typer.echo(
+                f"- {item.get('ticker')}: {item.get('strategy_name')} "
+                f"score={item.get('composite_score')} ev={item.get('expected_value')}"
+            )
+        if report_path is not None:
+            typer.echo(f"JSON report: {report_path}")
+        return
+
     try:
-        payload = analyzer.run(ticker=resolved_ticker, days_to_exp=days_to_exp)
+        if strategy:
+            payload = analyzer.run(
+                ticker=resolved_ticker,
+                days_to_exp=days_to_exp,
+                strategy=strategy,
+                expiration=expiration,
+                short_put=short_put,
+                long_put=long_put,
+                short_premium=short_premium,
+                long_premium=long_premium,
+            )
+        else:
+            payload = analyzer.run(ticker=resolved_ticker, days_to_exp=days_to_exp)
     except OptionsError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc

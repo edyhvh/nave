@@ -14,6 +14,7 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
     iv = (underlying.get("implied_volatility") or {}).get("iv_mean")
     hv = (underlying.get("historical_volatility") or {}).get("hv_30")
     final_recs = overlay.get("final_recommendations") or {}
+    trade_decision = overlay.get("trade_decision") or {}
     executive_summary = list(overlay.get("executive_summary") or [])
     warnings = list(overlay.get("warnings") or [])
 
@@ -39,6 +40,9 @@ def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
             f"{str(modeled.get('strategy_name') or 'n/a').replace('_', ' ')}"
             f" | EV {(modeled.get('metrics') or {}).get('expected_value')}"
         )
+    if trade_decision:
+        decision = str(trade_decision.get("status") or "unknown").replace("_", " ")
+        lines.append(f"Decision: {decision} | {trade_decision.get('reason')}")
     if conservative:
         lines.append(
             "Conservative: "
