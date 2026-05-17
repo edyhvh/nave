@@ -56,6 +56,46 @@ def _build_options_analyzer(*, source: str):
         return OptionsAnalyzer()
 
 
+def _operational_hints(
+    *,
+    preferred_execution: str,
+    agent_reminder_min_interval_minutes: int,
+    native_scheduler_min_interval_minutes: int | None = None,
+    fallback_when_provider_429: str,
+    send_preformatted_digest_first: bool = True,
+) -> dict[str, Any]:
+    """Attach schedule/fallback guidance for chat agents and cron jobs."""
+    hints: dict[str, Any] = {
+        "preferred_execution": preferred_execution,
+        "agent_reminder_min_interval_minutes": agent_reminder_min_interval_minutes,
+        "fallback_when_provider_429": fallback_when_provider_429,
+        "send_preformatted_digest_first": send_preformatted_digest_first,
+    }
+    if native_scheduler_min_interval_minutes is not None:
+        hints["native_scheduler_min_interval_minutes"] = native_scheduler_min_interval_minutes
+    return hints
+
+
+def _with_operational_hints(
+    payload: dict[str, Any],
+    *,
+    preferred_execution: str,
+    agent_reminder_min_interval_minutes: int,
+    native_scheduler_min_interval_minutes: int | None = None,
+    fallback_when_provider_429: str,
+    send_preformatted_digest_first: bool = True,
+) -> dict[str, Any]:
+    enriched = dict(payload)
+    enriched["operational_hints"] = _operational_hints(
+        preferred_execution=preferred_execution,
+        agent_reminder_min_interval_minutes=agent_reminder_min_interval_minutes,
+        native_scheduler_min_interval_minutes=native_scheduler_min_interval_minutes,
+        fallback_when_provider_429=fallback_when_provider_429,
+        send_preformatted_digest_first=send_preformatted_digest_first,
+    )
+    return enriched
+
+
 class HermesNaveIntegration:
     """Dispatches Nave tools for Hermes via MCP and gateway-compatible contracts."""
 
@@ -110,7 +150,9 @@ class HermesNaveIntegration:
                     "name": "momentum_zone_watch",
                     "description": (
                         "Monitor momentum entry zones and emit alerts when live price first "
-                        "touches a watched zone. Returns Telegram MarkdownV2 chunks for direct delivery."
+                        "touches a watched zone. Returns Telegram MarkdownV2 chunks for direct delivery. "
+                        "For chat/reminder jobs, do not schedule faster than hourly; for 5-minute monitoring "
+                        "use scripts/monitor_entry_zones.py via cron/launchd."
                     ),
                     "input_schema": {
                         "type": "object",
@@ -345,7 +387,10 @@ class HermesNaveIntegration:
                     "name": "stocks_ism_report",
                     "description": (
                         "Return ISM hottest/worst industries and Massive-filtered stock "
-                        "candidates based on PE and next-year EPS growth criteria."
+                        "candidates based on PE and next-year EPS growth criteria. Also includes "
+                        "Telegram MarkdownV2 digest chunks so reminder jobs can send a preformatted "
+                        "summary directly when an LLM provider is rate-limited. For chat/reminder jobs, "
+                        "cap cadence at hourly."
                     ),
                     "input_schema": {
                         "type": "object",
@@ -365,7 +410,9 @@ class HermesNaveIntegration:
                     "description": (
                         "Return the internal ISM release calendar (sourced from FMP). "
                         "Use this to answer 'when is the next ISM Manufacturing/Services "
-                        "PMI release?' or to fetch the full year's release dates."
+                        "PMI release?' or to fetch the full year's release dates. For recurring "
+                        "jobs prefer next_only/recent_days with refresh=false so reminder runs "
+                        "reuse stored data instead of re-fetching on every trigger."
                     ),
                     "input_schema": {
                         "type": "object",
@@ -414,6 +461,7 @@ class HermesNaveIntegration:
                         "(diffed against an internal seen-cache). "
                         "When 'new_total' > 0, notify the user with the trades; "
                         "when 'new_total' == 0, stay silent. "
+                        "Includes Telegram MarkdownV2 digest chunks so no extra LLM formatting step is required. "
                         "Note the STOCK Act allows up to 45 days between trade and "
                         "disclosure — this is informational, not a real-time edge."
                     ),
@@ -445,10 +493,11 @@ class HermesNaveIntegration:
                     "name": "stocks_x_analyze",
                     "description": (
                         "Fetch recent X (Twitter) posts about one or more stock tickers "
-                        "and return them packaged with the LLM analysis prompt baked in. "
+                        "and return them packaged with the LLM analysis prompt baked in, plus a "
+                        "deterministic Telegram MarkdownV2 summary digest for provider-429 fallback. "
                         "The caller (Telegram-side LLM, manual paste into another model) "
                         "uses payload.analysis_prompt.system + .user to produce the final "
-                        "markdown sentiment report."
+                        "markdown sentiment report. For chat/reminder jobs, cap cadence at hourly."
                     ),
                     "input_schema": {
                         "type": "object",
@@ -695,7 +744,16 @@ class HermesNaveIntegration:
             for alert in monitor_result.get("alerts", [])
             if isinstance(alert, dict)
         ]
-        return monitor_result
+        return _with_operational_hints(
+            monitor_result,
+            preferred_execution="native_scheduler",
+            agent_reminder_min_interval_minutes=60,
+            native_scheduler_min_interval_minutes=5,
+            fallback_when_provider_429=(
+                "Use telegram_markdown_v2 directly or switch to scripts/monitor_entry_zones.py "
+                "with --send-telegram for high-frequency monitoring."
+            ),
+        )
 
     def market_scan(
         self,
@@ -1268,15 +1326,26 @@ class HermesNaveIntegration:
             raise HermesIntegrationError("top_n must be in [1, 20]")
 
         from trading.stocks.reporting import build_ism_industry_report
+        from trading.stocks.formatters import render_ism_report_markdown_v2
 
         try:
-            return build_ism_industry_report(
+            payload = build_ism_industry_report(
                 kind=kind,
                 top_n=top_n,
                 min_eps_growth_next_year=min_eps_growth_next_year,
             )
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc
+        payload["telegram_markdown_v2"] = render_ism_report_markdown_v2(payload)
+        return _with_operational_hints(
+            payload,
+            preferred_execution="agent_or_native",
+            agent_reminder_min_interval_minutes=60,
+            fallback_when_provider_429=(
+                "Send telegram_markdown_v2 directly, or keep using the stored ISM snapshot "
+                "instead of re-running an LLM-formatted reminder."
+            ),
+        )
 
     def stocks_ism_calendar(
         self,
@@ -1310,20 +1379,33 @@ class HermesNaveIntegration:
         kind_filter = cast(CalendarKind | None, kind)
 
         if recent_days > 0:
-            release = recent_release(
-                kind=kind_filter, lookback_days=recent_days)
-            return {
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-                "recent_days": recent_days,
-                "recent_release": _to_jsonable(release) if release else None,
-            }
+            release = recent_release(kind=kind_filter, lookback_days=recent_days)  # type: ignore[arg-type]
+            return _with_operational_hints(
+                {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "recent_days": recent_days,
+                    "recent_release": _to_jsonable(release) if release else None,
+                },
+                preferred_execution="agent_or_native",
+                agent_reminder_min_interval_minutes=60,
+                fallback_when_provider_429=(
+                    "Reuse the stored calendar with recent_days/next_only and avoid refresh on each reminder run."
+                ),
+            )
 
         if next_only:
-            release = next_release(kind=kind_filter)
-            return {
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-                "next_release": _to_jsonable(release) if release else None,
-            }
+            release = next_release(kind=kind_filter)  # type: ignore[arg-type]
+            return _with_operational_hints(
+                {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "next_release": _to_jsonable(release) if release else None,
+                },
+                preferred_execution="agent_or_native",
+                agent_reminder_min_interval_minutes=60,
+                fallback_when_provider_429=(
+                    "Reuse the stored calendar with next_only and avoid refresh on each reminder run."
+                ),
+            )
 
         target_year = year or date.today().year
         if refresh:
@@ -1344,13 +1426,20 @@ class HermesNaveIntegration:
             if kind_filter is not None
             else calendar.releases
         )
-        return {
-            "year": calendar.year,
-            "generated_at": calendar.generated_at,
-            "source": calendar.source,
-            "source_url": calendar.source_url,
-            "releases": _to_jsonable(releases),
-        }
+        return _with_operational_hints(
+            {
+                "year": calendar.year,
+                "generated_at": calendar.generated_at,
+                "source": calendar.source,
+                "source_url": calendar.source_url,
+                "releases": _to_jsonable(releases),
+            },
+            preferred_execution="agent_or_native",
+            agent_reminder_min_interval_minutes=60,
+            fallback_when_provider_429=(
+                "Reuse the stored calendar payload and avoid refresh on each reminder run."
+            ),
+        )
 
     def stocks_politicians_scan(
         self,
@@ -1384,9 +1473,16 @@ class HermesNaveIntegration:
         except PoliticianTradesError as exc:
             raise HermesIntegrationError(str(exc)) from exc
 
-        payload["telegram_markdown_v2"] = render_politicians_scan_markdown_v2(
-            payload)
-        return payload
+        payload["telegram_markdown_v2"] = render_politicians_scan_markdown_v2(payload)
+        return _with_operational_hints(
+            payload,
+            preferred_execution="native_scheduler",
+            agent_reminder_min_interval_minutes=1440,
+            native_scheduler_min_interval_minutes=1440,
+            fallback_when_provider_429=(
+                "Send telegram_markdown_v2 directly and keep politicians scans at daily cadence."
+            ),
+        )
 
     def stocks_x_analyze(
         self,
@@ -1412,9 +1508,10 @@ class HermesNaveIntegration:
                 "limit_per_ticker must be between 5 and 200")
 
         from trading.stocks.social_analyzer import analyze_tickers
+        from trading.stocks.formatters import render_x_summary_markdown_v2
 
         try:
-            return analyze_tickers(
+            payload = analyze_tickers(
                 tickers,
                 days=days,
                 limit_per_ticker=limit_per_ticker,
@@ -1422,6 +1519,15 @@ class HermesNaveIntegration:
             )
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc
+        payload["telegram_markdown_v2"] = render_x_summary_markdown_v2(payload)
+        return _with_operational_hints(
+            payload,
+            preferred_execution="agent_or_native",
+            agent_reminder_min_interval_minutes=60,
+            fallback_when_provider_429=(
+                "Send telegram_markdown_v2 directly when the richer analysis_prompt path hits provider 429s."
+            ),
+        )
 
     def dispatch_tool_call(
         self, tool_name: str, arguments: dict[str, Any] | None = None

@@ -97,6 +97,12 @@ Output (key fields):
 - `watch_candidates[]`
 - `scan_summary`
 - `telegram_markdown_v2[]`: alert chunks ready for Telegram `parse_mode=MarkdownV2`
+- `operational_hints`: preferred execution mode plus safe reminder cadence
+
+Scheduling guidance:
+- For chat/reminder jobs, do **not** schedule faster than hourly.
+- For high-frequency monitoring, use `scripts/monitor_entry_zones.py` via cron/launchd
+  and send Telegram directly.
 
 ### `options_opportunities`
 
@@ -134,6 +140,10 @@ Input:
 - `max_pe_ratio` (number, optional): keep only names with `PE <= max_pe_ratio`
 - `min_eps_growth_next_year` (number, optional): keep only names with `EPS growth >= threshold`
 
+Output additions:
+- `telegram_markdown_v2[]`: deterministic summary digest ready for Telegram
+- `operational_hints`: hourly reminder guidance and provider-429 fallback note
+
 ### `stocks_politicians_scan`
 
 Returns newly-disclosed Congressional STOCK Act trades (House + Senate) since
@@ -159,6 +169,7 @@ Output (key fields):
   `disclosure_date`, and `link` (source PDF/eFD URL)
 - `telegram_markdown_v2[]`: pre-formatted digest chunks ready to send to
   Telegram with `parse_mode=MarkdownV2` (empty when `new_total == 0`)
+- `operational_hints`: daily reminder guidance and provider-429 fallback note
 
 Hermes behavior:
 
@@ -193,6 +204,17 @@ Input:
   within the lookback window; useful for release-day retry jobs that run the
   next day in local timezone.
 - `refresh` (bool, default `false`): re-fetch and overwrite stored calendar.
+
+Output additions:
+- `operational_hints`: prefer `next_only` / `recent_days` with `refresh=false`
+  for recurring jobs so reminders reuse stored calendar data
+
+### `stocks_x_analyze`
+Fetches recent X posts and returns both:
+
+- `analysis_prompt`: the richer LLM path for full sentiment writeups
+- `telegram_markdown_v2[]`: deterministic fallback digest for provider-429 cases
+- `operational_hints`: hourly reminder guidance and fallback note
 
 ## Entry-Zone Monitor (conditional setup alerts)
 

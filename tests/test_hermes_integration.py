@@ -606,6 +606,8 @@ def test_stocks_ism_report_propagates_freshness_metadata(
     assert payload["freshness_status"] == "stale"
     assert payload["expected_covers_month"] == "2026-04"
     assert payload["report_month_key"] == "2026-03"
+    assert isinstance(payload["telegram_markdown_v2"], list)
+    assert payload["operational_hints"]["agent_reminder_min_interval_minutes"] == 60
 
 
 def _fired_scan_entry() -> dict:
@@ -758,6 +760,7 @@ def test_stocks_politicians_scan_adds_telegram_markdown(
     assert isinstance(result["telegram_markdown_v2"], list)
     assert result["telegram_markdown_v2"]
     assert "NAVE STOCK Act" in result["telegram_markdown_v2"][0]
+    assert result["operational_hints"]["agent_reminder_min_interval_minutes"] == 1440
 
 
 def test_stocks_politicians_scan_empty_digest_when_no_new(
@@ -800,6 +803,7 @@ def test_stocks_ism_calendar_recent_days(monkeypatch: pytest.MonkeyPatch) -> Non
     assert result["recent_days"] == 2
     assert result["recent_release"]["release_date"] == "2026-05-05"
     assert result["recent_release"]["covers_month"] == "2026-04"
+    assert result["operational_hints"]["agent_reminder_min_interval_minutes"] == 60
 
 
 def test_stocks_ism_calendar_rejects_invalid_recent_days() -> None:
@@ -809,3 +813,31 @@ def test_stocks_ism_calendar_rejects_invalid_recent_days() -> None:
         integration.stocks_ism_calendar(recent_days=-1)
     with pytest.raises(HermesIntegrationError):
         integration.stocks_ism_calendar(recent_days=31)
+
+
+def test_stocks_x_analyze_adds_telegram_markdown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        "trading.stocks.social_analyzer.analyze_tickers",
+        lambda *args, **kwargs: {
+            "tickers": ["MSFT", "PANW"],
+            "days": 7,
+            "total_posts": 4,
+            "summary_stats": {
+                "MSFT": {"post_count": 3, "total_likes": 10, "total_replies": 1, "total_retweets": 2, "top_post_url": "https://x.test/msft"},
+                "PANW": {"post_count": 1, "total_likes": 4, "total_replies": 0, "total_retweets": 1, "top_post_url": None},
+            },
+            "fetch_errors": {},
+            "analysis_prompt": {"system": "sys", "user": "usr"},
+        },
+    )
+
+    result = integration.stocks_x_analyze(tickers=["MSFT", "PANW"])
+
+    assert isinstance(result["telegram_markdown_v2"], list)
+    assert result["telegram_markdown_v2"]
+    assert "NAVE X digest" in result["telegram_markdown_v2"][0]
+    assert result["operational_hints"]["agent_reminder_min_interval_minutes"] == 60

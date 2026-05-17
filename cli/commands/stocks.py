@@ -28,6 +28,8 @@ from trading.stocks import (
     SectorScreener,
     StockJournal,
     build_ism_industry_report,
+    render_ism_report_markdown_v2,
+    render_x_summary_markdown_v2,
 )
 from trading.stocks.ism_calendar import (
     CalendarKind,
@@ -262,6 +264,11 @@ def ism_report(
         "--sheet",
         help="Render report as Rich terminal tables (human-readable).",
     ),
+    telegram_markdown_v2: bool = typer.Option(
+        False,
+        "--telegram-markdown-v2",
+        help="Render Telegram-friendly MarkdownV2 digest (chunked).",
+    ),
     save_snapshot: bool = typer.Option(
         True,
         "--save-snapshot/--no-save-snapshot",
@@ -307,6 +314,14 @@ def ism_report(
 
     if json_out and not sheet:
         typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    if telegram_markdown_v2:
+        messages = render_ism_report_markdown_v2(payload)
+        for idx, message in enumerate(messages, start=1):
+            if idx > 1:
+                typer.echo("\n---\n")
+            typer.echo(message)
         return
 
     if sheet:
@@ -524,6 +539,11 @@ def x_analyze(
     sheet: bool = typer.Option(
         False, "--sheet", help="Render Rich tables (default for terminal)."
     ),
+    telegram_markdown_v2: bool = typer.Option(
+        False,
+        "--telegram-markdown-v2",
+        help="Render Telegram-friendly MarkdownV2 summary digest (chunked).",
+    ),
     save_snapshot: bool = typer.Option(
         True,
         "--save-snapshot/--no-save-snapshot",
@@ -558,6 +578,14 @@ def x_analyze(
 
     if json_out and not sheet:
         typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    if telegram_markdown_v2:
+        messages = render_x_summary_markdown_v2(payload)
+        for idx, message in enumerate(messages, start=1):
+            if idx > 1:
+                typer.echo("\n---\n")
+            typer.echo(message)
         return
 
     # Default to sheet for human consumption; JSON path printed for follow-up.
