@@ -105,6 +105,8 @@ def render_momentum_scan_markdown_v2(
 
         raw_diagnostics = best.get("diagnostics")
         diagnostics: dict[str, Any] = raw_diagnostics if isinstance(raw_diagnostics, dict) else {}
+        if diagnostics.get("breakout_status") == "extended":
+            symbol_lines.append("Estado: movimiento extendido; no trail de entrada fresca")
         funding = diagnostics.get("funding_rate")
         oi_change = diagnostics.get("oi_change_pct")
         if funding is not None or oi_change is not None:

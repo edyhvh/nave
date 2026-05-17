@@ -18,6 +18,7 @@
     "buffer_atr": 0.15,
     "retest_tolerance": 0.008,
     "pending_distance_atr": 0.35,
+    "extended_range_fraction": 0.35,
     "min_retest_hours": 6,
     "max_retest_hours": 24
   },

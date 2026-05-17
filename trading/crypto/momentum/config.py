@@ -26,6 +26,7 @@ class BreakoutConfig:
     buffer_atr: float
     retest_tolerance: float
     pending_distance_atr: float
+    extended_range_fraction: float
     min_retest_hours: int
     max_retest_hours: int
 
