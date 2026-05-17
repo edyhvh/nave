@@ -8,7 +8,7 @@ import pandas as pd
 
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, TradePlan
 from trading.crypto.momentum.config import load_momentum_config
-from trading.crypto.momentum.filters import ParticipationAssessment, VolatilityAssessment, assess_breakout, assess_volatility, normalize_frame
+from trading.crypto.momentum.filters import BreakoutAssessment, ParticipationAssessment, VolatilityAssessment, assess_breakout, assess_volatility, normalize_frame
 from trading.crypto.momentum.theory_overlay import TheoryOverlayAssessment, evaluate_theory_overlay
 from trading.crypto.momentum.structure import assess_retest
 
@@ -857,3 +857,87 @@ def test_assess_retest_requires_maturation_before_confirmation() -> None:
 
     assert retest.confirmed is False
     assert retest.status == "pending"
+
+
+def test_assess_breakout_marks_continuation_edge_as_extended_not_pending() -> None:
+    config = load_momentum_config()
+    idx = pd.date_range("2025-01-01", periods=80, freq="4h", tz="UTC")
+    closes = [104.0] * 60 + [
+        101.8,
+        101.2,
+        100.6,
+        100.0,
+        99.4,
+        98.8,
+        98.2,
+        97.8,
+        97.6,
+        97.4,
+        97.3,
+        97.2,
+        97.2,
+        97.2,
+        97.2,
+        97.2,
+        97.2,
+        97.2,
+        97.2,
+        97.2,
+    ]
+    highs = [close + 0.4 for close in closes]
+    lows = [close - 0.4 for close in closes]
+    highs[60] = 106.0
+    lows[60] = 96.5
+    frame = _frame(
+        idx,
+        [close + 0.2 for close in closes],
+        highs,
+        lows,
+        closes,
+        [1000.0] * len(idx),
+    ).set_index("timestamp")
+
+    assessment = assess_breakout(frame, "short", config)
+
+    assert assessment.detected is False
+    assert assessment.status == "extended"
+    assert assessment.breakout_level == 106.0
+    assert assessment.near_trigger is False
+
+
+def test_momentum_engine_anchors_extended_short_to_retest_zone() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    engine = MomentumSetupEngine()
+
+    with patch(
+        "trading.crypto.momentum.engine.assess_breakout",
+        return_value=BreakoutAssessment(
+            detected=False,
+            status="extended",
+            breakout_index=None,
+            breakout_level=106.0,
+            range_low=96.5,
+            range_high=106.0,
+            breakout_close=None,
+            breakout_volume_ratio=0.0,
+            near_trigger=False,
+        ),
+    ):
+        plan = engine.evaluate_symbol(
+            symbol="BTCUSDT",
+            daily_frame=daily,
+            setup_frame=setup,
+            trigger_frame=trigger,
+            open_interest=oi,
+            funding_rate=0.0002,
+            side="short",
+        )[0]
+
+    assert plan.setup_status == "invalid"
+    assert plan.tradeable is False
+    assert plan.diagnostics["breakout_status"] == "extended"
+    assert plan.entry_zone[0] > 100.0
+    assert any(
+        item["code"] == "no_trailing_fresh_setup" and item["passed"] is False
+        for item in plan.reasoning["machine"]
+    )

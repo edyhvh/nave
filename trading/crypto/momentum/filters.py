@@ -186,18 +186,48 @@ def assess_breakout(frame: pd.DataFrame, side: str, config: MomentumConfig) -> B
 
     trailing = frame.iloc[-lookback:]
     trailing_atr = float(atr_series.iloc[-1] or 0.0)
+    trailing_high = float(trailing["high"].max())
+    trailing_low = float(trailing["low"].min())
+    trailing_range = trailing_high - trailing_low
+    last_close = float(frame["close"].iloc[-1])
     if side == "long":
-        distance = float(trailing["high"].max() - frame["close"].iloc[-1])
+        distance = trailing_high - last_close
     else:
-        distance = float(frame["close"].iloc[-1] - trailing["low"].min())
+        distance = last_close - trailing_low
     near_trigger = trailing_atr > 0 and distance <= trailing_atr * config.breakout.pending_distance_atr
+    if not near_trigger and trailing_range > 0:
+        range_position = (last_close - trailing_low) / trailing_range
+        if side == "long" and range_position >= 1 - config.breakout.extended_range_fraction:
+            return BreakoutAssessment(
+                detected=False,
+                status="extended",
+                breakout_index=None,
+                breakout_level=trailing_low,
+                range_low=trailing_low,
+                range_high=trailing_high,
+                breakout_close=None,
+                breakout_volume_ratio=0.0,
+                near_trigger=False,
+            )
+        if side == "short" and range_position <= config.breakout.extended_range_fraction:
+            return BreakoutAssessment(
+                detected=False,
+                status="extended",
+                breakout_index=None,
+                breakout_level=trailing_high,
+                range_low=trailing_low,
+                range_high=trailing_high,
+                breakout_close=None,
+                breakout_volume_ratio=0.0,
+                near_trigger=False,
+            )
     return BreakoutAssessment(
         detected=False,
         status="pending" if near_trigger else "absent",
         breakout_index=None,
-        breakout_level=float(trailing["high"].max()) if side == "long" else float(trailing["low"].min()),
-        range_low=float(trailing["low"].min()),
-        range_high=float(trailing["high"].max()),
+        breakout_level=trailing_high if side == "long" else trailing_low,
+        range_low=trailing_low,
+        range_high=trailing_high,
         breakout_close=None,
         breakout_volume_ratio=0.0,
         near_trigger=near_trigger,
