@@ -8,9 +8,9 @@ import pandas as pd
 
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, TradePlan
 from trading.crypto.momentum.config import load_momentum_config
-from trading.crypto.momentum.filters import BreakoutAssessment, ParticipationAssessment, VolatilityAssessment, assess_breakout, assess_volatility, normalize_frame
+from trading.crypto.momentum.filters import BreakoutAssessment, ParticipationAssessment, TrendAssessment, VolatilityAssessment, assess_breakout, assess_volatility, normalize_frame
 from trading.crypto.momentum.theory_overlay import TheoryOverlayAssessment, evaluate_theory_overlay
-from trading.crypto.momentum.structure import assess_retest
+from trading.crypto.momentum.structure import RetestAssessment, StructureAssessment, assess_retest
 
 
 def _frame(
@@ -148,6 +148,142 @@ def test_momentum_engine_confirms_high_quality_long_setup() -> None:
     breakout_level = plan.diagnostics["breakout_level"]
     tolerance = breakout_level * load_momentum_config().breakout.retest_tolerance
     assert plan.entry_zone[1] <= breakout_level + tolerance + 1e-6
+
+
+def test_momentum_engine_promotes_failed_momentum_short_watch() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    engine = MomentumSetupEngine()
+
+    with patch("trading.crypto.momentum.engine.assess_trend") as trend_mock:
+        trend_mock.side_effect = [
+            TrendAssessment(passed=False, score=0.25, slope_bps=-18.0, ema_stack_gap_pct=0.02),
+            TrendAssessment(passed=True, score=0.85, slope_bps=-24.0, ema_stack_gap_pct=0.025),
+        ]
+        breakout = BreakoutAssessment(
+            detected=True,
+            status="breakout",
+            breakout_index=pd.Timestamp("2025-03-13 08:00:00", tz="UTC"),
+            breakout_level=116.0,
+            range_low=112.0,
+            range_high=121.0,
+            breakout_close=114.8,
+            breakout_volume_ratio=0.86,
+            near_trigger=False,
+        )
+        retest = RetestAssessment(
+            status="confirmed",
+            confirmed=True,
+            entry_price=115.4,
+            retest_low=113.6,
+            retest_high=116.8,
+            close_above_level=True,
+        )
+        participation = ParticipationAssessment(
+            passed=False,
+            score=0.5,
+            volume_ratio=0.86,
+            oi_change_pct=None,
+            oi_supported=False,
+            funding_rate=0.0001,
+            crowded=False,
+            squeeze_risk=False,
+        )
+        with patch.object(engine, "_recent_weekly_velocity_peak", return_value=1.7):
+            with patch("trading.crypto.momentum.engine.assess_breakout", return_value=breakout):
+                with patch.object(engine, "_assess_retest", return_value=retest):
+                    with patch("trading.crypto.momentum.engine.assess_participation", return_value=participation):
+                        with patch.object(
+                            engine,
+                            "_assess_volatility",
+                            return_value=VolatilityAssessment(
+                                passed=True,
+                                atr_ratio=1.16,
+                                range_expansion=1.2,
+                                score=0.85,
+                                atr_fast=1.0,
+                            ),
+                        ):
+                            with patch(
+                                "trading.crypto.momentum.engine.evaluate_theory_overlay",
+                                return_value=TheoryOverlayAssessment(
+                                    passed=True,
+                                    stage="weekly_neutral",
+                                    bias="neutral",
+                                    bias_source="momentum",
+                                    reason="weekly theory bias is neutral; defer to momentum model",
+                                    weekly_velocity_atr=0.7,
+                                ),
+                            ):
+                                with patch("trading.crypto.momentum.engine.assess_structure") as structure_mock:
+                                    structure_mock.return_value = StructureAssessment(
+                                        passed=False,
+                                        score=0.2,
+                                        last_highs=[118.7, 117.8, 118.2],
+                                        last_lows=[115.9, 116.1, 115.4],
+                                    )
+                                    plan = engine.evaluate_symbol(
+                                        symbol="BTCUSDT",
+                                        daily_frame=daily,
+                                        setup_frame=setup,
+                                        trigger_frame=trigger,
+                                        open_interest=oi,
+                                        funding_rate=0.0001,
+                                        side="short",
+                                    )[0]
+
+    assert plan.setup_status == "confirmed"
+    assert plan.tradeable is True
+    assert plan.diagnostics["momentum_failure_watch"] is True
+    structure_items = [item for item in plan.reasoning["machine"] if item["code"] == "structure"]
+    assert structure_items[0]["passed"] is True
+    assert structure_items[0]["value"]["momentum_failure_watch"] is True
+
+
+def test_momentum_engine_does_not_promote_long_impulse_watch() -> None:
+    daily, setup, trigger, oi = _build_long_frames()
+    engine = MomentumSetupEngine()
+
+    with patch("trading.crypto.momentum.engine.assess_structure") as structure_mock:
+        structure_mock.return_value = StructureAssessment(
+            passed=False,
+            score=0.2,
+            last_highs=[116.8, 117.8, 118.7],
+            last_lows=[115.9, 115.4, 116.1],
+        )
+        with patch.object(
+            engine,
+            "_assess_volatility",
+            return_value=VolatilityAssessment(
+                passed=True,
+                atr_ratio=1.08,
+                range_expansion=2.36,
+                score=0.92,
+                atr_fast=0.75,
+            ),
+        ):
+            with patch(
+                "trading.crypto.momentum.engine.evaluate_theory_overlay",
+                return_value=TheoryOverlayAssessment(
+                    passed=True,
+                    stage="passed",
+                    bias="long",
+                    bias_source="momentum",
+                    reason="theory overlay passed",
+                    weekly_velocity_atr=1.7,
+                ),
+            ):
+                plan = engine.evaluate_symbol(
+                    symbol="BTCUSDT",
+                    daily_frame=daily,
+                    setup_frame=setup,
+                    trigger_frame=trigger,
+                    open_interest=oi,
+                    funding_rate=0.0002,
+                    side="long",
+                )[0]
+
+    assert plan.tradeable is False
+    assert "momentum_failure_watch" not in plan.diagnostics
 
 
 def test_momentum_engine_uses_configured_invalidation_fallback_and_marks_diagnostics() -> None:

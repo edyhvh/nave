@@ -1,7 +1,7 @@
 # Revision historica de momentum BTC / ETH
 
-> Generado: 2026-05-04T20:57:14.204733+00:00
-> Trades analizados: 87
+> Generado: 2026-05-18T13:48:19.675033+00:00
+> Trades analizados: 89
 
 ## Resumen ejecutivo
 
@@ -9,7 +9,7 @@
 - Periodos parciales: 1
 - Estado operativo: candidate-ready
 - Automatizacion: requiere supervision
-- Recomendacion inicial: Modelo apto para paper trading; concentrar el siguiente refinamiento en 2023-recovery.
+- Recomendacion inicial: Modelo apto para paper trading; concentrar el siguiente refinamiento en 2023-recovery, TODAY.
 
 ## Periodos
 
@@ -23,18 +23,18 @@
 | 2023-recovery | completa | 13 | 92.31% | +2.47 | 0.04 | 46.15% |
 | 2024-ETF-approval | completa | 5 | 100.00% | +2.61 | 0.00 | 60.00% |
 | 2024-2025-bull | completa | 7 | 100.00% | +2.62 | 0.00 | 85.71% |
-| TODAY | completa | 3 | 100.00% | +1.89 | 0.00 | 66.67% |
+| TODAY | completa | 5 | 60.00% | +0.74 | 2.00 | 40.00% |
 
 ## Bandas de confianza
 
 | Banda | Trades | Win rate | Avg R | >=8% |
 | ----- | ------ | -------- | ----- | ---- |
-| 90-100 | 87 | 86.21% | +2.15 | 70.11% |
+| 90-100 | 89 | 84.27% | +2.08 | 68.54% |
 
 ## Cadencia mensual
 
 - Baseline operativo: 3 trades/mes.
-- Promedio observado: 1.74 trades/mes activos.
+- Promedio observado: 1.75 trades/mes activos.
 - Pico observado: 8 trades en un mes.
 - Meses de expansion saludable: 2018-11, 2023-08, 2023-12.
 - No hay meses con expansion debil bajo los criterios actuales.
@@ -91,21 +91,22 @@
 | 2026-01 | 1 | 100.00% | +2.51 | 1 | ETH |
 | 2026-02 | 1 | 100.00% | +3.00 | 1 | ETH |
 | 2026-03 | 1 | 100.00% | +0.17 | 1 | BTC |
+| 2026-04 | 2 | 0.00% | -1.00 | 2 | BTC, ETH |
 
 ## Preparacion operativa
 
-- La banda 90-100 mantiene 86.21% de win rate con +2.15R promedio.
-- Los periodos que aun requieren vigilancia operativa son: 2023-recovery.
+- La banda 90-100 mantiene 84.27% de win rate con +2.08R promedio.
+- Los periodos que aun requieren vigilancia operativa son: 2023-recovery, TODAY.
 
 ## Alertas de automatizacion
 
 - Historical coverage is still partial for: 2017-bull+2018-bear.
-- Recent regimes still requiring operator review: 2023-recovery.
-- TODAY has only 3 trades; keep live rollout in shadow mode until more live-window observations accumulate.
-- Only 87 aggregate trades are represented in the latest review; treat regime-level stability as provisional.
+- Recent regimes still requiring operator review: 2023-recovery, TODAY.
+- TODAY has only 5 trades; keep live rollout in shadow mode until more live-window observations accumulate.
+- Only 89 aggregate trades are represented in the latest review; treat regime-level stability as provisional.
 
 ## Lectura
 
 - La banda 90-100 es la referencia principal para setups de mayor calidad.
-- Los periodos que merecen vigilancia inmediata son: 2023-recovery.
+- Los periodos que merecen vigilancia inmediata son: 2023-recovery, TODAY.
 - TODAY debe evaluarse como ventana viva; no debe pedir barras futuras para considerarse completo.
