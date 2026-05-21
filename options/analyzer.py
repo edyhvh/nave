@@ -20,7 +20,7 @@ from options.analytics import (
     compute_put_call_skew,
     enrich_greeks,
 )
-from options.analytics.probability import expected_move_one_std
+from options.analytics.probability import expected_move_one_std, evaluate_strategy_distribution
 from options.analysis_overlay import build_narrative_overlay
 from options.cache import OptionsCacheStore
 from options.config import OptionsConfig, load_options_config
@@ -132,6 +132,21 @@ class OptionsAnalyzer:
             raise OptionsComputationError(
                 f"No daily close history available for {history_symbol}")
         return hist["Close"].dropna()
+
+    def _has_earnings_within_dte(self, ticker: str, dte: int) -> tuple[bool, int | None]:
+        """Check if earnings is within DTE. Returns (has_earnings, days_to_earnings)."""
+        if yf is None:
+            return False, None
+        try:
+            cal = yf.Ticker(ticker).calendar
+            if cal is None or getattr(cal, "empty", True):
+                return False, None
+            # yfinance calendar index is the event date
+            next_earnings = pd.to_datetime(cal.index[0]).date()
+            days_to_earnings = (next_earnings - datetime.now(timezone.utc).date()).days
+            return 0 <= days_to_earnings <= dte, days_to_earnings
+        except Exception:  # noqa: BLE001
+            return False, None
 
     def _options_market_snapshot(self, frame: pd.DataFrame) -> dict[str, float]:
         if frame.empty:
@@ -548,18 +563,14 @@ class OptionsAnalyzer:
         hv_long = compute_historical_volatility(
             closes, window=self.config.hv_window_long)
 
-        iv_series = pd.to_numeric(
-            frame["implied_volatility"], errors="coerce").dropna()
         iv_history = self.cache.iv_history(
             symbol,
             lookback_days=self.config.iv_history_lookback_days,
             source=self.fetcher_source,
         )
-        if not iv_series.empty:
-            iv_history = pd.concat([iv_history, pd.Series(
-                [float(iv_series.mean())], dtype=float)], ignore_index=True)
+        # iv_atm will be computed after we know the selected expiration
         iv_rank, iv_percentile = compute_iv_rank_percentile(
-            iv_history if not iv_history.empty else iv_series,
+            iv_history if not iv_history.empty else pd.Series([0.25], dtype=float),
             lookback=self.config.iv_history_lookback_days,
         )
 
@@ -597,7 +608,27 @@ class OptionsAnalyzer:
             raise OptionsStrategyError(
                 f"No strategy candidates found for {symbol}")
 
-        iv_atm = float(iv_series.mean()) if not iv_series.empty else 0.25
+        # FIX P0: Compute IV from selected expiration only, filter outliers, use median
+        selected_expiration = candidates[0].expiration
+        chain_slice = frame[frame["expiration"] == selected_expiration]
+        clean_iv = pd.to_numeric(
+            chain_slice["implied_volatility"], errors="coerce"
+        ).dropna()
+        # Remove obvious data errors (deep OTM illiquid options with absurd IVs)
+        clean_iv = clean_iv[(clean_iv >= 0.05) & (clean_iv <= 2.0)]
+        iv_atm = float(clean_iv.median()) if not clean_iv.empty else 0.25
+
+        # Update IV history with the cleaned IV for rank/percentile
+        if not iv_history.empty:
+            iv_history = pd.concat(
+                [iv_history, pd.Series([iv_atm], dtype=float)],
+                ignore_index=True,
+            )
+        iv_rank, iv_percentile = compute_iv_rank_percentile(
+            iv_history if not iv_history.empty else pd.Series([iv_atm], dtype=float),
+            lookback=self.config.iv_history_lookback_days,
+        )
+
         one_std_move = expected_move_one_std(
             underlying_price, iv_atm, days_to_exp)
         all_ranked = rank_recommendations(
@@ -608,6 +639,8 @@ class OptionsAnalyzer:
             iv_rank=iv_rank,
             iv_percentile=iv_percentile,
             top_n=max(3, len(candidates)),
+            risk_free_rate=self.config.risk_free_rate,
+            directional_bias="neutral",
         )
         if not all_ranked:
             raise OptionsStrategyError(
@@ -652,7 +685,7 @@ class OptionsAnalyzer:
                 f"hv_{self.config.hv_window_long}": hv_long,
             },
             "implied_volatility": {
-                "iv_mean": float(iv_series.mean()) if not iv_series.empty else float("nan"),
+                "iv_mean": iv_atm,
                 "iv_rank": iv_rank,
                 "iv_percentile": iv_percentile,
             },
@@ -671,6 +704,16 @@ class OptionsAnalyzer:
             "expirations_available": expirations,
             "contracts_analyzed": int(len(frame)),
         }
+
+        # FIX P1: Add earnings warning if applicable
+        has_earnings, days_to_earnings = self._has_earnings_within_dte(
+            symbol, days_to_exp)
+        if has_earnings:
+            underlying_analysis["event_warning"] = {
+                "type": "earnings",
+                "days_to_event": days_to_earnings,
+                "recommendation": "avoid_income_strategies_through_earnings",
+            }
         if manual_candidate is not None:
             underlying_analysis["manual_strategy"] = {
                 "strategy": manual_strategy,

@@ -26,6 +26,7 @@ def terminal_price_distribution(
     implied_volatility: float,
     days_to_expiration: int,
     *,
+    risk_free_rate: float = 0.04,
     points: int = 801,
     z_max: float = 4.5,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -33,10 +34,11 @@ def terminal_price_distribution(
     t = max(1, days_to_expiration) / 365.0
     sigma = max(0.001, implied_volatility)
     vol_horizon = sigma * math.sqrt(t)
+    # FIX P1: Add risk-free rate drift to the terminal distribution
+    drift = (risk_free_rate - 0.5 * sigma * sigma) * t
 
     z = np.linspace(-z_max, z_max, max(51, points), dtype=float)
-    prices = underlying_price * \
-        np.exp(-0.5 * vol_horizon * vol_horizon + vol_horizon * z)
+    prices = underlying_price * np.exp(drift + vol_horizon * z)
     weights = norm.pdf(z)
     weight_sum = float(weights.sum())
     if weight_sum <= 0:
@@ -147,12 +149,14 @@ def evaluate_strategy_distribution(
     *,
     underlying_price: float,
     implied_volatility: float,
+    risk_free_rate: float = 0.04,
 ) -> dict[str, float]:
     """Compute POP/EV/profit ranges by integrating over a terminal-price distribution."""
     prices, weights = terminal_price_distribution(
         underlying_price,
         implied_volatility,
         candidate.days_to_expiration,
+        risk_free_rate=risk_free_rate,
     )
     pnl = strategy_pnl_profile(candidate, prices)
     profitable = pnl > 0.0

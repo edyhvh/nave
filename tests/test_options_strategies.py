@@ -151,7 +151,7 @@ def test_rank_recommendations_penalizes_negative_ev_more_in_high_iv(monkeypatch)
         },
     }
 
-    def _fake_distribution(candidate, underlying_price: float, implied_volatility: float):
+    def _fake_distribution(candidate, underlying_price: float, implied_volatility: float, risk_free_rate: float = 0.04):
         return distributions[candidate.name]
 
     monkeypatch.setattr(

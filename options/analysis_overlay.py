@@ -13,7 +13,7 @@ INCOME_STRATEGIES = {
     "iron_condor",
 }
 
-MIN_ACTIONABLE_COMPOSITE_SCORE = 50.0
+MIN_ACTIONABLE_COMPOSITE_SCORE = 35.0
 MAX_ACTIONABLE_MAX_LOSS = 2500.0
 CAPITAL_INTENSIVE_STRATEGIES = {"covered_call", "cash_secured_put"}
 
@@ -205,6 +205,15 @@ def _income_reason_codes(
     return reasons
 
 
+def _min_score_for_strategy(strategy_name: str) -> float:
+    """Return the minimum composite score required for a strategy to be actionable."""
+    if strategy_name in INCOME_STRATEGIES:
+        return 30.0
+    if strategy_name in AGGRESSIVE_STRATEGIES:
+        return 40.0
+    return MIN_ACTIONABLE_COMPOSITE_SCORE
+
+
 def _quality_gate(
     rec: dict[str, Any],
     *,
@@ -223,10 +232,17 @@ def _quality_gate(
     blockers: list[str] = []
     warnings: list[str] = []
 
-    if composite < MIN_ACTIONABLE_COMPOSITE_SCORE:
-        blockers.append("composite_score_below_actionable_threshold")
-    if expected_value < 0.0:
+    min_required = _min_score_for_strategy(strategy_name)
+    if composite < min_required:
+        blockers.append(f"composite_score_below_{int(min_required)}_threshold")
+
+    # FIX P0: Allow slightly negative EV for all strategies (within model noise)
+    ev_threshold = -50.0 if strategy_name in INCOME_STRATEGIES else -30.0
+    if expected_value < ev_threshold:
         blockers.append("negative_expected_value")
+    elif expected_value < 0.0:
+        warnings.append("slightly_negative_expected_value")
+
     if touch > modeled_touch_warning_pct:
         blockers.append("probability_of_touch_above_model_warning")
     elif touch > conservative_touch_max_pct:
@@ -245,8 +261,8 @@ def _quality_gate(
         "blockers": blockers,
         "warnings": warnings,
         "thresholds": {
-            "min_composite_score": MIN_ACTIONABLE_COMPOSITE_SCORE,
-            "min_expected_value": 0.0,
+            "min_composite_score": min_required,
+            "min_expected_value": ev_threshold,
             "max_touch_for_actionable": modeled_touch_warning_pct,
             "income_touch_comfort": conservative_touch_max_pct,
             "max_loss": MAX_ACTIONABLE_MAX_LOSS,

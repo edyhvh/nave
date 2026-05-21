@@ -8,6 +8,13 @@ import pandas as pd
 from options.analytics.probability import evaluate_strategy_distribution
 from options.models import StrategyCandidate, StrategyMetrics, StrategyRecommendation
 
+INCOME_STRATEGIES = {
+    "bull_put_credit_spread",
+    "cash_secured_put",
+    "covered_call",
+    "iron_condor",
+}
+
 
 def _aggregate_greek_exposure(option_frame: pd.DataFrame, candidate: StrategyCandidate) -> tuple[float, float]:
     theta_total = 0.0
@@ -46,11 +53,21 @@ def _edge_score(*, expected_value: float, risk_reward: float) -> float:
     return float(max(0.0, min(100.0, ev_component + rr_component)))
 
 
-def _negative_ev_penalty(*, expected_value: float, iv_rank: float | None, iv_percentile: float | None) -> float:
+def _negative_ev_penalty(
+    *,
+    expected_value: float,
+    iv_rank: float | None,
+    iv_percentile: float | None,
+    strategy_name: str = "unknown",
+) -> float:
     if expected_value >= 0:
         return 0.0
 
-    base_penalty = 8.0 + min(20.0, abs(expected_value) / 25.0)
+    is_income = strategy_name in INCOME_STRATEGIES
+
+    # FIX: Income strategies get a gentler penalty because small negative EV
+    # is often an artifact of the no-drift probability model.
+    base_penalty = 5.0 + min(15.0, abs(expected_value) / 35.0) if is_income else 8.0 + min(20.0, abs(expected_value) / 25.0)
     elevated_iv = 0.0
 
     if iv_rank is not None and np.isfinite(iv_rank) and iv_rank >= 40.0:
@@ -58,7 +75,9 @@ def _negative_ev_penalty(*, expected_value: float, iv_rank: float | None, iv_per
     if iv_percentile is not None and np.isfinite(iv_percentile) and iv_percentile >= 60.0:
         elevated_iv = max(elevated_iv, min(1.0, (iv_percentile - 60.0) / 40.0))
 
-    return float(base_penalty * (1.0 + (0.6 * elevated_iv)))
+    # FIX: Smaller IV multiplier for income strategies
+    iv_multiplier = 0.3 if is_income else 0.6
+    return float(base_penalty * (1.0 + (iv_multiplier * elevated_iv)))
 
 
 def _composite_score(
@@ -74,13 +93,28 @@ def _composite_score(
     probability_of_touch: float,
     iv_rank: float | None = None,
     iv_percentile: float | None = None,
+    directional_bias: str = "neutral",
 ) -> float:
-    ev_scaled = np.tanh(expected_value / 500.0) * 100.0
-    rr_scaled = min(100.0, risk_reward * 35.0)
+    # FIX P1: Normalize EV per dollar of max risk for better cross-strategy comparison.
+    # Use a softer scale so that small negative EV on low-risk income trades
+    # does not dominate the score.
+    ev_per_risk = expected_value / max(100.0, max_loss) * 100.0
+    ev_scaled = np.tanh(ev_per_risk / 20.0) * 100.0
+
+    # FIX P1: Better RR scaling — income strategies with RR < 1 need a floor
+    rr_scaled = min(100.0, risk_reward * 40.0)
+    if strategy_name in INCOME_STRATEGIES and risk_reward >= 0.15:
+        # Cap at 70 so very high RR doesn't dominate; floor at 30 so
+        # modest RR income trades aren't penalized as harshly
+        rr_scaled = min(70.0, 30.0 + risk_reward * 15.0)
+
     edge_score = _edge_score(
         expected_value=expected_value, risk_reward=risk_reward)
     loss_penalty = max(0.0, min(100.0, (max_loss + expected_loss) / 35.0))
-    theta_scaled = np.tanh(theta_per_day / 2.0) * 50.0 + 50.0
+
+    # FIX P1: Theta scaling that actually differentiates small vs large
+    theta_scaled = min(100.0, max(0.0, theta_per_day * 20.0 + 50.0))
+
     vega_penalty = max(0.0, min(100.0, abs(vega_exposure) * 8.0))
     touch_scaled = max(0.0, min(100.0, probability_of_touch))
     touch_comfort_scaled = 100.0 - touch_scaled
@@ -88,19 +122,40 @@ def _composite_score(
         expected_value=expected_value,
         iv_rank=iv_rank,
         iv_percentile=iv_percentile,
+        strategy_name=strategy_name,
     )
     high_touch_penalty = max(0.0, touch_scaled - 85.0) * 0.9
     if strategy_name in {"long_straddle", "long_strangle"} and touch_scaled > 85.0:
         high_touch_penalty += min(15.0, (touch_scaled - 85.0) * 1.2)
 
+    # FIX P1: Directional alignment bonus
+    directional_bonus = 0.0
+    if strategy_name in {
+        "bull_put_credit_spread",
+        "bull_call_debit_spread",
+        "covered_call",
+        "cash_secured_put",
+    }:
+        if directional_bias == "bullish":
+            directional_bonus = 8.0
+        elif directional_bias == "bearish":
+            directional_bonus = -5.0
+    elif strategy_name in {"bear_call_credit_spread", "bear_put_debit_spread"}:
+        if directional_bias == "bearish":
+            directional_bonus = 8.0
+        elif directional_bias == "bullish":
+            directional_bonus = -5.0
+
+    # FIX P1: Reweighted formula — less PoP worship, more EV and alignment
     raw = (
-        0.27 * pop
-        + 0.18 * ev_scaled
-        + 0.14 * rr_scaled
-        + 0.12 * theta_scaled
+        0.22 * pop
+        + 0.20 * ev_scaled
+        + 0.12 * rr_scaled
+        + 0.10 * theta_scaled
         + 0.08 * touch_comfort_scaled
-        + 0.11 * edge_score
-        - 0.05 * loss_penalty
+        + 0.08 * edge_score
+        + 0.05 * directional_bonus
+        - 0.04 * loss_penalty
         - 0.02 * vega_penalty
         - negative_ev_penalty
         - high_touch_penalty
@@ -170,7 +225,9 @@ def rank_recommendations(
     iv_rank: float | None = None,
     iv_percentile: float | None = None,
     top_n: int = 3,
-) -> list[StrategyRecommendation]:
+    risk_free_rate: float = 0.04,
+    directional_bias: str = "neutral",
+):
     """Rank strategy candidates and return top recommendations."""
     recs: list[StrategyRecommendation] = []
     for candidate in candidates:
@@ -180,6 +237,7 @@ def rank_recommendations(
             candidate,
             underlying_price=underlying_price,
             implied_volatility=iv_atm,
+            risk_free_rate=risk_free_rate,
         )
         pop = float(dist["pop"])
         expected_value = float(dist["expected_value"])
@@ -202,6 +260,7 @@ def rank_recommendations(
             probability_of_touch=probability_of_touch,
             iv_rank=iv_rank,
             iv_percentile=iv_percentile,
+            directional_bias=directional_bias,
         )
 
         pnl_samples = [expected_value - max_loss, expected_value,

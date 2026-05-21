@@ -679,8 +679,10 @@ def test_overlay_marks_low_quality_top_rank_as_no_trade() -> None:
     assert overlay["final_recommendations"]["best_aggressive_setup"] is None
     audit = overlay["ranking_audit"][0]
     assert audit["quality_gate"]["actionable"] is False
-    assert "composite_score_below_actionable_threshold" in audit["quality_gate"]["blockers"]
-    assert "negative_expected_value" in audit["quality_gate"]["blockers"]
+    # Aggressive strategies now use 40 threshold; score 20.0 is below it
+    assert "composite_score_below_40_threshold" in audit["quality_gate"]["blockers"]
+    # Slightly negative EV (-2.57) is now a warning, not a blocker for aggressive
+    assert "slightly_negative_expected_value" in audit["quality_gate"]["warnings"]
     assert "probability_of_touch_above_model_warning" in audit["quality_gate"]["blockers"]
 
 
