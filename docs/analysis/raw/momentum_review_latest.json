@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-04T20:57:14.204733+00:00",
+  "generated_at": "2026-05-18T13:48:19.675033+00:00",
   "periods": [
     {
       "period": "2017-bull+2018-bear",
@@ -84,27 +84,27 @@
     {
       "period": "TODAY",
       "complete": true,
-      "trade_count": 3,
-      "win_rate": 1.0,
-      "expectancy": 1.8923,
-      "max_drawdown": 0.0,
-      "pct_reaching_8": 0.6667,
-      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_TODAY_20260504T205129Z.json"
+      "trade_count": 5,
+      "win_rate": 0.6,
+      "expectancy": 0.7354,
+      "max_drawdown": 2.0,
+      "pct_reaching_8": 0.4,
+      "artifact": "/Users/jhonny/nave/docs/analysis/raw/momentum_backtest_TODAY_20260518T134357Z.json"
     }
   ],
   "confidence_bands": [
     {
       "band": "90-100",
-      "count": 87,
-      "win_rate": 0.8621,
-      "avg_r": 2.1543,
-      "pct_reaching_8": 0.7011
+      "count": 89,
+      "win_rate": 0.8427,
+      "avg_r": 2.0834,
+      "pct_reaching_8": 0.6854
     }
   ],
   "cadence": {
     "baseline_trades_per_month": 3,
-    "active_months": 50,
-    "average_trades_per_month": 1.74,
+    "active_months": 51,
+    "average_trades_per_month": 1.75,
     "max_trades_in_month": 8,
     "healthy_expansion_months": [
       "2018-11",
@@ -626,20 +626,32 @@
         "symbols": [
           "BTC"
         ]
+      },
+      {
+        "month": "2026-04",
+        "trade_count": 2,
+        "win_rate": 0.0,
+        "expectancy": -1.0,
+        "high_confidence_count": 2,
+        "symbols": [
+          "BTC",
+          "ETH"
+        ]
       }
     ]
   },
-  "total_trades": 87,
+  "total_trades": 89,
   "complete_periods": 8,
   "partial_periods": 1,
   "readiness": {
     "status": "candidate-ready",
     "focus_periods": [
-      "2023-recovery"
+      "2023-recovery",
+      "TODAY"
     ],
     "reasons": [
-      "La banda 90-100 mantiene 86.21% de win rate con +2.15R promedio.",
-      "Los periodos que aun requieren vigilancia operativa son: 2023-recovery."
+      "La banda 90-100 mantiene 84.27% de win rate con +2.08R promedio.",
+      "Los periodos que aun requieren vigilancia operativa son: 2023-recovery, TODAY."
     ]
   },
   "automation": {
@@ -653,19 +665,19 @@
       {
         "code": "focus_periods",
         "severity": "warning",
-        "message": "Recent regimes still requiring operator review: 2023-recovery."
+        "message": "Recent regimes still requiring operator review: 2023-recovery, TODAY."
       },
       {
         "code": "today_low_sample",
         "severity": "warning",
-        "message": "TODAY has only 3 trades; keep live rollout in shadow mode until more live-window observations accumulate."
+        "message": "TODAY has only 5 trades; keep live rollout in shadow mode until more live-window observations accumulate."
       },
       {
         "code": "aggregate_sample",
         "severity": "warning",
-        "message": "Only 87 aggregate trades are represented in the latest review; treat regime-level stability as provisional."
+        "message": "Only 89 aggregate trades are represented in the latest review; treat regime-level stability as provisional."
       }
     ]
   },
-  "recommendation": "Modelo apto para paper trading; concentrar el siguiente refinamiento en 2023-recovery."
+  "recommendation": "Modelo apto para paper trading; concentrar el siguiente refinamiento en 2023-recovery, TODAY."
 }

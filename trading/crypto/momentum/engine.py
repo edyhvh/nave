@@ -29,8 +29,10 @@ from trading.crypto.momentum.structure import (
 )
 from trading.crypto.momentum.theory_overlay import (
     TheoryOverlayAssessment,
+    build_weekly_frame,
     evaluate_theory_overlay,
 )
+from trading.crypto.theory_v2 import momentum_bias
 
 
 @dataclass(frozen=True)
@@ -135,9 +137,31 @@ class MomentumSetupEngine:
             expected_move_pct=expected_move_pct,
             config=self.config.theory_overlay,
         )
+        momentum_failure_watch = self._momentum_failure_watch_accepts(
+            side=side,
+            daily_trend=daily_trend,
+            setup_trend=setup_trend,
+            structure=structure,
+            breakout=breakout,
+            retest=retest,
+            volatility=volatility,
+            participation=participation,
+            theory_overlay=theory_overlay,
+            weekly=weekly,
+            daily=daily,
+            expected_move_pct=expected_move_pct,
+        )
+        if momentum_failure_watch and setup_status == "invalid":
+            setup_status = "confirmed"
+        daily_trend_score = daily_trend.score
+        if momentum_failure_watch:
+            daily_trend_score = max(daily_trend_score, 0.75)
+        structure_score = structure.score
+        if momentum_failure_watch:
+            structure_score = max(structure_score, 0.8)
         score_breakdown = build_score_breakdown(
             trend_score=(
-                (daily_trend.score + setup_trend.score + structure.score) / 3.0),
+                (daily_trend_score + setup_trend.score + structure_score) / 3.0),
             breakout_score=self._breakout_score(breakout, retest),
             volatility_score=volatility.score,
             participation_score=participation.score,
@@ -155,6 +179,7 @@ class MomentumSetupEngine:
             volatility=volatility,
             participation=participation,
             theory_overlay=theory_overlay,
+            momentum_failure_watch=momentum_failure_watch,
             daily_ema_gap_pct=daily_ema_gap_pct,
             setup_ema_gap_pct=setup_ema_gap_pct,
         )
@@ -178,6 +203,7 @@ class MomentumSetupEngine:
             volatility=volatility,
             participation=participation,
             theory_overlay=theory_overlay,
+            momentum_failure_watch=momentum_failure_watch,
             rr_estimated=rr_estimated,
             expected_move_pct=expected_move_pct,
         )
@@ -218,6 +244,7 @@ class MomentumSetupEngine:
                 if participation.oi_change_pct is not None
                 else None,
                 invalidation_fallback_used=True if invalidation_fallback_used else None,
+                momentum_failure_watch=True if momentum_failure_watch else None,
                 theory_overlay=theory_overlay.to_dict(),
             ),
         )
@@ -266,6 +293,66 @@ class MomentumSetupEngine:
         if breakout.status == "pending" and daily_trend.passed and setup_trend.passed:
             return "pending"
         return "invalid"
+
+    def _momentum_failure_watch_accepts(
+        self,
+        *,
+        side: str,
+        daily_trend: TrendAssessment,
+        setup_trend: TrendAssessment,
+        structure: StructureAssessment,
+        breakout: BreakoutAssessment,
+        retest: RetestAssessment,
+        volatility: VolatilityAssessment,
+        participation: ParticipationAssessment,
+        theory_overlay: TheoryOverlayAssessment,
+        weekly: pd.DataFrame | None,
+        daily: pd.DataFrame,
+        expected_move_pct: float,
+    ) -> bool:
+        """Promote downside failed-momentum breaks before the daily stack flips.
+
+        The normal daily gate waits for a full bearish EMA stack. After a
+        failed bullish impulse, that is often too late: price first loses the
+        daily fast EMA, weekly velocity decays to neutral, and a 4H breakdown
+        confirms on a 1H retest. This watch is intentionally short-only because
+        it models distribution after a failed long impulse, not trend chasing.
+        """
+        weekly_velocity = theory_overlay.weekly_velocity_atr
+        prior_long_velocity = self._recent_weekly_velocity_peak(weekly, daily)
+        return (
+            side == "short"
+            and not structure.passed
+            and setup_trend.passed
+            and breakout.detected
+            and retest.confirmed
+            and volatility.passed
+            and theory_overlay.passed
+            and theory_overlay.stage == "weekly_neutral"
+            and weekly_velocity is not None
+            and abs(weekly_velocity) <= 0.8
+            and prior_long_velocity >= 1.5
+            and self._daily_fast_ema_failed(daily_trend)
+            and participation.volume_ratio >= 0.75
+            and expected_move_pct <= self.config.theory_overlay.weekly_neutral_swing_min_expected_move_pct
+        )
+
+    def _daily_fast_ema_failed(self, daily_trend: TrendAssessment) -> bool:
+        return daily_trend.slope_bps <= -self.config.trend.min_slope_bps
+
+    def _recent_weekly_velocity_peak(self, weekly: pd.DataFrame | None, daily: pd.DataFrame) -> float:
+        weekly_frame = weekly if weekly is not None else build_weekly_frame(daily)
+        if weekly_frame.empty:
+            return 0.0
+        peaks: list[float] = []
+        for offset in range(1, min(7, len(weekly_frame))):
+            _bias, velocity = momentum_bias(
+                weekly_frame.iloc[: -offset],
+                min_velocity=self.config.theory_overlay.min_weekly_velocity,
+            )
+            if velocity is not None:
+                peaks.append(float(velocity))
+        return max(peaks) if peaks else 0.0
 
     def _entry_price(
         self,
@@ -357,9 +444,13 @@ class MomentumSetupEngine:
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
         theory_overlay: TheoryOverlayAssessment,
+        momentum_failure_watch: bool = False,
         daily_ema_gap_pct: float | None,
         setup_ema_gap_pct: float | None,
     ) -> bool:
+        score_threshold = (
+            74 if momentum_failure_watch else self.config.score_tradeable_threshold
+        )
         volume_ok = True
         if expected_move_pct >= 0.1:
             volume_ok = participation.volume_ratio >= self.config.participation.min_volume_ratio_swing
@@ -394,7 +485,7 @@ class MomentumSetupEngine:
             setup_status == "confirmed"
             and rr_estimated >= self.config.min_rr
             and expected_move_pct >= self.config.execution.min_expected_move_pct
-            and score >= self.config.score_tradeable_threshold
+            and score >= score_threshold
             and volatility.passed
             and volume_ok
             and atr_ok
@@ -452,6 +543,7 @@ class MomentumSetupEngine:
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
         theory_overlay: TheoryOverlayAssessment,
+        momentum_failure_watch: bool,
         rr_estimated: float,
         expected_move_pct: float,
     ) -> dict[str, list[Any]]:
@@ -470,10 +562,11 @@ class MomentumSetupEngine:
             },
             {
                 "code": "structure",
-                "passed": structure.passed,
+                "passed": structure.passed or momentum_failure_watch,
                 "value": {
                     "highs": [round(value, 4) for value in structure.last_highs],
                     "lows": [round(value, 4) for value in structure.last_lows],
+                    "momentum_failure_watch": momentum_failure_watch,
                 },
                 "detail": "recent swing sequence",
             },
