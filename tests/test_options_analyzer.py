@@ -754,8 +754,12 @@ def test_scan_crypto_opportunities_applies_momentum_gate_before_options(monkeypa
     analyzer = OptionsAnalyzer(config=_config(tmp_path))
     run_calls: list[str] = []
 
-    def _fake_run(*, ticker: str = "MSFT", days_to_exp: int = 30):
+    directional_biases: list[str] = []
+
+    def _fake_run(*, ticker: str = "MSFT", days_to_exp: int = 30, directional_bias: str = "neutral"):
+        _ = days_to_exp
         run_calls.append(ticker)
+        directional_biases.append(directional_bias)
         return {
             "ticker": ticker,
             "recommendations": [
@@ -836,7 +840,9 @@ def test_scan_crypto_opportunities_applies_momentum_gate_before_options(monkeypa
     assert payload["summary"]["momentum_allowed"] == 1
     assert payload["summary"]["options_ready"] == 1
     assert run_calls == ["BTC-USD"]
+    assert directional_biases == ["bullish"]
     assert payload["opportunities"]["BTC"]["status"] == "ready"
+    assert payload["opportunities"]["BTC"]["directional_bias"] == "bullish"
     assert payload["opportunities"]["ETH"]["status"] == "filtered_by_momentum"
     assert payload["ranked"][0]["coin"] == "BTC"
 
@@ -849,9 +855,12 @@ def test_scan_crypto_opportunities_deribit_source_uses_coin_tickers(monkeypatch,
         tmp_path), fetcher_source="deribit")
     run_calls: list[str] = []
 
-    def _fake_run(*, ticker: str = "BTC", days_to_exp: int = 30):
+    directional_biases: list[str] = []
+
+    def _fake_run(*, ticker: str = "BTC", days_to_exp: int = 30, directional_bias: str = "neutral"):
         _ = days_to_exp
         run_calls.append(ticker)
+        directional_biases.append(directional_bias)
         return {
             "ticker": ticker,
             "recommendations": [
@@ -899,4 +908,66 @@ def test_scan_crypto_opportunities_deribit_source_uses_coin_tickers(monkeypatch,
     )
 
     assert run_calls == ["BTC"]
+    assert directional_biases == ["bullish"]
     assert payload["data_source"] == "deribit"
+
+
+def test_scan_crypto_opportunities_passes_bearish_bias_for_short_momentum(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        analyzer_module, "DeribitOptionsFetcher", _DummyFetcher)
+
+    analyzer = OptionsAnalyzer(config=_config(
+        tmp_path), fetcher_source="deribit")
+    directional_biases: list[str] = []
+
+    def _fake_run(*, ticker: str = "BTC", days_to_exp: int = 30, directional_bias: str = "neutral"):
+        _ = ticker, days_to_exp
+        directional_biases.append(directional_bias)
+        return {
+            "ticker": ticker,
+            "recommendations": [
+                {
+                    "strategy": {"name": "bear_call_credit_spread"},
+                    "metrics": {
+                        "composite_score": 82.0,
+                        "pop": 63.0,
+                        "expected_value": 14.0,
+                        "probability_of_touch": 42.0,
+                    },
+                }
+            ],
+        }
+
+    monkeypatch.setattr(analyzer, "run", _fake_run)
+
+    class _FakeMomentumService:
+        def parse_timeframes(self, tf: str):
+            _ = tf
+            return SimpleNamespace(bias="1d", setup="4h", trigger="1h")
+
+        def scan_live(self, **kwargs):
+            assert kwargs["symbols"] == ["BTCUSDT"]
+            return {
+                "timeframes": {"bias": "1d", "setup": "4h", "trigger": "1h"},
+                "summary": {"tradeable_count": 1},
+                "results": {
+                    "BTCUSDT": {
+                        "plans": [{"side": "short", "confidence_score": 86}],
+                        "tradeable": [{"side": "short", "confidence_score": 86}],
+                    }
+                },
+            }
+
+    monkeypatch.setattr(
+        "trading.crypto.momentum.service.MomentumMarketService", _FakeMomentumService
+    )
+
+    payload = analyzer.scan_crypto_opportunities(
+        coins=["BTC"],
+        days_to_exp=30,
+        tf="4h,1h",
+        require_tradeable=True,
+    )
+
+    assert directional_biases == ["bearish"]
+    assert payload["opportunities"]["BTC"]["directional_bias"] == "bearish"

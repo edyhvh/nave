@@ -10,6 +10,7 @@ from options.models import StrategyCandidate, StrategyMetrics, StrategyRecommend
 
 INCOME_STRATEGIES = {
     "bull_put_credit_spread",
+    "bear_call_credit_spread",
     "cash_secured_put",
     "covered_call",
     "iron_condor",

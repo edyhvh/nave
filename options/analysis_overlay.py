@@ -8,6 +8,7 @@ from typing import Any
 
 INCOME_STRATEGIES = {
     "bull_put_credit_spread",
+    "bear_call_credit_spread",
     "cash_secured_put",
     "covered_call",
     "iron_condor",
@@ -21,6 +22,7 @@ AGGRESSIVE_STRATEGIES = {
     "long_strangle",
     "long_straddle",
     "bull_call_debit_spread",
+    "bear_put_debit_spread",
     "call_butterfly",
 }
 
@@ -59,6 +61,8 @@ def strategy_bias(strategy_name: str) -> str:
         return "bullish"
     if strategy_name in {"iron_condor", "call_butterfly"}:
         return "neutral"
+    if strategy_name in {"bear_call_credit_spread", "bear_put_debit_spread"}:
+        return "bearish"
     if strategy_name in {"long_strangle", "long_straddle"}:
         return "long_volatility"
     return "other"
@@ -118,7 +122,7 @@ def _strategy_flags(
 
     return {
         "range_too_tight_vs_expected_move": bool(
-            strategy_name in {"iron_condor", "bull_put_credit_spread"}
+            strategy_name in {"iron_condor", "bull_put_credit_spread", "bear_call_credit_spread"}
             and breakeven_width is not None
             and two_sided_expected_move > 0
             and breakeven_width < (two_sided_expected_move * 0.6)
@@ -133,6 +137,7 @@ def _strategy_flags(
         "calls_rich_bullish_skew": skew_diff < 0.0,
         "defined_risk_income_candidate": strategy_name in {
             "bull_put_credit_spread",
+            "bear_call_credit_spread",
             "iron_condor",
         } and theta_per_day >= 0.0,
     }
@@ -289,6 +294,8 @@ def _income_executable_score(
     if strategy_name in INCOME_STRATEGIES:
         score += 8.0
     if strategy_name == "bull_put_credit_spread":
+        score += 6.0
+    if strategy_name == "bear_call_credit_spread":
         score += 6.0
     if strategy_name in {"long_strangle", "long_straddle"}:
         score -= 8.0
@@ -525,6 +532,8 @@ def build_narrative_overlay(
         "long_straddle",
         "long_strangle",
         "bull_put_credit_spread",
+        "bear_call_credit_spread",
+        "bear_put_debit_spread",
     ]
     comparison: list[dict[str, Any]] = []
     for name in comparison_names:
@@ -555,6 +564,7 @@ def build_narrative_overlay(
 
     bias_rankings: dict[str, list[dict[str, Any]]] = {
         "bullish": [],
+        "bearish": [],
         "neutral": [],
         "long_volatility": [],
         "other": [],

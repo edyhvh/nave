@@ -80,6 +80,8 @@ def test_build_strategy_candidates_includes_core_set() -> None:
     assert "iron_condor" in names
     assert "long_straddle" in names
     assert "long_strangle" in names
+    assert "bear_call_credit_spread" in names
+    assert "bear_put_debit_spread" in names
 
 
 def test_rank_recommendations_returns_top_three() -> None:
@@ -203,6 +205,12 @@ def test_build_strategy_candidates_with_audit_exposes_generation_details() -> No
     ]
     assert bull_put_entries
     assert bull_put_entries[0]["status"] in {"built", "dropped"}
+    bear_call_entries = [
+        entry for entry in audit["strategy_generation"]
+        if entry.get("strategy_family") == "bear_call_credit_spread"
+    ]
+    assert bear_call_entries
+    assert bear_call_entries[0]["status"] in {"built", "dropped"}
 
 
 def test_bull_put_builder_tries_alternate_short_when_template_lacks_lower_hedge() -> None:

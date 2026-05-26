@@ -338,6 +338,14 @@ class OptionsAnalyzer:
             "rr_estimated": selected.get("rr_estimated"),
         }
 
+    def _directional_bias_from_momentum(self, context: dict[str, Any]) -> str:
+        side = str(context.get("side") or "").lower().strip()
+        if side == "long":
+            return "bullish"
+        if side == "short":
+            return "bearish"
+        return "neutral"
+
     def scan_crypto_opportunities(
         self,
         *,
@@ -417,9 +425,11 @@ class OptionsAnalyzer:
 
             momentum_allowed += 1
             try:
+                directional_bias = self._directional_bias_from_momentum(context)
                 options_payload = self.run(
                     ticker=mapped_ticker,
                     days_to_exp=days_to_exp,
+                    directional_bias=directional_bias,
                 )
             except OptionsError as exc:
                 opportunities[coin] = {
@@ -449,6 +459,7 @@ class OptionsAnalyzer:
                 "ticker": mapped_ticker,
                 "status": "ready",
                 "momentum": context,
+                "directional_bias": directional_bias,
                 "options": options_payload,
                 "top_strategy": strategy,
                 "trade_decision": trade_decision,
@@ -538,6 +549,7 @@ class OptionsAnalyzer:
         ticker: str = "MSFT",
         days_to_exp: int = 30,
         *,
+        directional_bias: str = "neutral",
         strategy: str | None = None,
         expiration: str | None = None,
         short_put: float | None = None,
@@ -549,6 +561,12 @@ class OptionsAnalyzer:
         symbol = ticker.upper().strip()
         if not symbol:
             raise OptionsComputationError("ticker must be a non-empty value")
+        normalized_directional_bias = str(
+            directional_bias or "neutral").strip().lower()
+        if normalized_directional_bias not in {"bullish", "bearish", "neutral"}:
+            raise OptionsComputationError(
+                "directional_bias must be one of: bullish, bearish, neutral"
+            )
         manual_strategy = str(strategy or "").strip().lower().replace("-", "_")
 
         frame, underlying_price, expirations, cache_info = self._load_or_fetch(
@@ -640,7 +658,7 @@ class OptionsAnalyzer:
             iv_percentile=iv_percentile,
             top_n=max(3, len(candidates)),
             risk_free_rate=self.config.risk_free_rate,
-            directional_bias="neutral",
+            directional_bias=normalized_directional_bias,
         )
         if not all_ranked:
             raise OptionsStrategyError(
@@ -703,6 +721,7 @@ class OptionsAnalyzer:
             "options_market_snapshot": options_snapshot,
             "expirations_available": expirations,
             "contracts_analyzed": int(len(frame)),
+            "directional_bias": normalized_directional_bias,
         }
 
         # FIX P1: Add earnings warning if applicable
