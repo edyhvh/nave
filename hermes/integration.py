@@ -704,7 +704,6 @@ class HermesNaveIntegration:
         from trading.crypto.momentum.service import MomentumMarketService
 
         service = MomentumMarketService()
-        market_client = HyperliquidClient(wallet_name=None, testnet=False)
 
         try:
             payload = service.scan_live(
@@ -722,7 +721,7 @@ class HermesNaveIntegration:
         monitor = EntryZoneMonitor()
         monitor_result = monitor.evaluate(
             candidates,
-            price_lookup=lambda symbol: market_client.get_mid(
+            price_lookup=lambda symbol: service.market_client.get_mid(
                 symbol.replace("USDT", "")),
         )
 
