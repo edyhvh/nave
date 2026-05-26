@@ -132,6 +132,8 @@ def _strategy_bias_label(strategy_name: str) -> str:
         "covered_call",
     }:
         return "Bullish"
+    if strategy_name in {"bear_call_credit_spread", "bear_put_debit_spread"}:
+        return "Bearish"
     if strategy_name in {"iron_condor", "call_butterfly"}:
         return "Neutral"
     if strategy_name in {"long_strangle", "long_straddle"}:
@@ -146,7 +148,7 @@ def _group_recommendations_by_bias(recommendations: list[dict]) -> list[tuple[st
             (rec.get("strategy") or {}).get("name") or "unknown")
         label = _strategy_bias_label(strategy_name)
         grouped.setdefault(label, []).append(rec)
-    order = ["Bullish", "Neutral", "Long Volatility", "Other"]
+    order = ["Bullish", "Bearish", "Neutral", "Long Volatility", "Other"]
     return [(label, grouped[label]) for label in order if grouped.get(label)]
 
 

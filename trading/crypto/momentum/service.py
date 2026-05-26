@@ -10,6 +10,7 @@ import requests
 from trading.crypto.client import HyperliquidClient
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, load_momentum_config
 from trading.crypto.momentum.config import CadenceConfig
+from trading.crypto.momentum.thesis import MomentumThesisStore, reconcile_momentum_theses
 
 
 BINANCE_FAPI_URL = "https://fapi.binance.com"
@@ -103,18 +104,46 @@ def _filter_tradeable_plans(
     return filtered, tradeable_symbols, tradeable_count
 
 
+def _latest_close(frame: Any) -> float:
+    if frame is None or getattr(frame, "empty", True):
+        return float("nan")
+    try:
+        return float(frame["close"].iloc[-1])
+    except (KeyError, IndexError, TypeError, ValueError):
+        return float("nan")
+
+
+def _active_thesis_count(payload: dict[str, Any]) -> int:
+    theses = payload.get("theses")
+    if not isinstance(theses, dict):
+        return 0
+    return sum(
+        1
+        for value in theses.values()
+        if isinstance(value, dict) and value.get("state") == "active"
+    )
+
+
 class MomentumMarketService:
     def __init__(
         self,
         *,
         market_client: HyperliquidClient | None = None,
         session: requests.Session | None = None,
+        thesis_store: MomentumThesisStore | None = None,
     ) -> None:
-        self.market_client = market_client or HyperliquidClient(wallet_name=None, testnet=False)
+        self._market_client = market_client
         self.session = session or requests.Session()
+        self.thesis_store = thesis_store or MomentumThesisStore()
         self.config = load_momentum_config()
         self.engine = MomentumSetupEngine(self.config)
         self.backtester = MomentumBacktester(self.config)
+
+    @property
+    def market_client(self) -> HyperliquidClient:
+        if self._market_client is None:
+            self._market_client = HyperliquidClient(wallet_name=None, testnet=False)
+        return self._market_client
 
     def scan_live(
         self,
@@ -127,10 +156,12 @@ class MomentumMarketService:
         apply_cadence_policy: bool = False,
     ) -> dict[str, Any]:
         plans_by_symbol: dict[str, dict[str, Any]] = {}
+        current_prices: dict[str, float] = {}
         confirmed_count = 0
         threshold = score_threshold or self.config.score_tradeable_threshold
         for symbol in symbols:
             frames = self.load_live_frames(symbol, timeframes)
+            current_prices[symbol] = _latest_close(frames["trigger"])
             plans = self.engine.evaluate_symbol(
                 symbol=symbol,
                 daily_frame=frames["daily"],
@@ -162,6 +193,15 @@ class MomentumMarketService:
             plans_by_symbol,
             threshold=effective_threshold,
         )
+        thesis_state = reconcile_momentum_theses(
+            results_out,
+            current_prices=current_prices,
+            store=self.thesis_store,
+        )
+        results_out, tradeable_symbols, tradeable_count = _filter_tradeable_plans(
+            results_out,
+            threshold=effective_threshold,
+        )
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "strategy": "derivatives_momentum_v1",
@@ -185,6 +225,11 @@ class MomentumMarketService:
                 **cadence_policy,
                 "applied": apply_cadence_policy,
                 "effective_threshold": effective_threshold,
+            },
+            "thesis": {
+                "state_path": str(self.thesis_store.path),
+                "max_age_hours": 120,
+                "active_count": _active_thesis_count(thesis_state),
             },
             "results": results_out,
         }

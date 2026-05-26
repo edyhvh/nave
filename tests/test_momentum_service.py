@@ -4,8 +4,11 @@ from dataclasses import dataclass
 from typing import Any, cast
 from unittest.mock import Mock
 
+import pandas as pd
+
 from trading.crypto.momentum import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService, MomentumTimeframes, build_cadence_policy
+from trading.crypto.momentum.thesis import MomentumThesisStore
 
 
 @dataclass(frozen=True)
@@ -13,12 +16,26 @@ class _FakePlan:
     setup_status: str
     tradeable: bool
     confidence_score: int
+    side: str = "long"
+    entry_zone: tuple[float, float] = (100.0, 101.0)
+    invalidation: float = 95.0
+    tp1: float = 104.0
+    tp2: float = 108.0
+    tp3: float = 112.0
+    rr_estimated: float = 2.0
 
     def to_dict(self) -> dict[str, object]:
         return {
             "setup_status": self.setup_status,
             "tradeable": self.tradeable,
             "confidence_score": self.confidence_score,
+            "side": self.side,
+            "entry_zone": list(self.entry_zone),
+            "invalidation": self.invalidation,
+            "tp1": self.tp1,
+            "tp2": self.tp2,
+            "tp3": self.tp3,
+            "rr_estimated": self.rr_estimated,
         }
 
 
@@ -90,19 +107,22 @@ def test_build_cadence_policy_flags_expansion_market() -> None:
     assert policy["breadth"]["symbols_with_tradeable"] == 2
 
 
-def test_scan_live_can_apply_cadence_recommended_threshold(monkeypatch) -> None:
-    service = MomentumMarketService(market_client=cast(Any, object()))
+def test_scan_live_can_apply_cadence_recommended_threshold(monkeypatch, tmp_path) -> None:
+    service = MomentumMarketService(
+        market_client=cast(Any, object()),
+        thesis_store=MomentumThesisStore(path=tmp_path / "theses.json"),
+    )
     monkeypatch.setattr(service, "load_live_frames", lambda symbol, timeframes: {"daily": None, "setup": None, "trigger": None})
 
     def fake_evaluate_symbol(**kwargs):
         if kwargs["symbol"] == "BTCUSDT":
             return [
                 _FakePlan(setup_status="confirmed", tradeable=True, confidence_score=93),
-                _FakePlan(setup_status="confirmed", tradeable=True, confidence_score=91),
+                _FakePlan(setup_status="confirmed", tradeable=True, confidence_score=91, side="short", entry_zone=(98.0, 99.0), invalidation=104.0, tp2=90.0),
             ]
         return [
             _FakePlan(setup_status="confirmed", tradeable=True, confidence_score=90),
-            _FakePlan(setup_status="confirmed", tradeable=True, confidence_score=89),
+            _FakePlan(setup_status="confirmed", tradeable=True, confidence_score=89, side="short", entry_zone=(98.0, 99.0), invalidation=104.0, tp2=90.0),
         ]
 
     monkeypatch.setattr(service.engine, "evaluate_symbol", fake_evaluate_symbol)
@@ -121,6 +141,59 @@ def test_scan_live_can_apply_cadence_recommended_threshold(monkeypatch) -> None:
     assert adaptive_payload["summary"]["tradeable_count"] == 4
     assert adaptive_payload["summary"]["effective_score_threshold"] == 88
     assert adaptive_payload["cadence"]["applied"] is True
+
+
+def test_scan_live_freezes_active_thesis_when_fresh_scan_drifts(monkeypatch, tmp_path) -> None:
+    service = MomentumMarketService(
+        market_client=cast(Any, object()),
+        thesis_store=MomentumThesisStore(path=tmp_path / "theses.json"),
+    )
+    timeframes = MomentumTimeframes(bias="1d", setup="4h", trigger="1h")
+    trigger = pd.DataFrame({"close": [102.0]})
+    monkeypatch.setattr(
+        service,
+        "load_live_frames",
+        lambda symbol, timeframes: {"daily": None, "setup": None, "trigger": trigger},
+    )
+    calls = {"count": 0}
+
+    def fake_evaluate_symbol(**kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return [
+                _FakePlan(
+                    setup_status="confirmed",
+                    tradeable=True,
+                    confidence_score=91,
+                    entry_zone=(100.0, 101.0),
+                    invalidation=95.0,
+                    tp2=108.0,
+                )
+            ]
+        return [
+            _FakePlan(
+                setup_status="confirmed",
+                tradeable=True,
+                confidence_score=92,
+                entry_zone=(110.0, 111.0),
+                invalidation=106.0,
+                tp2=118.0,
+            )
+        ]
+
+    monkeypatch.setattr(service.engine, "evaluate_symbol", fake_evaluate_symbol)
+
+    first = service.scan_live(symbols=["BTCUSDT"], timeframes=timeframes, score_threshold=90)
+    second = service.scan_live(symbols=["BTCUSDT"], timeframes=timeframes, score_threshold=90)
+
+    first_plan = first["results"]["BTCUSDT"]["tradeable"][0]
+    second_plan = second["results"]["BTCUSDT"]["tradeable"][0]
+    assert first_plan["entry_zone"] == [100.0, 101.0]
+    assert second_plan["entry_zone"] == [100.0, 101.0]
+    assert second_plan["invalidation"] == 95.0
+    assert second_plan["tp2"] == 108.0
+    assert second_plan["scan_plan"]["entry_zone"] == [110.0, 111.0]
+    assert second_plan["thesis_status"] == "holding_previous"
 
 
 def test_fetch_funding_rate_returns_none_for_malformed_numeric_value() -> None:
