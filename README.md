@@ -6,13 +6,68 @@
 
 Nave is a terminal-first trading copilot with three main surfaces:
 
-- crypto: BTC/ETH momentum, COT context, Hyperliquid execution paths
-- stocks: ISM-driven sector workflow with FMP fundamentals
-- agents: Hermes and MCP-compatible JSON tool contracts
+- **crypto:** BTC/ETH daily entry check (COT → regime → momentum → perps + Deribit options)
+- **stocks:** ISM-driven sector workflow with FMP fundamentals
+- **agents:** Hermes and MCP-compatible JSON tool contracts
 
-The root README is the fast path: get it running locally, connect an agent,
-and use the CLI. Deeper theory and integration details live in the docs linked
-at the end.
+The root README is the fast path: get it running locally, run **`nave daily`**
+for BTC/ETH entry timing, connect an agent, and use the rest of the CLI.
+Deeper theory and integration details live in the docs linked at the end.
+
+## BTC/ETH daily entry (primary command)
+
+Run this once per day to decide **enter**, **watch**, or **stand aside** on BTC and ETH:
+
+```bash
+nave daily
+```
+
+Aliases and variants:
+
+```bash
+nave crypto daily              # same output
+nave crypto position-review    # same stack, same display
+nave daily --coins BTC         # single coin
+nave daily --no-options        # faster (skips Deribit)
+nave daily --json              # automation / cron
+```
+
+Each coin gets: action, direction, confidence, regime phase, 4H entry zone, stop,
+momentum score, optional Deribit spread line, and playbook reasons.
+
+Stack: `trading/crypto/analysis/` (`crypto_analysis_v4`) — COT permission, bear/bull
+regime phases, momentum 4H/1H, active regime thesis (up to 14 days), options bridge.
+
+For agents and theory-v2 diagnostics, use `python scripts/daily_scan.py` (bundles
+Hermes position review + theory scan). Operators should use **`nave daily`** for entries.
+
+### Fine-tuning verdict
+
+| Area | Status |
+| ---- | ------ |
+| **Daily operator CLI** | **Done** — `nave daily` is the single entry command |
+| **Unified decision path** | **Done** — one module (`CryptoAnalysisService`), no duplicate gates |
+| **COT + momentum alignment** | **Done** — contrarian COT gate, overlay, tradeable thresholds |
+| **Bear / bull regime + thesis** | **Done** — phased playbook (`leg_down`, `continuation_short`, `pullback_buy`, …) |
+| **BTC/ETH options (Deribit)** | **Done** — folded into daily review when `--options` (default on) |
+| **Full-period backtest** | **Done** — 8 AGENTS.md regimes, artifact below |
+| **Live forward test** | **Ongoing** — validate ENTER/WATCH against your journal |
+
+**Historical backtest (unified, `--fast`, Jun 2026):** 185 trades, **78.9%** win rate,
+**+1.83R** pooled expectancy, **8/8** regimes with trades, **no losing periods** at the
+period rollup. Confidence label: **medium** — 2017 window is partial on 4H/1H coverage;
+pre-2022 runs lack historical COT replay (price + momentum only).
+
+Raw artifact: [`docs/analysis/raw/unified_backtest_20260601T222143Z.json`](docs/analysis/raw/unified_backtest_20260601T222143Z.json)
+
+**Bottom line:** the stack is **fine-tuned enough for daily use** — run `nave daily` and
+trade only **ENTER** (and optionally stalk **WATCH**). Optional next passes (not blocking):
+relief-rally phase tuning on the current downtrend, chop filters for the 2024 ETF window,
+and journaling live hits/misses. Re-run backtests after material threshold changes:
+
+```bash
+python scripts/unified_backtest.py --fast --coins BTC ETH
+```
 
 ## Quick Setup
 
@@ -103,6 +158,21 @@ Back-compat: the legacy top-level paths (`trading.client`, `trading.signals`,
 `trading.cot.cot_analyzer`, …) keep working via `sys.modules` aliases set up
 by `trading/_compat.py`, so scripts/, tests/, cli/, and hermes/integration.py
 continue to import the crypto stack unchanged.
+
+## Congressional trades (STOCK Act)
+
+Check new House and Senate stock disclosures **since the last time you ran the command**:
+
+```bash
+nave congress
+nave congress --json
+nave congress --no-persist          # dry run — does not update cache
+nave stocks politicians-scan        # alias
+```
+
+Requires `FMP_API_KEY` in `.env`. State is stored in `var/politicians_cache/seen.json`
+(`last_scan_at` + seen disclosure IDs). First run indexes the current feed; later runs
+show only filings not seen before.
 
 ## Stocks workflow (ISM + FMP)
 
@@ -288,6 +358,10 @@ After setup (`python setup.py`), use the professional `nave` CLI (powered by Typ
 ```bash
 nave --help
 nave version
+nave daily                                    # BTC/ETH enter / watch / stand aside
+nave daily --json
+nave congress                                 # new Congressional stock disclosures
+nave congress --json
 nave trading run-strategy --wallet hermes --dry-run
 nave trading run --strategy cot-weekly --paper
 nave api start --reload
@@ -366,24 +440,23 @@ nave mcp --help
 
 ### Crypto workflow
 
-Scan BTC/ETH derivatives for current setups:
+**Daily entry (start here):**
+
+```bash
+nave daily
+nave daily --json
+nave crypto daily --coins BTC,ETH
+```
+
+Lower-level momentum / scan commands (debugging and research):
 
 ```bash
 nave crypto scan
 nave crypto scan --symbols BTCUSDT,ETHUSDT --tf 4h,1h --json
-```
-
-Build a concrete playbook for one symbol and side:
-
-```bash
 nave crypto playbook --symbol BTCUSDT --side long
 nave crypto playbook --symbol ETHUSDT --side short --json
-```
-
-Backtest the live momentum engine on recent history:
-
-```bash
 nave crypto momentum-backtest --lookback-days 180
+python scripts/unified_backtest.py --fast --coins BTC ETH
 ```
 
 ### Weekly COT workflow
@@ -590,6 +663,10 @@ python setup.py
 
 ## Further Reading
 
+- [docs/analysis/btc_eth_historical_review.md](docs/analysis/btc_eth_historical_review.md) — theory refinement loop (Phase 2)
+- [docs/analysis/current_setup.md](docs/analysis/current_setup.md) — theory_v2 live snapshot (supplementary)
+- [docs/analysis/raw/README.md](docs/analysis/raw/README.md) — backtest JSON artifacts
+- [AGENTS.md](AGENTS.md) — theory refinement workflow
 - [docs/hermes_integration.md](docs/hermes_integration.md)
 - [docs/agent_onboarding.md](docs/agent_onboarding.md)
 - [docs/web3-setup.md](docs/web3-setup.md)
