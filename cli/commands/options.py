@@ -1272,37 +1272,21 @@ def _render_gems_sheet(console: Console, gem_payload: dict) -> None:
         )
 
 
-@options_app.command("gems")
-def gems(
-    limit: int = typer.Option(
-        100,
-        "--limit",
-        min=10,
-        max=200,
-        help="S&P 500 universe size to scan",
-    ),
-    days_to_exp: int = typer.Option(30, "--days-to-exp", min=1, max=365),
-    top_gems: int = typer.Option(15, "--top", min=1, max=50, help="Hidden gems to show"),
-    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
-    source: str = typer.Option("yfinance", "--source"),
-    json_out: bool = typer.Option(False, "--json"),
-    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
-    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
-    json_path: str | None = typer.Option(None, "--json-path"),
-    with_congress: bool = typer.Option(
-        True,
-        "--with-congress/--no-congress",
-        help="Boost tickers in latest congressional disclosure report",
-    ),
-    fetch_x: int = typer.Option(
-        0,
-        "--fetch-x",
-        min=0,
-        max=12,
-        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
-    ),
+def _run_gems_scan(
+    *,
+    limit: int,
+    days_to_exp: int,
+    top_gems: int,
+    scan_workers: int,
+    source: str,
+    json_out: bool,
+    sheet: bool,
+    save_json: bool,
+    json_path: str | None,
+    with_congress: bool,
+    fetch_x: int,
 ) -> None:
-    """Scan for under-the-radar income setups with strong odds + X crowd interest."""
+    """Scan S&P names for executable income setups; rank hidden gems + congress boost."""
     analyzer = _build_options_analyzer(source=source)
     console = Console()
     tickers = (
@@ -1357,6 +1341,126 @@ def gems(
             )
     if report_path is not None:
         typer.echo(f"JSON report: {report_path}")
+
+
+@options_app.command("daily")
+def options_daily(
+    limit: int = typer.Option(
+        40,
+        "--limit",
+        "--sp500-limit",
+        min=10,
+        max=200,
+        help="S&P universe size (default top 40 liquid names)",
+    ),
+    days_to_exp: int = typer.Option(
+        30,
+        "--days-to-exp",
+        min=1,
+        max=365,
+        help="Target days to expiration (~30d income setups)",
+    ),
+    top: int = typer.Option(10, "--top", min=1, max=50, help="Setups to surface"),
+    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
+    source: str = typer.Option("yfinance", "--source"),
+    json_out: bool = typer.Option(False, "--json"),
+    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
+    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
+    json_path: str | None = typer.Option(None, "--json-path"),
+    with_congress: bool = typer.Option(
+        True,
+        "--with-congress/--no-congress",
+        help="Boost tickers from latest congressional disclosure report",
+    ),
+    refresh_congress: bool = typer.Option(
+        True,
+        "--refresh-congress/--no-refresh-congress",
+        help="Run nave congress first (needs FMP_API_KEY) to refresh politician filings",
+    ),
+    fetch_x: int = typer.Option(
+        0,
+        "--fetch-x",
+        min=0,
+        max=12,
+        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
+    ),
+) -> None:
+    """Daily equity income scan: congress refresh + ~30d ranked setups for this week."""
+    if refresh_congress:
+        from cli.commands.congress import _run_congress_scan
+
+        typer.echo("Refreshing congressional disclosures (FMP)...")
+        try:
+            report = _run_congress_scan(persist=True, save_report=True)
+            new_count = len(report.get("new_trades") or [])
+            typer.echo(f"Congress scan: {new_count} new filing(s) since last run.")
+        except Exception as exc:
+            typer.echo(
+                f"[yellow]Congress refresh skipped ({exc}). "
+                "Set FMP_API_KEY or use --no-refresh-congress.[/yellow]"
+            )
+        typer.echo("")
+
+    _run_gems_scan(
+        limit=limit,
+        days_to_exp=days_to_exp,
+        top_gems=top,
+        scan_workers=scan_workers,
+        source=source,
+        json_out=json_out,
+        sheet=sheet,
+        save_json=save_json,
+        json_path=json_path,
+        with_congress=with_congress,
+        fetch_x=fetch_x,
+    )
+
+
+@options_app.command("gems")
+def gems(
+    limit: int = typer.Option(
+        100,
+        "--limit",
+        "--sp500-limit",
+        min=10,
+        max=200,
+        help="S&P 500 universe size to scan",
+    ),
+    days_to_exp: int = typer.Option(30, "--days-to-exp", min=1, max=365),
+    top_gems: int = typer.Option(15, "--top", min=1, max=50, help="Hidden gems to show"),
+    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
+    source: str = typer.Option("yfinance", "--source"),
+    json_out: bool = typer.Option(False, "--json"),
+    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
+    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
+    json_path: str | None = typer.Option(None, "--json-path"),
+    with_congress: bool = typer.Option(
+        True,
+        "--with-congress/--no-congress",
+        help="Boost tickers in latest congressional disclosure report",
+    ),
+    fetch_x: int = typer.Option(
+        0,
+        "--fetch-x",
+        min=0,
+        max=12,
+        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
+    ),
+) -> None:
+    """Scan for under-the-radar income setups with strong odds + X crowd interest."""
+    _run_gems_scan(
+        limit=limit,
+        days_to_exp=days_to_exp,
+        top_gems=top_gems,
+        scan_workers=scan_workers,
+        source=source,
+        json_out=json_out,
+        sheet=sheet,
+        save_json=save_json,
+        json_path=json_path,
+        with_congress=with_congress,
+        fetch_x=fetch_x,
+    )
 
 
 @options_app.command("opportunities")
