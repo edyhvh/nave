@@ -24,7 +24,7 @@ def test_options_analyze_command_outputs_json(monkeypatch, tmp_path: Path) -> No
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -60,7 +60,7 @@ def test_options_analyze_command_defaults_to_sheet(monkeypatch, tmp_path: Path) 
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -125,7 +125,7 @@ def test_options_analyze_plain_output_groups_strategies_by_bias(monkeypatch, tmp
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -189,7 +189,7 @@ def test_options_analyze_sheet_warns_when_top_strategy_has_negative_ev(monkeypat
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -231,7 +231,7 @@ def test_options_analyze_llm_prompt(monkeypatch, tmp_path: Path) -> None:
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -284,7 +284,7 @@ def test_options_analyze_llm_prompt_filters_low_quality_top_strategies(monkeypat
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -351,7 +351,7 @@ def test_options_analyze_llm_prompt_references_structured_overlay(monkeypatch, t
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -404,7 +404,7 @@ def test_options_analyze_includes_llm_prompt_in_json_mode(monkeypatch, tmp_path:
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "underlying_analysis": {
@@ -443,7 +443,7 @@ def test_options_analyze_terminal_mode_orders_blocks(monkeypatch, tmp_path: Path
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             return {
                 "ticker": ticker,
                 "generated_at": "2026-05-11T00:00:00+00:00",
@@ -544,7 +544,7 @@ def test_options_analyze_ascii_alias_matches_terminal_mode(monkeypatch, tmp_path
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             _ = days_to_exp
             return {
                 "ticker": ticker,
@@ -770,7 +770,7 @@ def test_options_analyze_accepts_positional_ticker_and_source(monkeypatch) -> No
             captured["source"] = fetcher_source
             self.config = SimpleNamespace(reports_dir=Path("."))
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             _ = days_to_exp
             return {
                 "ticker": ticker,
@@ -889,7 +889,7 @@ def test_options_analyze_sp500_scan_returns_top_trade_candidates(monkeypatch, tm
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             _ = days_to_exp
             candidates = {
                 "AAA": {
@@ -992,7 +992,7 @@ def test_options_analyze_sp500_scan_sheet_keeps_single_ticker_mode_additive(
         def __init__(self) -> None:
             self.config = SimpleNamespace(reports_dir=tmp_path)
 
-        def run(self, ticker: str = "MSFT", days_to_exp: int = 30):
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
             _ = days_to_exp
             return {
                 "ticker": ticker,

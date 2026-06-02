@@ -24,7 +24,7 @@ cot_app = ProfessionalTyper(help="COT specific commands")
 
 @cot_app.command("analyze")
 def analyze_cot(coins: str = typer.Option(DEFAULTS.coins, help="Coins to analyze")) -> None:
-    """Analyze COT data as main trading driver."""
+    """Analyze COT data as weekly context (contrarian + confirmation)."""
     import subprocess
     import sys
 
