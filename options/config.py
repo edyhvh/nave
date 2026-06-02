@@ -51,6 +51,7 @@ class OptionsConfig:
     max_retries: int = 3
     retry_backoff_seconds: float = 1.5
     risk_free_rate: float = 0.04
+    equity_risk_premium: float = 0.03
     dividend_yield: float = 0.0
     hv_window_short: int = 30
     hv_window_long: int = 60

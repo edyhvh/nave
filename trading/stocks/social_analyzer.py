@@ -27,9 +27,9 @@ from typing import Any, Iterable, Mapping, Sequence
 from trading.stocks.x_client import (
     DEFAULT_LIMIT_PER_TICKER,
     DEFAULT_LOOKBACK_DAYS,
-    XClient,
     XClientError,
     XPost,
+    get_x_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ def analyze_tickers(
     *,
     days: int = DEFAULT_LOOKBACK_DAYS,
     limit_per_ticker: int = DEFAULT_LIMIT_PER_TICKER,
-    client: XClient | None = None,
+    client: Any | None = None,
     persist: bool = True,
     snapshot_dir: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -135,7 +135,7 @@ async def analyze_tickers_async(
     *,
     days: int = DEFAULT_LOOKBACK_DAYS,
     limit_per_ticker: int = DEFAULT_LIMIT_PER_TICKER,
-    client: XClient | None = None,
+    client: Any | None = None,
     persist: bool = True,
     snapshot_dir: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -148,7 +148,7 @@ async def analyze_tickers_async(
     if not normalized:
         raise ValueError("at least one ticker is required")
 
-    x = client or XClient()
+    x = client or get_x_client()
     posts_by_ticker: dict[str, list[XPost]] = {}
     fetch_errors: dict[str, str] = {}
     for ticker in normalized:

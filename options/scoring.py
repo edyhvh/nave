@@ -227,6 +227,7 @@ def rank_recommendations(
     iv_percentile: float | None = None,
     top_n: int = 3,
     risk_free_rate: float = 0.04,
+    equity_risk_premium: float = 0.03,
     directional_bias: str = "neutral",
 ):
     """Rank strategy candidates and return top recommendations."""
@@ -239,6 +240,7 @@ def rank_recommendations(
             underlying_price=underlying_price,
             implied_volatility=iv_atm,
             risk_free_rate=risk_free_rate,
+            equity_risk_premium=equity_risk_premium,
         )
         pop = float(dist["pop"])
         expected_value = float(dist["expected_value"])
