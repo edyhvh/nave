@@ -1261,29 +1261,30 @@ def _render_gems_sheet(console: Console, gem_payload: dict) -> None:
             )
         console.print(watch_table)
 
-    table = Table(title="Hidden gem prospects (structure + X crowd)", box=box.SIMPLE_HEAVY)
-    table.add_column("Ticker")
-    table.add_column("Gem", justify="right")
-    table.add_column("Tier")
-    table.add_column("Strategy")
-    table.add_column("PoP", justify="right")
-    table.add_column("Touch", justify="right")
-    table.add_column("X", justify="right")
-    table.add_column("Why")
-    for item in gems:
-        metrics = item.get("metrics") or {}
-        why = "; ".join(item.get("reasons") or [])[:80]
-        table.add_row(
-            str(item.get("ticker")),
-            str(item.get("gem_score")),
-            str(item.get("tier")),
-            str(item.get("strategy") or "-").replace("_", " "),
-            f"{metrics.get('pop', '-')}",
-            f"{metrics.get('probability_of_touch', '-')}",
-            str(item.get("x_interest_score") or 0),
-            why,
-        )
-    console.print(table)
+    if gems:
+        table = Table(title="Hidden gem prospects (structure + X crowd)", box=box.SIMPLE_HEAVY)
+        table.add_column("Ticker")
+        table.add_column("Gem", justify="right")
+        table.add_column("Tier")
+        table.add_column("Strategy")
+        table.add_column("PoP", justify="right")
+        table.add_column("Touch", justify="right")
+        table.add_column("X", justify="right")
+        table.add_column("Why")
+        for item in gems:
+            metrics = item.get("metrics") or {}
+            why = "; ".join(item.get("reasons") or [])[:80]
+            table.add_row(
+                str(item.get("ticker")),
+                str(item.get("gem_score")),
+                str(item.get("tier")),
+                str(item.get("strategy") or "-").replace("_", " "),
+                f"{metrics.get('pop', '-')}",
+                f"{metrics.get('probability_of_touch', '-')}",
+                str(item.get("x_interest_score") or 0),
+                why,
+            )
+        console.print(table)
     x_loaded = gem_payload.get("x_snapshots_loaded", 0)
     if x_loaded == 0:
         console.print(
@@ -1414,7 +1415,7 @@ def options_daily(
     ),
 ) -> None:
     """Daily equity income scan: congress refresh + ~30d ranked setups for this week."""
-    if refresh_congress:
+    if refresh_congress and with_congress:
         from cli.commands.congress import _run_congress_scan
 
         typer.echo("Refreshing congressional disclosures (FMP)...")

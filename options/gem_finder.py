@@ -472,6 +472,8 @@ def rank_hidden_gems(
             ticker = str(item.get("ticker") or "").upper()
             if not ticker:
                 continue
+            if cfg.block_high_vol and ticker in HIGH_VOL_LOSERS:
+                continue
             row = (scan_payload.get("results") or {}).get(ticker) or {}
             scan_picks.append(
                 {
