@@ -59,7 +59,7 @@ class GemFilterConfig:
     min_gem_score: float = 50.0
 
 
-# Production default: bullish bull puts (+ bank neutral), no bear calls, no TSLA/PLTR.
+# Strict replay-tuned default (yearly experiment — higher bar, fewer names).
 DEFAULT_FILTER = GemFilterConfig(
     require_bias_aligned=True,
     allow_neutral_banks=True,
@@ -70,6 +70,27 @@ DEFAULT_FILTER = GemFilterConfig(
     max_touch=70.0,
     min_gem_score=50.0,
 )
+
+# Daily operator: more setups for ~30d income (still bias-aligned, no high-vol blocklist).
+DAILY_OPERATOR_FILTER = GemFilterConfig(
+    require_bias_aligned=True,
+    allow_neutral_banks=True,
+    allow_bear_calls=False,
+    block_high_vol=True,
+    min_structure=45.0,
+    min_pop=58.0,
+    max_touch=75.0,
+    min_gem_score=40.0,
+    mega_cap_penalty_unless_structure=58.0,
+)
+
+
+def resolve_gem_filter(profile: str = "daily") -> GemFilterConfig:
+    """Map CLI profile name to filter config."""
+    key = (profile or "daily").strip().lower()
+    if key in {"strict", "replay", "default"}:
+        return DEFAULT_FILTER
+    return DAILY_OPERATOR_FILTER
 
 
 def _f(value: object) -> float:
@@ -385,8 +406,9 @@ def rank_hidden_gems(
     congress_tickers: frozenset[str] | set[str] | None = None,
     limit: int = 25,
     cfg: GemFilterConfig | None = None,
+    filter_profile: str = "daily",
 ) -> dict[str, Any]:
-    cfg = cfg or DEFAULT_FILTER
+    cfg = cfg or resolve_gem_filter(filter_profile)
     x_index = x_index if x_index is not None else load_x_interest_index()
     engagements = [p.engagement for p in x_index.values() if p.engagement > 0]
     median_eng = float(sorted(engagements)[len(engagements) // 2]) if engagements else 0.0
@@ -414,16 +436,17 @@ def rank_hidden_gems(
         reverse=True,
     )
 
-    # Secondary watchlist: passed core bias/vol gates but below strict pop/structure bar.
+    # Secondary watchlist: slightly below primary daily gates.
     watch_cfg = GemFilterConfig(
-        min_pop=58.0,
-        max_touch=72.0,
-        min_structure=45.0,
-        min_gem_score=42.0,
-        require_bias_aligned=True,
-        allow_neutral_banks=True,
+        min_pop=max(55.0, cfg.min_pop - 3.0),
+        max_touch=min(78.0, cfg.max_touch + 3.0),
+        min_structure=max(40.0, cfg.min_structure - 5.0),
+        min_gem_score=max(35.0, cfg.min_gem_score - 5.0),
+        mega_cap_penalty_unless_structure=max(52.0, cfg.mega_cap_penalty_unless_structure - 6.0),
+        require_bias_aligned=cfg.require_bias_aligned,
+        allow_neutral_banks=cfg.allow_neutral_banks,
         allow_bear_calls=False,
-        block_high_vol=True,
+        block_high_vol=cfg.block_high_vol,
     )
     watchlist: list[dict[str, Any]] = []
     gem_tickers = {g["ticker"] for g in gems}
@@ -443,8 +466,30 @@ def rank_hidden_gems(
             watchlist.append(scored)
     watchlist.sort(key=lambda item: item.get("gem_score") or 0.0, reverse=True)
 
+    scan_picks: list[dict[str, Any]] = []
+    if not gems:
+        for item in scan_payload.get("ranked") or []:
+            ticker = str(item.get("ticker") or "").upper()
+            if not ticker:
+                continue
+            row = (scan_payload.get("results") or {}).get(ticker) or {}
+            scan_picks.append(
+                {
+                    "ticker": ticker,
+                    "strategy": item.get("strategy_name") or row.get("executable_strategy"),
+                    "composite_score": item.get("composite_score"),
+                    "pop": item.get("pop"),
+                    "expected_value": item.get("expected_value"),
+                    "probability_of_touch": item.get("probability_of_touch"),
+                    "setup_summary": item.get("setup_summary") or row.get("setup_summary"),
+                    "tier": "scan_pick",
+                }
+            )
+        scan_picks = scan_picks[:limit]
+
     return {
         "strategy": "options_hidden_gems_v2",
+        "filter_profile": filter_profile,
         "filter": {
             "min_pop": cfg.min_pop,
             "max_touch": cfg.max_touch,
@@ -459,5 +504,6 @@ def rank_hidden_gems(
         "actionable_gems": len(gems),
         "gems": gems[:limit],
         "watchlist": watchlist[: max(5, limit // 2)],
+        "scan_picks": scan_picks,
         "all_gems": gems,
     }

@@ -182,7 +182,11 @@ nave options daily
 nave options daily --limit 40 --top 10 --days-to-exp 30 --sheet
 nave options daily --no-refresh-congress    # skip FMP if you already ran nave congress
 nave options daily --json
+nave options daily --strict-filters         # old replay-tuned gates (fewer names)
 ```
+
+Daily mode uses relaxed gem filters (~30d income). If no gems pass, output includes a
+**watchlist** and **scan picks** (top executable trades from the universe scan).
 
 Equivalent manual steps:
 

@@ -1227,6 +1227,26 @@ def _load_congress_tickers() -> frozenset[str]:
 def _render_gems_sheet(console: Console, gem_payload: dict) -> None:
     gems = gem_payload.get("gems") or []
     watch = gem_payload.get("watchlist") or []
+    scan_picks = gem_payload.get("scan_picks") or []
+    if scan_picks and not gems:
+        pick_table = Table(
+            title="Scan picks (executable trades — gem filters had no matches)",
+            box=box.SIMPLE,
+        )
+        pick_table.add_column("Ticker")
+        pick_table.add_column("Strategy")
+        pick_table.add_column("Score", justify="right")
+        pick_table.add_column("PoP", justify="right")
+        pick_table.add_column("Touch", justify="right")
+        for item in scan_picks[:10]:
+            pick_table.add_row(
+                str(item.get("ticker")),
+                str(item.get("strategy") or "-").replace("_", " "),
+                str(item.get("composite_score") or "-"),
+                str(item.get("pop") or "-"),
+                str(item.get("probability_of_touch") or "-"),
+            )
+        console.print(pick_table)
     if watch:
         watch_table = Table(title="Watchlist (relaxed gates)", box=box.SIMPLE)
         watch_table.add_column("Ticker")
@@ -1285,6 +1305,7 @@ def _run_gems_scan(
     json_path: str | None,
     with_congress: bool,
     fetch_x: int,
+    strict_filters: bool = False,
 ) -> None:
     """Scan S&P names for executable income setups; rank hidden gems + congress boost."""
     analyzer = _build_options_analyzer(source=source)
@@ -1305,11 +1326,13 @@ def _run_gems_scan(
     )
 
     congress = _load_congress_tickers() if with_congress else frozenset()
+    filter_profile = "strict" if strict_filters else "daily"
     payload = run_hidden_gems_scan(
         scan_payload,
         congress_tickers=congress,
         top=top_gems,
         fetch_x_for_top=fetch_x,
+        filter_profile=filter_profile,
     )
     payload["scan"] = scan_payload
     gem_payload = payload["hidden_gems"]
@@ -1384,6 +1407,11 @@ def options_daily(
         max=12,
         help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
     ),
+    strict_filters: bool = typer.Option(
+        False,
+        "--strict-filters",
+        help="Use replay-tuned strict gem gates instead of daily operator defaults",
+    ),
 ) -> None:
     """Daily equity income scan: congress refresh + ~30d ranked setups for this week."""
     if refresh_congress:
@@ -1413,6 +1441,7 @@ def options_daily(
         json_path=json_path,
         with_congress=with_congress,
         fetch_x=fetch_x,
+        strict_filters=strict_filters,
     )
 
 
@@ -1446,6 +1475,11 @@ def gems(
         max=12,
         help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
     ),
+    strict_filters: bool = typer.Option(
+        False,
+        "--strict-filters",
+        help="Use replay-tuned strict gem gates instead of daily operator defaults",
+    ),
 ) -> None:
     """Scan for under-the-radar income setups with strong odds + X crowd interest."""
     _run_gems_scan(
@@ -1460,6 +1494,7 @@ def gems(
         json_path=json_path,
         with_congress=with_congress,
         fetch_x=fetch_x,
+        strict_filters=strict_filters,
     )
 
 
