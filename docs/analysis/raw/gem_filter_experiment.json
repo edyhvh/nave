@@ -1,0 +1,33 @@
+{
+  "source": "/Users/jhonny/nave/docs/analysis/raw/options_yearly_20260602T181813Z.json",
+  "configs": {
+    "baseline_all_actionable": {
+      "trades": 286,
+      "wins": 42,
+      "win_rate": 0.14685314685314685,
+      "avg_pnl": -472.9324819876871,
+      "gem_tier_count": 269
+    },
+    "v2_bullish_bull_put": {
+      "trades": 96,
+      "wins": 21,
+      "win_rate": 0.21875,
+      "avg_pnl": -160.29756845681803,
+      "gem_tier_count": 93
+    },
+    "v3_production": {
+      "trades": 96,
+      "wins": 21,
+      "win_rate": 0.21875,
+      "avg_pnl": -160.29756845681803,
+      "gem_tier_count": 93
+    },
+    "v4_strict_pop": {
+      "trades": 93,
+      "wins": 21,
+      "win_rate": 0.22580645161290322,
+      "avg_pnl": -163.40171833595994,
+      "gem_tier_count": 91
+    }
+  }
+}

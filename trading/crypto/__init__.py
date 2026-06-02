@@ -1,17 +1,12 @@
 """
 Crypto asset class — Hyperliquid futures trading stack.
 
-Modules:
-    client     — HyperliquidClient REST + signing wrapper
-    vault      — Fernet-encrypted EVM wallet storage
-    signals    — macro signal producers (COT, RRP, AAII, VIX)
-    strategy   — MacroMomentumStrategy, CotWeeklyStrategy, TheoryV2Strategy
-    theory_v2  — top-down weekly→daily→4H→1H engine
-    execution  — ExecutionPlan builder with timeframe contract
-    cot/       — CFTC COT fetcher + analyzer + report generator
-    cot_gate   — weekly COT filter for theory_v2
-    services/  — COTService orchestrator for MCP + CLI reuse
-    mcp_server — MCP tools for Hermes (account/COT/execution)
+Primary API (BTC/ETH only):
+    analysis   — ``CryptoAnalysisService.review()`` — COT, regime (long+short),
+                 momentum 4H/1H, Deribit options, regime thesis
+    momentum/  — setup engine + backtest
+    cot/       — contrarian bias + weekly permission gate
+    theory_v2  — diagnostic gate trace (secondary to analysis.review)
 """
 
 from trading.crypto.client import HyperliquidClient, HyperliquidClientProtocol
@@ -31,9 +26,12 @@ from trading.crypto.strategy import (
 )
 from trading.crypto.theory_v2 import TheoryV2Engine, TheoryV2Decision
 from trading.crypto.execution import ExecutionPlan, build_execution_plan
+from trading.crypto.analysis import CryptoAnalysisService, review_positions
 from trading.crypto.momentum import MomentumBacktester, MomentumSetupEngine, TradePlan
 
 __all__ = [
+    "CryptoAnalysisService",
+    "review_positions",
     "HyperliquidClient",
     "HyperliquidClientProtocol",
     "WalletVault",

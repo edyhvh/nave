@@ -11,6 +11,12 @@ from .cot_analyzer import COTAnalyzer, COTBias
 from .cot_position_generator import COTPositionGenerator
 from .cot_report_generator import COTReportGenerator
 from .cot_historical_analyzer import COTHistoricalAnalyzer
+from .cot_gate import (
+    CotPermission,
+    evaluate_cot_permission,
+    load_cached_cot_history,
+    weekly_cot_filter,
+)
 from .models import COT_DISCLAIMER, COTSectionMetrics, Confluence, TradeSetup, WeeklyAssetPlan
 
 __all__ = [
@@ -24,6 +30,10 @@ __all__ = [
     "COTPositionGenerator",
     "COTReportGenerator",
     "COTHistoricalAnalyzer",
+    "CotPermission",
+    "evaluate_cot_permission",
+    "load_cached_cot_history",
+    "weekly_cot_filter",
     "COT_DISCLAIMER",
     "COTSectionMetrics",
     "Confluence",

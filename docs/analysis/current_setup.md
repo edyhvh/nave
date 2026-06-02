@@ -1,11 +1,11 @@
 # Current Setup — BTC and ETH
 
 > **Generated:** 2026-04-09 (refreshed via `theory_v2` live analyzer)
-> **Engine:** `trading.theory_v2.TheoryV2Engine` with iter 4 / iter 5 / iter 6
+> **Engine:** `trading.crypto.theory_v2.TheoryV2Engine` with iter 4 / iter 5 / iter 6
 > refinement gates active
 > **Data window:** 5 years weekly · 1 year daily · 90 days 4H · 30 days 1H
 > **Last available local bar:** 2026-04-09 (gap-filled from Binance)
-> **Run:** `python -m trading.theory_v2 --coins BTC ETH`
+> **Run:** `python -m trading.crypto.theory_v2 --coins BTC ETH`
 
 ## BTC
 
@@ -52,7 +52,7 @@ Interpretation:
 ## How to refresh this card
 
 ```
-python -m trading.theory_v2 --coins BTC ETH
+python -m trading.crypto.theory_v2 --coins BTC ETH
 ```
 
 The analyzer loads weekly/daily/4H/1H data via the project's `data_loader`
@@ -84,6 +84,6 @@ Each gate, in order:
    Targets use ZC1/ZC2 dynamic exit: ZC1 (80% at nearest structural swing
    level, min 1R) and ZC2 (20% trailed to next swing or 2.5R).
 
-The fired signal is routed through `trading.execution.build_execution_plan`,
+The fired signal is routed through `trading.crypto.execution.build_execution_plan`,
 which enforces the timeframe contract (weekly/daily bias, 4H setup, 1H
 trigger, positive risk distance) before any order is sent.

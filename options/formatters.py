@@ -123,3 +123,34 @@ def render_options_opportunities_markdown_v2(payload: dict[str, Any]) -> list[st
         lines.append("Options unavailable: " + ", ".join(sorted(unavailable)))
 
     return ["\n".join(lines)]
+
+
+def render_hidden_gems_markdown_v2(payload: dict[str, Any]) -> list[str]:
+    """Telegram digest for hidden-gem equity scan."""
+    gems_block = payload.get("hidden_gems") or payload
+    gems = list(gems_block.get("gems") or [])
+    filt = gems_block.get("filter") or {}
+    lines = [
+        "*NAVE Hidden Gems*",
+        f"Prospects: {gems_block.get('actionable_gems', len(gems))}",
+        f"X snapshots: {gems_block.get('x_snapshots_loaded', 0)}",
+    ]
+    if filt:
+        lines.append(
+            f"Filters: pop>={filt.get('min_pop')} touch<{filt.get('max_touch')} "
+            "bullish bull-put only"
+        )
+    for idx, item in enumerate(gems[:6], start=1):
+        metrics = item.get("metrics") or {}
+        strategy = str(item.get("strategy") or "n/a").replace("_", " ")
+        reasons = "; ".join(item.get("reasons") or [])[:120]
+        lines.append(
+            f"{idx}. *{item.get('ticker')}* [{item.get('tier')}] "
+            f"score {item.get('gem_score')} {strategy} "
+            f"PoP {metrics.get('pop')}% touch {metrics.get('probability_of_touch')}%"
+        )
+        if reasons:
+            lines.append(f"   {reasons}")
+    if not gems:
+        lines.append("_No names passed refined filters today._")
+    return ["\n".join(lines)]

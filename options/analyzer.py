@@ -133,6 +133,23 @@ class OptionsAnalyzer:
                 f"No daily close history available for {history_symbol}")
         return hist["Close"].dropna()
 
+    def _directional_bias_from_history(self, closes: pd.Series, lookback_days: int = 20) -> str:
+        if closes is None or closes.empty:
+            return "neutral"
+        window = closes.dropna().tail(max(5, lookback_days + 1))
+        if len(window) < 5:
+            return "neutral"
+        spot = float(window.iloc[-1])
+        base = float(window.iloc[0])
+        if base <= 0:
+            return "neutral"
+        ret = (spot / base) - 1.0
+        if ret >= 0.03:
+            return "bullish"
+        if ret <= -0.03:
+            return "bearish"
+        return "neutral"
+
     def _has_earnings_within_dte(self, ticker: str, dte: int) -> tuple[bool, int | None]:
         """Check if earnings is within DTE. Returns (has_earnings, days_to_earnings)."""
         if yf is None:
@@ -356,6 +373,7 @@ class OptionsAnalyzer:
         risk_pct: float = 0.005,
         score_threshold: int = 75,
         require_tradeable: bool = True,
+        directional_bias_override: str | None = None,
     ) -> dict[str, Any]:
         """Scan BTC/ETH opportunities by applying momentum gating before options analysis."""
         requested = [str(coin).strip().upper()
@@ -414,18 +432,23 @@ class OptionsAnalyzer:
                 allowed = allowed and bool(context.get("tradeable"))
 
             if not allowed:
-                opportunities[coin] = {
-                    "coin": coin,
-                    "ticker": mapped_ticker,
-                    "status": "filtered_by_momentum",
-                    "momentum": context,
-                    "reason": "No momentum-qualified setup met the current gate.",
-                }
-                continue
-
-            momentum_allowed += 1
-            try:
+                override = str(directional_bias_override or "").strip().lower()
+                if override not in {"bullish", "bearish", "neutral"}:
+                    opportunities[coin] = {
+                        "coin": coin,
+                        "ticker": mapped_ticker,
+                        "status": "filtered_by_momentum",
+                        "momentum": context,
+                        "reason": "No momentum-qualified setup met the current gate.",
+                    }
+                    continue
+                directional_bias = override
+                momentum_allowed += 1
+            else:
+                momentum_allowed += 1
                 directional_bias = self._directional_bias_from_momentum(context)
+
+            try:
                 options_payload = self.run(
                     ticker=mapped_ticker,
                     days_to_exp=days_to_exp,
@@ -550,6 +573,8 @@ class OptionsAnalyzer:
         days_to_exp: int = 30,
         *,
         directional_bias: str = "neutral",
+        prefer_directional_override: bool = True,
+        allow_mega_cap_income_pass: bool = True,
         strategy: str | None = None,
         expiration: str | None = None,
         short_put: float | None = None,
@@ -576,6 +601,8 @@ class OptionsAnalyzer:
                 f"No option data available for {symbol}")
 
         closes = self._underlying_history(symbol)
+        if normalized_directional_bias == "neutral":
+            normalized_directional_bias = self._directional_bias_from_history(closes)
         hv_short = compute_historical_volatility(
             closes, window=self.config.hv_window_short)
         hv_long = compute_historical_volatility(
@@ -658,6 +685,7 @@ class OptionsAnalyzer:
             iv_percentile=iv_percentile,
             top_n=max(3, len(candidates)),
             risk_free_rate=self.config.risk_free_rate,
+            equity_risk_premium=self.config.equity_risk_premium,
             directional_bias=normalized_directional_bias,
         )
         if not all_ranked:
@@ -751,6 +779,8 @@ class OptionsAnalyzer:
             generation_audit=generation_audit,
             conservative_touch_max_pct=self.config.conservative_touch_max_pct,
             modeled_touch_warning_pct=self.config.modeled_touch_warning_pct,
+            prefer_directional_override=prefer_directional_override,
+            allow_mega_cap_income_pass=allow_mega_cap_income_pass,
         )
 
         payload = {

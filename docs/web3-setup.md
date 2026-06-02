@@ -110,13 +110,13 @@ client.market_close("ETH")                 # close position
 
 ```bash
 # Account summary
-python -m trading.client summary --wallet openfang
+python -m trading.crypto.client summary --wallet openfang
 
 # Live prices
-python -m trading.client mids --wallet openfang
+python -m trading.crypto.client mids --wallet openfang
 
 # Open positions
-python -m trading.client positions --wallet openfang
+python -m trading.crypto.client positions --wallet openfang
 ```
 
 ### Testnet vs mainnet
@@ -137,7 +137,7 @@ python -m trading.client positions --wallet openfang
 ### Running the example strategy (dry-run)
 
 ```bash
-python -m trading.strategy --wallet openfang --coins BTC ETH --max-usd 50
+python -m trading.crypto.strategy --wallet openfang --coins BTC ETH --max-usd 50
 ```
 
 Output shows computed signals and what orders *would* be placed. No orders are

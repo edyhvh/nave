@@ -118,7 +118,7 @@ This is the first quantitative justification for porting the engine into
 ## Refined engine (theory v2 — iter 4–6 gates active, original params)
 
 > **Generated:** 2026-04-09 via `python scripts/theory_v2_backtest.py`
-> **Engine:** `trading.theory_v2.TheoryV2Engine` with the iter 4 climax
+> **Engine:** `trading.crypto.theory_v2.TheoryV2Engine` with the iter 4 climax
 > cooldown, iter 5 chase prevention, and iter 6 ATR stop floor enforced.
 > **Parameters:** weekly 8-SMA 0.5% deadband, daily 20-SMA, 4H 12-SMA,
 > fixed 2R targeting.

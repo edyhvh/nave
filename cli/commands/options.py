@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,17 +18,33 @@ from cli.professional_typer import ProfessionalTyper
 from options.analyzer import OptionsAnalyzer
 from options.exceptions import OptionsError
 from options.prompt_builder import build_llm_paths, build_llm_prompt
-from options.universe import SP500_TOP_100_TICKERS
+from options.gems_pipeline import format_gem_digest, run_hidden_gems_scan
+from options.ticker_registry import (
+    DEFAULT_REGISTRY_DIR,
+    RegistryPaths,
+    build_registry,
+    load_registry,
+    load_ticker_profile,
+)
+from options.universe_scan import scan_equity_options_universe as _scan_equity_options_universe
+from options.universe import (
+    SP500_TOP_100_TICKERS,
+    SP500_TOP_40_TICKERS,
+    get_sp500_tickers,
+    get_sp500_top40,
+)
 from options.visualization import TerminalChartDependencyError, render_terminal_charts
 
 options_app = ProfessionalTyper(help="Options analytics commands")
+registry_app = ProfessionalTyper(help="Per-ticker playbook registry (S&P top 40)")
+options_app.add_typer(registry_app, name="registry")
 
 
 def _build_options_analyzer(*, source: str) -> OptionsAnalyzer:
     try:
         return OptionsAnalyzer(fetcher_source=source)
     except TypeError:
-        # Test doubles in unit tests may still expose the legacy constructor.
+        # Test doubles in unit tests may still expose the older constructor.
         return OptionsAnalyzer()
 
 
@@ -450,166 +464,6 @@ def _render_opportunities_sheet(console: Console, payload: dict) -> None:
     console.print(table)
 
 
-def _payload_trade_candidate(payload: dict) -> dict | None:
-    overlay = payload.get("analysis_overlay") or {}
-    decision = overlay.get("trade_decision") or {}
-    if decision.get("status") != "trade_candidate":
-        return None
-    final_recs = overlay.get("final_recommendations") or {}
-    executable = final_recs.get("best_overall_executable_setup") or {}
-    if not executable:
-        return None
-    return executable
-
-
-def _scan_equity_options_universe(
-    *,
-    analyzer: OptionsAnalyzer,
-    analyzer_factory: Callable[[], OptionsAnalyzer] | None = None,
-    tickers: list[str],
-    days_to_exp: int,
-    top_trades: int,
-    workers: int = 1,
-    progress_callback: Callable[[dict], None] | None = None,
-) -> dict:
-    results: dict[str, dict] = {}
-    ranked: list[dict] = []
-    errors = 0
-    scanned = 0
-
-    def _scan_one(ticker: str) -> dict:
-        symbol = ticker.strip().upper()
-        if not symbol:
-            return {"ticker": symbol, "status": "skipped"}
-        worker_analyzer = analyzer_factory() if analyzer_factory is not None else analyzer
-        try:
-            payload = worker_analyzer.run(ticker=symbol, days_to_exp=days_to_exp)
-        except OptionsError as exc:
-            return {
-                "ticker": symbol,
-                "status": "error",
-                "error": str(exc),
-            }
-        except Exception as exc:  # noqa: BLE001
-            return {
-                "ticker": symbol,
-                "status": "error",
-                "error": str(exc),
-            }
-
-        executable = _payload_trade_candidate(payload)
-        top = (payload.get("recommendations") or [{}])[0]
-        top_metrics = top.get("metrics") or {}
-        top_strategy = (top.get("strategy") or {}).get("name")
-        overlay = payload.get("analysis_overlay") or {}
-        decision = overlay.get("trade_decision") or {"status": "unknown"}
-
-        row = {
-            "ticker": symbol,
-            "status": "trade_candidate" if executable else "no_trade",
-            "trade_decision": decision,
-            "top_modeled_strategy": top_strategy,
-            "top_modeled_metrics": {
-                "composite_score": top_metrics.get("composite_score"),
-                "pop": top_metrics.get("pop"),
-                "expected_value": top_metrics.get("expected_value"),
-                "probability_of_touch": top_metrics.get("probability_of_touch"),
-            },
-            "executable_strategy": None,
-            "executable_metrics": {},
-            "executable_setup": None,
-            "warnings": list(overlay.get("warnings") or [])[:5],
-        }
-
-        if executable:
-            metrics = executable.get("metrics") or {}
-            row["executable_strategy"] = executable.get("strategy_name")
-            row["executable_setup"] = {
-                "strategy_name": executable.get("strategy_name"),
-                "bias": executable.get("bias"),
-                "thesis": executable.get("thesis"),
-                "rationale": executable.get("rationale"),
-                "setup_summary": executable.get("setup_summary"),
-            }
-            row["executable_metrics"] = {
-                "composite_score": metrics.get("composite_score"),
-                "pop": metrics.get("pop"),
-                "expected_value": metrics.get("expected_value"),
-                "probability_of_touch": metrics.get("probability_of_touch"),
-                "theta_per_day": metrics.get("theta_per_day"),
-                "max_loss": metrics.get("max_loss"),
-            }
-            ranked.append(
-                {
-                    "ticker": symbol,
-                    "strategy_name": executable.get("strategy_name"),
-                    "composite_score": metrics.get("composite_score"),
-                    "expected_value": metrics.get("expected_value"),
-                    "pop": metrics.get("pop"),
-                    "probability_of_touch": metrics.get("probability_of_touch"),
-                    "max_loss": metrics.get("max_loss"),
-                    "setup_summary": executable.get("setup_summary"),
-                    "rationale": executable.get("rationale"),
-                }
-            )
-        return row
-
-    symbols = [ticker.strip().upper() for ticker in tickers if ticker.strip()]
-    max_workers = max(1, min(workers, len(symbols) or 1))
-
-    if max_workers == 1:
-        for symbol in symbols:
-            row = _scan_one(symbol)
-            if row.get("status") == "error":
-                errors += 1
-            elif row.get("status") != "skipped":
-                scanned += 1
-            if row.get("ticker"):
-                results[str(row["ticker"])] = row
-            if progress_callback is not None:
-                progress_callback(row)
-    else:
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(_scan_one, symbol): symbol for symbol in symbols}
-            for future in as_completed(futures):
-                row = future.result()
-                if row.get("status") == "error":
-                    errors += 1
-                elif row.get("status") != "skipped":
-                    scanned += 1
-                if row.get("ticker"):
-                    results[str(row["ticker"])] = row
-                if progress_callback is not None:
-                    progress_callback(row)
-
-    ranked = sorted(
-        ranked,
-        key=lambda item: (
-            float(item.get("composite_score") or 0.0),
-            float(item.get("expected_value") or 0.0),
-            float(item.get("pop") or 0.0),
-            -float(item.get("probability_of_touch") or 100.0),
-        ),
-        reverse=True,
-    )
-
-    return {
-        "strategy": "options_equity_universe_scan_v1",
-        "universe": "sp500_top_100",
-        "days_to_exp": days_to_exp,
-        "summary": {
-            "tickers_requested": len(tickers),
-            "tickers_scanned": scanned,
-            "trade_candidates": len(ranked),
-            "errors": errors,
-            "top_trades_returned": min(top_trades, len(ranked)),
-            "workers": max_workers,
-        },
-        "ranked": ranked[:top_trades],
-        "results": results,
-    }
-
-
 def _render_equity_scan_sheet(console: Console, payload: dict) -> None:
     summary = payload.get("summary") or {}
     header = Table(title="Options Equity Universe Scan", box=box.SIMPLE_HEAVY)
@@ -754,8 +608,18 @@ def analyze(
         100,
         "--sp500-limit",
         min=1,
-        max=100,
-        help="Number of default S&P 500 universe tickers to scan",
+        max=200,
+        help="Number of default S&P 500 universe tickers to scan (up to 200)",
+    ),
+    directional_override: bool = typer.Option(
+        True,
+        "--directional-override/--no-directional-override",
+        help="Allow bias-aligned income setups flagged as directional override when strict gate blocks",
+    ),
+    allow_mega_cap_income: bool = typer.Option(
+        True,
+        "--allow-mega-cap-income/--no-allow-mega-cap-income",
+        help="Relax income gate for liquid mega-caps with high PoP and low touch when bias aligns",
     ),
     top_trades: int = typer.Option(
         3,
@@ -808,7 +672,11 @@ def analyze(
     console = Console()
 
     if sp500_scan:
-        scan_tickers = list(SP500_TOP_100_TICKERS[:sp500_limit])
+        scan_tickers = (
+            list(get_sp500_tickers(sp500_limit))
+            if sp500_limit > len(SP500_TOP_100_TICKERS)
+            else list(SP500_TOP_100_TICKERS[:sp500_limit])
+        )
         show_progress = not json_out
 
         if show_progress:
@@ -910,9 +778,16 @@ def analyze(
                 long_put=long_put,
                 short_premium=short_premium,
                 long_premium=long_premium,
+                prefer_directional_override=directional_override,
+                allow_mega_cap_income_pass=allow_mega_cap_income,
             )
         else:
-            payload = analyzer.run(ticker=resolved_ticker, days_to_exp=days_to_exp)
+            payload = analyzer.run(
+                ticker=resolved_ticker,
+                days_to_exp=days_to_exp,
+                prefer_directional_override=directional_override,
+                allow_mega_cap_income_pass=allow_mega_cap_income,
+            )
     except OptionsError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -1004,6 +879,484 @@ def analyze(
         report_path=report_path,
         risk_warnings=risk_warnings,
     )
+
+
+def _render_registry_table(console: Console, index: dict) -> None:
+    table = Table(title="S&P Top-40 — Per-Ticker Learned Setups", box=box.SIMPLE_HEAVY)
+    table.add_column("Ticker")
+    table.add_column("Bias 20d")
+    table.add_column("Merge")
+    table.add_column("Learned setup")
+    table.add_column("Edge", justify="right")
+    table.add_column("Conf.")
+    table.add_column("Replay WR", justify="right")
+    table.add_column("OOS WR", justify="right")
+    table.add_column("Congress", justify="right")
+    for sym, meta in sorted((index.get("profiles") or {}).items()):
+        wr = meta.get("best_win_rate")
+        oos = meta.get("oos_win_rate")
+        edge = meta.get("learned_edge_score")
+        table.add_row(
+            sym,
+            str(meta.get("bias_20d") or "-"),
+            str(meta.get("merge_status") or "-"),
+            str(meta.get("preferred_setup") or "-").replace("_", " "),
+            f"{edge:.0f}" if isinstance(edge, (int, float)) else "-",
+            str(meta.get("learned_confidence") or "-"),
+            f"{wr:.0%}" if isinstance(wr, (int, float)) else "-",
+            f"{oos:.0%}" if isinstance(oos, (int, float)) else "-",
+            str(meta.get("congress_mentions") or 0),
+        )
+    console.print(table)
+
+
+def _render_learned_strategy_matrix(console: Console, profiles: dict[str, dict]) -> None:
+    """Full per-ticker setup ranking for learning (not one global template)."""
+    table = Table(title="Per-ticker setup learning matrix", box=box.SIMPLE_HEAVY)
+    table.add_column("Ticker")
+    table.add_column("Primary (20d)")
+    table.add_column("Bull")
+    table.add_column("Bear")
+    table.add_column("Neutral")
+    table.add_column("Avoid")
+    for sym in sorted(profiles.keys()):
+        learned = profiles[sym].get("learned_strategy") or {}
+        primary = (learned.get("primary") or {}).get("strategy") or "-"
+        by_bias = learned.get("by_bias") or {}
+        bull = (by_bias.get("bullish") or {}).get("strategy", "-")
+        bear = (by_bias.get("bearish") or {}).get("strategy", "-")
+        neut = (by_bias.get("neutral") or {}).get("strategy", "-")
+        avoid = ", ".join(
+            (a.get("strategy") or "")[:12] for a in (learned.get("avoid") or [])[:2]
+        ) or "-"
+        table.add_row(
+            sym,
+            str(primary).replace("_", " "),
+            str(bull).replace("_", " "),
+            str(bear).replace("_", " "),
+            str(neut).replace("_", " "),
+            avoid.replace("_", " "),
+        )
+    console.print(table)
+
+
+@registry_app.command("build")
+def registry_build(
+    tickers: str = typer.Option(
+        "",
+        "--tickers",
+        help="Comma-separated tickers (default: S&P top 40)",
+    ),
+    replay_json: str | None = typer.Option(
+        None,
+        "--replay-json",
+        help="Path to options_yearly_*.json for setup stats",
+    ),
+    live: bool = typer.Option(
+        False,
+        "--live",
+        help="Include live options snapshot per ticker (slow)",
+    ),
+    out_dir: str = typer.Option(
+        str(DEFAULT_REGISTRY_DIR),
+        "--out",
+        help="Registry directory",
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Build playbook cards: price behavior, setup stats, X, Congress."""
+    symbols = (
+        [t.strip().upper() for t in tickers.split(",") if t.strip()]
+        if tickers.strip()
+        else list(get_sp500_top40())
+    )
+    replay_path = Path(replay_json).expanduser() if replay_json else None
+    result = build_registry(
+        symbols,
+        paths=RegistryPaths(Path(out_dir)),
+        replay_json=replay_path,
+        include_live_options=live,
+    )
+    if json_out:
+        typer.echo(json.dumps(result["index"], indent=2, default=str))
+        return
+    console = Console()
+    typer.echo(f"Registry built → {out_dir}")
+    _render_registry_table(console, result["index"])
+
+
+@registry_app.command("iterate")
+def registry_iterate(
+    backtest: bool = typer.Option(
+        False,
+        "--backtest",
+        help="Refresh yearly replay before learning (slow)",
+    ),
+    months: int = typer.Option(12, "--months"),
+    no_gems: bool = typer.Option(False, "--no-gems"),
+    folds: int = typer.Option(4, "--folds"),
+    replay_json: str | None = typer.Option(None, "--replay-json"),
+    out_dir: str = typer.Option(str(DEFAULT_REGISTRY_DIR), "--out"),
+) -> None:
+    """Full loop: walk-forward validate → merge journal → rebuild registry → gems."""
+    from options.strategy_loop import run_strategy_iteration
+
+    scan_fn = None
+    if not no_gems:
+        from options.universe import get_sp500_top40
+
+        def scan_fn(
+            *,
+            tickers: list[str],
+            days_to_exp: int = 30,
+            top_trades: int = 10,
+            workers: int = 2,
+        ) -> dict:
+            analyzer = _build_options_analyzer(source="yfinance")
+            return _scan_equity_options_universe(
+                analyzer=analyzer,
+                analyzer_factory=lambda: _build_options_analyzer(source="yfinance"),
+                tickers=tickers,
+                days_to_exp=days_to_exp,
+                top_trades=top_trades,
+                workers=workers,
+            )
+
+    replay_path = Path(replay_json).expanduser() if replay_json else None
+    result = run_strategy_iteration(
+        replay_json=replay_path,
+        run_backtest=backtest,
+        backtest_months=months,
+        registry_dir=Path(out_dir),
+        run_gems=not no_gems,
+        n_folds=folds,
+        scan_fn=scan_fn,
+    )
+    merge = result.get("merge_readiness") or {}
+    typer.echo(f"Iteration report: {result['report_md']}")
+    typer.echo(f"Registry: {result['registry']['root']}")
+    typer.echo(
+        f"Merge ready: {merge.get('ready_to_merge')} "
+        f"(approved={merge.get('counts', {}).get('approved')}, "
+        f"watch={merge.get('counts', {}).get('watch')})"
+    )
+    if not merge.get("ready_to_merge"):
+        raise typer.Exit(code=1)
+
+
+@registry_app.command("learn")
+def registry_learn(
+    ticker: str = typer.Option(
+        "",
+        "--ticker",
+        help="Single ticker deep-dive; default shows full matrix",
+    ),
+    out_dir: str = typer.Option(str(DEFAULT_REGISTRY_DIR), "--out"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show per-ticker learned setups (from replay) — each name has its own strategy."""
+    paths = RegistryPaths(Path(out_dir))
+    loaded = load_registry(paths)
+    if loaded.get("status") == "missing":
+        typer.echo(loaded.get("hint", "Registry missing"))
+        raise typer.Exit(code=1)
+
+    if ticker.strip():
+        profile = load_ticker_profile(ticker, paths=paths)
+        if profile is None:
+            typer.echo(f"No profile for {ticker.upper()}")
+            raise typer.Exit(code=1)
+        learned = profile.get("learned_strategy") or {}
+        if json_out:
+            typer.echo(json.dumps(learned, indent=2, default=str))
+            return
+        console = Console()
+        console.print(Panel(f"[bold]{profile['ticker']}[/bold] learned strategy", border_style="green"))
+        console.print(learned.get("narrative") or "")
+        console.print("\n[bold]Ranked setups (replay)[/bold]")
+        for row in learned.get("ranked") or []:
+            console.print(
+                f"  {row['strategy']}: edge {row['edge_score']:.0f}, "
+                f"{row['win_rate']:.0%} win, n={row['trades']}, ${row['avg_pnl_dollars']:.0f} avg"
+            )
+        console.print("\n[bold]By bias[/bold]")
+        for b, pick in (learned.get("by_bias") or {}).items():
+            console.print(
+                f"  {b}: {pick.get('strategy')} (edge {pick.get('edge_score')}, "
+                f"{pick.get('win_rate', 0):.0%} win)"
+            )
+        if learned.get("avoid"):
+            console.print("\n[bold]Avoid[/bold]")
+            for a in learned["avoid"]:
+                console.print(f"  {a.get('strategy')}: {a.get('reason')}")
+        wf = learned.get("walkforward") or {}
+        if wf:
+            console.print("\n[bold]Walk-forward (out-of-sample)[/bold]")
+            console.print(f"  {wf.get('narrative') or wf.get('status')}")
+            for fold in wf.get("folds") or []:
+                wr = fold.get("win_rate")
+                wr_s = f"{wr:.0%}" if wr is not None else "—"
+                console.print(
+                    f"  fold {fold.get('fold')}: primary={fold.get('primary')} "
+                    f"test_n={fold.get('test_trades')} win={wr_s}"
+                )
+        return
+
+    profiles: dict[str, dict] = {}
+    for sym in loaded["index"].get("tickers") or []:
+        p = load_ticker_profile(sym, paths=paths)
+        if p:
+            profiles[sym] = p
+    if json_out:
+        payload = {s: p.get("learned_strategy") for s, p in profiles.items()}
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+    _render_learned_strategy_matrix(Console(), profiles)
+
+
+@registry_app.command("list")
+def registry_list(
+    out_dir: str = typer.Option(str(DEFAULT_REGISTRY_DIR), "--out"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """List indexed playbook summaries."""
+    loaded = load_registry(RegistryPaths(Path(out_dir)))
+    if loaded.get("status") == "missing":
+        typer.echo(loaded.get("hint", "Registry missing"))
+        raise typer.Exit(code=1)
+    index = loaded["index"]
+    if json_out:
+        typer.echo(json.dumps(index, indent=2))
+        return
+    _render_registry_table(Console(), index)
+
+
+@registry_app.command("show")
+def registry_show(
+    ticker: str = typer.Argument(..., help="Ticker symbol"),
+    out_dir: str = typer.Option(str(DEFAULT_REGISTRY_DIR), "--out"),
+    json_out: bool = typer.Option(False, "--json"),
+    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
+) -> None:
+    """Show full playbook card for one ticker."""
+    profile = load_ticker_profile(ticker, RegistryPaths(Path(out_dir)))
+    if profile is None:
+        typer.echo(f"No profile for {ticker.upper()}. Run: nave options registry build")
+        raise typer.Exit(code=1)
+    if json_out:
+        typer.echo(json.dumps(profile, indent=2, default=str))
+        return
+    if not sheet:
+        typer.echo(json.dumps(profile, indent=2, default=str))
+        return
+    console = Console()
+    pb = profile.get("playbook") or {}
+    console.print(Panel(f"[bold]{profile['ticker']}[/bold] playbook", border_style="cyan"))
+    console.print(f"[dim]Updated[/dim] {profile.get('updated_at')}")
+    console.print("\n[bold]Price behavior[/bold]")
+    for k, v in (profile.get("price_behavior") or {}).items():
+        console.print(f"  {k}: {v}")
+    learned = profile.get("learned_strategy") or {}
+    console.print("\n[bold]Learned strategy (per ticker)[/bold]")
+    console.print(f"  {learned.get('narrative') or '—'}")
+    console.print(
+        f"  confidence={learned.get('confidence')} "
+        f"size={(learned.get('execution') or {}).get('size')}"
+    )
+    console.print("\n[bold]All setups ranked (replay)[/bold]")
+    for strat in learned.get("ranked") or (profile.get("setup_performance") or {}).get(
+        "strategies"
+    ) or []:
+        edge = strat.get("edge_score", "-")
+        console.print(
+            f"  - {strat['strategy']}: edge {edge}, {strat['trades']} trades, "
+            f"win {strat['win_rate']:.0%}, avg ${strat['avg_pnl_dollars']:.0f}"
+        )
+    console.print("\n[bold]Best setup if bias shifts[/bold]")
+    for b, pick in (learned.get("by_bias") or {}).items():
+        console.print(
+            f"  {b}: {pick.get('strategy')} ({pick.get('win_rate', 0):.0%} win, n={pick.get('trades')})"
+        )
+    console.print("\n[bold]X — entry / targets / opinion[/bold]")
+    xo = profile.get("x_opinion") or {}
+    console.print(f"  {xo.get('summary') or xo.get('hint') or xo.get('status')}")
+    if xo.get("entry_prices"):
+        console.print(f"  entry prices mentioned: {xo.get('entry_prices')}")
+    if xo.get("target_prices"):
+        console.print(f"  targets mentioned: {xo.get('target_prices')}")
+    for quote in (xo.get("sample_quotes") or [])[:2]:
+        console.print(f"  quote: {quote[:100]}...")
+    console.print("\n[bold]Congress holdings proxy[/bold]")
+    cg = profile.get("congress_holdings") or profile.get("congress") or {}
+    console.print(
+        f"  mentions={cg.get('mentions')} flow={cg.get('flow_lean')} "
+        f"(P {cg.get('purchase_count')} / S {cg.get('sale_count')})"
+    )
+    console.print("\n[bold]Rules[/bold]")
+    for rule in pb.get("rules") or []:
+        console.print(f"  • {rule}")
+    if profile.get("live_options"):
+        console.print("\n[bold]Live options[/bold]")
+        lo = profile["live_options"]
+        console.print(
+            f"  {lo.get('trade_decision')} | {lo.get('strategy')} | "
+            f"PoP {lo.get('pop')} touch {lo.get('touch')}"
+        )
+
+
+def _load_congress_tickers() -> frozenset[str]:
+    """Tickers from the latest saved politicians scan report, if any."""
+    root = Path(__file__).resolve().parents[2] / "var" / "reports" / "politicians"
+    if not root.is_dir():
+        return frozenset()
+    reports = sorted(root.glob("*.json"), reverse=True)
+    if not reports:
+        return frozenset()
+    try:
+        payload = json.loads(reports[0].read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return frozenset()
+    out: set[str] = set()
+    for trade in payload.get("new_trades") or payload.get("trades") or []:
+        sym = str(trade.get("symbol") or trade.get("ticker") or "").strip().upper()
+        if sym:
+            out.add(sym)
+    return frozenset(out)
+
+
+def _render_gems_sheet(console: Console, gem_payload: dict) -> None:
+    gems = gem_payload.get("gems") or []
+    watch = gem_payload.get("watchlist") or []
+    if watch:
+        watch_table = Table(title="Watchlist (relaxed gates)", box=box.SIMPLE)
+        watch_table.add_column("Ticker")
+        watch_table.add_column("Score", justify="right")
+        watch_table.add_column("PoP", justify="right")
+        for item in watch[:8]:
+            metrics = item.get("metrics") or {}
+            watch_table.add_row(
+                str(item.get("ticker")),
+                str(item.get("gem_score")),
+                str(metrics.get("pop", "-")),
+            )
+        console.print(watch_table)
+
+    table = Table(title="Hidden gem prospects (structure + X crowd)", box=box.SIMPLE_HEAVY)
+    table.add_column("Ticker")
+    table.add_column("Gem", justify="right")
+    table.add_column("Tier")
+    table.add_column("Strategy")
+    table.add_column("PoP", justify="right")
+    table.add_column("Touch", justify="right")
+    table.add_column("X", justify="right")
+    table.add_column("Why")
+    for item in gems:
+        metrics = item.get("metrics") or {}
+        why = "; ".join(item.get("reasons") or [])[:80]
+        table.add_row(
+            str(item.get("ticker")),
+            str(item.get("gem_score")),
+            str(item.get("tier")),
+            str(item.get("strategy") or "-").replace("_", " "),
+            f"{metrics.get('pop', '-')}",
+            f"{metrics.get('probability_of_touch', '-')}",
+            str(item.get("x_interest_score") or 0),
+            why,
+        )
+    console.print(table)
+    x_loaded = gem_payload.get("x_snapshots_loaded", 0)
+    if x_loaded == 0:
+        console.print(
+            "[yellow]No X snapshots in stocks_history/ — run "
+            "`nave stocks x-analyze --tickers TICK1,TICK2` on your shortlist.[/yellow]"
+        )
+
+
+@options_app.command("gems")
+def gems(
+    limit: int = typer.Option(
+        100,
+        "--limit",
+        min=10,
+        max=200,
+        help="S&P 500 universe size to scan",
+    ),
+    days_to_exp: int = typer.Option(30, "--days-to-exp", min=1, max=365),
+    top_gems: int = typer.Option(15, "--top", min=1, max=50, help="Hidden gems to show"),
+    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
+    source: str = typer.Option("yfinance", "--source"),
+    json_out: bool = typer.Option(False, "--json"),
+    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
+    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
+    json_path: str | None = typer.Option(None, "--json-path"),
+    with_congress: bool = typer.Option(
+        True,
+        "--with-congress/--no-congress",
+        help="Boost tickers in latest congressional disclosure report",
+    ),
+    fetch_x: int = typer.Option(
+        0,
+        "--fetch-x",
+        min=0,
+        max=12,
+        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
+    ),
+) -> None:
+    """Scan for under-the-radar income setups with strong odds + X crowd interest."""
+    analyzer = _build_options_analyzer(source=source)
+    console = Console()
+    tickers = (
+        list(get_sp500_tickers(limit))
+        if limit > len(SP500_TOP_100_TICKERS)
+        else list(SP500_TOP_100_TICKERS[:limit])
+    )
+
+    scan_payload = _scan_equity_options_universe(
+        analyzer=analyzer,
+        analyzer_factory=lambda: _build_options_analyzer(source=source),
+        tickers=tickers,
+        days_to_exp=days_to_exp,
+        top_trades=top_gems,
+        workers=scan_workers,
+    )
+
+    congress = _load_congress_tickers() if with_congress else frozenset()
+    payload = run_hidden_gems_scan(
+        scan_payload,
+        congress_tickers=congress,
+        top=top_gems,
+        fetch_x_for_top=fetch_x,
+    )
+    payload["scan"] = scan_payload
+    gem_payload = payload["hidden_gems"]
+
+    report_path: Path | None = None
+    if save_json:
+        report_path = _resolve_json_report_path(
+            analyzer=analyzer,
+            ticker=f"hidden_gems_{limit}",
+            json_path=json_path,
+        )
+        payload = dict(payload)
+        payload["artifacts"] = {"json_report_path": str(report_path)}
+        report_path = _write_json_report(payload=payload, out_path=report_path)
+
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+
+    typer.echo(format_gem_digest(gem_payload))
+    typer.echo("")
+    if sheet:
+        _render_gems_sheet(console, gem_payload)
+    else:
+        for item in gem_payload.get("gems") or []:
+            typer.echo(
+                f"  {item['ticker']} score={item['gem_score']} "
+                f"{item.get('strategy')} — {', '.join(item.get('reasons') or [])}"
+            )
+    if report_path is not None:
+        typer.echo(f"JSON report: {report_path}")
 
 
 @options_app.command("opportunities")

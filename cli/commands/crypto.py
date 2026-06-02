@@ -12,9 +12,13 @@ from rich.table import Table
 from cli.professional_typer import ProfessionalTyper
 from trading.crypto.momentum import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService
+from trading.crypto.analysis import CryptoAnalysisService
+from trading.crypto.analysis.daily_display import render_daily_entry_check, run_daily_entry_check
+from trading.crypto.analysis.review import format_options_display
 
-crypto_app = ProfessionalTyper(help="Crypto derivatives momentum commands")
+crypto_app = ProfessionalTyper(help="Crypto BTC/ETH — use [bold]nave daily[/bold] for entry checks")
 DEFAULT_SCORE_THRESHOLD = load_momentum_config().score_tradeable_threshold
+DEFAULT_OPERATOR_SCORE_THRESHOLD = 90
 
 
 def _json_default(value: Any) -> Any:
@@ -110,6 +114,72 @@ def _render_playbook(payload: dict) -> None:
     console.print(f"expected move: {plan['expected_move_pct'] * 100:.1f}%  RR: {plan['rr_estimated']:.2f}")
 
 
+def _emit_scan_payload(payload: dict, *, json_out: bool, telegram_markdown_v2: bool) -> None:
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
+        return
+    if telegram_markdown_v2:
+        from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
+
+        messages = render_momentum_scan_markdown_v2(payload)
+        for idx, message in enumerate(messages, start=1):
+            if idx > 1:
+                typer.echo("\n---\n")
+            typer.echo(message)
+        return
+    _render_scan(payload)
+
+
+def _run_scan_command(
+    *,
+    symbols: str,
+    tf: str,
+    account_equity: float,
+    risk_pct: float,
+    score_threshold: int,
+    adaptive_threshold: bool,
+    telegram_markdown_v2: bool,
+    json_out: bool,
+) -> None:
+    payload = _build_scan_payload(
+        symbols=symbols,
+        tf=tf,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        score_threshold=score_threshold,
+        apply_cadence_policy=adaptive_threshold,
+    )
+    _emit_scan_payload(
+        payload,
+        json_out=json_out,
+        telegram_markdown_v2=telegram_markdown_v2,
+    )
+
+
+def _run_playbook_command(
+    *,
+    symbol: str,
+    side: str,
+    tf: str,
+    account_equity: float,
+    risk_pct: float,
+    score_threshold: int,
+    json_out: bool,
+) -> None:
+    payload = _build_playbook_payload(
+        symbol=symbol,
+        side=side,
+        tf=tf,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        score_threshold=score_threshold,
+    )
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
+        return
+    _render_playbook(payload)
+
+
 @crypto_app.command("momentum-scan")
 def momentum_scan(
     symbols: str = typer.Option("BTCUSDT,ETHUSDT", "--symbols", help="Comma-separated perp symbols."),
@@ -134,27 +204,16 @@ def momentum_scan(
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Scan BTC/ETH derivatives for fresh momentum setups."""
-    payload = _build_scan_payload(
+    _run_scan_command(
         symbols=symbols,
         tf=tf,
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
-        apply_cadence_policy=adaptive_threshold,
+        adaptive_threshold=adaptive_threshold,
+        telegram_markdown_v2=telegram_markdown_v2,
+        json_out=json_out,
     )
-    if json_out:
-        typer.echo(json.dumps(payload, indent=2, default=_json_default))
-        return
-    if telegram_markdown_v2:
-        from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
-
-        messages = render_momentum_scan_markdown_v2(payload)
-        for idx, message in enumerate(messages, start=1):
-            if idx > 1:
-                typer.echo("\n---\n")
-            typer.echo(message)
-        return
-    _render_scan(payload)
 
 
 @crypto_app.command("scan")
@@ -164,9 +223,13 @@ def scan(
     account_equity: float = typer.Option(10000.0, "--account-equity", help="Account equity used for sizing context."),
     risk_pct: float = typer.Option(0.005, "--risk-pct", help="Risk per trade as decimal, e.g. 0.005 = 0.5%."),
     score_threshold: int = typer.Option(
-        DEFAULT_SCORE_THRESHOLD,
+        DEFAULT_OPERATOR_SCORE_THRESHOLD,
         "--score-threshold",
-        help="Minimum score to flag a setup as tradeable.",
+        help=(
+            "Minimum score to flag a setup as tradeable. "
+            "Default market scan uses a stricter operator threshold; "
+            "momentum-scan uses the configured engine threshold."
+        ),
     ),
     adaptive_threshold: bool = typer.Option(
         False,
@@ -181,27 +244,16 @@ def scan(
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Default market scan: routes to the momentum engine."""
-    payload = _build_scan_payload(
+    _run_scan_command(
         symbols=symbols,
         tf=tf,
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
-        apply_cadence_policy=adaptive_threshold,
+        adaptive_threshold=adaptive_threshold,
+        telegram_markdown_v2=telegram_markdown_v2,
+        json_out=json_out,
     )
-    if json_out:
-        typer.echo(json.dumps(payload, indent=2, default=_json_default))
-        return
-    if telegram_markdown_v2:
-        from trading.crypto.momentum.formatters import render_momentum_scan_markdown_v2
-
-        messages = render_momentum_scan_markdown_v2(payload)
-        for idx, message in enumerate(messages, start=1):
-            if idx > 1:
-                typer.echo("\n---\n")
-            typer.echo(message)
-        return
-    _render_scan(payload)
 
 
 @crypto_app.command("momentum-playbook")
@@ -219,18 +271,15 @@ def momentum_playbook(
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Build a concrete derivatives momentum playbook for one symbol and side."""
-    payload = _build_playbook_payload(
+    _run_playbook_command(
         symbol=symbol,
         side=side,
         tf=tf,
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
+        json_out=json_out,
     )
-    if json_out:
-        typer.echo(json.dumps(payload, indent=2, default=_json_default))
-        return
-    _render_playbook(payload)
 
 
 @crypto_app.command("playbook")
@@ -248,18 +297,63 @@ def playbook(
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Default trade-plan builder: routes to the momentum engine."""
-    payload = _build_playbook_payload(
+    _run_playbook_command(
         symbol=symbol,
         side=side,
         tf=tf,
         account_equity=account_equity,
         risk_pct=risk_pct,
         score_threshold=score_threshold,
+        json_out=json_out,
+    )
+
+
+@crypto_app.command("daily")
+def crypto_daily(
+    coins: str = typer.Option("BTC,ETH", "--coins", "-c"),
+    account_equity: float = typer.Option(10000.0, "--account-equity"),
+    risk_pct: float = typer.Option(0.005, "--risk-pct"),
+    include_options: bool = typer.Option(True, "--options/--no-options"),
+    options_source: str = typer.Option("deribit", "--options-source"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Same as [bold]nave daily[/bold] — when to enter BTC/ETH today."""
+    coin_list = [part.strip().upper() for part in coins.replace(",", " ").split() if part.strip()]
+    payload = run_daily_entry_check(
+        coin_list,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        include_options=include_options,
+        options_source=options_source,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=_json_default))
         return
-    _render_playbook(payload)
+    render_daily_entry_check(payload, console=Console())
+
+
+@crypto_app.command("position-review")
+def position_review(
+    coins: str = typer.Option("BTC,ETH", "--coins", help="Comma or space separated coins."),
+    account_equity: float = typer.Option(10000.0, "--account-equity"),
+    risk_pct: float = typer.Option(0.005, "--risk-pct"),
+    include_options: bool = typer.Option(True, "--options/--no-options"),
+    options_source: str = typer.Option("deribit", "--options-source"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
+) -> None:
+    """Unified BTC/ETH: COT + momentum + regime + options."""
+    coin_list = [part.strip().upper() for part in coins.replace(",", " ").split() if part.strip()]
+    payload = CryptoAnalysisService().review(
+        coin_list,
+        account_equity=account_equity,
+        risk_pct=risk_pct,
+        include_options=include_options,
+        options_source=options_source,
+    )
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=_json_default))
+        return
+    render_daily_entry_check(payload, console=Console())
 
 
 @crypto_app.command("momentum-backtest")

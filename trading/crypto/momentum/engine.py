@@ -27,6 +27,7 @@ from trading.crypto.momentum.structure import (
     assess_structure,
     build_invalidation,
 )
+from trading.crypto.momentum.cot_overlay import CotOverlayAssessment, evaluate_cot_overlay
 from trading.crypto.momentum.theory_overlay import (
     TheoryOverlayAssessment,
     build_weekly_frame,
@@ -58,7 +59,17 @@ class MomentumSetupEngine:
         account_equity: float = 10000.0,
         risk_pct: float | None = None,
         side: str | None = None,
+        as_of: pd.Timestamp | None = None,
+        cot_overlay_mode: str = "neutral",
     ) -> list[TradePlan]:
+        """Evaluate momentum setup geometry.
+
+        ``cot_overlay_mode`` is ``neutral`` by default for deterministic engine
+        and unit-test use. Live operator paths pass ``live`` from
+        ``MomentumMarketService``; historical backtests pass ``historical``.
+        """
+        if cot_overlay_mode not in {"neutral", "historical", "live"}:
+            raise ValueError("cot_overlay_mode must be neutral, historical, or live")
         daily = normalize_frame(daily_frame)
         setup = normalize_frame(setup_frame)
         trigger = normalize_frame(trigger_frame)
@@ -77,6 +88,8 @@ class MomentumSetupEngine:
                 funding_rate=funding_rate,
                 account_equity=account_equity,
                 risk_pct=risk_pct or self.config.risk.default_risk_pct,
+                as_of=as_of,
+                cot_overlay_mode=cot_overlay_mode,
             )
             plans.append(evaluation.plan)
         return plans
@@ -94,6 +107,8 @@ class MomentumSetupEngine:
         funding_rate: float | None,
         account_equity: float,
         risk_pct: float,
+        as_of: pd.Timestamp | None = None,
+        cot_overlay_mode: str = "neutral",
     ) -> MomentumEvaluation:
         daily_trend = assess_trend(daily, side, self.config)
         setup_trend = assess_trend(setup, side, self.config)
@@ -137,6 +152,23 @@ class MomentumSetupEngine:
             expected_move_pct=expected_move_pct,
             config=self.config.theory_overlay,
         )
+        if cot_overlay_mode == "neutral":
+            cot_overlay = CotOverlayAssessment(
+                passed=True,
+                aligned=False,
+                score_bonus=0,
+                permission="allow",
+                contrarian_bias="neutral",
+                reason="COT overlay neutral for direct engine evaluation",
+            )
+        else:
+            cot_overlay = evaluate_cot_overlay(
+                side=side,
+                symbol=symbol,
+                config=self.config.cot_overlay,
+                as_of=as_of,
+                mode="historical" if cot_overlay_mode == "historical" else "live",
+            )
         momentum_failure_watch = self._momentum_failure_watch_accepts(
             side=side,
             daily_trend=daily_trend,
@@ -170,15 +202,17 @@ class MomentumSetupEngine:
             stop_pct=stop_pct,
             config=self.config,
         )
+        confidence_score = min(100, score_breakdown.total + cot_overlay.score_bonus)
         tradeable = self._is_tradeable(
             side=side,
             setup_status=setup_status,
             rr_estimated=rr_estimated,
             expected_move_pct=expected_move_pct,
-            score=score_breakdown.total,
+            score=confidence_score,
             volatility=volatility,
             participation=participation,
             theory_overlay=theory_overlay,
+            cot_overlay=cot_overlay,
             momentum_failure_watch=momentum_failure_watch,
             daily_ema_gap_pct=daily_ema_gap_pct,
             setup_ema_gap_pct=setup_ema_gap_pct,
@@ -219,7 +253,7 @@ class MomentumSetupEngine:
             expected_move_pct=expected_move_pct,
             rr_estimated=rr_estimated,
             holding_horizon_estimate=holding_horizon(expected_move_pct),
-            confidence_score=score_breakdown.total,
+            confidence_score=confidence_score,
             tradeable=tradeable,
             score_breakdown=score_breakdown.to_dict(),
             reasoning=reasoning,
@@ -246,6 +280,7 @@ class MomentumSetupEngine:
                 invalidation_fallback_used=True if invalidation_fallback_used else None,
                 momentum_failure_watch=True if momentum_failure_watch else None,
                 theory_overlay=theory_overlay.to_dict(),
+                cot_overlay=cot_overlay.to_dict(),
             ),
         )
         return MomentumEvaluation(plan=plan, score_breakdown=score_breakdown)
@@ -265,7 +300,19 @@ class MomentumSetupEngine:
                 retest_high=None,
                 close_above_level=False,
             )
-        return assess_retest(trigger, side, breakout.breakout_level, breakout.breakout_index, self.config)
+        max_hours = (
+            self.config.breakout.max_retest_hours_swing
+            if side == "short"
+            else self.config.breakout.max_retest_hours
+        )
+        return assess_retest(
+            trigger,
+            side,
+            breakout.breakout_level,
+            breakout.breakout_index,
+            self.config,
+            max_retest_hours=max_hours,
+        )
 
     def _assess_volatility(
         self,
@@ -433,6 +480,22 @@ class MomentumSetupEngine:
             base *= 0.2
         return base
 
+    def _volatility_allows_trade(
+        self,
+        *,
+        volatility: VolatilityAssessment,
+        participation: ParticipationAssessment,
+        expected_move_pct: float,
+    ) -> bool:
+        if volatility.passed:
+            return True
+        if expected_move_pct >= self.config.execution.min_expected_move_pct and participation.passed:
+            return (
+                volatility.range_expansion
+                >= self.config.volatility.min_range_expansion_trend_override
+            )
+        return False
+
     def _is_tradeable(
         self,
         *,
@@ -444,13 +507,31 @@ class MomentumSetupEngine:
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
         theory_overlay: TheoryOverlayAssessment,
+        cot_overlay: CotOverlayAssessment | None = None,
         momentum_failure_watch: bool = False,
         daily_ema_gap_pct: float | None,
         setup_ema_gap_pct: float | None,
     ) -> bool:
-        score_threshold = (
-            74 if momentum_failure_watch else self.config.score_tradeable_threshold
-        )
+        if cot_overlay is None:
+            cot_overlay = CotOverlayAssessment(
+                passed=True,
+                aligned=False,
+                score_bonus=0,
+                permission="allow",
+                contrarian_bias="neutral",
+                reason="COT overlay not supplied",
+            )
+        cot_cfg = self.config.cot_overlay
+        if cot_cfg.enabled:
+            score_threshold = (
+                cot_cfg.score_threshold_aligned
+                if cot_overlay.aligned
+                else cot_cfg.score_threshold_default
+            )
+        else:
+            score_threshold = self.config.score_tradeable_threshold
+        if momentum_failure_watch:
+            score_threshold = min(score_threshold, 74)
         volume_ok = True
         if expected_move_pct >= 0.1:
             volume_ok = participation.volume_ratio >= self.config.participation.min_volume_ratio_swing
@@ -486,7 +567,11 @@ class MomentumSetupEngine:
             and rr_estimated >= self.config.min_rr
             and expected_move_pct >= self.config.execution.min_expected_move_pct
             and score >= score_threshold
-            and volatility.passed
+            and self._volatility_allows_trade(
+                volatility=volatility,
+                participation=participation,
+                expected_move_pct=expected_move_pct,
+            )
             and volume_ok
             and atr_ok
             and intraday_gap_ok
@@ -494,6 +579,7 @@ class MomentumSetupEngine:
             and intraday_late_long_ok
             and swing_short_exhaustion_ok
             and theory_overlay.passed
+            and cot_overlay.passed
             and not participation.crowded
         )
 

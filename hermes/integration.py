@@ -15,10 +15,11 @@ from typing import Any, Callable, cast
 from core.config import CliDefaults
 from core.exceptions import HermesIntegrationError
 from core.logger import configure_logger
-from trading.client import HyperliquidClient
-from trading.cot.cot_analyzer import COTAnalyzer
-from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
-from trading.cot.cot_position_generator import COTPositionGenerator
+from options.factory import build_options_analyzer
+from trading.crypto.client import HyperliquidClient
+from trading.crypto.cot.cot_analyzer import COTAnalyzer
+from trading.crypto.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
+from trading.crypto.cot.cot_position_generator import COTPositionGenerator
 
 logger = configure_logger(__name__)
 
@@ -45,15 +46,6 @@ def _to_jsonable(value: Any) -> Any:
         except Exception:
             pass
     return value
-
-
-def _build_options_analyzer(*, source: str):
-    from options.analyzer import OptionsAnalyzer
-
-    try:
-        return OptionsAnalyzer(fetcher_source=source)
-    except TypeError:
-        return OptionsAnalyzer()
 
 
 def _operational_hints(
@@ -223,6 +215,49 @@ class HermesNaveIntegration:
                     },
                 },
                 {
+                    "name": "options_registry_build",
+                    "description": (
+                        "Build or refresh the S&P top-40 ticker playbook registry: "
+                        "price behavior, replay setup stats, X cache, congressional trades."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "include_live_options": {"type": "boolean", "default": False},
+                            "replay_json": {"type": "string"},
+                        },
+                    },
+                },
+                {
+                    "name": "options_registry_show",
+                    "description": "Return the full playbook card for one ticker from the registry.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "ticker": {"type": "string"},
+                        },
+                        "required": ["ticker"],
+                    },
+                },
+                {
+                    "name": "options_hidden_gems",
+                    "description": (
+                        "Scan S&P liquid names for hidden-gem income setups: high PoP bull puts "
+                        "(bias-aligned), under-the-radar names, optional X crowd interest from cache."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "minimum": 10, "maximum": 200, "default": 80},
+                            "top": {"type": "integer", "minimum": 1, "maximum": 30, "default": 10},
+                            "days_to_exp": {"type": "integer", "minimum": 1, "maximum": 365, "default": 30},
+                            "workers": {"type": "integer", "minimum": 1, "maximum": 8, "default": 4},
+                            "fetch_x_for_top": {"type": "integer", "minimum": 0, "maximum": 12, "default": 0},
+                            "source": {"type": "string", "enum": ["yfinance", "deribit"], "default": "yfinance"},
+                        },
+                    },
+                },
+                {
                     "name": "options_opportunities",
                     "description": (
                         "Scan BTC/ETH options opportunities by first applying the momentum "
@@ -315,6 +350,24 @@ class HermesNaveIntegration:
                             "wallet": {"type": "string", "default": self.defaults.wallet},
                             "coins": {"type": "string", "default": self.defaults.coins},
                             "include_micro": {"type": "boolean", "default": False},
+                        },
+                    },
+                },
+                {
+                    "name": "position_review",
+                    "description": (
+                        "Primary BTC/ETH position recommendation. Merges COT contrarian bias, "
+                        "momentum 4H/1H setups, and theory_v2 gate trace into enter / watch / "
+                        "stand_aside with entry zone, stop, and targets."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "coins": {"type": "string", "default": "BTC ETH"},
+                            "account_equity": {"type": "number", "default": 10000.0},
+                            "risk_pct": {"type": "number", "default": 0.005},
+                            "include_options": {"type": "boolean", "default": True},
+                            "options_source": {"type": "string", "default": "deribit"},
                         },
                     },
                 },
@@ -811,7 +864,7 @@ class HermesNaveIntegration:
         from options.formatters import render_options_scan_markdown_v2
 
         try:
-            payload = _build_options_analyzer(source=source).run(
+            payload = build_options_analyzer(source=source).run(
                 ticker=symbol,
                 days_to_exp=days_to_exp,
             )
@@ -857,7 +910,7 @@ class HermesNaveIntegration:
                 "coins must include at least one symbol")
 
         try:
-            payload = _build_options_analyzer(source=source).scan_crypto_opportunities(
+            payload = build_options_analyzer(source=source).scan_crypto_opportunities(
                 coins=coin_list,
                 days_to_exp=days_to_exp,
                 tf=tf,
@@ -871,6 +924,87 @@ class HermesNaveIntegration:
 
         payload["telegram_markdown_v2"] = render_options_opportunities_markdown_v2(
             payload)
+        return payload
+
+    def options_registry_build(
+        self,
+        *,
+        include_live_options: bool = False,
+        replay_json: str | None = None,
+    ) -> dict[str, Any]:
+        """Build S&P top-40 ticker playbook registry on disk."""
+        from pathlib import Path
+
+        from options.ticker_registry import build_registry
+
+        replay_path = Path(replay_json) if replay_json else None
+        result = build_registry(
+            include_live_options=include_live_options,
+            replay_json=replay_path,
+        )
+        return {
+            "ok": True,
+            "root": result["paths"]["root"],
+            "index": result["index"],
+        }
+
+    def options_registry_show(self, *, ticker: str) -> dict[str, Any]:
+        """Load one ticker playbook from the registry."""
+        from options.ticker_registry import load_ticker_profile
+
+        sym = ticker.strip().upper()
+        profile = load_ticker_profile(sym)
+        if profile is None:
+            raise HermesIntegrationError(
+                f"No registry profile for {sym}. Run options_registry_build first."
+            )
+        return profile
+
+    def options_hidden_gems(
+        self,
+        *,
+        limit: int = 80,
+        top: int = 10,
+        days_to_exp: int = 30,
+        workers: int = 4,
+        fetch_x_for_top: int = 0,
+        source: str = "yfinance",
+    ) -> dict[str, Any]:
+        """Scan equity universe and return refined hidden-gem income prospects."""
+        if not 10 <= limit <= 200:
+            raise HermesIntegrationError("limit must be between 10 and 200")
+        if not 1 <= top <= 30:
+            raise HermesIntegrationError("top must be between 1 and 30")
+        if not 1 <= days_to_exp <= 365:
+            raise HermesIntegrationError("days_to_exp must be between 1 and 365")
+
+        from options.formatters import render_hidden_gems_markdown_v2
+        from options.gems_pipeline import format_gem_digest, run_hidden_gems_scan
+        from options.universe_scan import scan_equity_options_universe
+        from options.universe import SP500_TOP_100_TICKERS, get_sp500_tickers
+
+        tickers = (
+            list(get_sp500_tickers(limit))
+            if limit > len(SP500_TOP_100_TICKERS)
+            else list(SP500_TOP_100_TICKERS[:limit])
+        )
+        analyzer = build_options_analyzer(source=source)
+        scan = scan_equity_options_universe(
+            analyzer=analyzer,
+            analyzer_factory=lambda: build_options_analyzer(source=source),
+            tickers=tickers,
+            days_to_exp=days_to_exp,
+            top_trades=top,
+            workers=min(workers, 6),
+        )
+        payload = run_hidden_gems_scan(
+            scan,
+            top=top,
+            fetch_x_for_top=fetch_x_for_top,
+        )
+        payload["scan_summary"] = scan.get("summary")
+        payload["digest_text"] = format_gem_digest(payload["hidden_gems"])
+        payload["telegram_markdown_v2"] = render_hidden_gems_markdown_v2(payload)
         return payload
 
     def cot_history(
@@ -972,6 +1106,27 @@ class HermesNaveIntegration:
             "plan": _to_jsonable(plans),
         }
 
+    def position_review(
+        self,
+        *,
+        coins: str = "BTC ETH",
+        account_equity: float = 10_000.0,
+        risk_pct: float = 0.005,
+        include_options: bool = True,
+        options_source: str = "deribit",
+    ) -> dict[str, Any]:
+        """Unified BTC/ETH review: COT + momentum + regime + options (long & short)."""
+        from trading.crypto.analysis import CryptoAnalysisService
+
+        coin_list = [c.strip().upper() for c in coins.replace(",", " ").split() if c.strip()]
+        return CryptoAnalysisService().review(
+            coin_list,
+            account_equity=account_equity,
+            risk_pct=risk_pct,
+            include_options=include_options,
+            options_source=options_source,
+        )
+
     def theory_v2_scan(
         self,
         *,
@@ -990,7 +1145,7 @@ class HermesNaveIntegration:
             raise HermesIntegrationError(
                 "At least one coin is required for theory_v2_scan")
 
-        from trading.theory_v2 import build_signals_for_coins  # local to keep import light
+        from trading.crypto.theory_v2 import build_signals_for_coins  # local to keep import light
 
         signals, decisions = build_signals_for_coins(coin_list)
 
@@ -1115,11 +1270,11 @@ class HermesNaveIntegration:
                 {
                     "name": "cot_extreme_block",
                     "description": (
-                        "Weekly COT filter rejects setups when speculator "
-                        "positioning is at 95th+ percentile, even if momentum "
-                        "qualifies. By design — reversal-risk gate."
+                        "Resolved in unified_cot_momentum_v1: extreme crowded "
+                        "spec-long now supports contrarian shorts; only "
+                        "blocks chasing the crowded direction."
                     ),
-                    "iter_ref": "iter_11",
+                    "iter_ref": "unified_cot_momentum_v1",
                 },
                 {
                     "name": "range_breakout_partial",
@@ -1540,10 +1695,14 @@ class HermesNaveIntegration:
             "market_scan": self.market_scan,
             "market_playbook": self.market_playbook,
             "options_scan": self.options_scan,
+            "options_registry_build": self.options_registry_build,
+            "options_registry_show": self.options_registry_show,
+            "options_hidden_gems": self.options_hidden_gems,
             "options_opportunities": self.options_opportunities,
             "cot_report": self.cot_report,
             "cot_history": self.cot_history,
             "weekly_plan": self.weekly_plan,
+            "position_review": self.position_review,
             "theory_v2_scan": self.theory_v2_scan,
             "strategy_context": self.strategy_context,
             "recommend_position": self.recommend_position,

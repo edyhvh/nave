@@ -1,14 +1,15 @@
 """
-twscrape wrapper for fetching recent X (Twitter) posts about stock tickers.
+X (Twitter) post fetcher for stock tickers.
 
-twscrape is an unofficial scraper — it requires logged-in X accounts whose
-auth tokens live in a local SQLite DB. The path to that DB is configurable
-via ``X_ACCOUNTS_DB`` (default: ``var/x_accounts.db``). When twscrape isn't
-installed the wrapper raises a clear ``XClientError`` instead of crashing
-the rest of the stocks pipeline.
+**Preferred:** official X API v2 when ``X_BEARER_TOKEN`` is set (see
+``XOfficialClient`` in ``x_official_client.py``).
+
+**Fallback:** twscrape + logged-in accounts in ``X_ACCOUNTS_DB``.
+
+``get_x_client()`` picks the best available backend automatically.
 
 Usage:
-    client = XClient()
+    client = get_x_client()
     posts = await client.fetch_recent_posts("NVDA", days=7, limit=50)
 """
 
@@ -164,3 +165,19 @@ def _optional_int(value: Any) -> int | None:
 
 def _default_accounts_db() -> Path:
     return Path(__file__).resolve().parents[2] / "var" / "x_accounts.db"
+
+
+def get_x_client() -> XClient | Any:
+    """Return official X API client if Bearer token is set, else twscrape."""
+    try:
+        from trading.stocks.data_provider import _maybe_load_repo_dotenv_once
+
+        _maybe_load_repo_dotenv_once()
+    except Exception:
+        pass
+
+    from trading.stocks.x_official_client import XOfficialClient, official_x_configured
+
+    if official_x_configured():
+        return XOfficialClient()
+    return XClient()

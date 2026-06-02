@@ -24,14 +24,14 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from trading.client import HyperliquidClient
-from trading.signals import MacroSignalProducer, SignalAggregator
-from trading.cot.cot_analyzer import COTAnalyzer
-from trading.cot.cot_historical_analyzer import COTHistoricalAnalyzer
-from trading.cot.cot_position_generator import COTPositionGenerator
-from trading.cot.cot_report_generator import COTReportGenerator
-from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
-from trading.config import DEFAULT_SETUPS
+from trading.crypto.client import HyperliquidClient
+from trading.crypto.signals import MacroSignalProducer, SignalAggregator
+from trading.crypto.cot.cot_analyzer import COTAnalyzer
+from trading.crypto.cot.cot_historical_analyzer import COTHistoricalAnalyzer
+from trading.crypto.cot.cot_position_generator import COTPositionGenerator
+from trading.crypto.cot.cot_report_generator import COTReportGenerator
+from trading.crypto.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
+from trading.crypto.config import DEFAULT_SETUPS
 
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -315,7 +315,7 @@ if __name__ == "__main__":
         "--setups",
         nargs="+",
         default=None,
-        help="Override setup list (defaults to trading.config.DEFAULT_SETUPS)",
+        help="Override setup list (defaults to trading.crypto.config.DEFAULT_SETUPS)",
     )
     parser.add_argument(
         "--debug-cot",

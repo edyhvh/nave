@@ -31,11 +31,13 @@ from hermes.integration import HermesNaveIntegration, _default_reports_dir  # no
 
 def build_payload(coins: str) -> dict:
     hermes = HermesNaveIntegration()
+    review = hermes.position_review(coins=coins, include_options=True)
     scan = hermes.theory_v2_scan(coins=coins)
     context = hermes.strategy_context()
     return {
-        "generated_at": scan["generated_at"],
+        "generated_at": review["generated_at"],
         "coins_requested": coins,
+        "position_review": review,
         "scan": scan,
         "context": context,
     }
@@ -46,15 +48,36 @@ def default_report_path() -> Path:
 
 
 def format_summary(payload: dict) -> str:
+    review = payload.get("position_review") or {}
     scan = payload["scan"]
     fires = scan["summary"]["fires"]
     evaluated = scan["summary"]["evaluated"]
     lines = [
-        f"Daily theory v2 scan — {payload['generated_at']}",
-        f"Evaluated: {', '.join(evaluated) or '(none)'}",
-        f"Fires    : {', '.join(fires) if fires else '(none — stand aside)'}",
+        f"Daily BTC/ETH review — {payload['generated_at']}",
+        f"Enter: {review.get('summary', {}).get('actionable_count', 0)}  "
+        f"Watch: {review.get('summary', {}).get('watch_count', 0)}  "
+        f"Aside: {review.get('summary', {}).get('stand_aside_count', 0)}",
+        f"Theory v2 fires: {', '.join(fires) if fires else '(none)'}",
         "",
     ]
+    for rec in review.get("recommendations", []):
+        lines.append(
+            f"  {rec['coin']}: {rec['action']} {rec.get('direction') or '-'} "
+            f"— {rec.get('primary_source')} "
+            f"[{rec.get('regime_phase', '-')}]"
+        )
+        for reason in rec.get("reasons", [])[:3]:
+            lines.append(f"    + {reason}")
+        opts = rec.get("options") or {}
+        if opts.get("status") == "ready":
+            lines.append(
+                f"    options: {opts.get('executable_strategy') or opts.get('top_strategy')}"
+            )
+    lines.append("")
+    lines.extend([
+        f"Theory v2 trace — evaluated: {', '.join(evaluated) or '(none)'}",
+        "",
+    ])
     for coin, entry in scan["coins"].items():
         lines.append(f"  {coin}: {entry['stage']:>16} — {entry['reason']}")
         if entry["fired"]:

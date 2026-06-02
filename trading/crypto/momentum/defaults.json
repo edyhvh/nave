@@ -1,5 +1,5 @@
 {
-  "score_tradeable_threshold": 90,
+  "score_tradeable_threshold": 78,
   "min_rr": 1.8,
   "trend": {
     "ema_fast": 20,
@@ -20,7 +20,8 @@
     "pending_distance_atr": 0.35,
     "extended_range_fraction": 0.35,
     "min_retest_hours": 6,
-    "max_retest_hours": 24
+    "max_retest_hours": 24,
+    "max_retest_hours_swing": 120
   },
   "volatility": {
     "atr_fast": 14,
@@ -30,7 +31,16 @@
     "expansion_atr_floor": 0.95,
     "min_atr_ratio_swing": 1.0,
     "min_atr_ratio_intraday_underextended": 1.05,
-    "min_range_expansion_swing_short": 2.2
+    "min_range_expansion_swing_short": 2.2,
+    "min_range_expansion_trend_override": 2.0
+  },
+  "cot_overlay": {
+    "enabled": true,
+    "score_bonus_aligned": 8,
+    "score_bonus_caution": 2,
+    "block_on_conflict": true,
+    "score_threshold_aligned": 74,
+    "score_threshold_default": 78
   },
   "structure": {
     "swing_bars": 3,

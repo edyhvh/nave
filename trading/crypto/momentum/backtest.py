@@ -76,6 +76,7 @@ class MomentumBacktester:
         funding_rate: float | None = None,
         open_interest: pd.DataFrame | pd.Series | None = None,
         baseline: bool = False,
+        skip_baseline_compare: bool = False,
     ) -> dict[str, Any]:
         daily = normalize_frame(daily_frame)
         setup = normalize_frame(setup_frame)
@@ -92,6 +93,11 @@ class MomentumBacktester:
             trigger_slice = trigger.loc[trigger.index <= end_time]
             if len(trigger_slice) < warmup:
                 continue
+            as_of = pd.Timestamp(end_time)
+            if as_of.tzinfo is None:
+                as_of = as_of.tz_localize("UTC")
+            else:
+                as_of = as_of.tz_convert("UTC")
             plans = self.engine.evaluate_symbol(
                 symbol=symbol,
                 daily_frame=daily.loc[daily.index <= end_time],
@@ -99,6 +105,8 @@ class MomentumBacktester:
                 trigger_frame=trigger_slice,
                 funding_rate=None if baseline else funding_rate,
                 open_interest=None if baseline else open_interest,
+                as_of=as_of,
+                cot_overlay_mode="historical" if not baseline else "live",
             )
             for plan in plans:
                 if not self._should_enter(plan, baseline=baseline):
@@ -112,7 +120,7 @@ class MomentumBacktester:
 
         strategy_metrics = self._metrics(trades)
         baseline_metrics = None
-        if not baseline:
+        if not baseline and not skip_baseline_compare:
             baseline_metrics = self.evaluate(
                 symbol=symbol,
                 daily_frame=daily,

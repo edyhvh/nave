@@ -971,3 +971,35 @@ def test_scan_crypto_opportunities_passes_bearish_bias_for_short_momentum(monkey
 
     assert directional_biases == ["bearish"]
     assert payload["opportunities"]["BTC"]["directional_bias"] == "bearish"
+
+
+def test_scan_crypto_opportunities_accepts_cot_bias_override_without_momentum(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(analyzer_module, "DeribitOptionsFetcher", _DummyFetcher)
+    analyzer = OptionsAnalyzer(config=_config(tmp_path), fetcher_source="deribit")
+    directional_biases: list[str] = []
+
+    def _fake_run(*, ticker: str = "BTC", days_to_exp: int = 30, directional_bias: str = "neutral"):
+        _ = ticker, days_to_exp
+        directional_biases.append(directional_bias)
+        return {"ticker": ticker, "recommendations": [{"strategy": {"name": "bear_put_spread"}, "metrics": {}}]}
+
+    monkeypatch.setattr(analyzer, "run", _fake_run)
+
+    class _FakeMomentumService:
+        def parse_timeframes(self, tf: str):
+            _ = tf
+            return SimpleNamespace(bias="1d", setup="4h", trigger="1h")
+
+        def scan_live(self, **kwargs):
+            _ = kwargs
+            return {"summary": {}, "results": {"ETHUSDT": {"plans": [], "tradeable": []}}}
+
+    monkeypatch.setattr("trading.crypto.momentum.service.MomentumMarketService", _FakeMomentumService)
+
+    payload = analyzer.scan_crypto_opportunities(
+        coins=["ETH"],
+        require_tradeable=True,
+        directional_bias_override="bearish",
+    )
+    assert directional_biases == ["bearish"]
+    assert payload["opportunities"]["ETH"]["status"] == "ready"

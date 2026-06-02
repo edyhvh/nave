@@ -118,27 +118,27 @@ used as the primary bias source.
 Hyperliquid client module:
 
 ```bash
-python -m trading.client summary --wallet hermes
-python -m trading.client positions --wallet hermes
-python -m trading.client orders --wallet hermes
-python -m trading.client mids --wallet hermes
-python -m trading.client markets --wallet hermes
-python -m trading.client summary --wallet hermes --mainnet
+python -m trading.crypto.client summary --wallet hermes
+python -m trading.crypto.client positions --wallet hermes
+python -m trading.crypto.client orders --wallet hermes
+python -m trading.crypto.client mids --wallet hermes
+python -m trading.crypto.client markets --wallet hermes
+python -m trading.crypto.client summary --wallet hermes --mainnet
 ```
 
 Trading strategy module:
 
 ```bash
-python -m trading.strategy --wallet hermes --coins BTC ETH
-python -m trading.strategy --wallet hermes --coins BTC ETH --max-usd 50
-python -m trading.strategy --wallet hermes --mainnet --live --coins BTC ETH --max-usd 50
+python -m trading.crypto.strategy --wallet hermes --coins BTC ETH
+python -m trading.crypto.strategy --wallet hermes --coins BTC ETH --max-usd 50
+python -m trading.crypto.strategy --wallet hermes --mainnet --live --coins BTC ETH --max-usd 50
 ```
 
 COT modules:
 
 ```bash
-python -m trading.cot.cot_fetcher
-python -m trading.cot.cot_analyzer
+python -m trading.crypto.cot.cot_fetcher
+python -m trading.crypto.cot.cot_analyzer
 ```
 
 MCP module:
@@ -351,6 +351,6 @@ Paper trade workflow:
 ```bash
 source .venv/bin/activate
 python scripts/setup_wallets.py
-python -m trading.client summary --wallet hermes
+python -m trading.crypto.client summary --wallet hermes
 nave trading run --strategy cot-weekly --paper --capital 2000
 ```

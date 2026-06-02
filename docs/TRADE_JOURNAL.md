@@ -219,7 +219,7 @@ recent = journal.get_trade_history(
 Add journaling to any strategy:
 
 ```python
-from trading.strategy import BaseStrategy
+from trading.crypto.strategy import BaseStrategy
 from trading.journal import TradeJournal, TradeEnvironment
 from trading.journal.integrations import StrategyJournalMixin
 

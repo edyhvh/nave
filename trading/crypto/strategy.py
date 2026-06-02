@@ -19,7 +19,7 @@ Usage:
             self.execute_signals(self.compute_signals())
 
 Example — run from CLI:
-    python -m trading.strategy --wallet openfang --dry-run
+    python -m trading.crypto.strategy --wallet openfang --dry-run
 """
 
 from __future__ import annotations
@@ -183,7 +183,7 @@ class MacroMomentumStrategy(BaseStrategy):
     def _fetch_indicators(self) -> dict:
         """
         Fetch indicators including COT as the MAIN weekly driver.
-        Integrates with trading.cot for BTC/ETH comparison per philosophy.
+        Integrates with trading.crypto.cot for BTC/ETH comparison per philosophy.
         """
         from trading.crypto.cot.cot_fetcher import fetch_latest_cot
         from trading.crypto.cot.cot_analyzer import COTAnalyzer
@@ -402,9 +402,9 @@ class TheoryV2Strategy(BaseStrategy):
     """
     Top-down weekly→daily→4H→1H execution per the refined theory.
 
-    Uses :class:`trading.theory_v2.TheoryV2Engine` to evaluate each coin and
+    Uses :class:`trading.crypto.theory_v2.TheoryV2Engine` to evaluate each coin and
     routes the resulting timeframe-aware ``Signal`` through
-    :func:`trading.execution.build_execution_plan` to enforce the 4H/1H
+    :func:`trading.crypto.execution.build_execution_plan` to enforce the 4H/1H
     contract before any order is sent.
     """
 

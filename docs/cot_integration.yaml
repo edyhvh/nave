@@ -149,7 +149,7 @@ alignment_with:
     COT positioning helps identify the IPDA phase (expansion /
     retracement / regression) but does not determine it.
   setups: >
-    Use configured setup stack from trading.config.DEFAULT_SETUPS in
+    Use configured setup stack from trading.crypto.config.DEFAULT_SETUPS in
     direction of COT bias, filtered by weekly_decision_order above.
   risk_management: >
     SL at IPDA invalidation points (see technical.yaml

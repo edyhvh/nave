@@ -4,594 +4,356 @@
 
 <h1 align="center">NAVE</h1>
 
-Nave is a terminal-first trading copilot with three main surfaces:
+Nave is a **terminal-first trading copilot**: one CLI, structured JSON for agents, and
+documented theory you can refine over time. It is built for operators who want a clear
+**enter / watch / stand aside** verdict—not another charting app.
 
-- crypto: BTC/ETH momentum, COT context, Hyperliquid execution paths
-- stocks: ISM-driven sector workflow with FMP fundamentals
-- agents: Hermes and MCP-compatible JSON tool contracts
+## Vision
 
-The root README is the fast path: get it running locally, connect an agent,
-and use the CLI. Deeper theory and integration details live in the docs linked
-at the end.
+Nave applies a **top-down multi-timeframe** process (see [AGENTS.md](AGENTS.md) and
+[docs/technical.yaml](docs/technical.yaml)):
 
-## Quick Setup
+| Timeframe | Role |
+| --------- | ---- |
+| **Weekly** | Macro bias and COT positioning (direction filter) |
+| **Daily** | Trend confirmation and key swing levels |
+| **4H** | Setup formation and entry zone |
+| **1H** | Precise trigger and execution timing |
 
-### Local setup
+Three asset surfaces share the same CLI and Hermes contracts:
+
+| Surface | What it does |
+| ------- | ------------ |
+| **Crypto** | BTC/ETH perps on Hyperliquid + Deribit options; COT, regime, momentum |
+| **Stocks** | ISM-driven sector workflow, FMP fundamentals, Congressional disclosures, optional X interest |
+| **Options** | Equity income setups (S&P universe), per-ticker playbook registry, hidden gems |
+| **Agents** | Hermes tools and MCP—same logic as the CLI, JSON in / JSON out |
+
+**Execution is human-gated.** Strategies and MCP tools default to dry-run / paper. The
+operator decides when to go live on Hyperliquid.
+
+**Code layout:** new work uses `trading.crypto.*` (COT, momentum, client, strategy).
+Legacy `trading.*` imports still resolve via `trading/_compat.py`.
+
+---
+
+## Operator workflow
+
+Typical cadence from the terminal:
+
+```bash
+# Every trading day — primary command
+nave daily
+nave daily --coins BTC --no-options    # faster
+nave daily --json                      # cron / agents
+
+# Weekly macro (Sunday or before sizing)
+nave cot report --coins "BTC ETH"
+python scripts/weekly_cot_analysis.py --capital 2000 --paper
+
+# Equity options research (when hunting income)
+nave options analyze --ticker MSFT --days-to-exp 30
+nave options gems --sp500-limit 40 --top 5
+nave options registry iterate --limit 40
+
+# Stocks (ISM release days)
+nave stocks ism-report --kind manufacturing --sheet
+nave congress                              # new STOCK Act filings since last run
+```
+
+| You want… | Start here |
+| --------- | ---------- |
+| BTC/ETH entry today | `nave daily` |
+| Momentum scan (stricter default) | `nave crypto scan` |
+| Momentum scan (config threshold) | `nave crypto momentum-scan` |
+| One-symbol playbook | `nave crypto playbook --symbol BTCUSDT --side long` |
+| S&P options rank scan | `nave options analyze --sp500-scan` |
+| Under-the-radar income + X | `nave options gems` |
+| Per-ticker learned setups | `nave options registry list` |
+| Agent / automation | `nave hermes tools`, `nave mcp run`, or [docs/agent_onboarding.md](docs/agent_onboarding.md) |
+
+Deeper command lists: [docs/commands/README.md](docs/commands/README.md).
+
+---
+
+## Quick setup
 
 ```bash
 git clone https://github.com/edyhvh/nave.git
 cd nave
 python setup.py
-```
-
-`python setup.py` will:
-
-- create `.venv`
-- install dependencies from `requirements.txt`
-- install the editable package and a local `nave` shim
-- add `.venv/bin` to your shell rc file
-- run `direnv allow` if `direnv` is available
-
-Reload your shell after setup:
-
-```bash
-source ~/.zshrc
-# or
-source ~/.bashrc
-```
-
-Verify the CLI:
-
-```bash
+source ~/.zshrc   # or ~/.bashrc — reload after setup
 nave --help
 nave version
 ```
 
-Fallback if your shell has not picked up the shim yet:
+`python setup.py` creates `.venv`, installs deps, adds a `nave` shim, and runs
+`direnv allow` when available.
+
+Fallback if the shim is not on `PATH`:
 
 ```bash
 PYTHONPATH=. python cli/main.py --help
 ```
 
-### Required and optional keys
+### Environment keys
 
-Create a `.env` file in the repo root.
+Copy `.env.example` → `.env`.
 
-Required for macro data:
+| Key | Required for |
+| --- | ------------ |
+| `FRED_API_KEY` | Macro / OpenBB data |
+| `FMP_API_KEY` | Stocks ISM screen, `nave congress` |
+| `MASSIVE_API_KEY` | Optional fundamentals (stocks workflow) |
+| `X_BEARER_TOKEN` or twscrape | `nave stocks x-analyze`, options gems X boost |
+| `HELIUS_API_KEY` | `nave memecoin` scanner only |
 
-```bash
-FRED_API_KEY=your_fred_api_key
-```
+Hyperliquid wallets: `python scripts/setup_wallets.py` — see [docs/web3-setup.md](docs/web3-setup.md).
 
-Optional for stocks and remote FMP MCP:
+---
 
-```bash
-FMP_API_KEY=your_fmp_api_key
-```
+## Crypto: daily entry
 
-If you want OpenBB to persist the FRED key in its own config too:
-
-```bash
-python -c "from openbb import obb; obb.user.credentials.fred_api_key.set('your_fred_api_key'); obb.account.save()"
-```
-
-### Optional shell ergonomics
-
-If you use `direnv`, enable it once and let Nave auto-activate the repo env:
+**`nave daily`** is the single operator command for BTC/ETH. It runs the unified stack in
+`trading/crypto/analysis/` (`crypto_analysis_v4`): COT permission, bear/bull regime phases,
+momentum on 4H/1H, active regime thesis, and optional Deribit options.
 
 ```bash
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
-# or
-echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
-
-direnv allow
+nave daily
+nave crypto daily              # alias
+nave crypto position-review    # same stack
+nave daily --coins BTC
+nave daily --no-options
+nave daily --json
 ```
 
-If you do not use `direnv`, activate the environment manually:
+Each coin reports: action, direction, confidence, regime phase, 4H zone, stop, momentum
+score, optional spread line, and playbook reasons. Trade **ENTER**; optionally stalk **WATCH**.
+
+### Research and backtest
 
 ```bash
-source .venv/bin/activate
-```
-
-## Quick Setup with Hermes
-
-Once local setup works, there are two common ways to wire an agent into Nave.
-
-### 1. Use Hermes CLI contracts directly
-
-Back-compat: the legacy top-level paths (`trading.client`, `trading.signals`,
-`trading.cot.cot_analyzer`, …) keep working via `sys.modules` aliases set up
-by `trading/_compat.py`, so scripts/, tests/, cli/, and hermes/integration.py
-continue to import the crypto stack unchanged.
-
-## Stocks workflow (ISM + FMP)
-
-```bash
-# 1. Install extra deps
-pip install -r requirements.txt
-
-# 2. Add your FMP API key to .env
-FMP_API_KEY=your_key
-
-# Optional: override the cache / budget controls
-FMP_CACHE_TTL_SECONDS=86400
-
-# 3. Fetch the latest ISM Manufacturing report
-nave stocks ism-scan --kind manufacturing
-nave stocks ism-scan --kind services --json
-
-# 4. Run the full screener (ISM → fundamentals → ranked plan)
-nave stocks screen --kind manufacturing --top-n 5 --capital 10000
-nave stocks screen --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8
-nave stocks screen --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8 --min-confidence 0.7
-
-# 4b. Services mode — long-term revenue growth + PE-relative filter
-nave stocks screen --kind services --mode services --top-n 5
-nave stocks ism-report --kind services --mode services --sheet
-
-# 5. Override the ticker universe (keep it lean to respect the 250-call/day cap)
-nave stocks screen --universe-json '{"Industrials": ["GE","CAT"]}'
-
-# 6. Build complete ISM report (hottest/worst industries + filtered picks)
-nave stocks ism-report --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8
-nave stocks ism-report --kind manufacturing --top-n 5 --max-pe 28 --min-eps-growth 8 --min-confidence 0.7
-nave stocks ism-report --json
-nave stocks ism-report --sheet
-nave stocks ism-report --telegram-markdown-v2
-nave stocks ism-report --json --sheet
-
-# Default report view targets up to 10 longs + 10 shorts, but may return fewer
-# after confidence and valuation filters.
-# Output now includes company industry, driver ISM industry, confidence,
-# industry/sector PE context, and EPS source metadata.
-nave stocks ism-report --kind manufacturing
-nave stocks ism-report --kind manufacturing --min-confidence 0.5
-
-# 7. Stock-only journal stats (crypto trades excluded)
-nave stocks journal-stats
-```
-
-**ISM data sources**: default path uses `httpx + BeautifulSoup` against
-the public ISM press releases — no browser dependency. Pass
-`--playwright` to `stocks ism-scan` for a JS-rendered mirror (requires
-`pip install playwright && python -m playwright install chromium`).
-
-**Fundamentals data source**: ISM stock screening now uses Financial Modeling
-Prep via `FMP_API_KEY`. The client keeps a persistent cache under `var/fmp_cache/`
-so repeat CLI/Hermes/MCP runs do not burn the 250 calls/day quota unnecessarily.
-For Telegram/reminder workflows, prefer the preformatted `--telegram-markdown-v2`
-output and keep chat-based schedules at or above hourly cadence.
-
-### Screening modes
-
-The screener supports two ranking strategies via `--mode` (defaults to the
-value of `--kind`):
-
-- **`--mode manufacturing`** *(default)* — ranks purely by EPS growth
-  next year. Confidence = `0.6 × ISM industry-match + 0.4 × EPS confidence`.
-  Unchanged from the original flow.
-- **`--mode services`** — ranks by **long-term revenue growth forecast**
-  (FMP analyst-estimate CAGR, yfinance trailing `revenueGrowth` as
-  fallback) and drops names where `company PE ≥ sector average PE`
-  (a secondary PE-relative check). No other scoring.
-
-Example Services-mode output (truncated):
-
-```
-ISM Services — March 2026
-Mode: services
-Criteria: mode=services, top_n=5, min_eps_growth=None, min_conf=0.3
-
-Top longs (hottest sectors)
-┃ Symbol ┃ Name    ┃ Side ┃ Sector                 ┃ Rev LT % ┃ Rev src                 ┃ Score ┃
-│ GOOGL  │ Alphabet│ long │ Communication Services │   18.0   │ fmp_analyst_estimate    │ +0.180│
-│ META   │ Meta    │ long │ Communication Services │   12.0   │ fmp_analyst_estimate    │ +0.120│
-│ DIS    │ Disney  │ long │ Communication Services │    6.0   │ yfinance_trailing_...   │ +0.060│
-```
-
-**Brokers**: `AlpacaBroker` and `OndoBroker` are stubs. All read/write
-methods raise `NotImplementedError` until the real integrations land,
-which is safe because the strategy defaults to `dry_run=True`.
-
-### Professional CLI behavior (Typer)
-
-The CLI uses a custom `ProfessionalTyper` wrapper that prints command
-start/success/fail status lines (to stderr) with elapsed time.
-
-```bash
-# Disable status lines for clean script logs
-NAVE_CLI_STATUS=0 nave stocks ism-report --json
-
-# Re-enable (default)
-NAVE_CLI_STATUS=1 nave stocks ism-report --json
-```
-
-Typer itself does not automatically render JSON as a table. In Nave, use
-`--sheet` for human-readable terminal tables and `--json` for machine output.
-
-For stocks reports, `--min-confidence` defaults to `0.7`. Lower it if you want
-to inspect weaker matches, but the stricter default is intended to block false
-positives where a company shares a broad sector with an ISM industry but does
-not actually belong to that industry.
-
-The same confidence filter now applies to `nave stocks screen`, so strategy
-plans and reports use the same false-positive guardrail by default.
-
-## Trading on Hyperliquid
-
-Nave integrates with [Hyperliquid](https://hyperliquid.xyz) for futures paper
-trading. Wallets are managed locally via an encrypted vault — no MetaMask or
-browser required.
-
-### Quick start
-
-```bash
-# 1. Generate wallets (one-time)
-python scripts/setup_wallets.py
-
-# 2. Check account state on testnet
-python -m trading.client summary --wallet hermes
-
-# 3. Run a strategy in dry-run mode (no real orders)
-python -m trading.strategy --wallet hermes --coins BTC ETH
-```
-
-### Weekly COT Analysis
-
-COT is now the **main weekly driver** for trading setups.
-
-```bash
-# Run weekly analysis (Sunday)
-python scripts/weekly_cot_analysis.py --capital 2000 --paper
-
-# Historical variation report (last 3 calendar months)
-python scripts/weekly_cot_analysis.py --capital 2000 --cot-history 3
-
-# Or with live execution (careful!)
-python scripts/weekly_cot_analysis.py --capital 2000 --live --wallet hermes
-
-# Unified CLI
-nave trading run --paper --strategy cot-weekly
-```
-
-**Features**:
-
-- Fetches latest CME COT for BTC (133741) and ETH
-- Compares setups using F.I.T.S. + IPDA philosophy (75% retracement, order blocks, etc.)
-- Recommends best asset + capital allocation, leverage, SL/TP
-- Scans other Hyperliquid perps for liquidity/funding opportunities
-- Dry-run by default
-
-See `docs/technical.yaml` for full philosophy and `trading/crypto/cot/` for
-the COT pipeline implementation. The full theory-refinement workflow that
-produced theory_v2 is described in `AGENTS.md`.
-
-### Wallets
-
-Two EVM wallets are pre-generated for the trading agents:
-
-| Agent      | Address                                                 |
-| ---------- | ------------------------------------------------------- |
-| `openfang` | `0x48b6cB6ea38D48304B5bc634294be4F0EFC52b51`            |
-| `ironclaw` | `0x3fB31b355b82B6B1421dBb914364c0Ec5e72868F`            |
-| `hermes`   | Generated locally via `python scripts/setup_wallets.py` |
-
-Private keys and seed phrases are encrypted in `~/.secrets/nave-wallets/`
-and never committed to this repository.
-
-For full setup instructions see **[docs/web3-setup.md](docs/web3-setup.md)**.
-
-## Unified CLI
-
-After setup (`python setup.py`), use the professional `nave` CLI (powered by Typer):
-
-```bash
-nave --help
-nave version
-nave trading run-strategy --wallet hermes --dry-run
-nave trading run --strategy cot-weekly --paper
-nave api start --reload
-nave mcp run
-nave cot analyze --coins BTC ETH
-nave data fetch aaii
-nave hermes tools
-nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
-nave stocks ism-report --kind manufacturing --top-n 5 --min-confidence 0.7 --sheet
-```
-
-This unifies all previous scripts, strategies, MCP, and backend. Legacy `./run.sh` and `python -m trading.*` still work.
-
-## Hermes Agent Integration
-
-Nave now exposes a dedicated Hermes integration layer designed for MCP and
-gateway workflows with structured JSON outputs.
-
-### Skill/Tool Discovery
-
-List the available Hermes tools:
-
-```bash
-nave hermes tools
-```
-
-Call one tool directly and get structured JSON back:
-
-```bash
-nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
-nave hermes call --tool cot_history --args-json '{"months": 3, "coins": "BTC ETH"}'
-nave hermes call --tool weekly_plan --args-json '{"capital": 2000, "wallet": "hermes"}'
-```
-
-If your agent expects a gateway-style payload:
-
-```bash
-nave hermes gateway-invoke '{"tool": "cot_report", "arguments": {"coins": "BTC ETH"}}'
-```
-
-### 2. Run Nave as an MCP server
-
-Start the local MCP server over stdio:
-
-```bash
-nave mcp run
-```
-
-That exposes Nave's MCP tools to Hermes or any MCP-compatible client.
-
-If you also want the vendor's remote FMP MCP connector URL:
-
-```bash
-nave mcp fmp-connector
-```
-
-Notes:
-
-- Hermes-facing commands are designed to return structured JSON.
-- Use the local MCP server for repo-native tools.
-- Use the remote FMP connector only when you specifically need direct vendor MCP access.
-
-## Using the CLI
-
-The main entrypoint is `nave`. Start by inspecting the command tree:
-
-```bash
-nave --help
-nave crypto --help
-nave cot --help
-nave stocks --help
-nave options --help
-nave hermes --help
-nave mcp --help
-```
-
-### Crypto workflow
-
-Scan BTC/ETH derivatives for current setups:
-
-```bash
-nave crypto scan
 nave crypto scan --symbols BTCUSDT,ETHUSDT --tf 4h,1h --json
+# Default operator scan (score threshold 90)
+
+nave crypto momentum-scan --json
+# Same engine; threshold from momentum config (typically 78)
+
+nave crypto playbook --symbol BTCUSDT --side long --json
+python scripts/unified_backtest.py --fast --coins BTC ETH
+python scripts/theory_v2_backtest.py --coins BTC ETH
 ```
 
-Build a concrete playbook for one symbol and side:
+Agents bundling review + theory: `python scripts/daily_scan.py` (see
+[docs/agent_onboarding.md](docs/agent_onboarding.md)). Operators should still prefer
+**`nave daily`** for entries.
+
+### Backtest snapshot (unified, `--fast`)
+
+185 trades, **78.9%** win rate, **+1.83R** pooled expectancy, **8/8** regimes with trades at
+period rollup. Label: **medium** confidence—2017 window has partial 4H/1H coverage;
+pre-2022 lacks historical COT replay.
+
+Artifact:
+[`docs/analysis/raw/unified_backtest_20260601T222143Z.json`](docs/analysis/raw/unified_backtest_20260601T222143Z.json)
+
+Re-run after material threshold changes:
 
 ```bash
-nave crypto playbook --symbol BTCUSDT --side long
-nave crypto playbook --symbol ETHUSDT --side short --json
+python scripts/unified_backtest.py --fast --coins BTC ETH
 ```
 
-Backtest the live momentum engine on recent history:
+---
 
-```bash
-nave crypto momentum-backtest --lookback-days 180
-```
+## Options: equity and crypto
 
-### Weekly COT workflow
-
-Generate a manual COT report:
-
-```bash
-nave cot report --coins "BTC ETH"
-nave cot report --coins "BTC ETH" --cot-history 3 --json
-```
-
-Run the broader weekly trading flow:
-
-```bash
-nave trading run --strategy cot-weekly --paper
-```
-
-### Stocks workflow
-
-Fetch the latest ISM report:
-
-```bash
-nave stocks ism-scan --kind manufacturing
-nave stocks ism-scan --kind services --json
-```
-
-Generate a stock report or screen:
-
-```bash
-nave stocks ism-report --kind manufacturing --top-n 5 --sheet
-nave stocks screen --kind manufacturing --top-n 5 --capital 10000
-```
-
-### Options workflow
-
-Run options analysis for a ticker and get a sheet-style ranked strategy summary in the terminal:
+### Single ticker
 
 ```bash
 nave options analyze --ticker MSFT --days-to-exp 30
-```
-
-Evaluate an exact manual bull put credit spread when you already have target
-strikes/premiums:
-
-```bash
-nave options analyze --ticker MSFT --strategy bull-put \
-  --short-put 395 --long-put 390 \
-  --short-premium 8.50 --long-premium 6.90 \
-  --expiration 2026-06-18
-```
-
-If you omit `--short-premium` or `--long-premium`, the analyzer uses the option
-chain mid price for that leg when the strike is available.
-
-Render terminal-native charts (no browser) with plotext while keeping the
-existing report flow and HTML chart artifacts:
-
-```bash
-nave options analyze --ticker MSFT --days-to-exp 30 --terminal
-# alias
-nave options analyze --ticker MSFT --days-to-exp 30 --ascii
-```
-
-When `--terminal` (or `--ascii`) is enabled, human output is grouped in this order:
-
-1. Prompt and data block
-2. Graphs (payoff, Greeks, Monte Carlo, strategy ranking)
-3. Summary (metrics table, rankings, risk warnings)
-
-The sheet run also saves a copyable JSON report file (path shown in terminal), so
-you can share or reuse the result in automation.
-
-Use a custom report path when needed:
-
-```bash
-nave options analyze --ticker MSFT --days-to-exp 30 --json-path ./msft_options.json
-```
-
-Print a ready-to-copy LLM prompt based on the generated report:
-
-```bash
-nave options analyze --ticker MSFT --days-to-exp 30 --llm-prompt
-```
-
-Terminal charts + LLM prompt in one run:
-
-```bash
 nave options analyze --ticker MSFT --days-to-exp 30 --terminal --llm-prompt
+nave options analyze --ticker MSFT --strategy bull-put \
+  --short-put 395 --long-put 390 --expiration 2026-06-18
+nave options analyze --ticker MSFT --json
 ```
 
-If you also pass `--json`, the output JSON includes `llm_prompt` plus the full
-`charts` paths in a separate `llm_paths` block so downstream agents can consume everything from one payload:
+Human tables: `--sheet`. Terminal charts: `--terminal` (alias `--ascii`).
 
-```bash
-nave options analyze --ticker MSFT --days-to-exp 30 --json --llm-prompt
-```
+### Universe scan
 
-`llm_prompt` contains embedded JSON analysis data with paths omitted, while
-`llm_paths` contains the actual file/chart paths.
-
-Emit full machine JSON only when you explicitly need automation payloads:
-
-```bash
-nave options analyze --ticker AAPL --days-to-exp 45 --json
-```
-
-Scan the default liquid S&P 500 top-100 options universe and return only
-tickers whose analysis passes the executable trade quality gate:
+Scans S&P names, keeps only executable `trade_candidate` setups, ranks by score / EV / PoP:
 
 ```bash
 nave options analyze --sp500-scan --sp500-limit 100 --top-trades 3
-nave options analyze --sp500-scan --sp500-limit 100 --top-trades 3 --json
-nave options analyze --sp500-scan --sp500-limit 100 --top-trades 3 --scan-workers 8 --terminal
+nave options analyze --sp500-scan --scan-workers 8 --terminal
 ```
 
-This keeps single-ticker analysis unchanged. In scan mode, the command runs the
-same per-ticker analyzer, filters for `trade_decision.status=trade_candidate`,
-and ranks the top executable setups by score, EV, PoP, and lower touch risk. For
-human output, the scan shows live progress and then prints detail panels for the
-top trades. Use `--scan-workers` to tune concurrency; lower it if your data
-provider starts rate-limiting.
+Implementation: `options/universe_scan.py` (shared by CLI and Hermes).
 
-Use Deribit-backed options data for BTC/ETH while keeping the same options output flow:
+### Hidden gems
+
+Income setups with strong odds plus optional X crowd interest and Congressional boost:
+
+```bash
+nave options gems --sp500-limit 40 --top 5 --sheet
+nave options gems --fetch-x 3 --json
+```
+
+### Playbook registry (S&P top 40)
+
+Per-ticker learned strategies from replay and walk-forward merge gates:
+
+```bash
+nave options registry build --limit 40
+nave options registry learn --ticker WFC
+nave options registry list
+nave options registry show --ticker WFC
+nave options registry iterate --limit 40   # validate → journal → rebuild → gems
+```
+
+### BTC/ETH (Deribit)
 
 ```bash
 nave options analyze BTC --source deribit --days-to-exp 30
-nave options analyze ETH --source deribit --days-to-exp 30 --json
-nave options opportunities --coins BTC,ETH --source deribit
-nave options opportunities --coins BTC,ETH --source deribit --json
-nave options analyze BTC --source deribit --terminal
+nave options opportunities --coins BTC,ETH --source deribit --sheet
 ```
 
-Scan BTC/ETH momentum-filtered options opportunities from the options module:
+---
+
+## Stocks and Congress
+
+ISM-driven screening (manufacturing EPS growth vs services revenue-growth modes):
 
 ```bash
-nave options opportunities --coins BTC,ETH
-nave options opportunities --coins BTC,ETH --sheet
-nave options opportunities --coins BTC,ETH --json
+nave stocks ism-scan --kind manufacturing
+nave stocks screen --kind manufacturing --top-n 5 --capital 10000
+nave stocks ism-report --kind manufacturing --top-n 5 --min-confidence 0.7 --sheet
+nave stocks ism-report --telegram-markdown-v2
+nave stocks journal-stats
+nave stocks x-analyze --tickers AAPL,MSFT
 ```
 
-### Agent and service workflow
+**Congress** (STOCK Act, new since last run):
 
-Useful operational commands:
+```bash
+nave congress
+nave congress --json
+```
+
+Requires `FMP_API_KEY`. State: `var/politicians_cache/seen.json`.
+
+Brokers (`AlpacaBroker`, `OndoBroker`) are stubs; strategies default to `dry_run=True`.
+
+---
+
+## Agents: Hermes and MCP
+
+### CLI discovery
 
 ```bash
 nave hermes tools
+nave hermes call --tool cot_report --args-json '{"coins": "BTC ETH"}'
+nave hermes call --tool position_review --args-json '{"coins": "BTC ETH"}'
+nave hermes call --tool momentum_scan --args-json '{"symbols": "BTCUSDT,ETHUSDT"}'
 nave hermes call --tool options_scan --args-json '{"ticker": "MSFT", "days_to_exp": 30}'
-nave hermes call --tool options_scan --args-json '{"ticker": "BTC", "days_to_exp": 30, "source": "deribit"}'
-nave hermes call --tool options_opportunities --args-json '{"coins": "BTC,ETH", "days_to_exp": 30}'
-nave hermes call --tool options_opportunities --args-json '{"coins": "BTC,ETH", "days_to_exp": 30, "source": "deribit"}'
+nave hermes call --tool hidden_gems_scan --args-json '{"limit": 40, "top": 5}'
+nave hermes gateway-invoke '{"tool": "theory_v2_scan", "arguments": {"coins": "BTC ETH"}}'
 nave mcp run
-nave api start --reload
-nave data fetch all
 ```
 
-### JSON vs human output
+Local MCP exposes repo-native tools; `nave mcp fmp-connector` is optional vendor FMP access.
 
-Use human output in the terminal and `--json` for automation. Hermes-facing
-commands are built around JSON contracts, and many reporting commands support
-both modes.
+Full agent daily flow: [docs/agent_onboarding.md](docs/agent_onboarding.md) ·
+[docs/hermes_integration.md](docs/hermes_integration.md).
 
-## Hyperliquid and wallet setup
+### Cron-friendly bundle
 
-If you only want analysis, you can stop at CLI setup.
+```bash
+python scripts/daily_scan.py
+python scripts/daily_scan.py --out var/reports/daily_scan.json
+```
 
-If you want execution paths on Hyperliquid, generate wallets locally:
+---
+
+## Hyperliquid execution
 
 ```bash
 python scripts/setup_wallets.py
+python -m trading.crypto.client summary --wallet hermes
+python -m trading.crypto.strategy --wallet hermes --coins BTC ETH   # dry-run default
+
+nave trading run --strategy cot-weekly --paper --capital 2000
+nave trading run-strategy --wallet hermes --dry-run
 ```
 
-Then use dry-run or paper-style flows first:
+Weekly COT driver:
 
 ```bash
-nave trading run --strategy cot-weekly --paper
+python scripts/weekly_cot_analysis.py --capital 2000 --paper
+python scripts/weekly_cot_analysis.py --capital 2000 --cot-history 3
+nave cot analyze --coins BTC ETH
 ```
 
-For deeper wallet and execution details, see the linked docs below.
+Wallets are encrypted under `~/.secrets/nave-wallets/` — never committed. Details:
+[docs/web3-setup.md](docs/web3-setup.md).
+
+---
+
+## Unified CLI reference
+
+```bash
+nave --help
+nave version
+nave daily
+nave congress
+nave crypto --help
+nave options --help
+nave stocks --help
+nave cot --help
+nave trading --help
+nave data fetch all
+nave api start --reload
+```
+
+**Output modes:** human terminal (default), `--json` for automation, `--sheet` for tables,
+`--telegram-markdown-v2` where supported. Disable Typer status lines in scripts:
+
+```bash
+NAVE_CLI_STATUS=0 nave stocks ism-report --json
+```
+
+---
+
+## Testing
+
+```bash
+pytest -q
+pytest tests/test_trading_imports.py tests/test_options_cli.py \
+  tests/test_momentum_engine.py tests/test_hermes_integration.py -q
+```
+
+---
 
 ## Troubleshooting
 
-If `nave` is not found:
-
 ```bash
-python setup.py
-source ~/.zshrc
-# or
-source ~/.bashrc
-which nave
-```
-
-If you want a direct fallback from the repo root:
-
-```bash
+python setup.py && source ~/.zshrc && which nave
 PYTHONPATH=. python cli/main.py --help
+rm -rf .venv && python setup.py
 ```
 
-If you need a clean rebuild:
+---
 
-```bash
-rm -rf .venv
-python setup.py
-```
+## Further reading
 
-## Further Reading
-
-- [docs/hermes_integration.md](docs/hermes_integration.md)
-- [docs/agent_onboarding.md](docs/agent_onboarding.md)
-- [docs/web3-setup.md](docs/web3-setup.md)
-- [docs/technical.yaml](docs/technical.yaml)
-- [docs/cot_integration.yaml](docs/cot_integration.yaml)
+| Doc | Contents |
+| --- | -------- |
+| [docs/commands/README.md](docs/commands/README.md) | Full command reference |
+| [docs/agent_onboarding.md](docs/agent_onboarding.md) | Hermes daily flow and tools |
+| [docs/hermes_integration.md](docs/hermes_integration.md) | Integration contracts |
+| [docs/analysis/current_setup.md](docs/analysis/current_setup.md) | Live BTC/ETH setup notes |
+| [docs/analysis/btc_eth_historical_review.md](docs/analysis/btc_eth_historical_review.md) | Historical theory review |
+| [docs/technical.yaml](docs/technical.yaml) | Patterns, IPDA, F.I.T.S. |
+| [docs/cot_integration.yaml](docs/cot_integration.yaml) | COT logic and sizing |
+| [AGENTS.md](AGENTS.md) | Theory refinement loop for contributors |
+| [docs/web3-setup.md](docs/web3-setup.md) | Wallets and Hyperliquid |

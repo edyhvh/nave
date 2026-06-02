@@ -7,7 +7,6 @@ Example:
 """
 
 from __future__ import annotations
-from trading.client import HyperliquidClient
 
 import argparse
 from pathlib import Path
@@ -17,6 +16,8 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from trading.crypto.client import HyperliquidClient  # noqa: E402
 
 
 def _to_dataframe(rows: list[dict]) -> pd.DataFrame:

@@ -26,6 +26,18 @@ AGGRESSIVE_STRATEGIES = {
     "call_butterfly",
 }
 
+SIMPLE_PRIMARY_STRATEGIES = {
+    "bull_put_credit_spread",
+    "bear_call_credit_spread",
+    "cash_secured_put",
+}
+
+MEGA_CAP_MIN_SPOT = 100.0
+MEGA_CAP_BULL_PUT_MIN_POP = 55.0
+MEGA_CAP_BULL_PUT_MAX_TOUCH = 72.0
+MEGA_CAP_BULL_PUT_MIN_SCORE = 18.0
+MEGA_CAP_BULL_PUT_MIN_EV = -80.0
+
 
 def _safe_float(value: object) -> float | None:
     if isinstance(value, bool):
@@ -313,13 +325,68 @@ def _income_executable_score(
     return score
 
 
+def _qualifies_mega_cap_income_pass(
+    rec: dict[str, Any],
+    *,
+    directional_bias: str,
+    underlying_price: float,
+    flags: dict[str, bool],
+) -> bool:
+    """Relaxed income gate for liquid mega-caps with bullish/bearish alignment."""
+    strategy_name = _strategy_name(rec)
+    metrics = _strategy_metrics(rec)
+    pop = _safe_float(metrics.get("pop")) or 0.0
+    touch = _safe_float(metrics.get("probability_of_touch")) or 100.0
+    expected_value = _safe_float(metrics.get("expected_value")) or -999.0
+    composite = _safe_float(metrics.get("composite_score")) or 0.0
+    theta_per_day = _safe_float(metrics.get("theta_per_day")) or 0.0
+    max_loss = _safe_float(metrics.get("max_loss")) or 99999.0
+
+    if underlying_price < MEGA_CAP_MIN_SPOT or max_loss > MAX_ACTIONABLE_MAX_LOSS:
+        return False
+    if theta_per_day < 0.0 or flags.get("range_too_tight_vs_expected_move"):
+        return False
+
+    if strategy_name == "bull_put_credit_spread" and directional_bias == "bullish":
+        return (
+            pop >= MEGA_CAP_BULL_PUT_MIN_POP
+            and touch < MEGA_CAP_BULL_PUT_MAX_TOUCH
+            and composite >= MEGA_CAP_BULL_PUT_MIN_SCORE
+            and expected_value >= MEGA_CAP_BULL_PUT_MIN_EV
+        )
+    if strategy_name == "bear_call_credit_spread" and directional_bias == "bearish":
+        return (
+            pop >= MEGA_CAP_BULL_PUT_MIN_POP
+            and touch < MEGA_CAP_BULL_PUT_MAX_TOUCH
+            and composite >= MEGA_CAP_BULL_PUT_MIN_SCORE
+            and expected_value >= MEGA_CAP_BULL_PUT_MIN_EV
+        )
+    return False
+
+
 def _is_conservative_executable(
     rec: dict[str, Any],
     *,
     flags: dict[str, bool],
     conservative_touch_max_pct: float,
     modeled_touch_warning_pct: float = 85.0,
+    directional_bias: str = "neutral",
+    underlying_price: float = 0.0,
+    allow_mega_cap_income_pass: bool = True,
 ) -> bool:
+    metrics = _strategy_metrics(rec)
+    strategy_name = _strategy_name(rec)
+    if strategy_name not in INCOME_STRATEGIES:
+        return False
+
+    if allow_mega_cap_income_pass and _qualifies_mega_cap_income_pass(
+        rec,
+        directional_bias=directional_bias,
+        underlying_price=underlying_price,
+        flags=flags,
+    ):
+        return True
+
     gate = _quality_gate(
         rec,
         flags=flags,
@@ -329,15 +396,11 @@ def _is_conservative_executable(
     if gate["blockers"]:
         return False
 
-    metrics = _strategy_metrics(rec)
-    strategy_name = _strategy_name(rec)
     expected_value = _safe_float(metrics.get("expected_value")) or 0.0
     touch = _safe_float(metrics.get("probability_of_touch")) or 0.0
     theta_per_day = _safe_float(metrics.get("theta_per_day")) or 0.0
     max_loss = _safe_float(metrics.get("max_loss")) or 0.0
 
-    if strategy_name not in INCOME_STRATEGIES:
-        return False
     if expected_value < -25.0:
         return False
     if touch > min(80.0, conservative_touch_max_pct + 5.0):
@@ -364,7 +427,7 @@ def _aggressive_pick_score(
     touch = _safe_float(metrics.get("probability_of_touch")) or 0.0
 
     if strategy_name == "long_strangle":
-        score += 8.0
+        score -= 6.0
     if strategy_name == "long_straddle" and (iv_rank >= 40.0 or iv_percentile >= 80.0):
         score -= 6.0
     if strategy_name == "long_straddle" and touch > 85.0:
@@ -380,9 +443,20 @@ def _is_aggressive_executable(
     flags: dict[str, bool],
     conservative_touch_max_pct: float,
     modeled_touch_warning_pct: float,
+    iv_percentile: float = 0.0,
+    iv_rich: bool = False,
 ) -> bool:
-    if _strategy_name(rec) not in AGGRESSIVE_STRATEGIES:
+    strategy_name = _strategy_name(rec)
+    if strategy_name not in AGGRESSIVE_STRATEGIES:
         return False
+    if strategy_name in {"long_strangle", "long_straddle"}:
+        if iv_percentile < 78.0 or not iv_rich:
+            return False
+        metrics = _strategy_metrics(rec)
+        expected_value = _safe_float(metrics.get("expected_value")) or 0.0
+        touch = _safe_float(metrics.get("probability_of_touch")) or 0.0
+        if expected_value < 0.0 or touch > 78.0:
+            return False
     gate = _quality_gate(
         rec,
         flags=flags,
@@ -390,6 +464,120 @@ def _is_aggressive_executable(
         modeled_touch_warning_pct=modeled_touch_warning_pct,
     )
     return not gate["blockers"]
+
+
+def _aligned_with_bias(strategy_name: str, directional_bias: str) -> bool:
+    if directional_bias == "neutral":
+        return strategy_name in {"bull_put_credit_spread", "iron_condor"}
+    if directional_bias == "bullish":
+        return strategy_name in {"bull_put_credit_spread", "cash_secured_put", "covered_call"}
+    if directional_bias == "bearish":
+        return strategy_name in {"bear_call_credit_spread"}
+    return True
+
+
+def pick_primary_executable(
+    *,
+    all_ranked: list[dict[str, Any]],
+    best_conservative: dict[str, Any] | None,
+    best_aggressive: dict[str, Any] | None,
+    actionable_pool: list[dict[str, Any]],
+    flags_by_name: dict[str, dict[str, bool]],
+    iv_percentile: float,
+    iv_rich: bool,
+    conservative_touch_max_pct: float,
+    directional_bias: str = "neutral",
+) -> dict[str, Any] | None:
+    """Prefer simple defined-risk income; allow long-vol only in rich-IV regimes."""
+    if best_conservative is not None:
+        name = _strategy_name(best_conservative)
+        if name in SIMPLE_PRIMARY_STRATEGIES or name == "iron_condor":
+            if _aligned_with_bias(name, directional_bias):
+                return best_conservative
+
+    simple_actionable = [
+        rec
+        for rec in actionable_pool
+        if _strategy_name(rec) in SIMPLE_PRIMARY_STRATEGIES
+        and _aligned_with_bias(_strategy_name(rec), directional_bias)
+    ]
+    if simple_actionable:
+        return max(
+            simple_actionable,
+            key=lambda rec: _income_executable_score(
+                rec,
+                flags=flags_by_name.get(_strategy_name(rec), {}),
+                forgivingness_score=_forgivingness_score(
+                    rec,
+                    flags=flags_by_name.get(_strategy_name(rec), {}),
+                    iv_rich=iv_rich,
+                    conservative_touch_max_pct=conservative_touch_max_pct,
+                ),
+                conservative_touch_max_pct=conservative_touch_max_pct,
+            ),
+        )
+
+    if (
+        best_aggressive is not None
+        and iv_percentile >= 78.0
+        and iv_rich
+        and _strategy_name(best_aggressive) in {"long_straddle", "bull_call_debit_spread"}
+        and _aligned_with_bias(_strategy_name(best_aggressive), directional_bias)
+    ):
+        return best_aggressive
+
+    return None
+
+
+def pick_directional_override(
+    *,
+    all_ranked: list[dict[str, Any]],
+    actionable_pool: list[dict[str, Any]],
+    flags_by_name: dict[str, dict[str, bool]],
+    directional_bias: str,
+    underlying_price: float,
+    prefer_directional_override: bool = True,
+    manual_strategy_active: bool = False,
+) -> dict[str, Any] | None:
+    """Bias-aligned income setup that failed strict gate but passes discretionary rules."""
+    if not prefer_directional_override:
+        return None
+
+    actionable_names = {_strategy_name(rec) for rec in actionable_pool}
+
+    override_pool: list[dict[str, Any]] = []
+    for rec in all_ranked:
+        name = _strategy_name(rec)
+        if name in actionable_names:
+            continue
+        if not _aligned_with_bias(name, directional_bias):
+            continue
+        if name not in SIMPLE_PRIMARY_STRATEGIES:
+            continue
+        if _qualifies_mega_cap_income_pass(
+            rec,
+            directional_bias=directional_bias,
+            underlying_price=underlying_price,
+            flags=flags_by_name.get(name, {}),
+        ):
+            override_pool.append(rec)
+
+    if manual_strategy_active and all_ranked:
+        manual_rec = all_ranked[0]
+        if _strategy_name(manual_rec) in SIMPLE_PRIMARY_STRATEGIES:
+            return manual_rec
+
+    if not override_pool:
+        return None
+
+    return max(
+        override_pool,
+        key=lambda rec: (
+            _safe_float(_strategy_metrics(rec).get("pop")) or 0.0,
+            -(_safe_float(_strategy_metrics(rec).get("probability_of_touch")) or 100.0),
+            _safe_float(_strategy_metrics(rec).get("composite_score")) or 0.0,
+        ),
+    )
 
 
 def _pick_recommendation(
@@ -502,6 +690,8 @@ def build_narrative_overlay(
     generation_audit: dict[str, Any] | None = None,
     conservative_touch_max_pct: float = 75.0,
     modeled_touch_warning_pct: float = 85.0,
+    prefer_directional_override: bool = True,
+    allow_mega_cap_income_pass: bool = True,
 ) -> dict[str, Any]:
     implied = dict(underlying_analysis.get("implied_volatility") or {})
     hv = dict(underlying_analysis.get("historical_volatility") or {})
@@ -520,6 +710,8 @@ def build_narrative_overlay(
     put_call_volume_ratio = _safe_float(snapshot.get("put_call_volume_ratio"))
     skew_diff = _safe_float(skew.get("skew_diff"))
     iv_rich = bool(hv_vs_iv.get("iv_rich_vs_hv_short"))
+    underlying_price = _safe_float(underlying_analysis.get("price")) or 0.0
+    manual_strategy_active = bool(underlying_analysis.get("manual_strategy"))
 
     flags_by_name = {
         _strategy_name(rec): _strategy_flags(rec, one_std_move=one_std_move, skew=skew)
@@ -653,6 +845,7 @@ def build_narrative_overlay(
         )
 
     best_modeled = all_ranked[0] if all_ranked else None
+    directional_bias = str(underlying_analysis.get("directional_bias") or "neutral")
     conservative_pool = [
         rec for rec in all_ranked
         if _is_conservative_executable(
@@ -660,6 +853,9 @@ def build_narrative_overlay(
             flags=flags_by_name[_strategy_name(rec)],
             conservative_touch_max_pct=conservative_touch_max_pct,
             modeled_touch_warning_pct=modeled_touch_warning_pct,
+            directional_bias=directional_bias,
+            underlying_price=underlying_price,
+            allow_mega_cap_income_pass=allow_mega_cap_income_pass,
         )
     ]
     best_conservative = _pick_recommendation(
@@ -685,6 +881,8 @@ def build_narrative_overlay(
                 flags=flags_by_name[_strategy_name(rec)],
                 conservative_touch_max_pct=conservative_touch_max_pct,
                 modeled_touch_warning_pct=modeled_touch_warning_pct,
+                iv_percentile=iv_percentile,
+                iv_rich=iv_rich,
             )
         ],
         names=AGGRESSIVE_STRATEGIES,
@@ -700,10 +898,25 @@ def build_narrative_overlay(
             modeled_touch_warning_pct=modeled_touch_warning_pct,
         )["actionable"]
     ]
-    best_overall = max(
-        actionable_pool,
-        key=lambda rec: _safe_float(_strategy_metrics(rec).get("composite_score")) or 0.0,
-        default=None,
+    best_overall = pick_primary_executable(
+        all_ranked=all_ranked,
+        best_conservative=best_conservative,
+        best_aggressive=best_aggressive,
+        actionable_pool=actionable_pool,
+        flags_by_name=flags_by_name,
+        iv_percentile=iv_percentile,
+        iv_rich=iv_rich,
+        conservative_touch_max_pct=conservative_touch_max_pct,
+        directional_bias=directional_bias,
+    )
+    best_directional_override_rec = pick_directional_override(
+        all_ranked=all_ranked,
+        actionable_pool=actionable_pool,
+        flags_by_name=flags_by_name,
+        directional_bias=directional_bias,
+        underlying_price=underlying_price,
+        prefer_directional_override=prefer_directional_override,
+        manual_strategy_active=manual_strategy_active,
     )
 
     conservative_rationale = (
@@ -754,27 +967,45 @@ def build_narrative_overlay(
         warnings.append(
             "No conservative income setup passed the executable filter for EV, touch risk, theta, and structure."
         )
-    if best_overall is None:
+    trade_status = "no_trade"
+    trade_rec: dict[str, Any] | None = None
+    trade_reason = (
+        "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards."
+    )
+
+    if best_overall is not None:
+        trade_status = "trade_candidate"
+        trade_rec = best_overall
+        trade_reason = (
+            "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich)."
+        )
+    elif best_directional_override_rec is not None and prefer_directional_override:
+        trade_status = "directional_override"
+        trade_rec = best_directional_override_rec
+        trade_reason = (
+            "Bias-aligned income setup passes discretionary mega-cap rules but failed the strict automated gate. "
+            "Treat as a directional override: size conservatively and monitor touch risk."
+        )
+        warnings.append(
+            "Directional override: strict quality gate blocked this setup; discretionary rules allow it."
+        )
+    else:
         warnings.append(
             "No trade: every ranked strategy failed the actionable quality gate for score, EV, touch risk, or structure."
         )
 
     trade_decision = {
-        "status": "trade_candidate" if best_overall is not None else "no_trade",
-        "strategy_name": _strategy_name(best_overall) if best_overall is not None else None,
-        "reason": (
-            "At least one ranked strategy passed the actionable quality gate."
-            if best_overall is not None
-            else "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards."
-        ),
+        "status": trade_status,
+        "strategy_name": _strategy_name(trade_rec) if trade_rec is not None else None,
+        "reason": trade_reason,
         "quality_gate": (
             _quality_gate(
-                best_overall,
-                flags=flags_by_name[_strategy_name(best_overall)],
+                trade_rec,
+                flags=flags_by_name[_strategy_name(trade_rec)],
                 conservative_touch_max_pct=conservative_touch_max_pct,
                 modeled_touch_warning_pct=modeled_touch_warning_pct,
             )
-            if best_overall is not None
+            if trade_rec is not None
             else {
                 "actionable": False,
                 "blockers": ["no_ranked_strategy_passed_quality_gate"],
@@ -787,6 +1018,19 @@ def build_narrative_overlay(
                     "max_loss": MAX_ACTIONABLE_MAX_LOSS,
                 },
             }
+        ),
+        "override": trade_status == "directional_override",
+        "entry_quality": (
+            "high_odds"
+            if trade_rec is not None
+            and (_safe_float(_strategy_metrics(trade_rec).get("pop")) or 0.0) >= 60.0
+            and (_safe_float(_strategy_metrics(trade_rec).get("probability_of_touch")) or 100.0) < 72.0
+            else "standard" if trade_rec is not None else None
+        ),
+        "open_recommended": (
+            trade_rec is not None
+            and (_safe_float(_strategy_metrics(trade_rec).get("pop")) or 0.0) >= 60.0
+            and (_safe_float(_strategy_metrics(trade_rec).get("probability_of_touch")) or 100.0) < 72.0
         ),
     }
 
@@ -875,11 +1119,26 @@ def build_narrative_overlay(
             ),
             "best_overall_executable_setup": (
                 _recommendation_snapshot(
-                    best_overall,
-                    thesis="Highest-ranked setup that passed the actionable quality gate.",
-                    rationale="This setup passed minimum score, non-negative EV, and touch-risk checks.",
+                    trade_rec if trade_rec is not None else best_overall,
+                    thesis=(
+                        "Directional override: bias-aligned income setup for discretionary execution."
+                        if trade_status == "directional_override"
+                        else "Highest-ranked setup that passed the actionable quality gate."
+                    ),
+                    rationale=trade_reason,
                 )
-                if best_overall is not None
+                if trade_rec is not None
+                else None
+            ),
+            "best_directional_override_setup": (
+                _recommendation_snapshot(
+                    best_directional_override_rec,
+                    thesis="Discretionary bias-aligned income expression when strict gate blocks.",
+                    rationale=(
+                        "Passes mega-cap income rules (PoP, touch, bias) but not full automation threshold."
+                    ),
+                )
+                if best_directional_override_rec is not None
                 else None
             ),
             "best_aggressive_setup": (

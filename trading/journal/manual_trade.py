@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from trading.cot.cot_analyzer import COTAnalyzer
-from trading.cot.cot_fetcher import fetch_latest_cot
+from trading.crypto.cot.cot_analyzer import COTAnalyzer
+from trading.crypto.cot.cot_fetcher import fetch_latest_cot
 
 
 TRADING_MODES = ("live", "demo")
