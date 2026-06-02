@@ -42,7 +42,10 @@ class MomentumThesisStore:
     def save(self) -> None:
         assert self.path is not None
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(self._payload, indent=2), encoding="utf-8")
+        self.path.write_text(
+            json.dumps(self._payload, indent=2, default=_json_default),
+            encoding="utf-8",
+        )
 
     def _load(self) -> dict[str, Any]:
         assert self.path is not None
@@ -57,6 +60,16 @@ class MomentumThesisStore:
         if not isinstance(payload.get("theses"), dict):
             payload["theses"] = {}
         return payload
+
+
+def _json_default(value: Any) -> Any:
+    item = getattr(value, "item", None)
+    if callable(item):
+        try:
+            return item()
+        except Exception:
+            pass
+    return str(value)
 
 
 def reconcile_momentum_theses(

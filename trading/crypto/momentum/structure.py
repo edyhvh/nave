@@ -54,6 +54,8 @@ def assess_retest(
     breakout_level: float,
     breakout_index: pd.Timestamp,
     config: MomentumConfig,
+    *,
+    max_retest_hours: int | None = None,
 ) -> RetestAssessment:
     post_breakout = trigger_frame.loc[trigger_frame.index >= breakout_index]
     if post_breakout.empty:
@@ -61,8 +63,8 @@ def assess_retest(
 
     maturation_start = breakout_index + \
         pd.Timedelta(hours=config.breakout.min_retest_hours)
-    freshness_end = breakout_index + \
-        pd.Timedelta(hours=config.breakout.max_retest_hours)
+    retest_hours = max_retest_hours if max_retest_hours is not None else config.breakout.max_retest_hours
+    freshness_end = breakout_index + pd.Timedelta(hours=retest_hours)
     freshness_window = post_breakout.loc[post_breakout.index <= freshness_end]
     if freshness_window.empty:
         return RetestAssessment("invalid", False, None, None, None, False)

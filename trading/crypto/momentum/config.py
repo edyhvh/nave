@@ -29,6 +29,7 @@ class BreakoutConfig:
     extended_range_fraction: float
     min_retest_hours: int
     max_retest_hours: int
+    max_retest_hours_swing: int = 120
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class VolatilityConfig:
     min_atr_ratio_swing: float
     min_atr_ratio_intraday_underextended: float
     min_range_expansion_swing_short: float
+    min_range_expansion_trend_override: float
 
 
 @dataclass(frozen=True)
@@ -113,6 +115,16 @@ class ScoreWeights:
 
 
 @dataclass(frozen=True)
+class CotOverlayConfig:
+    enabled: bool = True
+    score_bonus_aligned: int = 8
+    score_bonus_caution: int = 2
+    block_on_conflict: bool = True
+    score_threshold_aligned: int = 74
+    score_threshold_default: int = 78
+
+
+@dataclass(frozen=True)
 class TheoryOverlayConfig:
     enabled: bool = True
     min_weekly_velocity: float = 1.2
@@ -141,6 +153,7 @@ class MomentumConfig:
     participation: ParticipationConfig
     execution: ExecutionConfig
     theory_overlay: TheoryOverlayConfig
+    cot_overlay: CotOverlayConfig
     cadence: CadenceConfig
     risk: RiskConfig
     weights: ScoreWeights
@@ -155,6 +168,23 @@ def _config_path(config_path: str | Path | None = None) -> Path:
 def _read_payload(config_path: str | Path | None = None) -> dict[str, Any]:
     path = _config_path(config_path)
     return json.loads(path.read_text())
+
+
+def _build_cot_overlay_config(payload: dict[str, Any]) -> CotOverlayConfig:
+    defaults = CotOverlayConfig()
+    values = {
+        "enabled": payload.get("enabled", defaults.enabled),
+        "score_bonus_aligned": int(payload.get("score_bonus_aligned", defaults.score_bonus_aligned)),
+        "score_bonus_caution": int(payload.get("score_bonus_caution", defaults.score_bonus_caution)),
+        "block_on_conflict": payload.get("block_on_conflict", defaults.block_on_conflict),
+        "score_threshold_aligned": int(
+            payload.get("score_threshold_aligned", defaults.score_threshold_aligned)
+        ),
+        "score_threshold_default": int(
+            payload.get("score_threshold_default", defaults.score_threshold_default)
+        ),
+    }
+    return CotOverlayConfig(**values)
 
 
 def _build_theory_overlay_config(payload: dict[str, Any]) -> TheoryOverlayConfig:
@@ -200,4 +230,5 @@ def load_momentum_config(config_path: str | Path | None = None) -> MomentumConfi
         weights=ScoreWeights(**payload["weights"]),
         theory_overlay=_build_theory_overlay_config(
             payload.get("theory_overlay") or {}),
+        cot_overlay=_build_cot_overlay_config(payload.get("cot_overlay") or {}),
     )

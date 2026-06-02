@@ -36,7 +36,7 @@ _ALIASES: dict[str, str] = {
     "trading.execution": "trading.crypto.execution",
     "trading.config": "trading.crypto.config",
     "trading.momentum": "trading.crypto.momentum",
-    "trading.cot_gate": "trading.crypto.cot_gate",
+    "trading.cot_gate": "trading.crypto.cot.cot_gate",
     "trading.mcp_server": "trading.crypto.mcp_server",
     # --- packages (register parent first, then children) --------------------
     "trading.cot": "trading.crypto.cot",

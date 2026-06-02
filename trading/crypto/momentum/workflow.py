@@ -460,6 +460,7 @@ def run_period_backtest(
     *,
     symbols: list[str] | None = None,
     trigger_timeframe: str = DEFAULT_TRIGGER_TF,
+    skip_baseline_compare: bool = False,
 ) -> dict[str, Any]:
     selected_symbols = [symbol.upper() for symbol in (symbols or ["BTC", "ETH"])]
     start, end = resolve_period(period)
@@ -512,6 +513,7 @@ def run_period_backtest(
             daily_frame=frames["daily"],
             setup_frame=frames["setup"],
             trigger_frame=frames["trigger"],
+            skip_baseline_compare=skip_baseline_compare,
         )
         symbol_payload = _with_trade_diagnostics(symbol_payload)
         symbol_payload["coverage"] = symbol_coverage

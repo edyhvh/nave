@@ -1,0 +1,11 @@
+{
+  "ema_fast": 20,
+  "ema_slow": 50,
+  "cot_crowded_percentile_min": 68,
+  "min_drawdown_from_high": 0.055,
+  "leg_down_drawdown": 0.1,
+  "relief_bounce_min": 0.015,
+  "relief_bounce_max": 0.16,
+  "supply_ema_proximity": 0.995,
+  "thesis_max_age_hours": 336
+}
