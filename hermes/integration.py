@@ -15,10 +15,11 @@ from typing import Any, Callable, cast
 from core.config import CliDefaults
 from core.exceptions import HermesIntegrationError
 from core.logger import configure_logger
-from trading.client import HyperliquidClient
-from trading.cot.cot_analyzer import COTAnalyzer
-from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
-from trading.cot.cot_position_generator import COTPositionGenerator
+from options.factory import build_options_analyzer
+from trading.crypto.client import HyperliquidClient
+from trading.crypto.cot.cot_analyzer import COTAnalyzer
+from trading.crypto.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
+from trading.crypto.cot.cot_position_generator import COTPositionGenerator
 
 logger = configure_logger(__name__)
 
@@ -45,15 +46,6 @@ def _to_jsonable(value: Any) -> Any:
         except Exception:
             pass
     return value
-
-
-def _build_options_analyzer(*, source: str):
-    from options.analyzer import OptionsAnalyzer
-
-    try:
-        return OptionsAnalyzer(fetcher_source=source)
-    except TypeError:
-        return OptionsAnalyzer()
 
 
 def _operational_hints(
@@ -872,7 +864,7 @@ class HermesNaveIntegration:
         from options.formatters import render_options_scan_markdown_v2
 
         try:
-            payload = _build_options_analyzer(source=source).run(
+            payload = build_options_analyzer(source=source).run(
                 ticker=symbol,
                 days_to_exp=days_to_exp,
             )
@@ -918,7 +910,7 @@ class HermesNaveIntegration:
                 "coins must include at least one symbol")
 
         try:
-            payload = _build_options_analyzer(source=source).scan_crypto_opportunities(
+            payload = build_options_analyzer(source=source).scan_crypto_opportunities(
                 coins=coin_list,
                 days_to_exp=days_to_exp,
                 tf=tf,
@@ -986,9 +978,9 @@ class HermesNaveIntegration:
         if not 1 <= days_to_exp <= 365:
             raise HermesIntegrationError("days_to_exp must be between 1 and 365")
 
-        from cli.commands.options import _scan_equity_options_universe
         from options.formatters import render_hidden_gems_markdown_v2
         from options.gems_pipeline import format_gem_digest, run_hidden_gems_scan
+        from options.universe_scan import scan_equity_options_universe
         from options.universe import SP500_TOP_100_TICKERS, get_sp500_tickers
 
         tickers = (
@@ -996,10 +988,10 @@ class HermesNaveIntegration:
             if limit > len(SP500_TOP_100_TICKERS)
             else list(SP500_TOP_100_TICKERS[:limit])
         )
-        analyzer = _build_options_analyzer(source=source)
-        scan = _scan_equity_options_universe(
+        analyzer = build_options_analyzer(source=source)
+        scan = scan_equity_options_universe(
             analyzer=analyzer,
-            analyzer_factory=lambda: _build_options_analyzer(source=source),
+            analyzer_factory=lambda: build_options_analyzer(source=source),
             tickers=tickers,
             days_to_exp=days_to_exp,
             top_trades=top,
@@ -1153,7 +1145,7 @@ class HermesNaveIntegration:
             raise HermesIntegrationError(
                 "At least one coin is required for theory_v2_scan")
 
-        from trading.theory_v2 import build_signals_for_coins  # local to keep import light
+        from trading.crypto.theory_v2 import build_signals_for_coins  # local to keep import light
 
         signals, decisions = build_signals_for_coins(coin_list)
 

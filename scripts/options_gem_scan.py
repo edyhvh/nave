@@ -12,11 +12,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from cli.commands.options import (  # noqa: E402
-    _build_options_analyzer,
-    _scan_equity_options_universe,
-)
+from options.factory import build_options_analyzer  # noqa: E402
 from options.gems_pipeline import format_gem_digest, run_hidden_gems_scan  # noqa: E402
+from options.universe_scan import scan_equity_options_universe  # noqa: E402
 from options.universe import SP500_TOP_100_TICKERS, get_sp500_tickers  # noqa: E402
 
 
@@ -33,10 +31,10 @@ def main() -> int:
         if args.limit > len(SP500_TOP_100_TICKERS)
         else list(SP500_TOP_100_TICKERS[: args.limit])
     )
-    analyzer = _build_options_analyzer(source="yfinance")
-    scan = _scan_equity_options_universe(
+    analyzer = build_options_analyzer(source="yfinance")
+    scan = scan_equity_options_universe(
         analyzer=analyzer,
-        analyzer_factory=lambda: _build_options_analyzer(source="yfinance"),
+        analyzer_factory=lambda: build_options_analyzer(source="yfinance"),
         tickers=tickers,
         days_to_exp=30,
         top_trades=args.top,

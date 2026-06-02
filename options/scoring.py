@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import pandas as pd
 
@@ -217,6 +219,29 @@ def _tradeoff_comment(
     return f"{strategy_name.replace('_', ' ')}: " + "; ".join(tone) + "."
 
 
+def _evaluate_distribution(
+    candidate: StrategyCandidate,
+    *,
+    underlying_price: float,
+    implied_volatility: float,
+    risk_free_rate: float,
+    equity_risk_premium: float,
+) -> dict[str, float]:
+    parameters = inspect.signature(evaluate_strategy_distribution).parameters
+    accepts_equity_risk_premium = (
+        "equity_risk_premium" in parameters
+        or any(param.kind == inspect.Parameter.VAR_KEYWORD for param in parameters.values())
+    )
+    kwargs: dict[str, float] = {
+        "underlying_price": underlying_price,
+        "implied_volatility": implied_volatility,
+        "risk_free_rate": risk_free_rate,
+    }
+    if accepts_equity_risk_premium:
+        kwargs["equity_risk_premium"] = equity_risk_premium
+    return evaluate_strategy_distribution(candidate, **kwargs)
+
+
 def rank_recommendations(
     *,
     candidates: list[StrategyCandidate],
@@ -235,7 +260,7 @@ def rank_recommendations(
     for candidate in candidates:
         theta_per_day, vega_exposure = _aggregate_greek_exposure(
             option_frame, candidate)
-        dist = evaluate_strategy_distribution(
+        dist = _evaluate_distribution(
             candidate,
             underlying_price=underlying_price,
             implied_volatility=iv_atm,
