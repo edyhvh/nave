@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from options.position_context import position_context_from_scan_row
 from trading.stocks.x_interest import XInterestProfile, interest_score, load_x_interest_index
 
 MEGA_CAP_TICKERS = frozenset(
@@ -221,6 +222,7 @@ def score_gem_row(
     median_x_engagement: float = 0.0,
     congress_tickers: frozenset[str] | set[str] | None = None,
     cfg: GemFilterConfig | None = None,
+    days_to_exp: int | None = None,
 ) -> dict[str, Any] | None:
     cfg = cfg or DEFAULT_FILTER
     status = str(row.get("status") or "")
@@ -304,6 +306,12 @@ def score_gem_row(
 
     tier = "gem" if gem_score >= 62 else "prospect" if gem_score >= cfg.min_gem_score else "watch"
 
+    position = position_context_from_scan_row(
+        row,
+        days_to_exp=days_to_exp,
+        congress_tickers=congress_tickers or frozenset(),
+    )
+
     return {
         "ticker": ticker,
         "gem_score": round(gem_score, 1),
@@ -319,11 +327,11 @@ def score_gem_row(
         "strategy": strategy,
         "bias": bias,
         "metrics": dict(metrics),
+        "position": position,
         "x_profile": x_profile.as_dict() if x_profile else None,
         "reasons": reasons or ["passes refined gem filters"],
         "executable_setup": row.get("executable_setup"),
         "trade_decision": decision,
-        "filter_config": "v2_refined",
     }
 
 
@@ -409,6 +417,7 @@ def rank_hidden_gems(
     filter_profile: str = "daily",
 ) -> dict[str, Any]:
     cfg = cfg or resolve_gem_filter(filter_profile)
+    target_dte = int(scan_payload.get("days_to_exp") or 30)
     x_index = x_index if x_index is not None else load_x_interest_index()
     engagements = [p.engagement for p in x_index.values() if p.engagement > 0]
     median_eng = float(sorted(engagements)[len(engagements) // 2]) if engagements else 0.0
@@ -422,6 +431,7 @@ def rank_hidden_gems(
             median_x_engagement=median_eng,
             congress_tickers=congress_tickers,
             cfg=cfg,
+            days_to_exp=target_dte,
         )
         if scored is not None:
             gems.append(scored)
@@ -460,6 +470,7 @@ def rank_hidden_gems(
             median_x_engagement=median_eng,
             congress_tickers=congress_tickers,
             cfg=watch_cfg,
+            days_to_exp=target_dte,
         )
         if scored is not None:
             scored["tier"] = "watch"
@@ -468,6 +479,8 @@ def rank_hidden_gems(
 
     scan_picks: list[dict[str, Any]] = []
     if not gems:
+        dte = target_dte
+        congress_set = congress_tickers or frozenset()
         for item in scan_payload.get("ranked") or []:
             ticker = str(item.get("ticker") or "").upper()
             if not ticker:
@@ -475,6 +488,11 @@ def rank_hidden_gems(
             if cfg.block_high_vol and ticker in HIGH_VOL_LOSERS:
                 continue
             row = (scan_payload.get("results") or {}).get(ticker) or {}
+            position = position_context_from_scan_row(
+                row,
+                days_to_exp=dte,
+                congress_tickers=congress_set,
+            )
             scan_picks.append(
                 {
                     "ticker": ticker,
@@ -484,7 +502,9 @@ def rank_hidden_gems(
                     "expected_value": item.get("expected_value"),
                     "probability_of_touch": item.get("probability_of_touch"),
                     "setup_summary": item.get("setup_summary") or row.get("setup_summary"),
+                    "rationale": item.get("rationale"),
                     "tier": "scan_pick",
+                    "position": position,
                 }
             )
         scan_picks = scan_picks[:limit]

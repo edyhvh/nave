@@ -185,8 +185,9 @@ nave options daily --json
 nave options daily --strict-filters         # old replay-tuned gates (fewer names)
 ```
 
-Daily mode uses relaxed gem filters (~30d income). If no gems pass, output includes a
-**watchlist** and **scan picks** (top executable trades from the universe scan).
+Daily mode uses relaxed gem filters (~30d income). Output includes per-ticker **position
+detail panels** (legs, bias, thesis, risk metrics, decision, deep-dive command). If no gems
+pass, you still get a **watchlist** and **scan picks** with full position context.
 
 Equivalent manual steps:
 
