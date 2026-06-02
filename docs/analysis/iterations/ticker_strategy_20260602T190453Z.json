@@ -1,0 +1,244 @@
+{
+  "generated_at": "2026-06-02T19:04:53.739160+00:00",
+  "iteration": "20260602T190453Z",
+  "replay_source": "docs/analysis/raw/options_yearly_20260602T181813Z.json",
+  "journal_trades_merged": 0,
+  "walkforward": {
+    "n_folds": 4,
+    "with_oos_trades": 18,
+    "leaderboard": [
+      {
+        "ticker": "BAC",
+        "oos_win_rate": 1.0,
+        "oos_trades": 2,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "WFC",
+        "oos_win_rate": 0.6666666666666666,
+        "oos_trades": 6,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "JPM",
+        "oos_win_rate": 0.3333333333333333,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "ABBV",
+        "oos_win_rate": 0.3333333333333333,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "V",
+        "oos_win_rate": 0.25,
+        "oos_trades": 4,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "META",
+        "oos_win_rate": 0.14285714285714285,
+        "oos_trades": 7,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "HD",
+        "oos_win_rate": 0.0,
+        "oos_trades": 6,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "MA",
+        "oos_win_rate": 0.0,
+        "oos_trades": 5,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "MSFT",
+        "oos_win_rate": 0.0,
+        "oos_trades": 4,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "NFLX",
+        "oos_win_rate": 0.0,
+        "oos_trades": 4,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "COST",
+        "oos_win_rate": 0.0,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "PG",
+        "oos_win_rate": 0.0,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "PLTR",
+        "oos_win_rate": 0.0,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "CRM",
+        "oos_win_rate": 0.0,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "NOW",
+        "oos_win_rate": 0.0,
+        "oos_trades": 3,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "WMT",
+        "oos_win_rate": 0.0,
+        "oos_trades": 2,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "TSLA",
+        "oos_win_rate": 0.0,
+        "oos_trades": 1,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      },
+      {
+        "ticker": "JNJ",
+        "oos_win_rate": 0.0,
+        "oos_trades": 1,
+        "primary_stable": true,
+        "last_primary": "bull_put_credit_spread"
+      }
+    ]
+  },
+  "merge_readiness": {
+    "ready_to_merge": false,
+    "min_approved": 6,
+    "min_watch": 15,
+    "counts": {
+      "approved": 5,
+      "watch": 16,
+      "reject": 19,
+      "total": 40
+    },
+    "approved_tickers": [
+      "BAC",
+      "COST",
+      "JPM",
+      "PLTR",
+      "WFC"
+    ],
+    "watch_tickers": [
+      "ABBV",
+      "BRK-B",
+      "CRM",
+      "HD",
+      "JNJ",
+      "MA",
+      "META",
+      "MSFT",
+      "NFLX",
+      "NOW",
+      "ORCL",
+      "PG",
+      "TSLA",
+      "V",
+      "WMT",
+      "XOM"
+    ],
+    "reject_tickers": [
+      "AAPL",
+      "ABT",
+      "AMZN",
+      "AVGO",
+      "CSCO",
+      "CVX",
+      "GE",
+      "GOOG",
+      "GOOGL",
+      "IBM",
+      "ISRG",
+      "KO",
+      "LIN",
+      "LLY",
+      "MCD",
+      "MRK",
+      "NVDA",
+      "PM",
+      "UNH"
+    ],
+    "blockers": [
+      "need 6 approved tickers (have 5)"
+    ]
+  },
+  "registry": {
+    "root": "/Users/jhonny/nave/var/registry/sp500_top40",
+    "tickers": [
+      "AAPL",
+      "MSFT",
+      "NVDA",
+      "AMZN",
+      "META",
+      "GOOGL",
+      "GOOG",
+      "BRK-B",
+      "AVGO",
+      "TSLA",
+      "JPM",
+      "LLY",
+      "V",
+      "XOM",
+      "MA",
+      "COST",
+      "HD",
+      "NFLX",
+      "WMT",
+      "PG",
+      "JNJ",
+      "ORCL",
+      "ABBV",
+      "BAC",
+      "KO",
+      "PLTR",
+      "CSCO",
+      "CRM",
+      "PM",
+      "IBM",
+      "UNH",
+      "CVX",
+      "WFC",
+      "ABT",
+      "GE",
+      "MCD",
+      "LIN",
+      "NOW",
+      "MRK",
+      "ISRG"
+    ]
+  },
+  "hidden_gems": null
+}

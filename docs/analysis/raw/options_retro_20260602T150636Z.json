@@ -1,0 +1,1260 @@
+{
+  "generated_at": "2026-06-02T15:06:22.571454+00:00",
+  "universe": "sp500_top_30",
+  "offsets_days": [
+    7
+  ],
+  "days_to_exp": 30,
+  "windows": {
+    "7": {
+      "entry_date": "2026-05-26",
+      "exit_date": "2026-06-02",
+      "summary": {
+        "total": 30,
+        "trade_candidates": 7,
+        "no_trade": 23,
+        "errors": 0,
+        "wins": 0,
+        "losses": 7,
+        "win_rate": 0.0,
+        "avg_pnl_dollars": -156.98311614642847,
+        "total_pnl_dollars": -1098.8818130249992,
+        "by_strategy": {
+          "bull_put_credit_spread": {
+            "count": 6,
+            "wins": 0,
+            "losses": 6
+          },
+          "bear_call_credit_spread": {
+            "count": 1,
+            "wins": 0,
+            "losses": 1
+          }
+        }
+      },
+      "rows": [
+        {
+          "ticker": "AAPL",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 308.3299865722656,
+          "exit_spot": 311.2701110839844,
+          "spot_return_pct": 0.9535642460223759,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "MSFT",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 416.0299987792969,
+          "exit_spot": 443.5400085449219,
+          "spot_return_pct": 6.612506272707264,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "AMZN",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 265.2900085449219,
+          "exit_spot": 260.489990234375,
+          "spot_return_pct": -1.8093475652831037,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bull_put_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bull_put_credit_spread",
+            "bias": "bullish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 put 255; buy 1 put 245",
+            "metrics": {
+              "composite_score": 46.992646832622896,
+              "pop": 73.74922287198929,
+              "expected_value": 119.05488960693384,
+              "probability_of_touch": 55.95842692683346,
+              "theta_per_day": 0.050200668091031325,
+              "vega_exposure": -0.06874353501915945,
+              "risk_reward": 0.5686274509803921,
+              "max_loss": 637.5
+            }
+          },
+          "strategy_name": "bull_put_credit_spread",
+          "setup_summary": "sell 1 put 255; buy 1 put 245",
+          "entry_metrics": {
+            "composite_score": 46.992646832622896,
+            "pop": 73.74922287198929,
+            "expected_value": 119.05488960693384,
+            "probability_of_touch": 55.95842692683346,
+            "theta_per_day": 0.050200668091031325,
+            "vega_exposure": -0.06874353501915945,
+            "risk_reward": 0.5686274509803921,
+            "max_loss": 637.5
+          },
+          "mark": {
+            "pnl_dollars": -165.1220539324371,
+            "pnl_pct_of_max_loss": -25.90149865606857,
+            "pnl_pct_of_max_profit": -45.55091142963782,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "NVDA",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 214.86000061035156,
+          "exit_spot": 226.51950073242188,
+          "spot_return_pct": 5.426556869100452,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "META",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 612.3400268554688,
+          "exit_spot": 607.4500122070312,
+          "spot_return_pct": -0.7985783117182566,
+          "directional_bias": "bearish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "GOOGL",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 388.8800048828125,
+          "exit_spot": 371.07000732421875,
+          "spot_return_pct": -4.57981828198154,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bull_put_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bull_put_credit_spread",
+            "bias": "bullish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 put 370; buy 1 put 360",
+            "metrics": {
+              "composite_score": 52.85763392167237,
+              "pop": 76.59685877296081,
+              "expected_value": 181.00252609183272,
+              "probability_of_touch": 49.86983990591871,
+              "theta_per_day": 0.04741723579259366,
+              "vega_exposure": -0.07374419671525503,
+              "risk_reward": 0.6806722689075627,
+              "max_loss": 595.0000000000001
+            }
+          },
+          "strategy_name": "bull_put_credit_spread",
+          "setup_summary": "sell 1 put 370; buy 1 put 360",
+          "entry_metrics": {
+            "composite_score": 52.85763392167237,
+            "pop": 76.59685877296081,
+            "expected_value": 181.00252609183272,
+            "probability_of_touch": 49.86983990591871,
+            "theta_per_day": 0.04741723579259366,
+            "vega_exposure": -0.07374419671525503,
+            "risk_reward": 0.6806722689075627,
+            "max_loss": 595.0000000000001
+          },
+          "mark": {
+            "pnl_dollars": -122.57342164756756,
+            "pnl_pct_of_max_loss": -20.600575066818074,
+            "pnl_pct_of_max_profit": -30.265042382115453,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "GOOG",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 384.8399963378906,
+          "exit_spot": 367.4100036621094,
+          "spot_return_pct": -4.529153113409157,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bull_put_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bull_put_credit_spread",
+            "bias": "bullish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 put 355; buy 1 put 345",
+            "metrics": {
+              "composite_score": 52.35307835386969,
+              "pop": 86.11811896220503,
+              "expected_value": 149.6451363659411,
+              "probability_of_touch": 30.21874665158594,
+              "theta_per_day": 0.04930894222573759,
+              "vega_exposure": -0.07513137592188898,
+              "risk_reward": 0.37457044673539525,
+              "max_loss": 727.5
+            }
+          },
+          "strategy_name": "bull_put_credit_spread",
+          "setup_summary": "sell 1 put 355; buy 1 put 345",
+          "entry_metrics": {
+            "composite_score": 52.35307835386969,
+            "pop": 86.11811896220503,
+            "expected_value": 149.6451363659411,
+            "probability_of_touch": 30.21874665158594,
+            "theta_per_day": 0.04930894222573759,
+            "vega_exposure": -0.07513137592188898,
+            "risk_reward": 0.37457044673539525,
+            "max_loss": 727.5
+          },
+          "mark": {
+            "pnl_dollars": -82.4645730085258,
+            "pnl_pct_of_max_loss": -11.335336496017293,
+            "pnl_pct_of_max_profit": -30.26222862698194,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "BRK-B",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 483.6199951171875,
+          "exit_spot": 471.8349914550781,
+          "spot_return_pct": -2.4368313512872275,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "AVGO",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 422.010009765625,
+          "exit_spot": 475.63958740234375,
+          "spot_return_pct": 12.708129285014703,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "TSLA",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 433.5899963378906,
+          "exit_spot": 422.8900146484375,
+          "spot_return_pct": -2.4677648884488534,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bull_put_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bull_put_credit_spread",
+            "bias": "bullish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 put 415; buy 1 put 405",
+            "metrics": {
+              "composite_score": 46.00110855665598,
+              "pop": 67.16162400359812,
+              "expected_value": 110.38901120367868,
+              "probability_of_touch": 68.70222745505895,
+              "theta_per_day": 0.04178653570088203,
+              "vega_exposure": -0.0442983557287856,
+              "risk_reward": 0.7699115044247786,
+              "max_loss": 565.0
+            }
+          },
+          "strategy_name": "bull_put_credit_spread",
+          "setup_summary": "sell 1 put 415; buy 1 put 405",
+          "entry_metrics": {
+            "composite_score": 46.00110855665598,
+            "pop": 67.16162400359812,
+            "expected_value": 110.38901120367868,
+            "probability_of_touch": 68.70222745505895,
+            "theta_per_day": 0.04178653570088203,
+            "vega_exposure": -0.0442983557287856,
+            "risk_reward": 0.7699115044247786,
+            "max_loss": 565.0
+          },
+          "mark": {
+            "pnl_dollars": -118.4845302554968,
+            "pnl_pct_of_max_loss": -20.970713319556957,
+            "pnl_pct_of_max_profit": -27.237823047240646,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "JPM",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 306.739990234375,
+          "exit_spot": 300.63031005859375,
+          "spot_return_pct": -1.9918107746932368,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "LLY",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 1064.739990234375,
+          "exit_spot": 1067.2950439453125,
+          "spot_return_pct": 0.2399697329274808,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "V",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 326.4800109863281,
+          "exit_spot": 317.010009765625,
+          "spot_return_pct": -2.900637375039694,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bull_put_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bull_put_credit_spread",
+            "bias": "bullish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 put 320; buy 1 put 300",
+            "metrics": {
+              "composite_score": 44.94599073662413,
+              "pop": 71.11959824905821,
+              "expected_value": 219.27840182356607,
+              "probability_of_touch": 64.93344674291008,
+              "theta_per_day": 0.030658697068522103,
+              "vega_exposure": -0.18164283021047034,
+              "risk_reward": 0.5936254980079682,
+              "max_loss": 1255.0
+            }
+          },
+          "strategy_name": "bull_put_credit_spread",
+          "setup_summary": "sell 1 put 320; buy 1 put 300",
+          "entry_metrics": {
+            "composite_score": 44.94599073662413,
+            "pop": 71.11959824905821,
+            "expected_value": 219.27840182356607,
+            "probability_of_touch": 64.93344674291008,
+            "theta_per_day": 0.030658697068522103,
+            "vega_exposure": -0.18164283021047034,
+            "risk_reward": 0.5936254980079682,
+            "max_loss": 1255.0
+          },
+          "mark": {
+            "pnl_dollars": -206.49700904902818,
+            "pnl_pct_of_max_loss": -16.45394494414567,
+            "pnl_pct_of_max_profit": -27.717719335440023,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "MA",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 493.010009765625,
+          "exit_spot": 484.6300048828125,
+          "spot_return_pct": -1.6997636390377435,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "XOM",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 149.80999755859375,
+          "exit_spot": 148.79510498046875,
+          "spot_return_pct": -0.6774531704588416,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "COST",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 1002.9299926757812,
+          "exit_spot": 946.9710083007812,
+          "spot_return_pct": -5.579550395706423,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "HD",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 310.5400085449219,
+          "exit_spot": 310.1700134277344,
+          "spot_return_pct": -0.11914571617395175,
+          "directional_bias": "bearish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "NFLX",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 87.68000030517578,
+          "exit_spot": 84.18499755859375,
+          "spot_return_pct": -3.9860888850564047,
+          "directional_bias": "bearish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "WMT",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 118.56999969482422,
+          "exit_spot": 113.41999816894531,
+          "spot_return_pct": -4.3434271224879755,
+          "directional_bias": "bearish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "JNJ",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 230.17999267578125,
+          "exit_spot": 223.4499969482422,
+          "spot_return_pct": -2.923797003077744,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "PG",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 142.9600067138672,
+          "exit_spot": 139.63999938964844,
+          "spot_return_pct": -2.322332938094851,
+          "directional_bias": "bearish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "ORCL",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 193.05999755859375,
+          "exit_spot": 239.13999938964844,
+          "spot_return_pct": 23.86822874431529,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "ABBV",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 213.1199951171875,
+          "exit_spot": 213.00999450683594,
+          "spot_return_pct": -0.05161440168534037,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "BAC",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 52.20000076293945,
+          "exit_spot": 52.447898864746094,
+          "spot_return_pct": 0.4749005712326282,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "KO",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 80.45999908447266,
+          "exit_spot": 78.41999816894531,
+          "spot_return_pct": -2.5354224940838055,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bull_put_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bull_put_credit_spread",
+            "bias": "bullish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 put 78; buy 1 put 75",
+            "metrics": {
+              "composite_score": 45.61224037676538,
+              "pop": 71.50273932793029,
+              "expected_value": 27.032123419665794,
+              "probability_of_touch": 70.27279459371753,
+              "theta_per_day": 0.0011352279264203163,
+              "vega_exposure": -0.024989122257983498,
+              "risk_reward": 0.6233766233766234,
+              "max_loss": 154.0
+            }
+          },
+          "strategy_name": "bull_put_credit_spread",
+          "setup_summary": "sell 1 put 78; buy 1 put 75",
+          "entry_metrics": {
+            "composite_score": 45.61224037676538,
+            "pop": 71.50273932793029,
+            "expected_value": 27.032123419665794,
+            "probability_of_touch": 70.27279459371753,
+            "theta_per_day": 0.0011352279264203163,
+            "vega_exposure": -0.024989122257983498,
+            "risk_reward": 0.6233766233766234,
+            "max_loss": 154.0
+          },
+          "mark": {
+            "pnl_dollars": -57.49941266837953,
+            "pnl_pct_of_max_loss": -37.3372809534932,
+            "pnl_pct_of_max_profit": -59.895221529562,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "PLTR",
+          "status": "trade_candidate",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 136.60000610351562,
+          "exit_spot": 151.05999755859375,
+          "spot_return_pct": 10.585644808917749,
+          "directional_bias": "bearish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "trade_candidate",
+            "strategy_name": "bear_call_credit_spread",
+            "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+            "quality_gate": {
+              "actionable": true,
+              "blockers": [],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 30.0,
+                "min_expected_value": -50.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": {
+            "strategy_name": "bear_call_credit_spread",
+            "bias": "bearish",
+            "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+            "rationale": "This setup passed minimum score, non-negative EV, and touch-risk checks.",
+            "setup_summary": "sell 1 call 142; buy 1 call 155",
+            "metrics": {
+              "composite_score": 56.629544008238156,
+              "pop": 73.74922287198928,
+              "expected_value": 361.5737679221279,
+              "probability_of_touch": 50.70998564856377,
+              "theta_per_day": 0.05439228004234037,
+              "vega_exposure": -0.0341328667364814,
+              "risk_reward": 1.2510822510822515,
+              "max_loss": 577.4999999999999
+            }
+          },
+          "strategy_name": "bear_call_credit_spread",
+          "setup_summary": "sell 1 call 142; buy 1 call 155",
+          "entry_metrics": {
+            "composite_score": 56.629544008238156,
+            "pop": 73.74922287198928,
+            "expected_value": 361.5737679221279,
+            "probability_of_touch": 50.70998564856377,
+            "theta_per_day": 0.05439228004234037,
+            "vega_exposure": -0.0341328667364814,
+            "risk_reward": 1.2510822510822515,
+            "max_loss": 577.4999999999999
+          },
+          "mark": {
+            "pnl_dollars": -346.24081246356445,
+            "pnl_pct_of_max_loss": -59.95511904130988,
+            "pnl_pct_of_max_profit": -47.92260380118538,
+            "missing_exit_legs": 0.0
+          },
+          "profitable": false
+        },
+        {
+          "ticker": "CSCO",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 118.33000183105469,
+          "exit_spot": 127.44000244140625,
+          "spot_return_pct": 7.698808813810665,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "PM",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 181.52999877929688,
+          "exit_spot": 173.48500061035156,
+          "spot_return_pct": -4.4317733834870925,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "CRM",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 179.0800018310547,
+          "exit_spot": 196.7949981689453,
+          "spot_return_pct": 9.892224791578386,
+          "directional_bias": "neutral",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        },
+        {
+          "ticker": "IBM",
+          "status": "no_trade",
+          "entry_date": "2026-05-26",
+          "exit_date": "2026-06-02",
+          "entry_spot": 250.69000244140625,
+          "exit_spot": 318.8550109863281,
+          "spot_return_pct": 27.19095611355864,
+          "directional_bias": "bullish",
+          "expiration": "2026-06-26",
+          "entry_dte": 31,
+          "exit_dte": 24,
+          "trade_decision": {
+            "status": "no_trade",
+            "strategy_name": null,
+            "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+            "quality_gate": {
+              "actionable": false,
+              "blockers": [
+                "no_ranked_strategy_passed_quality_gate"
+              ],
+              "warnings": [],
+              "thresholds": {
+                "min_composite_score": 35.0,
+                "min_expected_value": 0.0,
+                "max_touch_for_actionable": 85.0,
+                "income_touch_comfort": 75.0,
+                "max_loss": 2500.0
+              }
+            }
+          },
+          "executable_setup": null
+        }
+      ]
+    }
+  }
+}
