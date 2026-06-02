@@ -171,6 +171,7 @@ class MomentumMarketService:
                 funding_rate=frames.get("funding_rate"),
                 account_equity=account_equity,
                 risk_pct=risk_pct or self.config.risk.default_risk_pct,
+                cot_overlay_mode="live",
             )
             serialized = [plan.to_dict() for plan in sorted(plans, key=lambda item: (-int(item.tradeable), -item.confidence_score))]
             confirmed_count += sum(1 for plan in serialized if plan["setup_status"] == "confirmed")
@@ -255,6 +256,7 @@ class MomentumMarketService:
             account_equity=account_equity,
             risk_pct=risk_pct or self.config.risk.default_risk_pct,
             side=side,
+            cot_overlay_mode="live",
         )
         plan = plans[0]
         threshold = score_threshold or self.config.score_tradeable_threshold

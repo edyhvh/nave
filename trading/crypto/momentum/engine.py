@@ -60,8 +60,16 @@ class MomentumSetupEngine:
         risk_pct: float | None = None,
         side: str | None = None,
         as_of: pd.Timestamp | None = None,
-        cot_overlay_mode: str = "live",
+        cot_overlay_mode: str = "neutral",
     ) -> list[TradePlan]:
+        """Evaluate momentum setup geometry.
+
+        ``cot_overlay_mode`` is ``neutral`` by default for deterministic engine
+        and unit-test use. Live operator paths pass ``live`` from
+        ``MomentumMarketService``; historical backtests pass ``historical``.
+        """
+        if cot_overlay_mode not in {"neutral", "historical", "live"}:
+            raise ValueError("cot_overlay_mode must be neutral, historical, or live")
         daily = normalize_frame(daily_frame)
         setup = normalize_frame(setup_frame)
         trigger = normalize_frame(trigger_frame)
@@ -100,7 +108,7 @@ class MomentumSetupEngine:
         account_equity: float,
         risk_pct: float,
         as_of: pd.Timestamp | None = None,
-        cot_overlay_mode: str = "live",
+        cot_overlay_mode: str = "neutral",
     ) -> MomentumEvaluation:
         daily_trend = assess_trend(daily, side, self.config)
         setup_trend = assess_trend(setup, side, self.config)
@@ -144,13 +152,23 @@ class MomentumSetupEngine:
             expected_move_pct=expected_move_pct,
             config=self.config.theory_overlay,
         )
-        cot_overlay = evaluate_cot_overlay(
-            side=side,
-            symbol=symbol,
-            config=self.config.cot_overlay,
-            as_of=as_of,
-            mode="historical" if cot_overlay_mode == "historical" else "live",
-        )
+        if cot_overlay_mode == "neutral":
+            cot_overlay = CotOverlayAssessment(
+                passed=True,
+                aligned=False,
+                score_bonus=0,
+                permission="allow",
+                contrarian_bias="neutral",
+                reason="COT overlay neutral for direct engine evaluation",
+            )
+        else:
+            cot_overlay = evaluate_cot_overlay(
+                side=side,
+                symbol=symbol,
+                config=self.config.cot_overlay,
+                as_of=as_of,
+                mode="historical" if cot_overlay_mode == "historical" else "live",
+            )
         momentum_failure_watch = self._momentum_failure_watch_accepts(
             side=side,
             daily_trend=daily_trend,
@@ -489,11 +507,20 @@ class MomentumSetupEngine:
         volatility: VolatilityAssessment,
         participation: ParticipationAssessment,
         theory_overlay: TheoryOverlayAssessment,
-        cot_overlay: CotOverlayAssessment,
+        cot_overlay: CotOverlayAssessment | None = None,
         momentum_failure_watch: bool = False,
         daily_ema_gap_pct: float | None,
         setup_ema_gap_pct: float | None,
     ) -> bool:
+        if cot_overlay is None:
+            cot_overlay = CotOverlayAssessment(
+                passed=True,
+                aligned=False,
+                score_bonus=0,
+                permission="allow",
+                contrarian_bias="neutral",
+                reason="COT overlay not supplied",
+            )
         cot_cfg = self.config.cot_overlay
         if cot_cfg.enabled:
             score_threshold = (
