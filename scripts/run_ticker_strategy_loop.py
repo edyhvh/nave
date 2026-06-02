@@ -43,10 +43,8 @@ def main() -> int:
 
     scan_fn = None
     if not args.no_gems:
-        from cli.commands.options import (  # noqa: E402
-            _build_options_analyzer,
-            _scan_equity_options_universe,
-        )
+        from options.factory import build_options_analyzer  # noqa: E402
+        from options.universe_scan import scan_equity_options_universe  # noqa: E402
         from options.universe import get_sp500_top40
 
         def scan_fn(
@@ -56,10 +54,10 @@ def main() -> int:
             top_trades: int = 10,
             workers: int = 2,
         ) -> dict:
-            analyzer = _build_options_analyzer(source="yfinance")
-            return _scan_equity_options_universe(
+            analyzer = build_options_analyzer(source="yfinance")
+            return scan_equity_options_universe(
                 analyzer=analyzer,
-                analyzer_factory=lambda: _build_options_analyzer(source="yfinance"),
+                analyzer_factory=lambda: build_options_analyzer(source="yfinance"),
                 tickers=tickers,
                 days_to_exp=days_to_exp,
                 top_trades=top_trades,

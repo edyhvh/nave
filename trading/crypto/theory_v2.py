@@ -685,7 +685,7 @@ def build_signals_for_coins(coins: list[str]) -> tuple[list[Signal], list[Theory
 
 
 # --------------------------------------------------------------------------- #
-# Live analyzer CLI — `python -m trading.theory_v2 --coins BTC ETH`
+# Live analyzer CLI — `python -m trading.crypto.theory_v2 --coins BTC ETH`
 # --------------------------------------------------------------------------- #
 
 

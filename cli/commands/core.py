@@ -57,9 +57,9 @@ def run_strategy(
     dry_run: bool = typer.Option(True, help="Dry run mode"),
     mainnet: bool = typer.Option(False, help="Use mainnet"),
 ) -> None:
-    """Run trading strategy (delegates to trading.strategy)."""
-    from trading.client import HyperliquidClient
-    from trading.strategy import MacroMomentumStrategy
+    """Run trading strategy."""
+    from trading.crypto.client import HyperliquidClient
+    from trading.crypto.strategy import MacroMomentumStrategy
 
     parsed_coins = coins.split() if coins else ["BTC", "ETH"]
     client = HyperliquidClient(wallet_name=wallet, testnet=not mainnet)
@@ -106,10 +106,10 @@ def run_trading(
         subprocess.run(cmd, check=False)
         return
 
-    cmd = [sys.executable, "-m", "trading.strategy", f"--wallet={wallet}"]
+    cmd = [sys.executable, "-m", "trading.crypto.strategy", f"--wallet={wallet}"]
     if not live:
         cmd.append("--dry-run")
-    typer.echo(f"Running strategy={strategy} via trading.strategy module")
+    typer.echo(f"Running strategy={strategy} via trading.crypto.strategy module")
     subprocess.run(cmd, check=False)
 
 

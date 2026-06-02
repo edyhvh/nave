@@ -155,9 +155,9 @@ Once local setup works, there are two common ways to wire an agent into Nave.
 ### 1. Use Hermes CLI contracts directly
 
 Back-compat: the legacy top-level paths (`trading.client`, `trading.signals`,
-`trading.cot.cot_analyzer`, …) keep working via `sys.modules` aliases set up
-by `trading/_compat.py`, so scripts/, tests/, cli/, and hermes/integration.py
-continue to import the crypto stack unchanged.
+`trading.cot.cot_analyzer`, ...) keep working via `sys.modules` aliases set up
+by `trading/_compat.py`. New code and command examples should use the
+canonical `trading.crypto.*` modules.
 
 ## Congressional trades (STOCK Act)
 
@@ -300,10 +300,10 @@ browser required.
 python scripts/setup_wallets.py
 
 # 2. Check account state on testnet
-python -m trading.client summary --wallet hermes
+python -m trading.crypto.client summary --wallet hermes
 
 # 3. Run a strategy in dry-run mode (no real orders)
-python -m trading.strategy --wallet hermes --coins BTC ETH
+python -m trading.crypto.strategy --wallet hermes --coins BTC ETH
 ```
 
 ### Weekly COT Analysis

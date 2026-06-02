@@ -30,8 +30,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 import data_loader  # noqa: E402
 from data_loader import DataNotFoundError  # noqa: E402
 
-from trading.cot_gate import load_cached_cot_history  # noqa: E402
-from trading.theory_v2 import TheoryV2Engine  # noqa: E402
+from trading.crypto.cot.cot_gate import load_cached_cot_history  # noqa: E402
+from trading.crypto.theory_v2 import TheoryV2Engine  # noqa: E402
 
 
 PERIODS: dict[str, tuple[str, str]] = {

@@ -12,10 +12,10 @@ import typer
 
 from cli.professional_typer import ProfessionalTyper
 from core.config import CliDefaults
-from trading.client import HyperliquidClient
-from trading.cot.cot_analyzer import COTAnalyzer
-from trading.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
-from trading.cot.cot_report_generator import COTReportGenerator
+from trading.crypto.client import HyperliquidClient
+from trading.crypto.cot.cot_analyzer import COTAnalyzer
+from trading.crypto.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
+from trading.crypto.cot.cot_report_generator import COTReportGenerator
 
 DEFAULTS = CliDefaults()
 
@@ -29,7 +29,7 @@ def analyze_cot(coins: str = typer.Option(DEFAULTS.coins, help="Coins to analyze
     import sys
 
     typer.echo(f"Analyzing COT for {coins}...")
-    subprocess.run([sys.executable, "-m", "trading.cot.cot_analyzer"], check=False)
+    subprocess.run([sys.executable, "-m", "trading.crypto.cot.cot_analyzer"], check=False)
 
 
 def _parse_date(value: str) -> _date | None:
