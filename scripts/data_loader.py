@@ -307,6 +307,9 @@ def _scan(data_dir: Path) -> Inventory:
         [p for p in data_dir.rglob("*") if p.suffix.lower() in (".csv", ".parquet")]
     )
     for path in files:
+        rel = path.relative_to(PROJECT_ROOT).as_posix()
+        if "options_cache" in rel:
+            continue
         coin = _detect_coin(path.name)
         if coin is None:
             continue

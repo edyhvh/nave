@@ -27,6 +27,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from hermes.integration import HermesNaveIntegration, _default_reports_dir  # noqa: E402
+from trading.crypto.analysis.current_setup_doc import (  # noqa: E402
+    render_current_setup_markdown,
+)
 
 
 def build_payload(coins: str) -> dict:
@@ -110,6 +113,11 @@ def main() -> int:
         default="both",
         help="stdout format (json for machines, human for terminal)",
     )
+    parser.add_argument(
+        "--refresh-setup-doc",
+        action="store_true",
+        help="Also write docs/analysis/current_setup.md from position review",
+    )
     args = parser.parse_args()
 
     payload = build_payload(args.coins)
@@ -119,6 +127,27 @@ def main() -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(payload, indent=2))
         payload["persisted_to"] = str(out_path)
+
+    if args.refresh_setup_doc:
+        review = payload.get("position_review") or {}
+        scan = payload.get("scan") or {}
+        theory_by_coin = {}
+        for coin, entry in (scan.get("coins") or {}).items():
+            theory_by_coin[coin] = type(
+                "TheoryTrace",
+                (),
+                {
+                    "stage": entry.get("stage"),
+                    "reason": entry.get("reason"),
+                    "fired": entry.get("fired", False),
+                },
+            )()
+        setup_path = PROJECT_ROOT / "docs" / "analysis" / "current_setup.md"
+        setup_path.write_text(
+            render_current_setup_markdown(review, theory_by_coin=theory_by_coin),
+            encoding="utf-8",
+        )
+        payload["current_setup_doc"] = str(setup_path)
 
     if args.format in ("human", "both"):
         print(format_summary(payload))

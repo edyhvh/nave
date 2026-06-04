@@ -83,3 +83,25 @@ chart will show capped upside credit and defined downside risk.
 ```bash
 nave options analyze --ticker MSFT --days-to-exp 30 --terminal --llm-prompt
 ```
+
+## Registry vs daily scan
+
+- **Merge-approved** tickers (`nave options registry show`) come from **walk-forward replay**
+  (multi-month), not a guarantee for this week's tape.
+- **`nave options daily`** may surface **scan picks** when no gems pass filters; check
+  `registry_alignment` warnings when live bias fights the learned primary (e.g. bull put
+  on a bearish week for an ORCL/PLTR name).
+- **BTC/ETH Deribit** in `nave daily` is often **advisory** when touch risk is high;
+  perp/regime is the actionable lane unless `execution_lane` is `options_executable`.
+  Deribit uses wider touch bands (`NAVE_OPTIONS_DERIBIT_*_TOUCH_*` env vars) than equity.
+
+## Forward outcome tracking
+
+After each `nave options daily`, recommendations are logged under
+`var/trackers/options_daily/`. Mark forward PnL on schedule:
+
+```bash
+nave options track --mark --offsets 1,3,5,7
+python scripts/options_forward_track.py record   # from latest report
+python scripts/crypto_thesis_check.py            # BTC/ETH thesis vs spot
+```

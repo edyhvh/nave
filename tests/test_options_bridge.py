@@ -23,3 +23,28 @@ def test_summarize_options_opportunity_ready():
     assert summary["status"] == "ready"
     assert summary["strategy"] == "bear_put_debit_spread"
     assert summary["metrics"]["pop_pct"] == 58.0
+    assert summary["execution_lane"] == "options_executable"
+
+
+def test_summarize_options_opportunity_advisory_on_touch_gate():
+    opp = {
+        "status": "ready",
+        "directional_bias": "bearish",
+        "top_strategy": "bear_put_debit_spread",
+        "top_metrics": {
+            "pop": 56.0,
+            "expected_value": 4917.0,
+            "composite_score": 59.0,
+            "probability_of_touch": 84.93,
+        },
+        "trade_decision": {
+            "status": "no_trade",
+            "quality_gate": {
+                "blockers": ["probability_of_touch_above_model_warning"],
+            },
+        },
+    }
+    summary = summarize_options_opportunity(opp)
+    assert summary["execution_lane"] == "options_advisory"
+    assert summary["advisory_reason"]
+    assert "probability_of_touch" in summary["quality_blockers"][0]

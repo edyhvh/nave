@@ -78,12 +78,39 @@ def test_parse_services_report():
     )
 
     assert report.kind == "services"
+    assert report.report_month == "March 2026"
     assert report.pmi == 55.1
     sectors = report.by_sector("expanding")
     # Order matters: expanding industries resolve to these sectors without dupes.
     assert sectors[0] == "Communication Services"  # "information" ⇒ CommS
     assert "Financials" in sectors
     assert "Health Care" in sectors
+
+
+FIXTURE_MANUFACTURING_THRESHOLD_NOISE = """
+<html><body>
+<h1>May 2026 Manufacturing ISM Report On Business</h1>
+<p>Manufacturing PMI® above 47.5 generally indicates an expanding manufacturing sector.</p>
+<p>Manufacturing PMI® at 54.0 percent in May.</p>
+<p>The 10 industries reporting growth in May, in order, are:
+Machinery; and Chemical Products.</p>
+<p>The two industries reporting contraction in May, in order, are:
+Wood Products; and Paper Products.</p>
+</body></html>
+"""
+
+
+def test_extract_pmi_ignores_threshold_above_clause():
+    fetcher = ISMReportFetcher()
+    report = fetcher._parse(
+        FIXTURE_MANUFACTURING_THRESHOLD_NOISE,
+        kind="manufacturing",
+        source_url=(
+            "https://www.prnewswire.com/news-releases/"
+            "manufacturing-pmi-at-54-may-2026-ism-manufacturing-pmi-report.html"
+        ),
+    )
+    assert report.pmi == 54.0
 
 
 def test_parse_prefers_kind_aligned_heading_month_over_body_mentions():

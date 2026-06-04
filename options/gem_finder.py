@@ -261,6 +261,17 @@ def score_gem_row(
     congress_pts = congress_bonus(ticker, congress_tickers or frozenset())
     quality_pts = cfg.quality_sector_bonus if ticker in QUALITY_INCOME_TICKERS else 0.0
     try:
+        from options.ticker_strategy import registry_tape_alignment
+
+        alignment = registry_tape_alignment(
+            ticker,
+            strategy,
+            tape_bias=str(bias) if bias else None,
+        )
+    except Exception:
+        alignment = {}
+
+    try:
         from options.ticker_strategy import registry_setup_bonus
 
         registry_pts, registry_reasons = registry_setup_bonus(
@@ -271,6 +282,8 @@ def score_gem_row(
     except Exception:
         registry_pts, registry_reasons = 0.0, []
 
+    align_penalty = float(alignment.get("score_penalty") or 0.0)
+
     gem_score = (
         struct * 0.42
         + hidden * 0.28
@@ -279,6 +292,7 @@ def score_gem_row(
         + congress_pts
         + quality_pts
         + registry_pts
+        - align_penalty
     )
     gem_score = max(0.0, min(100.0, gem_score))
     if gem_score < cfg.min_gem_score:
@@ -310,7 +324,10 @@ def score_gem_row(
         row,
         days_to_exp=days_to_exp,
         congress_tickers=congress_tickers or frozenset(),
+        registry_alignment=alignment,
     )
+    if alignment.get("warning"):
+        reasons.append(str(alignment["warning"]))
 
     return {
         "ticker": ticker,
@@ -488,10 +505,27 @@ def rank_hidden_gems(
             if cfg.block_high_vol and ticker in HIGH_VOL_LOSERS:
                 continue
             row = (scan_payload.get("results") or {}).get(ticker) or {}
+            strat = str(
+                item.get("strategy_name")
+                or row.get("executable_strategy")
+                or ""
+            )
+            bias = (row.get("executable_setup") or {}).get("bias")
+            try:
+                from options.ticker_strategy import registry_tape_alignment
+
+                alignment = registry_tape_alignment(
+                    ticker,
+                    strat,
+                    tape_bias=str(bias) if bias else None,
+                )
+            except Exception:
+                alignment = {}
             position = position_context_from_scan_row(
                 row,
                 days_to_exp=dte,
                 congress_tickers=congress_set,
+                registry_alignment=alignment,
             )
             scan_picks.append(
                 {

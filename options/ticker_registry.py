@@ -490,6 +490,11 @@ def _synthesize_playbook(
         rules.append(congress.get("interpretation") or f"Congress proxy: {flow}.")
 
     rules.append(f"Merge status: {merge_status} — only size approved setups at full weight.")
+    if merge_status == "approved":
+        rules.append(
+            "Approved horizon is walk-forward replay (multi-month), not this week — "
+            "confirm live options bias matches primary or by_bias before full size."
+        )
     if merge_status != "approved":
         rules.append("Use half size or paper-trade until OOS confirms this ticker.")
 

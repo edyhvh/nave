@@ -1443,6 +1443,76 @@ def _run_gems_scan(
     if report_path is not None:
         typer.echo(f"JSON report: {report_path}")
 
+    try:
+        from options.forward_tracker import record_daily_recommendations
+
+        track_result = record_daily_recommendations(payload)
+        if not json_out:
+            typer.echo(
+                f"\n[dim]Forward tracker: {track_result['recommendation_count']} rows → "
+                f"{track_result['path']}[/dim]"
+            )
+    except Exception as exc:
+        if not json_out:
+            typer.echo(f"[yellow]Forward tracker skipped: {exc}[/yellow]")
+
+
+@options_app.command("track")
+def options_track(
+    report: str | None = typer.Option(
+        None,
+        "--report",
+        help="Path to a saved options daily JSON report (record mode)",
+    ),
+    mark: bool = typer.Option(
+        False,
+        "--mark",
+        help="Mark open recommendations (default: record from --report or latest)",
+    ),
+    offsets: str = typer.Option("1,3,5,7", "--offsets", help="Days since entry for mark mode"),
+    as_of: str | None = typer.Option(None, "--as-of", help="Mark exit date YYYY-MM-DD"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Record daily scan picks or mark forward PnL vs replay model."""
+    from datetime import date, datetime, timezone
+
+    from options.forward_tracker import (
+        mark_open_recommendations,
+        record_daily_recommendations,
+        render_tracker_report,
+    )
+
+    if mark:
+        offset_list = [int(part.strip()) for part in offsets.split(",") if part.strip()]
+        exit_day = (
+            date.fromisoformat(as_of)
+            if as_of
+            else datetime.now(timezone.utc).date()
+        )
+        summary = mark_open_recommendations(as_of=exit_day, offsets_days=offset_list)
+        if json_out:
+            typer.echo(json.dumps(summary, indent=2, default=str))
+        else:
+            typer.echo(render_tracker_report(summary))
+        return
+
+    path = Path(report) if report else None
+    if path is None:
+        reports = sorted(
+            _default_reports_dir().glob("hidden_gems_*_options_report_*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not reports:
+            raise typer.BadParameter("No report found; pass --report or run nave options daily first")
+        path = reports[0]
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    result = record_daily_recommendations(payload)
+    if json_out:
+        typer.echo(json.dumps(result, indent=2, default=str))
+    else:
+        typer.echo(f"Recorded {result['recommendation_count']} recommendations → {result['path']}")
+
 
 @options_app.command("daily")
 def options_daily(

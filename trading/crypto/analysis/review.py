@@ -121,7 +121,12 @@ def format_options_display(options: dict[str, Any] | None) -> str | None:
         parts.append(f"POP={m['pop_pct']}%")
     if m.get("probability_of_touch_pct") is not None:
         parts.append(f"touch={m['probability_of_touch_pct']}%")
-    if options.get("trade_decision"):
+    lane = options.get("execution_lane")
+    if lane == "options_advisory":
+        parts.append("advisory")
+    elif lane == "options_executable":
+        parts.append("executable")
+    elif options.get("trade_decision"):
         parts.append(f"[{options['trade_decision']}]")
     return " · ".join(parts)
 
@@ -130,13 +135,19 @@ def _instruments_for(
     *,
     direction: str | None,
     action: str,
-    has_options: bool,
+    options_summary: dict[str, Any] | None,
 ) -> list[str]:
     if action == "stand_aside" or not direction:
         return []
     out = [PERP_INSTRUMENT]
-    if has_options:
+    if options_summary and options_summary.get("execution_lane") == "options_executable":
         out.append(OPTIONS_INSTRUMENT)
+    elif (
+        options_summary
+        and options_summary.get("status") == "ready"
+        and options_summary.get("execution_lane") == "options_advisory"
+    ):
+        out.append(f"{OPTIONS_INSTRUMENT}:advisory")
     return out
 
 
@@ -356,13 +367,22 @@ def review_positions(
                 options_source=options_source,
             )
             if options_summary and options_summary.get("status") == "ready":
-                reasons.append(f"Options ({options_source}): {options_summary.get('strategy')}")
-                confidence = max(confidence, 0.72)
+                strat = options_summary.get("strategy")
+                if options_summary.get("execution_lane") == "options_executable":
+                    reasons.append(f"Options ({options_source}): {strat} [executable]")
+                    confidence = max(confidence, 0.72)
+                else:
+                    reasons.append(
+                        f"Options ({options_source}): {strat} [advisory — perp/regime primary]"
+                    )
+                    advisory = options_summary.get("advisory_reason")
+                    if advisory:
+                        blockers.append(advisory)
 
         instruments = _instruments_for(
             direction=direction,
             action=action,
-            has_options=bool(options_summary and options_summary.get("status") == "ready"),
+            options_summary=options_summary,
         )
 
         trigger_frame = frames.get("trigger")

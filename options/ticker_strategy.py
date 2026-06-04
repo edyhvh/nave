@@ -49,6 +49,87 @@ def strategy_bias_fit(strategy: str, bias: str) -> bool:
     return True
 
 
+MERGE_HORIZON_NOTE = (
+    "Registry approval reflects walk-forward replay (multi-month), not this week's tape — "
+    "confirm live bias before sizing."
+)
+
+
+def registry_tape_alignment(
+    ticker: str,
+    strategy: str,
+    *,
+    tape_bias: str | None = None,
+    strategy_index: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Compare today's scan bias/structure with the ticker's learned primary.
+
+    Returns alignment metadata for warnings and score penalties on daily scans.
+    """
+    idx = strategy_index
+    if idx is None:
+        try:
+            idx = load_strategy_index()
+        except Exception:
+            idx = {}
+
+    sym = ticker.upper()
+    meta = idx.get(sym) or {}
+    primary = meta.get("strategy")
+    merge_status = meta.get("merge_status", "reject")
+    bias = (tape_bias or "neutral").lower()
+    strat = strategy or ""
+
+    by_bias = meta.get("by_bias") or {}
+    bias_pick = (by_bias.get(bias) or {}).get("strategy")
+    fits_live = strategy_bias_fit(strat, bias) if strat else True
+    fits_primary = strategy_bias_fit(primary, bias) if primary else True
+    matches_primary = bool(primary and strat == primary)
+    matches_bias_pick = bool(bias_pick and strat == bias_pick)
+
+    aligned = fits_live and (
+        merge_status != "approved"
+        or matches_primary
+        or matches_bias_pick
+        or fits_primary
+    )
+
+    warning: str | None = None
+    score_penalty = 0.0
+    if merge_status == "approved" and primary and strat and not fits_live:
+        warning = (
+            f"{sym}: live scan is {bias} but structure {strat.replace('_', ' ')} "
+            f"fights the tape; registry primary is {primary.replace('_', ' ')} "
+            f"({MERGE_HORIZON_NOTE})"
+        )
+        score_penalty = 12.0
+    elif merge_status == "approved" and primary and not matches_primary and not matches_bias_pick:
+        if bias_pick and strat != bias_pick:
+            warning = (
+                f"{sym}: using {strat.replace('_', ' ')} today; registry prefers "
+                f"{primary.replace('_', ' ')} (or {bias_pick.replace('_', ' ')} for {bias} bias)."
+            )
+            score_penalty = 6.0
+        elif not fits_primary:
+            warning = (
+                f"{sym}: {bias} tape vs approved primary {primary.replace('_', ' ')} — "
+                f"check by_bias or use half size."
+            )
+            score_penalty = 8.0
+
+    return {
+        "aligned": aligned,
+        "tape_bias": bias,
+        "registry_primary": primary,
+        "registry_bias_pick": bias_pick,
+        "registry_merge_status": merge_status,
+        "merge_horizon": "walkforward_replay",
+        "warning": warning,
+        "score_penalty": score_penalty,
+    }
+
+
 def edge_score(
     *,
     trades: int,
@@ -395,23 +476,35 @@ def registry_setup_bonus(
     strat = strategy or ""
     reasons: list[str] = []
     primary = meta.get("strategy")
+    alignment = registry_tape_alignment(
+        ticker,
+        strat,
+        tape_bias=options_bias,
+        strategy_index=idx,
+    )
+    penalty = float(alignment.get("score_penalty") or 0.0)
+    if alignment.get("warning"):
+        reasons.append(str(alignment["warning"]))
+
     if strat == primary:
         if meta.get("merge_status") == "approved":
             bonus = 18.0 if meta.get("confidence") == "high" else 12.0 if meta.get("confidence") == "medium" else 6.0
+            reasons.append(f"matches learned primary ({primary.replace('_', ' ')})")
+            reasons.append(MERGE_HORIZON_NOTE)
         else:
             bonus = 5.0
-        reasons.append(f"matches learned primary ({primary.replace('_', ' ')})")
-        return bonus, reasons
+            reasons.append(f"matches learned primary ({primary.replace('_', ' ')})")
+        return max(0.0, bonus - penalty), reasons
 
     b = (options_bias or "neutral").lower()
     by_bias = meta.get("by_bias") or {}
     bias_pick = by_bias.get(b) or {}
     if strat == bias_pick.get("strategy"):
         reasons.append(f"matches learned setup for {b} bias")
-        return 10.0, reasons
+        return max(0.0, 10.0 - penalty), reasons
 
     if strat in (meta.get("avoid") or set()):
         reasons.append("learned avoid list for this ticker")
         return -15.0, reasons
 
-    return 0.0, []
+    return max(0.0, 0.0 - penalty), reasons

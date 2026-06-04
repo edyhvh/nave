@@ -20,6 +20,7 @@ def position_context_from_scan_row(
     *,
     days_to_exp: int | None = None,
     congress_tickers: frozenset[str] | set[str] | None = None,
+    registry_alignment: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Normalize scan row fields into a stable context dict for CLI/JSON."""
     setup = row.get("executable_setup") or {}
@@ -28,6 +29,9 @@ def position_context_from_scan_row(
     modeled = row.get("top_modeled_metrics") or {}
     ticker = str(row.get("ticker") or "").upper()
     dte = days_to_exp if days_to_exp is not None else 30
+    warnings = list(row.get("warnings") or [])
+    if registry_alignment and registry_alignment.get("warning"):
+        warnings.append(str(registry_alignment["warning"]))
 
     return {
         "ticker": ticker,
@@ -61,7 +65,8 @@ def position_context_from_scan_row(
             "entry_quality": decision.get("entry_quality"),
             "reason": decision.get("reason"),
         },
-        "warnings": list(row.get("warnings") or []),
+        "warnings": warnings,
+        "registry_alignment": dict(registry_alignment) if registry_alignment else None,
         "congress_boost": ticker in (congress_tickers or frozenset()),
         "days_to_exp": dte,
         "deep_dive_cmd": f"nave options analyze --ticker {ticker} --days-to-exp {dte}",

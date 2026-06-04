@@ -96,6 +96,11 @@ def _approved(setup: str, reasons: list[str]) -> dict[str, Any]:
         "merge_status": "approved",
         "validated_setup": setup,
         "reasons": reasons,
+        "horizon": "walkforward_replay",
+        "horizon_note": (
+            "Approved for the income playbook from replay/OOS — not a guarantee for "
+            "this week's directional tape; align live bias before full size."
+        ),
     }
 
 

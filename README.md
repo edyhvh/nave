@@ -54,6 +54,7 @@ python scripts/weekly_cot_analysis.py --capital 2000 --paper
 # Equity options — daily income scan (~30d, congress + ranked setups)
 nave options daily
 nave options daily --limit 40 --top 10 --json
+nave options track --mark --offsets 1,3,5,7
 
 # Deep dive on one name from the shortlist
 nave options analyze --ticker MSFT --days-to-exp 30
@@ -129,6 +130,8 @@ nave crypto position-review    # same stack
 nave daily --coins BTC
 nave daily --no-options
 nave daily --json
+python scripts/refresh_current_setup.py
+python scripts/crypto_thesis_check.py
 ```
 
 Each coin reports: action, direction, confidence, regime phase, 4H zone, stop, momentum
@@ -386,7 +389,7 @@ rm -rf .venv && python setup.py
 | [docs/commands/README.md](docs/commands/README.md) | Full command reference |
 | [docs/agent_onboarding.md](docs/agent_onboarding.md) | Hermes daily flow and tools |
 | [docs/hermes_integration.md](docs/hermes_integration.md) | Integration contracts |
-| [docs/analysis/current_setup.md](docs/analysis/current_setup.md) | Live BTC/ETH setup notes |
+| [docs/analysis/current_setup.md](docs/analysis/current_setup.md) | Live BTC/ETH setup (`python scripts/refresh_current_setup.py`) |
 | [docs/analysis/btc_eth_historical_review.md](docs/analysis/btc_eth_historical_review.md) | Historical theory review |
 | [docs/technical.yaml](docs/technical.yaml) | Patterns, IPDA, F.I.T.S. |
 | [docs/cot_integration.yaml](docs/cot_integration.yaml) | COT logic and sizing |
