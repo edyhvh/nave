@@ -1018,6 +1018,68 @@ def test_options_analyze_sp500_scan_sheet_keeps_single_ticker_mode_additive(
     assert "Trade Candidates" in result.stdout
 
 
+def test_options_daily_json_keeps_stdout_parseable_when_refreshing_congress(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from cli.commands import congress as congress_cmd
+    from cli.commands import options as options_cmd
+
+    class _DummyAnalyzer:
+        def __init__(self, fetcher_source: str = "yfinance") -> None:
+            _ = fetcher_source
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+    def _fake_congress_scan(*, persist: bool, save_report: bool) -> dict:
+        assert persist is True
+        assert save_report is True
+        return {"new_trades": [{"symbol": "WFC"}]}
+
+    def _fake_universe_scan(**kwargs) -> dict:
+        assert kwargs["days_to_exp"] == 30
+        return {
+            "strategy": "options_equity_universe_scan_v1",
+            "days_to_exp": 30,
+            "summary": {
+                "tickers_requested": 10,
+                "tickers_scanned": 10,
+                "trade_candidates": 0,
+                "errors": 0,
+                "top_trades_returned": 0,
+                "workers": 1,
+            },
+            "ranked": [],
+            "results": {},
+        }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    monkeypatch.setattr(congress_cmd, "_run_congress_scan", _fake_congress_scan)
+    monkeypatch.setattr(options_cmd, "_scan_equity_options_universe", _fake_universe_scan)
+
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "daily",
+            "--limit",
+            "10",
+            "--top",
+            "1",
+            "--scan-workers",
+            "1",
+            "--json",
+            "--no-save-json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["hidden_gems"]["gems"] == []
+    assert parsed["scan"]["summary"]["tickers_scanned"] == 10
+    assert "Refreshing congressional disclosures" not in result.stdout
+    assert "Congress scan: 1 new filing(s)" not in result.stdout
+
+
 def test_options_opportunities_forwards_source(monkeypatch) -> None:
     from cli.commands import options as options_cmd
 

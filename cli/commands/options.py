@@ -1495,17 +1495,22 @@ def options_daily(
     if refresh_congress and with_congress:
         from cli.commands.congress import _run_congress_scan
 
-        typer.echo("Refreshing congressional disclosures (FMP)...")
+        status_to_stderr = json_out
+        typer.echo("Refreshing congressional disclosures (FMP)...", err=status_to_stderr)
         try:
             report = _run_congress_scan(persist=True, save_report=True)
             new_count = len(report.get("new_trades") or [])
-            typer.echo(f"Congress scan: {new_count} new filing(s) since last run.")
+            typer.echo(
+                f"Congress scan: {new_count} new filing(s) since last run.",
+                err=status_to_stderr,
+            )
         except Exception as exc:
             typer.echo(
                 f"[yellow]Congress refresh skipped ({exc}). "
-                "Set FMP_API_KEY or use --no-refresh-congress.[/yellow]"
+                "Set FMP_API_KEY or use --no-refresh-congress.[/yellow]",
+                err=status_to_stderr,
             )
-        typer.echo("")
+        typer.echo("", err=status_to_stderr)
 
     _run_gems_scan(
         limit=limit,
