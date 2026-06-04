@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from options.position_context import position_context_from_scan_row
 from trading.stocks.x_interest import XInterestProfile, interest_score, load_x_interest_index
 
 MEGA_CAP_TICKERS = frozenset(
@@ -59,7 +60,7 @@ class GemFilterConfig:
     min_gem_score: float = 50.0
 
 
-# Production default: bullish bull puts (+ bank neutral), no bear calls, no TSLA/PLTR.
+# Strict replay-tuned default (yearly experiment — higher bar, fewer names).
 DEFAULT_FILTER = GemFilterConfig(
     require_bias_aligned=True,
     allow_neutral_banks=True,
@@ -70,6 +71,27 @@ DEFAULT_FILTER = GemFilterConfig(
     max_touch=70.0,
     min_gem_score=50.0,
 )
+
+# Daily operator: more setups for ~30d income (still bias-aligned, no high-vol blocklist).
+DAILY_OPERATOR_FILTER = GemFilterConfig(
+    require_bias_aligned=True,
+    allow_neutral_banks=True,
+    allow_bear_calls=False,
+    block_high_vol=True,
+    min_structure=45.0,
+    min_pop=58.0,
+    max_touch=75.0,
+    min_gem_score=40.0,
+    mega_cap_penalty_unless_structure=58.0,
+)
+
+
+def resolve_gem_filter(profile: str = "daily") -> GemFilterConfig:
+    """Map CLI profile name to filter config."""
+    key = (profile or "daily").strip().lower()
+    if key in {"strict", "replay", "default"}:
+        return DEFAULT_FILTER
+    return DAILY_OPERATOR_FILTER
 
 
 def _f(value: object) -> float:
@@ -200,6 +222,7 @@ def score_gem_row(
     median_x_engagement: float = 0.0,
     congress_tickers: frozenset[str] | set[str] | None = None,
     cfg: GemFilterConfig | None = None,
+    days_to_exp: int | None = None,
 ) -> dict[str, Any] | None:
     cfg = cfg or DEFAULT_FILTER
     status = str(row.get("status") or "")
@@ -238,6 +261,17 @@ def score_gem_row(
     congress_pts = congress_bonus(ticker, congress_tickers or frozenset())
     quality_pts = cfg.quality_sector_bonus if ticker in QUALITY_INCOME_TICKERS else 0.0
     try:
+        from options.ticker_strategy import registry_tape_alignment
+
+        alignment = registry_tape_alignment(
+            ticker,
+            strategy,
+            tape_bias=str(bias) if bias else None,
+        )
+    except Exception:
+        alignment = {}
+
+    try:
         from options.ticker_strategy import registry_setup_bonus
 
         registry_pts, registry_reasons = registry_setup_bonus(
@@ -248,6 +282,8 @@ def score_gem_row(
     except Exception:
         registry_pts, registry_reasons = 0.0, []
 
+    align_penalty = float(alignment.get("score_penalty") or 0.0)
+
     gem_score = (
         struct * 0.42
         + hidden * 0.28
@@ -256,6 +292,7 @@ def score_gem_row(
         + congress_pts
         + quality_pts
         + registry_pts
+        - align_penalty
     )
     gem_score = max(0.0, min(100.0, gem_score))
     if gem_score < cfg.min_gem_score:
@@ -283,6 +320,15 @@ def score_gem_row(
 
     tier = "gem" if gem_score >= 62 else "prospect" if gem_score >= cfg.min_gem_score else "watch"
 
+    position = position_context_from_scan_row(
+        row,
+        days_to_exp=days_to_exp,
+        congress_tickers=congress_tickers or frozenset(),
+        registry_alignment=alignment,
+    )
+    if alignment.get("warning"):
+        reasons.append(str(alignment["warning"]))
+
     return {
         "ticker": ticker,
         "gem_score": round(gem_score, 1),
@@ -298,11 +344,11 @@ def score_gem_row(
         "strategy": strategy,
         "bias": bias,
         "metrics": dict(metrics),
+        "position": position,
         "x_profile": x_profile.as_dict() if x_profile else None,
         "reasons": reasons or ["passes refined gem filters"],
         "executable_setup": row.get("executable_setup"),
         "trade_decision": decision,
-        "filter_config": "v2_refined",
     }
 
 
@@ -385,8 +431,10 @@ def rank_hidden_gems(
     congress_tickers: frozenset[str] | set[str] | None = None,
     limit: int = 25,
     cfg: GemFilterConfig | None = None,
+    filter_profile: str = "daily",
 ) -> dict[str, Any]:
-    cfg = cfg or DEFAULT_FILTER
+    cfg = cfg or resolve_gem_filter(filter_profile)
+    target_dte = int(scan_payload.get("days_to_exp") or 30)
     x_index = x_index if x_index is not None else load_x_interest_index()
     engagements = [p.engagement for p in x_index.values() if p.engagement > 0]
     median_eng = float(sorted(engagements)[len(engagements) // 2]) if engagements else 0.0
@@ -400,6 +448,7 @@ def rank_hidden_gems(
             median_x_engagement=median_eng,
             congress_tickers=congress_tickers,
             cfg=cfg,
+            days_to_exp=target_dte,
         )
         if scored is not None:
             gems.append(scored)
@@ -414,16 +463,17 @@ def rank_hidden_gems(
         reverse=True,
     )
 
-    # Secondary watchlist: passed core bias/vol gates but below strict pop/structure bar.
+    # Secondary watchlist: slightly below primary daily gates.
     watch_cfg = GemFilterConfig(
-        min_pop=58.0,
-        max_touch=72.0,
-        min_structure=45.0,
-        min_gem_score=42.0,
-        require_bias_aligned=True,
-        allow_neutral_banks=True,
+        min_pop=max(55.0, cfg.min_pop - 3.0),
+        max_touch=min(78.0, cfg.max_touch + 3.0),
+        min_structure=max(40.0, cfg.min_structure - 5.0),
+        min_gem_score=max(35.0, cfg.min_gem_score - 5.0),
+        mega_cap_penalty_unless_structure=max(52.0, cfg.mega_cap_penalty_unless_structure - 6.0),
+        require_bias_aligned=cfg.require_bias_aligned,
+        allow_neutral_banks=cfg.allow_neutral_banks,
         allow_bear_calls=False,
-        block_high_vol=True,
+        block_high_vol=cfg.block_high_vol,
     )
     watchlist: list[dict[str, Any]] = []
     gem_tickers = {g["ticker"] for g in gems}
@@ -437,14 +487,65 @@ def rank_hidden_gems(
             median_x_engagement=median_eng,
             congress_tickers=congress_tickers,
             cfg=watch_cfg,
+            days_to_exp=target_dte,
         )
         if scored is not None:
             scored["tier"] = "watch"
             watchlist.append(scored)
     watchlist.sort(key=lambda item: item.get("gem_score") or 0.0, reverse=True)
 
+    scan_picks: list[dict[str, Any]] = []
+    if not gems:
+        dte = target_dte
+        congress_set = congress_tickers or frozenset()
+        for item in scan_payload.get("ranked") or []:
+            ticker = str(item.get("ticker") or "").upper()
+            if not ticker:
+                continue
+            if cfg.block_high_vol and ticker in HIGH_VOL_LOSERS:
+                continue
+            row = (scan_payload.get("results") or {}).get(ticker) or {}
+            strat = str(
+                item.get("strategy_name")
+                or row.get("executable_strategy")
+                or ""
+            )
+            bias = (row.get("executable_setup") or {}).get("bias")
+            try:
+                from options.ticker_strategy import registry_tape_alignment
+
+                alignment = registry_tape_alignment(
+                    ticker,
+                    strat,
+                    tape_bias=str(bias) if bias else None,
+                )
+            except Exception:
+                alignment = {}
+            position = position_context_from_scan_row(
+                row,
+                days_to_exp=dte,
+                congress_tickers=congress_set,
+                registry_alignment=alignment,
+            )
+            scan_picks.append(
+                {
+                    "ticker": ticker,
+                    "strategy": item.get("strategy_name") or row.get("executable_strategy"),
+                    "composite_score": item.get("composite_score"),
+                    "pop": item.get("pop"),
+                    "expected_value": item.get("expected_value"),
+                    "probability_of_touch": item.get("probability_of_touch"),
+                    "setup_summary": item.get("setup_summary") or row.get("setup_summary"),
+                    "rationale": item.get("rationale"),
+                    "tier": "scan_pick",
+                    "position": position,
+                }
+            )
+        scan_picks = scan_picks[:limit]
+
     return {
         "strategy": "options_hidden_gems_v2",
+        "filter_profile": filter_profile,
         "filter": {
             "min_pop": cfg.min_pop,
             "max_touch": cfg.max_touch,
@@ -459,5 +560,6 @@ def rank_hidden_gems(
         "actionable_gems": len(gems),
         "gems": gems[:limit],
         "watchlist": watchlist[: max(5, limit // 2)],
+        "scan_picks": scan_picks,
         "all_gems": gems,
     }

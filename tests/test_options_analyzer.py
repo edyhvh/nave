@@ -1003,3 +1003,13 @@ def test_scan_crypto_opportunities_accepts_cot_bias_override_without_momentum(mo
     )
     assert directional_biases == ["bearish"]
     assert payload["opportunities"]["ETH"]["status"] == "ready"
+
+
+def test_touch_thresholds_wider_for_deribit(tmp_path: Path) -> None:
+    cfg = _config(tmp_path)
+    equity = OptionsAnalyzer(config=cfg, fetcher_source="yfinance")
+    crypto = OptionsAnalyzer(config=cfg, fetcher_source="deribit")
+    eq_comfort, eq_warn = equity.touch_thresholds_pct()
+    cr_comfort, cr_warn = crypto.touch_thresholds_pct()
+    assert cr_warn > eq_warn
+    assert cr_comfort > eq_comfort

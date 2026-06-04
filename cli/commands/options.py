@@ -1224,46 +1224,144 @@ def _load_congress_tickers() -> frozenset[str]:
     return frozenset(out)
 
 
+def _render_position_detail_panels(
+    console: Console,
+    items: list[dict],
+    *,
+    title_prefix: str,
+    border_style: str = "green",
+    max_panels: int = 10,
+) -> None:
+    from options.position_context import format_position_panel_lines
+
+    for idx, item in enumerate(items[:max_panels], start=1):
+        ctx = item.get("position") or item
+        ticker = str(ctx.get("ticker") or item.get("ticker") or "?")
+        tier = item.get("tier")
+        gem_score = item.get("gem_score")
+        title = f"{title_prefix} #{idx} {ticker}"
+        if gem_score is not None:
+            title += f" (gem {gem_score})"
+        if tier:
+            title += f" [{tier}]"
+        console.print(
+            Panel(
+                "\n".join(format_position_panel_lines(ctx)),
+                title=title,
+                border_style=border_style,
+            )
+        )
+
+
 def _render_gems_sheet(console: Console, gem_payload: dict) -> None:
     gems = gem_payload.get("gems") or []
     watch = gem_payload.get("watchlist") or []
+    scan_picks = gem_payload.get("scan_picks") or []
+
+    summary = Table(title="Options daily scan summary", box=box.SIMPLE_HEAVY)
+    summary.add_column("Metric")
+    summary.add_column("Value")
+    summary.add_row("Filter profile", str(gem_payload.get("filter_profile") or "daily"))
+    summary.add_row("Gems", str(len(gems)))
+    summary.add_row("Watchlist", str(len(watch)))
+    summary.add_row("Scan picks", str(len(scan_picks)))
+    summary.add_row("Actionable before filter", str(gem_payload.get("actionable_before_filter") or 0))
+    console.print(summary)
+
+    if scan_picks:
+        pick_table = Table(
+            title="Scan picks (executable trades ranked by analyzer)",
+            box=box.SIMPLE,
+        )
+        pick_table.add_column("Ticker")
+        pick_table.add_column("Strategy")
+        pick_table.add_column("Position")
+        pick_table.add_column("Score", justify="right")
+        pick_table.add_column("PoP", justify="right")
+        pick_table.add_column("EV", justify="right")
+        pick_table.add_column("Touch", justify="right")
+        for item in scan_picks[:10]:
+            ctx = item.get("position") or item
+            metrics = ctx.get("metrics") or item
+            pick_table.add_row(
+                str(ctx.get("ticker") or item.get("ticker")),
+                str(ctx.get("strategy") or item.get("strategy") or "-").replace("_", " "),
+                str(ctx.get("setup_summary") or item.get("setup_summary") or "-")[:36],
+                str(metrics.get("composite_score") or item.get("composite_score") or "-"),
+                str(metrics.get("pop") or item.get("pop") or "-"),
+                str(metrics.get("expected_value") or item.get("expected_value") or "-"),
+                str(metrics.get("probability_of_touch") or item.get("probability_of_touch") or "-"),
+            )
+        console.print(pick_table)
+        _render_position_detail_panels(
+            console,
+            scan_picks,
+            title_prefix="Scan pick",
+            border_style="cyan",
+        )
+
     if watch:
         watch_table = Table(title="Watchlist (relaxed gates)", box=box.SIMPLE)
         watch_table.add_column("Ticker")
-        watch_table.add_column("Score", justify="right")
+        watch_table.add_column("Gem", justify="right")
+        watch_table.add_column("Position")
         watch_table.add_column("PoP", justify="right")
         for item in watch[:8]:
-            metrics = item.get("metrics") or {}
+            ctx = item.get("position") or item
+            metrics = ctx.get("metrics") or item.get("metrics") or {}
             watch_table.add_row(
-                str(item.get("ticker")),
+                str(ctx.get("ticker") or item.get("ticker")),
                 str(item.get("gem_score")),
+                str(ctx.get("setup_summary") or "-")[:36],
                 str(metrics.get("pop", "-")),
             )
         console.print(watch_table)
-
-    table = Table(title="Hidden gem prospects (structure + X crowd)", box=box.SIMPLE_HEAVY)
-    table.add_column("Ticker")
-    table.add_column("Gem", justify="right")
-    table.add_column("Tier")
-    table.add_column("Strategy")
-    table.add_column("PoP", justify="right")
-    table.add_column("Touch", justify="right")
-    table.add_column("X", justify="right")
-    table.add_column("Why")
-    for item in gems:
-        metrics = item.get("metrics") or {}
-        why = "; ".join(item.get("reasons") or [])[:80]
-        table.add_row(
-            str(item.get("ticker")),
-            str(item.get("gem_score")),
-            str(item.get("tier")),
-            str(item.get("strategy") or "-").replace("_", " "),
-            f"{metrics.get('pop', '-')}",
-            f"{metrics.get('probability_of_touch', '-')}",
-            str(item.get("x_interest_score") or 0),
-            why,
+        _render_position_detail_panels(
+            console,
+            watch,
+            title_prefix="Watch",
+            border_style="yellow",
+            max_panels=5,
         )
-    console.print(table)
+
+    if gems:
+        table = Table(title="Hidden gem prospects (structure + X crowd)", box=box.SIMPLE_HEAVY)
+        table.add_column("Ticker")
+        table.add_column("Gem", justify="right")
+        table.add_column("Tier")
+        table.add_column("Strategy")
+        table.add_column("Position")
+        table.add_column("PoP", justify="right")
+        table.add_column("Touch", justify="right")
+        table.add_column("X", justify="right")
+        table.add_column("Why")
+        for item in gems:
+            ctx = item.get("position") or item
+            metrics = ctx.get("metrics") or item.get("metrics") or {}
+            why = "; ".join(item.get("reasons") or [])[:60]
+            table.add_row(
+                str(ctx.get("ticker") or item.get("ticker")),
+                str(item.get("gem_score")),
+                str(item.get("tier")),
+                str(ctx.get("strategy") or item.get("strategy") or "-").replace("_", " "),
+                str(ctx.get("setup_summary") or "-")[:32],
+                f"{metrics.get('pop', '-')}",
+                f"{metrics.get('probability_of_touch', '-')}",
+                str(item.get("x_interest_score") or 0),
+                why,
+            )
+        console.print(table)
+        _render_position_detail_panels(console, gems, title_prefix="Gem", border_style="green")
+
+    if not gems and not watch and not scan_picks:
+        console.print(
+            Panel(
+                "No setups surfaced. Try a larger universe or:\n"
+                "  nave options analyze --sp500-scan --sp500-limit 100 --days-to-exp 30",
+                title="No results",
+                border_style="yellow",
+            )
+        )
     x_loaded = gem_payload.get("x_snapshots_loaded", 0)
     if x_loaded == 0:
         console.print(
@@ -1272,37 +1370,22 @@ def _render_gems_sheet(console: Console, gem_payload: dict) -> None:
         )
 
 
-@options_app.command("gems")
-def gems(
-    limit: int = typer.Option(
-        100,
-        "--limit",
-        min=10,
-        max=200,
-        help="S&P 500 universe size to scan",
-    ),
-    days_to_exp: int = typer.Option(30, "--days-to-exp", min=1, max=365),
-    top_gems: int = typer.Option(15, "--top", min=1, max=50, help="Hidden gems to show"),
-    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
-    source: str = typer.Option("yfinance", "--source"),
-    json_out: bool = typer.Option(False, "--json"),
-    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
-    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
-    json_path: str | None = typer.Option(None, "--json-path"),
-    with_congress: bool = typer.Option(
-        True,
-        "--with-congress/--no-congress",
-        help="Boost tickers in latest congressional disclosure report",
-    ),
-    fetch_x: int = typer.Option(
-        0,
-        "--fetch-x",
-        min=0,
-        max=12,
-        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
-    ),
+def _run_gems_scan(
+    *,
+    limit: int,
+    days_to_exp: int,
+    top_gems: int,
+    scan_workers: int,
+    source: str,
+    json_out: bool,
+    sheet: bool,
+    save_json: bool,
+    json_path: str | None,
+    with_congress: bool,
+    fetch_x: int,
+    strict_filters: bool = False,
 ) -> None:
-    """Scan for under-the-radar income setups with strong odds + X crowd interest."""
+    """Scan S&P names for executable income setups; rank hidden gems + congress boost."""
     analyzer = _build_options_analyzer(source=source)
     console = Console()
     tickers = (
@@ -1321,11 +1404,13 @@ def gems(
     )
 
     congress = _load_congress_tickers() if with_congress else frozenset()
+    filter_profile = "strict" if strict_filters else "daily"
     payload = run_hidden_gems_scan(
         scan_payload,
         congress_tickers=congress,
         top=top_gems,
         fetch_x_for_top=fetch_x,
+        filter_profile=filter_profile,
     )
     payload["scan"] = scan_payload
     gem_payload = payload["hidden_gems"]
@@ -1357,6 +1442,213 @@ def gems(
             )
     if report_path is not None:
         typer.echo(f"JSON report: {report_path}")
+
+    try:
+        from options.forward_tracker import record_daily_recommendations
+
+        track_result = record_daily_recommendations(payload)
+        if not json_out:
+            typer.echo(
+                f"\n[dim]Forward tracker: {track_result['recommendation_count']} rows → "
+                f"{track_result['path']}[/dim]"
+            )
+    except Exception as exc:
+        if not json_out:
+            typer.echo(f"[yellow]Forward tracker skipped: {exc}[/yellow]")
+
+
+@options_app.command("track")
+def options_track(
+    report: str | None = typer.Option(
+        None,
+        "--report",
+        help="Path to a saved options daily JSON report (record mode)",
+    ),
+    mark: bool = typer.Option(
+        False,
+        "--mark",
+        help="Mark open recommendations (default: record from --report or latest)",
+    ),
+    offsets: str = typer.Option("1,3,5,7", "--offsets", help="Days since entry for mark mode"),
+    as_of: str | None = typer.Option(None, "--as-of", help="Mark exit date YYYY-MM-DD"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Record daily scan picks or mark forward PnL vs replay model."""
+    from datetime import date, datetime, timezone
+
+    from options.forward_tracker import (
+        mark_open_recommendations,
+        record_daily_recommendations,
+        render_tracker_report,
+    )
+
+    if mark:
+        offset_list = [int(part.strip()) for part in offsets.split(",") if part.strip()]
+        exit_day = (
+            date.fromisoformat(as_of)
+            if as_of
+            else datetime.now(timezone.utc).date()
+        )
+        summary = mark_open_recommendations(as_of=exit_day, offsets_days=offset_list)
+        if json_out:
+            typer.echo(json.dumps(summary, indent=2, default=str))
+        else:
+            typer.echo(render_tracker_report(summary))
+        return
+
+    path = Path(report) if report else None
+    if path is None:
+        reports = sorted(
+            _default_reports_dir().glob("hidden_gems_*_options_report_*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not reports:
+            raise typer.BadParameter("No report found; pass --report or run nave options daily first")
+        path = reports[0]
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    result = record_daily_recommendations(payload)
+    if json_out:
+        typer.echo(json.dumps(result, indent=2, default=str))
+    else:
+        typer.echo(f"Recorded {result['recommendation_count']} recommendations → {result['path']}")
+
+
+@options_app.command("daily")
+def options_daily(
+    limit: int = typer.Option(
+        40,
+        "--limit",
+        "--sp500-limit",
+        min=10,
+        max=200,
+        help="S&P universe size (default top 40 liquid names)",
+    ),
+    days_to_exp: int = typer.Option(
+        30,
+        "--days-to-exp",
+        min=1,
+        max=365,
+        help="Target days to expiration (~30d income setups)",
+    ),
+    top: int = typer.Option(10, "--top", min=1, max=50, help="Setups to surface"),
+    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
+    source: str = typer.Option("yfinance", "--source"),
+    json_out: bool = typer.Option(False, "--json"),
+    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
+    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
+    json_path: str | None = typer.Option(None, "--json-path"),
+    with_congress: bool = typer.Option(
+        True,
+        "--with-congress/--no-congress",
+        help="Boost tickers from latest congressional disclosure report",
+    ),
+    refresh_congress: bool = typer.Option(
+        True,
+        "--refresh-congress/--no-refresh-congress",
+        help="Run nave congress first (needs FMP_API_KEY) to refresh politician filings",
+    ),
+    fetch_x: int = typer.Option(
+        0,
+        "--fetch-x",
+        min=0,
+        max=12,
+        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
+    ),
+    strict_filters: bool = typer.Option(
+        False,
+        "--strict-filters",
+        help="Use replay-tuned strict gem gates instead of daily operator defaults",
+    ),
+) -> None:
+    """Daily equity income scan: congress refresh + ~30d ranked setups for this week."""
+    if refresh_congress and with_congress:
+        from cli.commands.congress import _run_congress_scan
+
+        status_to_stderr = json_out
+        typer.echo("Refreshing congressional disclosures (FMP)...", err=status_to_stderr)
+        try:
+            report = _run_congress_scan(persist=True, save_report=True)
+            new_count = len(report.get("new_trades") or [])
+            typer.echo(
+                f"Congress scan: {new_count} new filing(s) since last run.",
+                err=status_to_stderr,
+            )
+        except Exception as exc:
+            typer.echo(
+                f"[yellow]Congress refresh skipped ({exc}). "
+                "Set FMP_API_KEY or use --no-refresh-congress.[/yellow]",
+                err=status_to_stderr,
+            )
+        typer.echo("", err=status_to_stderr)
+
+    _run_gems_scan(
+        limit=limit,
+        days_to_exp=days_to_exp,
+        top_gems=top,
+        scan_workers=scan_workers,
+        source=source,
+        json_out=json_out,
+        sheet=sheet,
+        save_json=save_json,
+        json_path=json_path,
+        with_congress=with_congress,
+        fetch_x=fetch_x,
+        strict_filters=strict_filters,
+    )
+
+
+@options_app.command("gems")
+def gems(
+    limit: int = typer.Option(
+        100,
+        "--limit",
+        "--sp500-limit",
+        min=10,
+        max=200,
+        help="S&P 500 universe size to scan",
+    ),
+    days_to_exp: int = typer.Option(30, "--days-to-exp", min=1, max=365),
+    top_gems: int = typer.Option(15, "--top", min=1, max=50, help="Hidden gems to show"),
+    scan_workers: int = typer.Option(4, "--scan-workers", min=1, max=12),
+    source: str = typer.Option("yfinance", "--source"),
+    json_out: bool = typer.Option(False, "--json"),
+    sheet: bool = typer.Option(True, "--sheet/--no-sheet"),
+    save_json: bool = typer.Option(True, "--save-json/--no-save-json"),
+    json_path: str | None = typer.Option(None, "--json-path"),
+    with_congress: bool = typer.Option(
+        True,
+        "--with-congress/--no-congress",
+        help="Boost tickers in latest congressional disclosure report",
+    ),
+    fetch_x: int = typer.Option(
+        0,
+        "--fetch-x",
+        min=0,
+        max=12,
+        help="Fetch fresh X posts for top N gems (requires twscrape; 0=cache only)",
+    ),
+    strict_filters: bool = typer.Option(
+        False,
+        "--strict-filters",
+        help="Use replay-tuned strict gem gates instead of daily operator defaults",
+    ),
+) -> None:
+    """Scan for under-the-radar income setups with strong odds + X crowd interest."""
+    _run_gems_scan(
+        limit=limit,
+        days_to_exp=days_to_exp,
+        top_gems=top_gems,
+        scan_workers=scan_workers,
+        source=source,
+        json_out=json_out,
+        sheet=sheet,
+        save_json=save_json,
+        json_path=json_path,
+        with_congress=with_congress,
+        fetch_x=fetch_x,
+        strict_filters=strict_filters,
+    )
 
 
 @options_app.command("opportunities")

@@ -113,8 +113,9 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
         out.print("\n[dim]Both coins are stand-aside — no COT+momentum entry today.[/dim]")
 
     out.print(
-        "\n[dim]Stack: COT → regime → momentum 4H/1H → perp + Deribit options. "
-        "JSON: add --json[/dim]"
+        "\n[dim]Stack: COT → regime → momentum 4H/1H → perp (primary). "
+        "Deribit options may show as advisory when touch/quality gates block. "
+        "JSON: add --json · refresh doc: python scripts/refresh_current_setup.py[/dim]"
     )
 
 

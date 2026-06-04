@@ -245,7 +245,7 @@ class ISMReportFetcher:
         text = _strip_html(html)
 
         month = _extract_report_month(html, text=text, kind=kind)
-        pmi = _extract_pmi(text, kind)
+        pmi = _extract_pmi(text, kind, source_url=source_url)
         expanding = _parse_industry_list(text, trend="expanding")
         contracting = _parse_industry_list(text, trend="contracting")
 
@@ -365,15 +365,45 @@ def _extract_heading_texts(html: str) -> list[str]:
     return normalized
 
 
-def _extract_pmi(text: str, kind: ReportKind) -> float | None:
+def _extract_pmi(
+    text: str,
+    kind: ReportKind,
+    *,
+    source_url: str | None = None,
+) -> float | None:
+    """Return headline composite PMI, not threshold references like 'above 47.5'."""
+    kind_label = "Manufacturing" if kind == "manufacturing" else "Services"
+    registered = re.search(
+        rf"{kind_label}\s+PMI(?:®)?\s+registered\s+(\d{{2}}\.\d)\s*percent",
+        text,
+        re.IGNORECASE,
+    )
+    if registered is not None:
+        return float(registered.group(1))
+
+    at_headline = re.search(
+        rf"{kind_label}\s+PMI(?:®)?\s+at\s+(\d{{2}}\.\d)\b",
+        text,
+        re.IGNORECASE,
+    )
+    if at_headline is not None:
+        return float(at_headline.group(1))
+
+    if source_url:
+        slug_match = re.search(r"pmi-at-(\d{2}(?:\.\d)?)-", source_url, re.IGNORECASE)
+        if slug_match is not None:
+            return float(slug_match.group(1))
+
     pattern = _PMI_RE_MANUF if kind == "manufacturing" else _PMI_RE_SERVICES
-    match = pattern.search(text)
-    if match is None:
-        return None
-    try:
-        return float(match.group(1))
-    except ValueError:
-        return None
+    for match in pattern.finditer(text):
+        prefix = text[max(0, match.start() - 24): match.start()].lower()
+        if re.search(r"\b(above|below)\s*$", prefix):
+            continue
+        try:
+            return float(match.group(1))
+        except ValueError:
+            continue
+    return None
 
 
 # Phrasing used in both Manufacturing and Services reports. ISM lists

@@ -51,10 +51,13 @@ nave daily --json                      # cron / agents
 nave cot report --coins "BTC ETH"
 python scripts/weekly_cot_analysis.py --capital 2000 --paper
 
-# Equity options research (when hunting income)
+# Equity options — daily income scan (~30d, congress + ranked setups)
+nave options daily
+nave options daily --limit 40 --top 10 --json
+nave options track --mark --offsets 1,3,5,7
+
+# Deep dive on one name from the shortlist
 nave options analyze --ticker MSFT --days-to-exp 30
-nave options gems --sp500-limit 40 --top 5
-nave options registry iterate --limit 40
 
 # Stocks (ISM release days)
 nave stocks ism-report --kind manufacturing --sheet
@@ -67,9 +70,11 @@ nave congress                              # new STOCK Act filings since last ru
 | Momentum scan (stricter default) | `nave crypto scan` |
 | Momentum scan (config threshold) | `nave crypto momentum-scan` |
 | One-symbol playbook | `nave crypto playbook --symbol BTCUSDT --side long` |
-| S&P options rank scan | `nave options analyze --sp500-scan` |
-| Under-the-radar income + X | `nave options gems` |
-| Per-ticker learned setups | `nave options registry list` |
+| Daily equity income (~30d) | `nave options daily` |
+| S&P options rank scan | `nave options analyze --sp500-scan --sp500-limit 40` |
+| Under-the-radar income + X | `nave options gems --limit 40 --top 10` |
+| Per-ticker learned setups | `nave options registry show --ticker MSFT` |
+| Registry research loop (slow, weekly) | `nave options registry iterate` |
 | Agent / automation | `nave hermes tools`, `nave mcp run`, or [docs/agent_onboarding.md](docs/agent_onboarding.md) |
 
 Deeper command lists: [docs/commands/README.md](docs/commands/README.md).
@@ -125,6 +130,8 @@ nave crypto position-review    # same stack
 nave daily --coins BTC
 nave daily --no-options
 nave daily --json
+python scripts/refresh_current_setup.py
+python scripts/crypto_thesis_check.py
 ```
 
 Each coin reports: action, direction, confidence, regime phase, 4H zone, stop, momentum
@@ -167,6 +174,35 @@ python scripts/unified_backtest.py --fast --coins BTC ETH
 
 ## Options: equity and crypto
 
+### Daily income scan (start here)
+
+One command for **today’s ~30-day income setups**: refreshes congressional filings
+(needs `FMP_API_KEY`), scans the S&P universe, ranks executable strategies, and boosts
+names politicians recently disclosed.
+
+```bash
+nave options daily
+nave options daily --limit 40 --top 10 --days-to-exp 30 --sheet
+nave options daily --no-refresh-congress    # skip FMP if you already ran nave congress
+nave options daily --json
+nave options daily --strict-filters         # old replay-tuned gates (fewer names)
+```
+
+Daily mode uses relaxed gem filters (~30d income). Output includes per-ticker **position
+detail panels** (legs, bias, thesis, risk metrics, decision, deep-dive command). If no gems
+pass, you still get a **watchlist** and **scan picks** with full position context.
+
+Equivalent manual steps:
+
+```bash
+nave congress
+nave options gems --limit 40 --top 10 --days-to-exp 30 --with-congress
+```
+
+**Not for daily use:** `nave options registry iterate` — slow walk-forward + journal
+merge (weekly/monthly research). Use `registry list` / `registry show` to read what
+was already learned.
+
 ### Single ticker
 
 ```bash
@@ -192,12 +228,14 @@ Implementation: `options/universe_scan.py` (shared by CLI and Hermes).
 
 ### Hidden gems
 
-Income setups with strong odds plus optional X crowd interest and Congressional boost:
+Same engine as `nave options daily`, without auto-running congress first:
 
 ```bash
-nave options gems --sp500-limit 40 --top 5 --sheet
+nave options gems --limit 40 --top 10 --days-to-exp 30 --sheet
 nave options gems --fetch-x 3 --json
 ```
+
+(`--sp500-limit` is an alias for `--limit` on `gems` and `daily`, matching `analyze --sp500-scan`.)
 
 ### Playbook registry (S&P top 40)
 
@@ -208,7 +246,7 @@ nave options registry build --limit 40
 nave options registry learn --ticker WFC
 nave options registry list
 nave options registry show --ticker WFC
-nave options registry iterate --limit 40   # validate → journal → rebuild → gems
+nave options registry iterate              # slow: walk-forward → journal → rebuild (weekly)
 ```
 
 ### BTC/ETH (Deribit)
@@ -351,7 +389,7 @@ rm -rf .venv && python setup.py
 | [docs/commands/README.md](docs/commands/README.md) | Full command reference |
 | [docs/agent_onboarding.md](docs/agent_onboarding.md) | Hermes daily flow and tools |
 | [docs/hermes_integration.md](docs/hermes_integration.md) | Integration contracts |
-| [docs/analysis/current_setup.md](docs/analysis/current_setup.md) | Live BTC/ETH setup notes |
+| [docs/analysis/current_setup.md](docs/analysis/current_setup.md) | Live BTC/ETH setup (`python scripts/refresh_current_setup.py`) |
 | [docs/analysis/btc_eth_historical_review.md](docs/analysis/btc_eth_historical_review.md) | Historical theory review |
 | [docs/technical.yaml](docs/technical.yaml) | Patterns, IPDA, F.I.T.S. |
 | [docs/cot_integration.yaml](docs/cot_integration.yaml) | COT logic and sizing |

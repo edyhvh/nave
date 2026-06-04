@@ -83,6 +83,18 @@ class OptionsAnalyzer:
             return _CRYPTO_DERIBIT_TICKERS
         return _CRYPTO_SPOT_PROXY_TICKERS
 
+    def touch_thresholds_pct(self) -> tuple[float, float]:
+        """Return (income comfort touch %, hard block touch %) for this data source."""
+        if self.fetcher_source == "deribit":
+            return (
+                self.config.deribit_conservative_touch_max_pct,
+                self.config.deribit_modeled_touch_warning_pct,
+            )
+        return (
+            self.config.conservative_touch_max_pct,
+            self.config.modeled_touch_warning_pct,
+        )
+
     def _load_or_fetch(self, ticker: str) -> tuple[pd.DataFrame, float, list[str], dict[str, Any]]:
         cached = self.cache.latest_snapshot(ticker, source=self.fetcher_source)
         if cached is not None:
@@ -772,16 +784,24 @@ class OptionsAnalyzer:
             }
         all_ranked_dicts = [rec.to_dict() for rec in all_ranked]
         ranked_dicts = all_ranked_dicts[:3]
+        comfort_touch, warn_touch = self.touch_thresholds_pct()
         narrative_overlay = build_narrative_overlay(
             ticker=symbol,
             underlying_analysis=underlying_analysis,
             all_ranked=all_ranked_dicts,
             generation_audit=generation_audit,
-            conservative_touch_max_pct=self.config.conservative_touch_max_pct,
-            modeled_touch_warning_pct=self.config.modeled_touch_warning_pct,
+            conservative_touch_max_pct=comfort_touch,
+            modeled_touch_warning_pct=warn_touch,
             prefer_directional_override=prefer_directional_override,
             allow_mega_cap_income_pass=allow_mega_cap_income_pass,
         )
+        if self.fetcher_source == "deribit":
+            underlying_analysis["touch_policy"] = {
+                "source": "deribit",
+                "conservative_touch_max_pct": comfort_touch,
+                "modeled_touch_warning_pct": warn_touch,
+                "note": "Crypto uses wider touch bands than equity income scans.",
+            }
 
         payload = {
             "ticker": symbol,

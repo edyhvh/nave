@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from options.gem_finder import DEFAULT_FILTER, GemFilterConfig, rank_hidden_gems
+from options.gem_finder import GemFilterConfig, rank_hidden_gems
+from options.position_context import format_position_digest_line
 from trading.stocks.x_interest import load_x_interest_index
 
 
@@ -50,17 +51,18 @@ def run_hidden_gems_scan(
     *,
     congress_tickers: frozenset[str] | None = None,
     cfg: GemFilterConfig | None = None,
+    filter_profile: str = "daily",
     top: int = 15,
     fetch_x_for_top: int = 0,
 ) -> dict[str, Any]:
     """Rank gems from an existing universe scan; optionally refresh X for top N."""
-    cfg = cfg or DEFAULT_FILTER
     congress = congress_tickers if congress_tickers is not None else load_congress_tickers()
     gem_payload = rank_hidden_gems(
         scan_payload,
         congress_tickers=congress,
         limit=top,
         cfg=cfg,
+        filter_profile=filter_profile,
     )
 
     x_fetch: dict[str, Any] | None = None
@@ -75,6 +77,7 @@ def run_hidden_gems_scan(
                 congress_tickers=congress,
                 limit=top,
                 cfg=cfg,
+                filter_profile=filter_profile,
             )
 
     return {
@@ -88,23 +91,42 @@ def run_hidden_gems_scan(
 def format_gem_digest(gem_payload: dict[str, Any], *, max_lines: int = 8) -> str:
     """One-line-per-gem summary for daily reports."""
     gems = gem_payload.get("gems") or []
-    if not gems:
-        return "Hidden gems: none passed filters today."
     watch = gem_payload.get("watchlist") or []
+    scan_picks = gem_payload.get("scan_picks") or []
+    if not gems:
+        lines = ["Hidden gems: none passed gem filters today."]
+        if watch:
+            lines.append(f"Watchlist ({len(watch)}) — relaxed gates:")
+            for item in watch[:max_lines]:
+                ctx = item.get("position") or item
+                lines.append(f"  ~ {format_position_digest_line(ctx)} [watch]")
+        if scan_picks:
+            lines.append(f"Scan picks ({len(scan_picks)}) — top executable trades from universe:")
+            for item in scan_picks[:max_lines]:
+                ctx = item.get("position") or item
+                lines.append(f"  • {format_position_digest_line(ctx)}")
+        if not watch and not scan_picks:
+            lines.append(
+                "No trade_candidate rows in scan — try --limit 100 or "
+                "nave options analyze --sp500-scan."
+            )
+        filt = gem_payload.get("filter") or {}
+        profile = gem_payload.get("filter_profile") or "daily"
+        lines.append(
+            f"(profile={profile}, pop≥{filt.get('min_pop')}, touch<{filt.get('max_touch')})"
+        )
+        return "\n".join(lines)
     lines = [f"Hidden gems ({len(gems)} open, {len(watch)} watch):"]
     for item in gems[:max_lines]:
-        metrics = item.get("metrics") or {}
+        ctx = item.get("position") or item
         lines.append(
-            f"• {item['ticker']} [{item.get('tier')}] score={item.get('gem_score')} "
-            f"{str(item.get('strategy', '')).replace('_', ' ')} "
-            f"PoP={metrics.get('pop')}% — {'; '.join((item.get('reasons') or [])[:2])}"
+            f"• [{item.get('tier')}] gem={item.get('gem_score')} "
+            f"{format_position_digest_line(ctx)} — "
+            f"{'; '.join((item.get('reasons') or [])[:2])}"
         )
     for item in watch[:3]:
-        metrics = item.get("metrics") or {}
-        lines.append(
-            f"  ~ {item['ticker']} [watch] score={item.get('gem_score')} "
-            f"PoP={metrics.get('pop')}%"
-        )
+        ctx = item.get("position") or item
+        lines.append(f"  ~ [watch] gem={item.get('gem_score')} {format_position_digest_line(ctx)}")
     filt = gem_payload.get("filter") or {}
     lines.append(
         f"(filters: bullish bull-put, no bear-calls, pop≥{filt.get('min_pop')}, touch<{filt.get('max_touch')})"

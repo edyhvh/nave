@@ -6,11 +6,13 @@ import json
 from pathlib import Path
 
 from options.gem_finder import (
+    DAILY_OPERATOR_FILTER,
     DEFAULT_FILTER,
     GemFilterConfig,
     bias_aligned,
     passes_gem_filters,
     rank_hidden_gems,
+    resolve_gem_filter,
     score_gem_row,
     score_replay_row,
     summarize_filter_experiment,
@@ -66,6 +68,42 @@ def test_bank_neutral_bull_put_allowed() -> None:
 def test_high_vol_ticker_blocked() -> None:
     row = _scan_row(ticker="TSLA", pop=80.0, touch=30.0)
     assert score_gem_row(row) is None
+
+
+def test_daily_filter_looser_than_strict() -> None:
+    row = _scan_row(ticker="PNC", pop=72.0, touch=50.0, bias="bullish")
+    row["executable_metrics"]["composite_score"] = 40.0
+    row["executable_metrics"]["expected_value"] = 200.0
+    assert score_gem_row(row, cfg=DEFAULT_FILTER) is None
+    assert score_gem_row(row, cfg=DAILY_OPERATOR_FILTER) is not None
+
+
+def test_rank_hidden_gems_includes_scan_picks_when_empty() -> None:
+    scan = {
+        "results": {
+            "XYZ": {
+                "ticker": "XYZ",
+                "status": "skipped",
+            },
+        },
+        "ranked": [
+            {
+                "ticker": "XYZ",
+                "strategy_name": "bull_put_credit_spread",
+                "composite_score": 25.0,
+                "pop": 70.0,
+                "probability_of_touch": 40.0,
+            }
+        ],
+    }
+    ranked = rank_hidden_gems(scan, limit=3, filter_profile="strict")
+    assert ranked["gems"] == []
+    assert ranked["scan_picks"] and ranked["scan_picks"][0]["ticker"] == "XYZ"
+
+
+def test_resolve_gem_filter_profiles() -> None:
+    assert resolve_gem_filter("daily") is DAILY_OPERATOR_FILTER
+    assert resolve_gem_filter("strict") is DEFAULT_FILTER
 
 
 def test_hidden_gem_ranks_non_mega_above_mega() -> None:
