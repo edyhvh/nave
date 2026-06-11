@@ -54,9 +54,9 @@ class HyperliquidClient:
         self.testnet = testnet
         self.base_url = TESTNET_API if testnet else MAINNET_API
         self._wallet_name = wallet_name or ""
-        self._vault = WalletVault()
+        self._vault: WalletVault | None = WalletVault() if wallet_name else None
         self._address = ""
-        if wallet_name:
+        if wallet_name and self._vault is not None:
             try:
                 self._address = self._vault.address(wallet_name)
             except Exception:
@@ -102,6 +102,8 @@ class HyperliquidClient:
                 "Missing trading deps. Run: pip install eth-account hyperliquid-python-sdk"
             ) from e
 
+        if self._vault is None:
+            self._vault = WalletVault()
         private_key = self._vault.private_key(self._wallet_name)
         account = eth_account.Account.from_key(private_key)
         del private_key  # discard from local scope after use

@@ -16,6 +16,7 @@ from rich.text import Text
 
 from cli.professional_typer import ProfessionalTyper
 from options.analyzer import OptionsAnalyzer
+from options.eth_weekly import EthWeeklyOptionsProfile, build_eth_weekly_decision
 from options.exceptions import OptionsError
 from options.prompt_builder import build_llm_paths, build_llm_prompt
 from options.gems_pipeline import format_gem_digest, run_hidden_gems_scan
@@ -29,7 +30,6 @@ from options.ticker_registry import (
 from options.universe_scan import scan_equity_options_universe as _scan_equity_options_universe
 from options.universe import (
     SP500_TOP_100_TICKERS,
-    SP500_TOP_40_TICKERS,
     get_sp500_tickers,
     get_sp500_top40,
 )
@@ -81,6 +81,54 @@ def _write_json_report(*, payload: dict, out_path: Path) -> Path:
     out_path.write_text(json.dumps(payload, indent=2,
                         default=str), encoding="utf-8")
     return out_path
+
+
+def _render_eth_weekly_decision(payload: dict) -> None:
+    decision = payload.get("decision", "UNKNOWN")
+    reason = payload.get("reason", "")
+    momentum = payload.get("momentum") or {}
+    option = payload.get("option") or {}
+    profile = payload.get("profile") or {}
+
+    typer.echo(f"ETH weekly options: {decision}")
+    typer.echo(f"- reason: {reason}")
+    typer.echo(
+        "- momentum: "
+        f"side={momentum.get('side')} "
+        f"tradeable={momentum.get('tradeable')} "
+        f"confidence={momentum.get('confidence_score')} "
+        f"rr={momentum.get('rr_estimated')}"
+    )
+    typer.echo(
+        "- risk: "
+        f"account=${profile.get('account_equity')} "
+        f"max_loss=${profile.get('max_loss_usd')} "
+        f"a_plus_max=${profile.get('max_a_plus_loss_usd')}"
+    )
+    if option:
+        metrics = option.get("metrics") or {}
+        typer.echo(
+            "- structure: "
+            f"{option.get('strategy_name')} "
+            f"source={option.get('source')} "
+            f"max_loss={metrics.get('max_loss')} "
+            f"pop={metrics.get('pop')} "
+            f"touch={metrics.get('probability_of_touch')} "
+            f"ev={metrics.get('expected_value')}"
+        )
+    for item in (payload.get("watch") or [])[:3]:
+        metrics = item.get("metrics") or {}
+        blockers_for_item = item.get("blockers") or []
+        typer.echo(
+            "- watch: "
+            f"{item.get('strategy_name')} "
+            f"source={item.get('source')} "
+            f"max_loss={metrics.get('max_loss')} "
+            f"blockers={','.join(str(blocker) for blocker in blockers_for_item) or 'none'}"
+        )
+    blockers = payload.get("blockers") or []
+    if blockers:
+        typer.echo(f"- blockers: {', '.join(str(item) for item in blockers)}")
 
 
 def _as_float(value: object) -> float | None:
@@ -1003,8 +1051,6 @@ def registry_iterate(
 
     scan_fn = None
     if not no_gems:
-        from options.universe import get_sp500_top40
-
         def scan_fn(
             *,
             tickers: list[str],
@@ -1649,6 +1695,129 @@ def gems(
         fetch_x=fetch_x,
         strict_filters=strict_filters,
     )
+
+
+@options_app.command("eth-weekly")
+def eth_weekly(
+    days_to_exp: int = typer.Option(
+        10,
+        "--days-to-exp",
+        min=5,
+        max=21,
+        help="Target DTE for the ETH weekly options expression.",
+    ),
+    tf: str = typer.Option(
+        "4h,1h",
+        "--tf",
+        help="Momentum setup/trigger timeframe pair.",
+    ),
+    score_threshold: int = typer.Option(
+        90,
+        "--score-threshold",
+        min=1,
+        max=100,
+        help="Minimum momentum score threshold for weekly options.",
+    ),
+    account_equity: float = typer.Option(
+        1000.0,
+        "--account-equity",
+        min=1.0,
+        help="Account equity used for the small-account risk guard.",
+    ),
+    risk_pct: float = typer.Option(
+        0.01,
+        "--risk-pct",
+        min=0.001,
+        max=0.02,
+        help="Risk percentage passed to momentum filtering.",
+    ),
+    max_loss: float = typer.Option(
+        20.0,
+        "--max-loss",
+        min=1.0,
+        help="Maximum allowed option max loss in USD.",
+    ),
+    max_a_plus_loss: float = typer.Option(
+        30.0,
+        "--max-a-plus-loss",
+        min=1.0,
+        help="Manual review ceiling for exceptional setups.",
+    ),
+    min_confidence: int = typer.Option(
+        90,
+        "--min-confidence",
+        min=1,
+        max=100,
+        help="Minimum ETH momentum confidence required for ENTER.",
+    ),
+    source: str = typer.Option(
+        "deribit",
+        "--source",
+        help="Option chain source. Use deribit for ETH execution checks.",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-stable JSON output.",
+    ),
+    save_json: bool = typer.Option(
+        True,
+        "--save-json/--no-save-json",
+        help="Persist the ETH weekly decision payload to a JSON report.",
+    ),
+    json_path: str | None = typer.Option(
+        None,
+        "--json-path",
+        help="Optional output path for the saved JSON report.",
+    ),
+) -> None:
+    """ETH weekly options decision: COT + momentum + Deribit options + risk guard."""
+    analyzer = _build_options_analyzer(source=source)
+    try:
+        scan_payload = analyzer.scan_crypto_opportunities(
+            coins=["ETH"],
+            days_to_exp=days_to_exp,
+            tf=tf,
+            account_equity=account_equity,
+            risk_pct=risk_pct,
+            score_threshold=score_threshold,
+            require_tradeable=True,
+        )
+    except OptionsError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    profile = EthWeeklyOptionsProfile(
+        account_equity=account_equity,
+        max_loss_usd=max_loss,
+        max_a_plus_loss_usd=max_a_plus_loss,
+        min_confidence=min_confidence,
+    )
+    decision = build_eth_weekly_decision(scan_payload, profile=profile)
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "command": "nave options eth-weekly",
+        "scan": scan_payload,
+        "decision": decision,
+    }
+
+    report_path: Path | None = None
+    if save_json:
+        report_path = _resolve_json_report_path(
+            analyzer=analyzer,
+            ticker="ETH_weekly_options",
+            json_path=json_path,
+        )
+        payload["artifacts"] = {"json_report_path": str(report_path)}
+        _write_json_report(payload=payload, out_path=report_path)
+
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+        return
+
+    _render_eth_weekly_decision(decision)
+    if report_path is not None:
+        typer.echo(f"JSON report: {report_path}")
 
 
 @options_app.command("opportunities")
