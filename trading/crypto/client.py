@@ -159,6 +159,23 @@ class HyperliquidClient:
         meta = self.get_meta()
         return sorted(u["name"] for u in meta.get("universe", []))
 
+    def get_asset_meta(self, coin: str) -> dict[str, Any]:
+        """Return exchange metadata for a single perp symbol."""
+        symbol = coin.upper()
+        for asset in self.get_meta().get("universe", []):
+            if asset.get("name") == symbol:
+                return asset
+        raise ValueError(
+            f"Unknown market: {symbol}. Check get_markets() for valid symbols."
+        )
+
+    def coin_size_from_usd(self, coin: str, size_usd: float) -> float:
+        """Convert a USD notional into a valid coin size for Hyperliquid."""
+        asset = self.get_asset_meta(coin)
+        sz_decimals = int(asset.get("szDecimals", 4))
+        price = self.get_mid(coin)
+        return round(size_usd / price, sz_decimals)
+
     def get_candle_snapshot(
         self,
         coin: str,
@@ -300,8 +317,9 @@ class HyperliquidClient:
         """
         exchange = self._get_exchange()
         is_buy = side == "long"
-        price = self.get_mid(coin)
-        size = round(size_usd / price, 6)
+        size = self.coin_size_from_usd(coin, size_usd)
+        if size <= 0:
+            raise ValueError(f"Computed non-positive size for {coin} at ${size_usd:.2f}")
         return exchange.market_open(coin, is_buy, size, slippage=slippage)
 
     def market_close(self, coin: str, slippage: float = 0.01) -> dict:

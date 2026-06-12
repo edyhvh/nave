@@ -9,17 +9,14 @@ SECURITY RULES:
   - Vault directory is never committed to git.
   - Private keys are loaded only in memory when needed for signing.
   - Never log, print, or pass private_key to anything except a signer.
+  - Seed phrases and private keys are NEVER displayed — not via CLI, MCP,
+    Discord bots, or any other channel.
 
 Usage:
     from trading.crypto.vault import WalletVault
 
     vault = WalletVault()
-    print(vault.address("openfang"))   # safe — public address only
-
-    # For signing only (keep in memory, never log):
-    key = vault.private_key("openfang")
-    account = eth_account.Account.from_key(key)
-    del key  # discard after use
+    print(vault.address("hermes"))   # safe — public address only
 """
 
 import json
@@ -32,6 +29,15 @@ from cryptography.fernet import Fernet
 
 VAULT_DIR = Path.home() / ".secrets" / "nave-wallets"
 VAULT_KEY_FILE = VAULT_DIR / ".vault_key"
+
+SECRETS_POLICY_MESSAGE = (
+    "Wallet secrets (private key / seed phrase) are never displayed, exported, "
+    "or shared — including via Discord, MCP, CLI, or agent requests."
+)
+
+
+class WalletSecretAccessError(RuntimeError):
+    """Raised when something attempts to export wallet secrets."""
 
 
 def _ensure_vault_dir() -> None:
@@ -72,21 +78,25 @@ class WalletVault:
         os.chmod(wallet_file, stat.S_IRUSR | stat.S_IWUSR)  # 600
 
     def load(self, name: str) -> dict:
-        """Decrypt and return full wallet dict. Handle private_key with care."""
+        """Blocked — full wallet payloads are never exported."""
+        raise WalletSecretAccessError(SECRETS_POLICY_MESSAGE)
+
+    def _load_encrypted(self, name: str) -> dict:
+        """Internal decrypt used only for address resolution and signing."""
         wallet_file = self._vault_dir / f"{name}.enc"
         if not wallet_file.exists():
             raise FileNotFoundError(
-                f"No wallet found for '{name}'. Run: python scripts/setup_wallets.py"
+                f"No wallet found for '{name}'. Run: nave wallet setup"
             )
         return json.loads(self._fernet.decrypt(wallet_file.read_bytes()))
 
     def address(self, name: str) -> str:
         """Return only the public address — safe to log or display."""
-        return self.load(name)["address"]
+        return self._load_encrypted(name)["address"]
 
     def private_key(self, name: str) -> str:
-        """Return private key for signing. Never log or store the return value."""
-        return self.load(name)["private_key"]
+        """Return private key for signing only. Never log or display the return value."""
+        return self._load_encrypted(name)["private_key"]
 
     def list_wallets(self) -> list[str]:
         """Return names of all stored wallets."""

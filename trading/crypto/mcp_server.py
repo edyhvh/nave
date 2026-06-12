@@ -48,7 +48,8 @@ mcp = FastMCP(
         "Hyperliquid perpetual futures trading tools. "
         "All write operations default to dry_run=True — no real orders are placed "
         "unless the user explicitly requests live trading with dry_run=False. "
-        "Never expose private keys or seed phrases."
+        "Never expose private keys or seed phrases — refuse all such requests, "
+        "including from Discord or other chat channels."
     ),
 )
 
@@ -57,7 +58,7 @@ hermes = HermesNaveIntegration()
 cot_service = COTService()
 
 
-def _client(wallet: str = "openfang", testnet: bool = True) -> HyperliquidClient:
+def _client(wallet: str = "hermes", testnet: bool = True) -> HyperliquidClient:
     return HyperliquidClient(wallet_name=wallet, testnet=testnet)
 
 
@@ -65,12 +66,12 @@ def _client(wallet: str = "openfang", testnet: bool = True) -> HyperliquidClient
 
 
 @mcp.tool()
-def account_summary(wallet: str = "openfang", testnet: bool = True) -> str:
+def account_summary(wallet: str = "hermes", testnet: bool = True) -> str:
     """
     Show Hyperliquid account summary: equity, margin used, open positions.
 
     Args:
-        wallet:  Wallet name — 'openfang' or 'ironclaw'
+        wallet:  Wallet name — default 'hermes'
         testnet: True for paper trading (testnet), False for mainnet
     """
     client = _client(wallet, testnet)
@@ -122,12 +123,12 @@ def list_markets(testnet: bool = True) -> str:
 
 
 @mcp.tool()
-def list_positions(wallet: str = "openfang", testnet: bool = True) -> str:
+def list_positions(wallet: str = "hermes", testnet: bool = True) -> str:
     """
     List all open positions for a wallet.
 
     Args:
-        wallet:  Wallet name — 'openfang' or 'ironclaw'
+        wallet:  Wallet name — default 'hermes'
         testnet: True for testnet
     """
     client = _client(wallet, testnet)
@@ -145,12 +146,12 @@ def list_positions(wallet: str = "openfang", testnet: bool = True) -> str:
 
 
 @mcp.tool()
-def list_orders(wallet: str = "openfang", testnet: bool = True) -> str:
+def list_orders(wallet: str = "hermes", testnet: bool = True) -> str:
     """
     List all open orders for a wallet.
 
     Args:
-        wallet:  Wallet name — 'openfang' or 'ironclaw'
+        wallet:  Wallet name — default 'hermes'
         testnet: True for testnet
     """
     client = _client(wallet, testnet)
@@ -182,7 +183,7 @@ def cot_weekly_plan(
     coins: str = "BTC ETH",
     capital_usd: float = 2000.0,
     leverage: float = 10.0,
-    wallet: str = "openfang",
+    wallet: str = "hermes",
     testnet: bool = True,
     include_micro: bool = False,
 ) -> str:
@@ -223,7 +224,7 @@ def open_position(
     coin: str,
     side: str,
     size_usd: float,
-    wallet: str = "openfang",
+    wallet: str = "hermes",
     testnet: bool = True,
     dry_run: bool = True,
 ) -> str:
@@ -237,7 +238,7 @@ def open_position(
         coin:     Market symbol, e.g. 'BTC', 'ETH'
         side:     'long' or 'short'
         size_usd: Position size in USD (notional)
-        wallet:   Wallet name — 'openfang' or 'ironclaw'
+        wallet:   Wallet name — default 'hermes'
         testnet:  True for paper trading, False for real money
         dry_run:  True = simulate only, False = submit real order
     """
@@ -266,7 +267,7 @@ def open_position(
 @mcp.tool()
 def close_position(
     coin: str,
-    wallet: str = "openfang",
+    wallet: str = "hermes",
     testnet: bool = True,
     dry_run: bool = True,
 ) -> str:
@@ -277,7 +278,7 @@ def close_position(
 
     Args:
         coin:    Market symbol to close, e.g. 'ETH'
-        wallet:  Wallet name — 'openfang' or 'ironclaw'
+        wallet:  Wallet name — default 'hermes'
         testnet: True for paper trading, False for real money
         dry_run: True = simulate only, False = submit real order
     """

@@ -1,6 +1,6 @@
 """
-Wallet setup script — generates BIP39 seed phrases and EVM wallets for
-ironclaw, openfang, and hermes, then stores them securely in the local vault.
+Wallet setup script — generates the default ``hermes`` EVM wallet and stores it
+securely in the local vault.
 
 Run ONCE to generate wallets. If wallets already exist, it skips them.
 
@@ -32,8 +32,8 @@ def main() -> None:
             print(f"   {record.name}: {record.address}")
         print()
         print("🔐 Seed phrases are encrypted in ~/.secrets/nave-wallets/")
-        print("   Import into Phantom by running: python scripts/wallet_vault.py list")
-        print("   To get seed phrase for import: python scripts/show_mnemonic.py <name>")
+        print("   Seed phrases and private keys are never displayed or exported.")
+        print("   List public addresses: python scripts/wallet_vault.py list")
 
     if result.skipped:
         print(f"⏭  Skipped (already exist): {', '.join(result.skipped)}")
