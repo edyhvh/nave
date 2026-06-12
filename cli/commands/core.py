@@ -9,9 +9,9 @@ import typer
 
 from cli.professional_typer import ProfessionalTyper
 from cli.utils import prompt_float, select_option
-from core.config import CliDefaults
+from core.config import CliDefaults, HyperliquidSettings
 
-DEFAULTS = CliDefaults()
+DEFAULTS = CliDefaults.from_env()
 
 data_app = ProfessionalTyper(help="Data fetching and analysis commands")
 trading_app = ProfessionalTyper(help="Trading and strategy commands")
@@ -55,17 +55,24 @@ def run_strategy(
     wallet: str = typer.Option(DEFAULTS.wallet, help="Wallet name"),
     coins: Optional[str] = typer.Option(None, help="Coins to trade"),
     dry_run: bool = typer.Option(True, help="Dry run mode"),
-    mainnet: bool = typer.Option(False, help="Use mainnet"),
+    mainnet: bool = typer.Option(False, help="Use mainnet (overrides HL_TESTNET)"),
+    max_usd: Optional[float] = typer.Option(
+        None,
+        help="Max position size USD (defaults to HL_MAX_POSITION_USD)",
+    ),
 ) -> None:
     """Run trading strategy."""
     from trading.crypto.client import HyperliquidClient
     from trading.crypto.strategy import MacroMomentumStrategy
 
+    hl = HyperliquidSettings.from_env()
     parsed_coins = coins.split() if coins else ["BTC", "ETH"]
-    client = HyperliquidClient(wallet_name=wallet, testnet=not mainnet)
+    use_testnet = hl.testnet if not mainnet else False
+    client = HyperliquidClient(wallet_name=wallet, testnet=use_testnet)
     strategy = MacroMomentumStrategy(
         client,
         coins=parsed_coins,
+        max_position_usd=max_usd or hl.max_position_usd,
         dry_run=dry_run,
     )
     result = strategy.run_once()

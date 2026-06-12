@@ -17,7 +17,7 @@ from trading.crypto.cot.cot_analyzer import COTAnalyzer
 from trading.crypto.cot.cot_fetcher import build_cot_sections_from_datasets, fetch_latest_cot
 from trading.crypto.cot.cot_report_generator import COTReportGenerator
 
-DEFAULTS = CliDefaults()
+DEFAULTS = CliDefaults.from_env()
 
 cot_app = ProfessionalTyper(help="COT specific commands")
 
