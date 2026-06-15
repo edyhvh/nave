@@ -13,6 +13,9 @@ from typing import Any
 from options.analyzer import OptionsAnalyzer
 from options.exceptions import OptionsError
 
+MIN_VALID_SCAN_COVERAGE = 0.60
+MIN_VALID_SCAN_COUNT = 10
+
 
 def payload_trade_candidate(payload: dict[str, Any]) -> dict[str, Any] | None:
     """Return the best executable setup from an analyzer payload, if any."""
@@ -146,19 +149,40 @@ def scan_equity_options_universe(
         ),
         reverse=True,
     )
+    tickers_requested = len(tickers)
+    coverage_ratio = (scanned / tickers_requested) if tickers_requested else 0.0
+    min_required_scanned = min(
+        tickers_requested,
+        max(MIN_VALID_SCAN_COUNT, int(tickers_requested * MIN_VALID_SCAN_COVERAGE)),
+    )
+    coverage_ok = scanned >= min_required_scanned
+    scan_status = "complete" if coverage_ok else "inconclusive"
+    warnings: list[str] = []
+    if not coverage_ok:
+        warnings.append(
+            "Scan coverage too low to treat zero trade candidates as a valid no-trade signal. "
+            "This commonly happens when option chains are incomplete before the regular US "
+            "options session or when the data provider returns partial chains; rerun during "
+            "regular market hours."
+        )
 
     return {
         "strategy": "options_equity_universe_scan_v1",
         "universe": "sp500_top_100",
         "days_to_exp": days_to_exp,
         "summary": {
-            "tickers_requested": len(tickers),
+            "tickers_requested": tickers_requested,
             "tickers_scanned": scanned,
             "trade_candidates": len(ranked),
             "errors": errors,
             "top_trades_returned": min(top_trades, len(ranked)),
             "workers": max_workers,
+            "scan_status": scan_status,
+            "coverage_ratio": coverage_ratio,
+            "min_required_scanned": min_required_scanned,
+            "data_quality_warning": warnings[0] if warnings else None,
         },
+        "warnings": warnings,
         "ranked": ranked[:top_trades],
         "results": results,
     }

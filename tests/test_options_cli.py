@@ -980,6 +980,76 @@ def test_options_analyze_sp500_scan_returns_top_trade_candidates(monkeypatch, tm
     assert parsed["results"]["BBB"]["executable_strategy"] is None
 
 
+def test_options_analyze_sp500_scan_marks_low_coverage_inconclusive(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from cli.commands import options as options_cmd
+    from options.exceptions import OptionsDataError
+
+    tickers = tuple(f"T{i:02d}" for i in range(40))
+    monkeypatch.setattr(options_cmd, "SP500_TOP_100_TICKERS", tickers)
+
+    class _DummyAnalyzer:
+        def __init__(self) -> None:
+            self.config = SimpleNamespace(reports_dir=tmp_path)
+
+        def run(self, ticker: str = "MSFT", days_to_exp: int = 30, **kwargs):
+            _ = days_to_exp
+            _ = kwargs
+            if ticker != "T00":
+                raise OptionsDataError(
+                    f"No contracts passed liquidity filters for {ticker}"
+                )
+            return {
+                "ticker": ticker,
+                "analysis_overlay": {
+                    "trade_decision": {"status": "no_trade", "reason": "no setup"},
+                    "final_recommendations": {
+                        "best_overall_executable_setup": None,
+                    },
+                    "warnings": [
+                        "No conservative income setup passed the executable filter."
+                    ],
+                },
+                "recommendations": [
+                    {
+                        "strategy": {"name": "bear_call_credit_spread"},
+                        "metrics": {
+                            "composite_score": 55.0,
+                            "expected_value": 10.0,
+                            "pop": 100.0,
+                            "probability_of_touch": 0.0,
+                        },
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(options_cmd, "OptionsAnalyzer", _DummyAnalyzer)
+    result = runner.invoke(
+        app,
+        [
+            "options",
+            "analyze",
+            "--sp500-scan",
+            "--sp500-limit",
+            "40",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["summary"]["tickers_requested"] == 40
+    assert parsed["summary"]["tickers_scanned"] == 1
+    assert parsed["summary"]["trade_candidates"] == 0
+    assert parsed["summary"]["scan_status"] == "inconclusive"
+    assert parsed["summary"]["coverage_ratio"] == 0.025
+    assert parsed["summary"]["min_required_scanned"] == 24
+    assert parsed["warnings"]
+    assert "rerun during regular market hours" in parsed["warnings"][0]
+
+
 def test_options_analyze_sp500_scan_sheet_keeps_single_ticker_mode_additive(
     monkeypatch,
     tmp_path: Path,
