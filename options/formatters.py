@@ -5,6 +5,160 @@ from __future__ import annotations
 from typing import Any
 
 
+def _fmt_pct(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    try:
+        return f"{float(value):.1f}%"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _fmt_money(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    try:
+        return f"${float(value):,.2f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _fmt_num(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def render_equity_universe_scan_discord_es(
+    payload: dict[str, Any],
+    *,
+    command: str | None = None,
+    limit: int | None = None,
+) -> str:
+    """Render a Spanish Discord-ready S&P 500 options scan report."""
+    summary = payload.get("summary") or {}
+    ranked = list(payload.get("ranked") or [])
+    warnings = list(payload.get("warnings") or [])
+    scan_status = str(summary.get("scan_status") or "unknown")
+    trade_candidates = int(summary.get("trade_candidates") or 0)
+    tickers_requested = int(summary.get("tickers_requested") or 0)
+    tickers_scanned = int(summary.get("tickers_scanned") or 0)
+    errors = int(summary.get("errors") or 0)
+    coverage = summary.get("coverage_ratio")
+
+    if scan_status == "inconclusive":
+        verdict = "DATOS INSUFICIENTES / RERUN"
+        lead = (
+            "Nave no tuvo cobertura suficiente para emitir una lectura semanal confiable. "
+            "No interpretar este resultado como NO TRADE; repetir el scan durante horario regular "
+            "de opciones US."
+        )
+    elif trade_candidates == 0:
+        verdict = "NO TRADE / STAND ASIDE"
+        lead = "Nave no encontro setups accionables bajo los filtros actuales."
+    else:
+        verdict = "SETUPS DETECTADOS / REVISAR EJECUCION"
+        lead = "Nave encontro candidatos, pero deben validarse contra liquidez, EV y riesgo."
+
+    lines = [
+        "## Analisis semanal de opciones S&P 500 - Nave",
+        "",
+        "## Resumen",
+        f"**Veredicto operativo:** **{verdict}**",
+        "",
+        lead,
+        "",
+        f"- Tickers solicitados: {tickers_requested}",
+        f"- Tickers con analisis valido: {tickers_scanned}",
+        f"- Trade candidates: {trade_candidates}",
+        f"- Top trades devueltos: {summary.get('top_trades_returned')}",
+        f"- Errores / filtros fallidos: {errors}",
+        f"- Estado del scan: `{scan_status}`",
+    ]
+    if coverage is not None:
+        lines.append(f"- Cobertura valida: {_fmt_pct(float(coverage) * 100.0)}")
+    if command:
+        lines.append(f"- Comando ejecutado: `{command}`")
+
+    if warnings:
+        lines.extend(["", "## Alerta de calidad de datos"])
+        for warning in warnings[:3]:
+            lines.append(f"- {warning}")
+
+    lines.extend(["", "## Mejores oportunidades"])
+    if scan_status == "inconclusive":
+        lines.append(
+            "No publicar oportunidades ni conclusion de no-trade: el scan debe repetirse con "
+            "mejor cobertura de cadenas."
+        )
+    elif not ranked:
+        lines.append("No hay mejores oportunidades ejecutables segun Nave.")
+    else:
+        for idx, item in enumerate(ranked[:5], start=1):
+            strategy = str(item.get("strategy_name") or "n/a").replace("_", " ")
+            lines.append(
+                f"{idx}. **{item.get('ticker')}** - {strategy} | "
+                f"Score {_fmt_num(item.get('composite_score'))} | "
+                f"PoP {_fmt_pct(item.get('pop'))} | "
+                f"Touch {_fmt_pct(item.get('probability_of_touch'))} | "
+                f"EV {_fmt_money(item.get('expected_value'))}"
+            )
+            setup = item.get("setup_summary")
+            if setup:
+                lines.append(f"   Entrada/zona: {setup}")
+
+    lines.extend(["", "## Entradas / zonas"])
+    if scan_status == "inconclusive":
+        lines.append("No abrir entradas desde este resultado. Repetir scan antes de operar.")
+    elif ranked:
+        lines.append("Usar solo los setups listados arriba y confirmar bid/ask, OI y sizing antes de entrar.")
+    else:
+        lines.append("No hay entradas validas.")
+
+    lines.extend(["", "## Riesgo / invalidacion"])
+    if scan_status == "inconclusive":
+        lines.append(
+            "Invalidacion del reporte: cobertura insuficiente. El riesgo principal es convertir "
+            "un fallo de datos/liquidez en una conclusion operativa falsa."
+        )
+    elif ranked:
+        lines.append(
+            "Invalidar cualquier setup si se deteriora la liquidez, el precio toca zonas de riesgo "
+            "antes de entrada, o Nave deja de marcarlo como candidato."
+        )
+    else:
+        lines.append("Mientras Nave devuelva 0 trade candidates con cobertura completa, el plan es no operar.")
+
+    lines.extend(["", "## Condiciones de seguimiento"])
+    if scan_status == "inconclusive":
+        lines.append("- Repetir durante horario regular de opciones US.")
+        lines.append("- Exigir cobertura suficiente antes de publicar veredicto operativo.")
+    else:
+        lines.append("- Repetir si cambia la volatilidad, liquidez o estructura de spreads.")
+        lines.append("- Priorizar setups con EV positivo, touch controlado y riesgo definido.")
+
+    lines.extend(["", "## Notas de liquidez"])
+    if scan_status == "inconclusive":
+        lines.append(
+            "El bloqueo principal fue calidad/cobertura de datos. Esto suele ocurrir premarket "
+            "o con cadenas parciales del proveedor."
+        )
+    elif errors:
+        lines.append(
+            f"{errors} tickers fallaron por datos, liquidez o ausencia de candidatos. "
+            "No forzar trades en esas cadenas."
+        )
+    else:
+        lines.append("No se detectaron bloqueos amplios de cobertura en el scan.")
+
+    if limit is not None:
+        lines.append(f"Universo: Top {limit} S&P 500 / SP500")
+    return "\n".join(lines)
+
+
 def render_options_scan_markdown_v2(payload: dict[str, Any]) -> list[str]:
     """Render a compact Telegram MarkdownV2 digest for Hermes output."""
     ticker = str(payload.get("ticker") or "?")

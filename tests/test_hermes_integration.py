@@ -35,6 +35,7 @@ def test_list_tools_contains_required_toolset() -> None:
         "options_registry_build",
         "options_registry_show",
         "options_hidden_gems",
+        "options_sp500_weekly",
         "options_opportunities",
         "cot_report",
         "cot_history",
@@ -278,6 +279,24 @@ def test_dispatch_tool_call_routes_options_opportunities(monkeypatch: pytest.Mon
     assert result["result"]["args"]["coins"] == "BTC,ETH"
 
 
+def test_dispatch_tool_call_routes_options_sp500_weekly(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration = HermesNaveIntegration()
+
+    monkeypatch.setattr(
+        integration,
+        "options_sp500_weekly",
+        lambda **kwargs: {"strategy": "options_equity_universe_scan_v1", "args": kwargs},
+    )
+    result = integration.dispatch_tool_call(
+        "options_sp500_weekly",
+        {"limit": 40, "top": 10, "days_to_exp": 30},
+    )
+
+    assert result["ok"] is True
+    assert result["tool"] == "options_sp500_weekly"
+    assert result["result"]["args"]["limit"] == 40
+
+
 def test_options_scan_exposes_overlay_and_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 
@@ -331,6 +350,49 @@ def test_options_scan_exposes_overlay_and_telegram_digest(monkeypatch: pytest.Mo
     assert "Executive summary:" in digest
     assert "Conservative: bull put credit spread | EV 11.0" in digest
     assert "Aggressive: long strangle | EV 8.0" in digest
+
+
+def test_options_sp500_weekly_exposes_discord_text_for_inconclusive_scan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = HermesNaveIntegration()
+
+    def fake_scan(**kwargs):
+        assert kwargs["days_to_exp"] == 30
+        return {
+            "strategy": "options_equity_universe_scan_v1",
+            "universe": "sp500_top_100",
+            "days_to_exp": 30,
+            "summary": {
+                "tickers_requested": 40,
+                "tickers_scanned": 1,
+                "trade_candidates": 0,
+                "errors": 39,
+                "top_trades_returned": 0,
+                "workers": 6,
+                "scan_status": "inconclusive",
+                "coverage_ratio": 0.025,
+                "min_required_scanned": 24,
+                "data_quality_warning": "Scan coverage too low.",
+            },
+            "warnings": [
+                "Scan coverage too low to treat zero trade candidates as a valid no-trade signal."
+            ],
+            "ranked": [],
+            "results": {},
+        }
+
+    monkeypatch.setattr("hermes.integration.build_options_analyzer", lambda source: object())
+    monkeypatch.setattr("options.universe.SP500_TOP_100_TICKERS", tuple(f"T{i}" for i in range(40)))
+    monkeypatch.setattr("options.universe_scan.scan_equity_options_universe", fake_scan)
+
+    payload = integration.options_sp500_weekly(limit=40, top=10, days_to_exp=30)
+
+    assert payload["summary"]["scan_status"] == "inconclusive"
+    assert payload["operational_hints"]["discord_field"] == "discord_text"
+    assert "DATOS INSUFICIENTES / RERUN" in payload["discord_text"]
+    assert "No interpretar este resultado como NO TRADE" in payload["discord_text"]
+    assert "Scan coverage too low" in payload["discord_text"]
 
 
 def test_options_opportunities_exposes_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
