@@ -32,11 +32,23 @@ def _fmt_num(value: Any) -> str:
         return str(value)
 
 
+def _short_strategy(value: Any) -> str:
+    strategy = str(value or "n/a").replace("_", " ")
+    replacements = {
+        "bull put credit spread": "bull put",
+        "bear call credit spread": "bear call",
+        "bull call debit spread": "bull call",
+        "bear put debit spread": "bear put",
+    }
+    return replacements.get(strategy, strategy)
+
+
 def render_equity_universe_scan_discord_es(
     payload: dict[str, Any],
     *,
     command: str | None = None,
     limit: int | None = None,
+    max_ranked: int | None = None,
 ) -> str:
     """Render a Spanish Discord-ready S&P 500 options scan report."""
     summary = payload.get("summary") or {}
@@ -61,27 +73,31 @@ def render_equity_universe_scan_discord_es(
         lead = "Nave no encontro setups accionables bajo los filtros actuales."
     else:
         verdict = "SETUPS DETECTADOS / REVISAR EJECUCION"
-        lead = "Nave encontro candidatos, pero deben validarse contra liquidez, EV y riesgo."
+        lead = "Validar liquidez, EV y riesgo antes de operar."
+
+    ranked_limit = max_ranked if max_ranked is not None else int(
+        summary.get("top_trades_returned") or len(ranked)
+    )
 
     lines = [
-        "## Analisis semanal de opciones S&P 500 - Nave",
+        "## Opciones S&P 500 - Nave",
         "",
         "## Resumen",
         f"**Veredicto operativo:** **{verdict}**",
         "",
         lead,
         "",
-        f"- Tickers solicitados: {tickers_requested}",
-        f"- Tickers con analisis valido: {tickers_scanned}",
-        f"- Trade candidates: {trade_candidates}",
-        f"- Top trades devueltos: {summary.get('top_trades_returned')}",
-        f"- Errores / filtros fallidos: {errors}",
-        f"- Estado del scan: `{scan_status}`",
+        f"- Solicitados: {tickers_requested} | validos: {tickers_scanned} | errores: {errors}",
+        f"- Candidates: {trade_candidates} | top devueltos: {summary.get('top_trades_returned')}",
+        f"- Estado: `{scan_status}`",
     ]
     if coverage is not None:
         lines.append(f"- Cobertura valida: {_fmt_pct(float(coverage) * 100.0)}")
     if command:
-        lines.append(f"- Comando ejecutado: `{command}`")
+        lines.append(
+            f"- Cmd: `sp500-scan limit={limit or tickers_requested} "
+            f"top={summary.get('top_trades_returned')} dte={payload.get('days_to_exp')}`"
+        )
 
     if warnings:
         lines.extend(["", "## Alerta de calidad de datos"])
@@ -95,26 +111,25 @@ def render_equity_universe_scan_discord_es(
             "mejor cobertura de cadenas."
         )
     elif not ranked:
-        lines.append("No hay mejores oportunidades ejecutables segun Nave.")
+        lines.append("No hay oportunidades ejecutables segun Nave.")
     else:
-        for idx, item in enumerate(ranked[:5], start=1):
-            strategy = str(item.get("strategy_name") or "n/a").replace("_", " ")
-            lines.append(
-                f"{idx}. **{item.get('ticker')}** - {strategy} | "
-                f"Score {_fmt_num(item.get('composite_score'))} | "
-                f"PoP {_fmt_pct(item.get('pop'))} | "
-                f"Touch {_fmt_pct(item.get('probability_of_touch'))} | "
-                f"EV {_fmt_money(item.get('expected_value'))}"
-            )
+        for idx, item in enumerate(ranked[:ranked_limit], start=1):
+            strategy = _short_strategy(item.get("strategy_name"))
             setup = item.get("setup_summary")
-            if setup:
-                lines.append(f"   Entrada/zona: {setup}")
+            setup_text = f" | {setup}" if setup else ""
+            lines.append(
+                f"{idx}. **{item.get('ticker')}** {strategy} | "
+                f"S {_fmt_num(item.get('composite_score'))} | "
+                f"PoP {_fmt_pct(item.get('pop'))} | "
+                f"T {_fmt_pct(item.get('probability_of_touch'))} | "
+                f"EV {_fmt_money(item.get('expected_value'))}{setup_text}"
+            )
 
     lines.extend(["", "## Entradas / zonas"])
     if scan_status == "inconclusive":
         lines.append("No abrir entradas desde este resultado. Repetir scan antes de operar.")
     elif ranked:
-        lines.append("Usar solo los setups listados arriba y confirmar bid/ask, OI y sizing antes de entrar.")
+        lines.append("Usar solo setups listados; confirmar bid/ask, OI y sizing antes de entrar.")
     else:
         lines.append("No hay entradas validas.")
 
@@ -126,13 +141,13 @@ def render_equity_universe_scan_discord_es(
         )
     elif ranked:
         lines.append(
-            "Invalidar cualquier setup si se deteriora la liquidez, el precio toca zonas de riesgo "
-            "antes de entrada, o Nave deja de marcarlo como candidato."
+            "Invalidar si se deteriora liquidez, el precio toca zona de riesgo antes de entrada, "
+            "o Nave deja de marcarlo como candidato."
         )
     else:
         lines.append("Mientras Nave devuelva 0 trade candidates con cobertura completa, el plan es no operar.")
 
-    lines.extend(["", "## Condiciones de seguimiento"])
+    lines.extend(["", "## Seguimiento"])
     if scan_status == "inconclusive":
         lines.append("- Repetir durante horario regular de opciones US.")
         lines.append("- Exigir cobertura suficiente antes de publicar veredicto operativo.")
@@ -140,7 +155,7 @@ def render_equity_universe_scan_discord_es(
         lines.append("- Repetir si cambia la volatilidad, liquidez o estructura de spreads.")
         lines.append("- Priorizar setups con EV positivo, touch controlado y riesgo definido.")
 
-    lines.extend(["", "## Notas de liquidez"])
+    lines.extend(["", "## Liquidez"])
     if scan_status == "inconclusive":
         lines.append(
             "El bloqueo principal fue calidad/cobertura de datos. Esto suele ocurrir premarket "

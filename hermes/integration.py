@@ -935,6 +935,7 @@ class HermesNaveIntegration:
             scan,
             command=command,
             limit=limit,
+            max_ranked=top,
         )
         scan["operational_hints"] = {
             "send_preformatted_digest_first": True,

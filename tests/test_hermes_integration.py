@@ -395,6 +395,59 @@ def test_options_sp500_weekly_exposes_discord_text_for_inconclusive_scan(
     assert "Scan coverage too low" in payload["discord_text"]
 
 
+def test_options_sp500_weekly_discord_text_includes_top_10(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = HermesNaveIntegration()
+
+    ranked = [
+        {
+            "ticker": f"T{i:02d}",
+            "strategy_name": "bull_put_credit_spread",
+            "composite_score": 30.0 - i,
+            "expected_value": float(i),
+            "pop": 70.0,
+            "probability_of_touch": 50.0,
+            "max_loss": 500.0,
+            "setup_summary": f"sell 1 put {100 - i}; buy 1 put {95 - i}",
+            "rationale": "test",
+        }
+        for i in range(1, 11)
+    ]
+
+    def fake_scan(**kwargs):
+        assert kwargs["top_trades"] == 10
+        return {
+            "strategy": "options_equity_universe_scan_v1",
+            "universe": "sp500_top_100",
+            "days_to_exp": 30,
+            "summary": {
+                "tickers_requested": 40,
+                "tickers_scanned": 37,
+                "trade_candidates": 18,
+                "errors": 3,
+                "top_trades_returned": 10,
+                "workers": 6,
+                "scan_status": "complete",
+                "coverage_ratio": 0.925,
+                "min_required_scanned": 24,
+                "data_quality_warning": None,
+            },
+            "warnings": [],
+            "ranked": ranked,
+            "results": {},
+        }
+
+    monkeypatch.setattr("hermes.integration.build_options_analyzer", lambda source: object())
+    monkeypatch.setattr("options.universe.SP500_TOP_100_TICKERS", tuple(f"T{i}" for i in range(40)))
+    monkeypatch.setattr("options.universe_scan.scan_equity_options_universe", fake_scan)
+
+    payload = integration.options_sp500_weekly(limit=40, top=10, days_to_exp=30)
+
+    assert "1. **T01**" in payload["discord_text"]
+    assert "10. **T10**" in payload["discord_text"]
+
+
 def test_options_opportunities_exposes_telegram_digest(monkeypatch: pytest.MonkeyPatch) -> None:
     integration = HermesNaveIntegration()
 
