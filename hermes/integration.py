@@ -258,6 +258,23 @@ class HermesNaveIntegration:
                     },
                 },
                 {
+                    "name": "options_sp500_weekly",
+                    "description": (
+                        "Run the weekly S&P 500 options universe scan and return a Discord-ready "
+                        "Spanish report with scan-quality safeguards."
+                    ),
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 40},
+                            "top": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10},
+                            "days_to_exp": {"type": "integer", "minimum": 1, "maximum": 365, "default": 30},
+                            "workers": {"type": "integer", "minimum": 1, "maximum": 8, "default": 6},
+                            "source": {"type": "string", "enum": ["yfinance", "deribit"], "default": "yfinance"},
+                        },
+                    },
+                },
+                {
                     "name": "options_opportunities",
                     "description": (
                         "Scan BTC/ETH options opportunities by first applying the momentum "
@@ -874,6 +891,59 @@ class HermesNaveIntegration:
         payload["telegram_markdown_v2"] = render_options_scan_markdown_v2(
             payload)
         return payload
+
+    def options_sp500_weekly(
+        self,
+        *,
+        limit: int = 40,
+        top: int = 10,
+        days_to_exp: int = 30,
+        workers: int = 6,
+        source: str = "yfinance",
+    ) -> dict[str, Any]:
+        """Run the weekly S&P 500 options scan with a Discord-ready report."""
+        if not 1 <= limit <= 200:
+            raise HermesIntegrationError("limit must be between 1 and 200")
+        if not 1 <= top <= 20:
+            raise HermesIntegrationError("top must be between 1 and 20")
+        if not 1 <= days_to_exp <= 365:
+            raise HermesIntegrationError("days_to_exp must be between 1 and 365")
+
+        from options.formatters import render_equity_universe_scan_discord_es
+        from options.universe import SP500_TOP_100_TICKERS, get_sp500_tickers
+        from options.universe_scan import scan_equity_options_universe
+
+        tickers = (
+            list(get_sp500_tickers(limit))
+            if limit > len(SP500_TOP_100_TICKERS)
+            else list(SP500_TOP_100_TICKERS[:limit])
+        )
+        analyzer = build_options_analyzer(source=source)
+        scan = scan_equity_options_universe(
+            analyzer=analyzer,
+            analyzer_factory=lambda: build_options_analyzer(source=source),
+            tickers=tickers,
+            days_to_exp=days_to_exp,
+            top_trades=top,
+            workers=min(workers, 8),
+        )
+        command = (
+            "nave options analyze --sp500-scan "
+            f"--sp500-limit {limit} --top-trades {top} --days-to-exp {days_to_exp} --json"
+        )
+        scan["discord_text"] = render_equity_universe_scan_discord_es(
+            scan,
+            command=command,
+            limit=limit,
+            max_ranked=top,
+        )
+        scan["operational_hints"] = {
+            "send_preformatted_digest_first": True,
+            "discord_field": "discord_text",
+            "do_not_convert_inconclusive_to_no_trade": True,
+            "preferred_run_window": "regular US options market hours",
+        }
+        return scan
 
     def options_opportunities(
         self,
@@ -1698,6 +1768,7 @@ class HermesNaveIntegration:
             "options_registry_build": self.options_registry_build,
             "options_registry_show": self.options_registry_show,
             "options_hidden_gems": self.options_hidden_gems,
+            "options_sp500_weekly": self.options_sp500_weekly,
             "options_opportunities": self.options_opportunities,
             "cot_report": self.cot_report,
             "cot_history": self.cot_history,

@@ -523,7 +523,20 @@ def _render_equity_scan_sheet(console: Console, payload: dict) -> None:
     header.add_row("Tickers Scanned", str(summary.get("tickers_scanned")))
     header.add_row("Trade Candidates", str(summary.get("trade_candidates")))
     header.add_row("Errors", str(summary.get("errors")))
+    header.add_row("Scan Status", str(summary.get("scan_status") or "unknown"))
+    if summary.get("coverage_ratio") is not None:
+        header.add_row("Coverage", f"{float(summary.get('coverage_ratio') or 0.0):.1%}")
     console.print(header)
+
+    warnings = list(payload.get("warnings") or [])
+    if warnings:
+        console.print(
+            Panel(
+                "\n".join(str(warning) for warning in warnings),
+                title="Scan Quality Warning",
+                border_style="yellow",
+            )
+        )
 
     table = Table(title="Top Executable Trades", box=box.SIMPLE_HEAVY)
     table.add_column("Rank", justify="right")
@@ -804,8 +817,11 @@ def analyze(
         typer.echo(
             f"- scanned={summary.get('tickers_scanned')} "
             f"trade_candidates={summary.get('trade_candidates')} "
-            f"errors={summary.get('errors')}"
+            f"errors={summary.get('errors')} "
+            f"scan_status={summary.get('scan_status')}"
         )
+        for warning in payload.get("warnings") or []:
+            typer.echo(f"- warning={warning}")
         for item in payload.get("ranked") or []:
             typer.echo(
                 f"- {item.get('ticker')}: {item.get('strategy_name')} "
