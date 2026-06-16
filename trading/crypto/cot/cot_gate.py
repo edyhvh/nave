@@ -299,7 +299,9 @@ def load_cached_cot_history(
             blob_key: load_cot_history_frame(rows)
             for blob_key, rows in blob.items()
         }
-        _COT_HISTORY_CACHE.clear()
+        for existing_key in list(_COT_HISTORY_CACHE):
+            if existing_key[0] == str(path):
+                _COT_HISTORY_CACHE.pop(existing_key, None)
         _COT_HISTORY_CACHE[cache_key] = per_path
 
     key = f"{asset}|{report_type}|micro={int(include_micro)}"

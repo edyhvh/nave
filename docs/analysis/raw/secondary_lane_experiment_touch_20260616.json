@@ -1,12 +1,15 @@
 {
   "assumptions": [
-    "COT bias is reconstructed from cached net non-commercial history.",
+    "COT bias is reconstructed from cached net non-commercial history using directional percentile rank.",
+    "Historical COT confidence is a proxy because cached history lacks complete live OI/FITS inputs.",
+    "Primary action is approximated from momentum tradeability and COT-side plans for research only.",
     "WATCH entries are filled on first 1H touch of the emitted 4H zone.",
     "Rejection mode enters at the rejection candle close after zone touch.",
     "Rejection-mode exits begin on the next 1H candle, excluding pre-entry range.",
     "R is reported both raw and multiplied by each lane's size_fraction.",
     "Setup scan uses every 24 4H bars.",
-    "Entry mode is touch."
+    "Entry mode is touch.",
+    "Target policy is tp2."
   ],
   "periods": [
     "2022-bear",
@@ -20,6 +23,8 @@
   ],
   "step_bars": 24,
   "entry_mode": "touch",
+  "target_policy": "tp2",
+  "kinds": "all",
   "cot_coverage": {
     "BTC": {
       "rows": 232,
@@ -35,23 +40,23 @@
     }
   },
   "metrics": {
-    "trades": 124,
-    "win_rate": 0.2984,
-    "expectancy": -0.1907,
-    "sized_expectancy": -0.0866,
-    "total_r": -23.6448,
-    "sized_total_r": -10.7339,
-    "max_dd": 10.7486
+    "trades": 115,
+    "win_rate": 0.313,
+    "expectancy": -0.1676,
+    "sized_expectancy": -0.0743,
+    "total_r": -19.2696,
+    "sized_total_r": -8.5463,
+    "max_dd": 8.561
   },
   "by_kind": {
     "forming_short": {
-      "trades": 13,
+      "trades": 10,
       "win_rate": 0.0,
-      "expectancy": -0.8817,
-      "sized_expectancy": -0.4408,
-      "total_r": -11.4619,
-      "sized_total_r": -5.7309,
-      "max_dd": 5.7309
+      "expectancy": -0.8494,
+      "sized_expectancy": -0.4247,
+      "total_r": -8.4943,
+      "sized_total_r": -4.2472,
+      "max_dd": 4.2472
     },
     "notrend_range_long": {
       "trades": 23,
@@ -63,100 +68,100 @@
       "max_dd": 1.1552
     },
     "relief_rally_fade": {
-      "trades": 88,
-      "win_rate": 0.3068,
-      "expectancy": -0.089,
-      "sized_expectancy": -0.0445,
-      "total_r": -7.8289,
-      "sized_total_r": -3.9145,
-      "max_dd": 4.4635
+      "trades": 82,
+      "win_rate": 0.3171,
+      "expectancy": -0.0783,
+      "sized_expectancy": -0.0392,
+      "total_r": -6.4213,
+      "sized_total_r": -3.2106,
+      "max_dd": 3.7597
     }
   },
   "by_trend_alignment": {
     "aligned": {
-      "trades": 65,
-      "win_rate": 0.2462,
-      "expectancy": -0.1949,
-      "sized_expectancy": -0.0975,
-      "total_r": -12.6703,
-      "sized_total_r": -6.3351,
-      "max_dd": 6.4123
+      "trades": 60,
+      "win_rate": 0.2667,
+      "expectancy": -0.1623,
+      "sized_expectancy": -0.0812,
+      "total_r": -9.7397,
+      "sized_total_r": -4.8698,
+      "max_dd": 4.947
     },
     "counter_trend": {
-      "trades": 37,
-      "win_rate": 0.3243,
-      "expectancy": -0.1912,
-      "sized_expectancy": -0.0669,
-      "total_r": -7.073,
-      "sized_total_r": -2.4751,
-      "max_dd": 2.5969
+      "trades": 34,
+      "win_rate": 0.3529,
+      "expectancy": -0.1828,
+      "sized_expectancy": -0.0602,
+      "total_r": -6.214,
+      "sized_total_r": -2.0456,
+      "max_dd": 2.1674
     },
     "mixed": {
       "trades": 13,
-      "win_rate": 0.4615,
-      "expectancy": -0.0735,
-      "sized_expectancy": -0.0368,
-      "total_r": -0.956,
-      "sized_total_r": -0.478,
-      "max_dd": 0.5936
+      "win_rate": 0.3846,
+      "expectancy": -0.1054,
+      "sized_expectancy": -0.0527,
+      "total_r": -1.3705,
+      "sized_total_r": -0.6852,
+      "max_dd": 0.7008
     },
     "neutral": {
-      "trades": 9,
-      "win_rate": 0.3333,
-      "expectancy": -0.3273,
-      "sized_expectancy": -0.1606,
-      "total_r": -2.9455,
-      "sized_total_r": -1.4457,
-      "max_dd": 1.6686
+      "trades": 8,
+      "win_rate": 0.375,
+      "expectancy": -0.2432,
+      "sized_expectancy": -0.1182,
+      "total_r": -1.9455,
+      "sized_total_r": -0.9457,
+      "max_dd": 1.1686
     }
   },
   "by_period": {
     "2022-bear": {
-      "trades": 54,
-      "win_rate": 0.2778,
-      "expectancy": -0.1708,
-      "sized_expectancy": -0.0837,
-      "total_r": -9.2222,
-      "sized_total_r": -4.519,
-      "max_dd": 4.519
+      "trades": 50,
+      "win_rate": 0.28,
+      "expectancy": -0.1546,
+      "sized_expectancy": -0.0754,
+      "total_r": -7.7285,
+      "sized_total_r": -3.7721,
+      "max_dd": 3.7721
     },
     "2023-recovery": {
-      "trades": 49,
-      "win_rate": 0.3061,
-      "expectancy": -0.2325,
-      "sized_expectancy": -0.0996,
-      "total_r": -11.3907,
-      "sized_total_r": -4.8823,
-      "max_dd": 4.9832
+      "trades": 45,
+      "win_rate": 0.3333,
+      "expectancy": -0.2113,
+      "sized_expectancy": -0.0876,
+      "total_r": -9.5092,
+      "sized_total_r": -3.9415,
+      "max_dd": 4.0425
     },
     "2024-2025-bull": {
-      "trades": 21,
-      "win_rate": 0.3333,
-      "expectancy": -0.1444,
-      "sized_expectancy": -0.0635,
-      "total_r": -3.0319,
-      "sized_total_r": -1.3326,
-      "max_dd": 1.3473
+      "trades": 20,
+      "win_rate": 0.35,
+      "expectancy": -0.1016,
+      "sized_expectancy": -0.0416,
+      "total_r": -2.0319,
+      "sized_total_r": -0.8326,
+      "max_dd": 0.8473
     }
   },
   "by_symbol": {
     "BTCUSDT": {
-      "trades": 64,
-      "win_rate": 0.25,
-      "expectancy": -0.2065,
-      "sized_expectancy": -0.0846,
-      "total_r": -13.2156,
-      "sized_total_r": -5.4151,
-      "max_dd": 5.6711
+      "trades": 56,
+      "win_rate": 0.2679,
+      "expectancy": -0.1862,
+      "sized_expectancy": -0.0718,
+      "total_r": -10.4282,
+      "sized_total_r": -4.0215,
+      "max_dd": 4.2774
     },
     "ETHUSDT": {
-      "trades": 60,
-      "win_rate": 0.35,
-      "expectancy": -0.1738,
-      "sized_expectancy": -0.0886,
-      "total_r": -10.4292,
-      "sized_total_r": -5.3188,
-      "max_dd": 5.3439
+      "trades": 59,
+      "win_rate": 0.3559,
+      "expectancy": -0.1499,
+      "sized_expectancy": -0.0767,
+      "total_r": -8.8413,
+      "sized_total_r": -4.5248,
+      "max_dd": 4.5499
     }
   },
   "skipped": [],
@@ -176,11 +181,12 @@
       "r_multiple": -0.1582,
       "sized_r": -0.0791,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.76,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -201,7 +207,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -218,11 +225,12 @@
       "r_multiple": 0.0439,
       "sized_r": 0.022,
       "size_fraction": 0.5,
-      "confidence": 0.824,
+      "confidence": 0.837,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -239,11 +247,12 @@
       "r_multiple": 0.2686,
       "sized_r": 0.1343,
       "size_fraction": 0.5,
-      "confidence": 0.778,
+      "confidence": 0.693,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -260,11 +269,12 @@
       "r_multiple": -0.0711,
       "sized_r": -0.0355,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.801,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -281,11 +291,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.725,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -306,7 +317,30 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
+    },
+    {
+      "period": "2022-bear",
+      "symbol": "BTCUSDT",
+      "kind": "relief_rally_fade",
+      "side": "short",
+      "setup_time": "2022-05-23T00:00:00+00:00",
+      "entry_time": "2022-05-23T01:00:00+00:00",
+      "exit_time": "2022-05-26T00:00:00+00:00",
+      "entry_price": 29454.934368,
+      "exit_price": 29786.79,
+      "stop_price": 40780.991076,
+      "target_price": 28361.0408,
+      "r_multiple": -0.0293,
+      "sized_r": -0.0147,
+      "size_fraction": 0.5,
+      "confidence": 0.725,
+      "daily_trend": "short",
+      "setup_trend": "neutral",
+      "trend_alignment": "aligned",
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -323,11 +357,12 @@
       "r_multiple": -0.0081,
       "sized_r": -0.0041,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.702,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -348,7 +383,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -369,7 +405,8 @@
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -386,11 +423,12 @@
       "r_multiple": -0.0454,
       "sized_r": -0.0227,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.842,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -407,11 +445,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.84,
+      "confidence": 0.711,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -428,11 +467,12 @@
       "r_multiple": -0.1774,
       "sized_r": -0.0887,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.698,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -449,11 +489,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.698,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -470,11 +511,12 @@
       "r_multiple": 0.1835,
       "sized_r": 0.0917,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.698,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -491,11 +533,12 @@
       "r_multiple": -0.0045,
       "sized_r": -0.0022,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.824,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -516,7 +559,8 @@
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -537,7 +581,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -558,7 +603,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -575,11 +621,12 @@
       "r_multiple": -0.1123,
       "sized_r": -0.0561,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.734,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -600,7 +647,8 @@
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -617,11 +665,12 @@
       "r_multiple": -0.2784,
       "sized_r": -0.1392,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.824,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -638,11 +687,12 @@
       "r_multiple": -0.1353,
       "sized_r": -0.0677,
       "size_fraction": 0.5,
-      "confidence": 0.707,
+      "confidence": 0.77,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -659,11 +709,12 @@
       "r_multiple": -0.0697,
       "sized_r": -0.0348,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.702,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -680,137 +731,12 @@
       "r_multiple": 0.1817,
       "sized_r": 0.0909,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.702,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2022-bear",
-      "symbol": "BTCUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2022-11-23T00:00:00+00:00",
-      "entry_time": "2022-11-23T01:00:00+00:00",
-      "exit_time": "2022-11-26T00:00:00+00:00",
-      "entry_price": 16062.883529,
-      "exit_price": 16579.5,
-      "stop_price": 21472.05774,
-      "target_price": 15591.357,
-      "r_multiple": -0.0955,
-      "sized_r": -0.0478,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "neutral",
-      "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2022-bear",
-      "symbol": "BTCUSDT",
-      "kind": "forming_short",
-      "side": "short",
-      "setup_time": "2022-11-23T00:00:00+00:00",
-      "entry_time": "2022-11-23T01:00:00+00:00",
-      "exit_time": "2022-11-23T02:00:00+00:00",
-      "entry_price": 15352.192,
-      "exit_price": 16506.8232,
-      "stop_price": 16506.8232,
-      "target_price": 14829.965714,
-      "r_multiple": -1.0,
-      "sized_r": -0.5,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "neutral",
-      "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2022-bear",
-      "symbol": "BTCUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2022-11-27T00:00:00+00:00",
-      "entry_time": "2022-11-27T01:00:00+00:00",
-      "exit_time": "2022-11-30T00:00:00+00:00",
-      "entry_price": 16342.08413,
-      "exit_price": 16845.72,
-      "stop_price": 21472.05774,
-      "target_price": 15535.5868,
-      "r_multiple": -0.0982,
-      "sized_r": -0.0491,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "neutral",
-      "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2022-bear",
-      "symbol": "BTCUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2022-12-01T00:00:00+00:00",
-      "entry_time": "2022-12-01T01:00:00+00:00",
-      "exit_time": "2022-12-04T00:00:00+00:00",
-      "entry_price": 16534.506014,
-      "exit_price": 16948.14,
-      "stop_price": 21472.05774,
-      "target_price": 16121.9212,
-      "r_multiple": -0.0838,
-      "sized_r": -0.0419,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "neutral",
-      "setup_trend": "long",
-      "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2022-bear",
-      "symbol": "BTCUSDT",
-      "kind": "forming_short",
-      "side": "short",
-      "setup_time": "2022-12-01T00:00:00+00:00",
-      "entry_time": "2022-12-01T01:00:00+00:00",
-      "exit_time": "2022-12-04T00:00:00+00:00",
-      "entry_price": 15867.30784,
-      "exit_price": 16948.14,
-      "stop_price": 17504.781,
-      "target_price": 15907.82,
-      "r_multiple": -0.6601,
-      "sized_r": -0.33,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "neutral",
-      "setup_trend": "long",
-      "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2022-bear",
-      "symbol": "BTCUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2022-12-05T00:00:00+00:00",
-      "entry_time": "2022-12-05T01:00:00+00:00",
-      "exit_time": "2022-12-08T00:00:00+00:00",
-      "entry_price": 16821.669138,
-      "exit_price": 16812.53,
-      "stop_price": 20692.599648,
-      "target_price": 16165.0672,
-      "r_multiple": 0.0024,
-      "sized_r": 0.0012,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "long",
-      "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -827,11 +753,12 @@
       "r_multiple": -0.0934,
       "sized_r": -0.0467,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.666,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -848,11 +775,12 @@
       "r_multiple": -0.0182,
       "sized_r": -0.0091,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.666,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -869,11 +797,12 @@
       "r_multiple": 0.0207,
       "sized_r": 0.0104,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.707,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -890,11 +819,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.72,
+      "confidence": 0.734,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -911,11 +841,12 @@
       "r_multiple": -0.155,
       "sized_r": -0.0775,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.689,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -932,11 +863,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.679,
+      "confidence": 0.765,
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -957,7 +889,8 @@
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -974,11 +907,12 @@
       "r_multiple": -0.1073,
       "sized_r": -0.0537,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.752,
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -995,11 +929,12 @@
       "r_multiple": -0.0744,
       "sized_r": -0.0372,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.81,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1020,7 +955,8 @@
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1037,11 +973,34 @@
       "r_multiple": 0.0312,
       "sized_r": 0.0156,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.752,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
+    },
+    {
+      "period": "2022-bear",
+      "symbol": "ETHUSDT",
+      "kind": "forming_short",
+      "side": "short",
+      "setup_time": "2022-10-06T00:00:00+00:00",
+      "entry_time": "2022-10-06T01:00:00+00:00",
+      "exit_time": "2022-10-09T00:00:00+00:00",
+      "entry_price": 1252.93568,
+      "exit_price": 1312.49,
+      "stop_price": 1397.4408,
+      "target_price": 1249.09,
+      "r_multiple": -0.4121,
+      "sized_r": -0.2061,
+      "size_fraction": 0.5,
+      "confidence": 0.752,
+      "daily_trend": "short",
+      "setup_trend": "long",
+      "trend_alignment": "mixed",
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1058,11 +1017,12 @@
       "r_multiple": 0.0421,
       "sized_r": 0.021,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.752,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1079,11 +1039,12 @@
       "r_multiple": -0.1242,
       "sized_r": -0.0621,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.711,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1100,11 +1061,12 @@
       "r_multiple": 0.0934,
       "sized_r": 0.0467,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.729,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1121,11 +1083,12 @@
       "r_multiple": -0.51,
       "sized_r": -0.255,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.729,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1142,11 +1105,12 @@
       "r_multiple": -0.1347,
       "sized_r": -0.0674,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.851,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1167,7 +1131,8 @@
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1184,11 +1149,12 @@
       "r_multiple": -0.1791,
       "sized_r": -0.0896,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.851,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1205,11 +1171,12 @@
       "r_multiple": -0.0546,
       "sized_r": -0.0273,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.81,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1226,11 +1193,12 @@
       "r_multiple": 0.0895,
       "sized_r": 0.0448,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.81,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1247,11 +1215,12 @@
       "r_multiple": -0.1551,
       "sized_r": -0.0776,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.698,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1268,11 +1237,12 @@
       "r_multiple": -0.1818,
       "sized_r": -0.0909,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.77,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2022-bear",
@@ -1289,11 +1259,12 @@
       "r_multiple": -0.0251,
       "sized_r": -0.0126,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.77,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1310,11 +1281,12 @@
       "r_multiple": 0.0001,
       "sized_r": 0.0,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.702,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1331,74 +1303,12 @@
       "r_multiple": 0.1682,
       "sized_r": 0.0841,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.702,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2023-recovery",
-      "symbol": "BTCUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2022-11-24T00:00:00+00:00",
-      "entry_time": "2022-11-24T01:00:00+00:00",
-      "exit_time": "2022-11-27T00:00:00+00:00",
-      "entry_price": 16217.587512,
-      "exit_price": 16462.67,
-      "stop_price": 21472.05774,
-      "target_price": 15709.3458,
-      "r_multiple": -0.0466,
-      "sized_r": -0.0233,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "neutral",
-      "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2023-recovery",
-      "symbol": "BTCUSDT",
-      "kind": "forming_short",
-      "side": "short",
-      "setup_time": "2022-11-24T00:00:00+00:00",
-      "entry_time": "2022-11-24T01:00:00+00:00",
-      "exit_time": "2022-11-27T00:00:00+00:00",
-      "entry_price": 15352.192,
-      "exit_price": 16462.67,
-      "stop_price": 16895.3514,
-      "target_price": 15227.44,
-      "r_multiple": -0.7196,
-      "sized_r": -0.3598,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "neutral",
-      "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2023-recovery",
-      "symbol": "BTCUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2022-12-02T00:00:00+00:00",
-      "entry_time": "2022-12-02T01:00:00+00:00",
-      "exit_time": "2022-12-05T00:00:00+00:00",
-      "entry_price": 16661.951055,
-      "exit_price": 17216.15,
-      "stop_price": 21472.05774,
-      "target_price": 15887.9082,
-      "r_multiple": -0.1152,
-      "sized_r": -0.0576,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "neutral",
-      "setup_trend": "long",
-      "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1415,11 +1325,12 @@
       "r_multiple": -0.1109,
       "sized_r": -0.0554,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.666,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1436,11 +1347,12 @@
       "r_multiple": 0.0433,
       "sized_r": 0.0216,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.666,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1457,11 +1369,12 @@
       "r_multiple": -0.2004,
       "sized_r": -0.1002,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.666,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1478,11 +1391,12 @@
       "r_multiple": -0.3232,
       "sized_r": -0.1616,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.666,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1503,7 +1417,8 @@
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1520,11 +1435,12 @@
       "r_multiple": -0.1757,
       "sized_r": -0.0879,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.67,
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1541,11 +1457,12 @@
       "r_multiple": 0.0592,
       "sized_r": 0.0296,
       "size_fraction": 0.5,
-      "confidence": 0.74,
+      "confidence": 0.716,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1562,11 +1479,12 @@
       "r_multiple": -0.3769,
       "sized_r": -0.1884,
       "size_fraction": 0.5,
-      "confidence": 0.74,
+      "confidence": 0.716,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1587,7 +1505,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1604,11 +1523,12 @@
       "r_multiple": -0.3356,
       "sized_r": -0.1678,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.675,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1629,7 +1549,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1646,11 +1567,12 @@
       "r_multiple": -0.408,
       "sized_r": -0.204,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.855,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1667,11 +1589,12 @@
       "r_multiple": 0.2834,
       "sized_r": 0.1417,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.752,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1688,11 +1611,12 @@
       "r_multiple": 0.0049,
       "sized_r": 0.0025,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.752,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1713,7 +1637,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1730,11 +1655,12 @@
       "r_multiple": -0.0258,
       "sized_r": -0.0129,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.842,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1751,11 +1677,12 @@
       "r_multiple": -0.3151,
       "sized_r": -0.1576,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.778,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1772,11 +1699,12 @@
       "r_multiple": -0.2876,
       "sized_r": -0.1438,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.778,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1793,11 +1721,12 @@
       "r_multiple": 0.1206,
       "sized_r": 0.0603,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.756,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1818,7 +1747,8 @@
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1835,11 +1765,12 @@
       "r_multiple": -0.1094,
       "sized_r": -0.0547,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.851,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1856,11 +1787,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.851,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1877,11 +1809,12 @@
       "r_multiple": -0.1081,
       "sized_r": -0.0541,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.81,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1898,11 +1831,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.81,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1919,11 +1853,12 @@
       "r_multiple": -0.3305,
       "sized_r": -0.1653,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.698,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1940,11 +1875,12 @@
       "r_multiple": -0.1699,
       "sized_r": -0.0849,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.77,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1961,11 +1897,12 @@
       "r_multiple": 0.0709,
       "sized_r": 0.0354,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.77,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -1982,11 +1919,12 @@
       "r_multiple": -0.3875,
       "sized_r": -0.1938,
       "size_fraction": 0.5,
-      "confidence": 0.736,
+      "confidence": 0.698,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2007,28 +1945,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2023-recovery",
-      "symbol": "ETHUSDT",
-      "kind": "relief_rally_fade",
-      "side": "short",
-      "setup_time": "2023-06-20T00:00:00+00:00",
-      "entry_time": "2023-06-20T01:00:00+00:00",
-      "exit_time": "2023-06-22T02:00:00+00:00",
-      "entry_price": 1707.00255,
-      "exit_price": 1926.848952,
-      "stop_price": 1926.848952,
-      "target_price": 1626.8956,
-      "r_multiple": -1.0,
-      "sized_r": -0.5,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "neutral",
-      "setup_trend": "neutral",
-      "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2045,11 +1963,12 @@
       "r_multiple": -0.3517,
       "sized_r": -0.1759,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.855,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2066,11 +1985,12 @@
       "r_multiple": 0.18,
       "sized_r": 0.09,
       "size_fraction": 0.5,
-      "confidence": 0.839,
+      "confidence": 0.747,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2087,11 +2007,12 @@
       "r_multiple": -0.0286,
       "sized_r": -0.0143,
       "size_fraction": 0.5,
-      "confidence": 0.839,
+      "confidence": 0.747,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2112,7 +2033,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2129,11 +2051,12 @@
       "r_multiple": 0.0399,
       "sized_r": 0.02,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.855,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2154,7 +2077,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2171,11 +2095,12 @@
       "r_multiple": -0.1779,
       "sized_r": -0.0889,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.801,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2192,11 +2117,12 @@
       "r_multiple": 0.2131,
       "sized_r": 0.1066,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.81,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2213,11 +2139,12 @@
       "r_multiple": -0.0679,
       "sized_r": -0.034,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.81,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2234,11 +2161,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.774,
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2255,11 +2183,12 @@
       "r_multiple": 0.3389,
       "sized_r": 0.1695,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.774,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2276,11 +2205,12 @@
       "r_multiple": -0.2437,
       "sized_r": -0.1219,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.842,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2301,7 +2231,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2023-recovery",
@@ -2318,11 +2249,12 @@
       "r_multiple": -0.2447,
       "sized_r": -0.1224,
       "size_fraction": 0.5,
-      "confidence": 0.85,
+      "confidence": 0.828,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2343,7 +2275,8 @@
       "daily_trend": "neutral",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2360,11 +2293,12 @@
       "r_multiple": 0.2189,
       "sized_r": 0.1095,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.76,
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2385,7 +2319,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2402,11 +2337,12 @@
       "r_multiple": -0.0228,
       "sized_r": -0.0114,
       "size_fraction": 0.5,
-      "confidence": 0.673,
+      "confidence": 0.842,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2423,11 +2359,12 @@
       "r_multiple": -0.0494,
       "sized_r": -0.0247,
       "size_fraction": 0.5,
-      "confidence": 0.75,
+      "confidence": 0.774,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2444,11 +2381,12 @@
       "r_multiple": -0.4855,
       "sized_r": -0.2428,
       "size_fraction": 0.5,
-      "confidence": 0.75,
+      "confidence": 0.774,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2465,11 +2403,12 @@
       "r_multiple": -0.3069,
       "sized_r": -0.1535,
       "size_fraction": 0.5,
-      "confidence": 0.75,
+      "confidence": 0.774,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2486,11 +2425,12 @@
       "r_multiple": 0.5119,
       "sized_r": 0.2559,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.824,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2507,32 +2447,12 @@
       "r_multiple": -1.0,
       "sized_r": -0.5,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.756,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
-    },
-    {
-      "period": "2024-2025-bull",
-      "symbol": "ETHUSDT",
-      "kind": "forming_short",
-      "side": "short",
-      "setup_time": "2024-08-16T00:00:00+00:00",
-      "entry_time": "2024-08-23T20:00:00+00:00",
-      "exit_time": "2024-08-24T16:00:00+00:00",
-      "entry_price": 2757.76,
-      "exit_price": 2800.052857,
-      "stop_price": 2800.052857,
-      "target_price": 2493.47,
-      "r_multiple": -1.0,
-      "sized_r": -0.5,
-      "size_fraction": 0.5,
-      "confidence": 0.65,
-      "daily_trend": "short",
-      "setup_trend": "short",
-      "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2549,11 +2469,12 @@
       "r_multiple": -0.1281,
       "sized_r": -0.064,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.675,
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2574,7 +2495,8 @@
       "daily_trend": "short",
       "setup_trend": "short",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2591,11 +2513,12 @@
       "r_multiple": 0.256,
       "sized_r": 0.128,
       "size_fraction": 0.5,
-      "confidence": 0.798,
+      "confidence": 0.837,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2612,11 +2535,12 @@
       "r_multiple": 0.3762,
       "sized_r": 0.1881,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.801,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2633,11 +2557,12 @@
       "r_multiple": 0.227,
       "sized_r": 0.1135,
       "size_fraction": 0.5,
-      "confidence": 0.692,
+      "confidence": 0.828,
       "daily_trend": "neutral",
       "setup_trend": "neutral",
       "trend_alignment": "neutral",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2654,11 +2579,12 @@
       "r_multiple": -0.0044,
       "sized_r": -0.0022,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.716,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2675,11 +2601,12 @@
       "r_multiple": -0.1257,
       "sized_r": -0.0628,
       "size_fraction": 0.5,
-      "confidence": 0.827,
+      "confidence": 0.837,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2696,11 +2623,12 @@
       "r_multiple": -0.0442,
       "sized_r": -0.0221,
       "size_fraction": 0.5,
-      "confidence": 0.65,
+      "confidence": 0.734,
       "daily_trend": "short",
       "setup_trend": "neutral",
       "trend_alignment": "aligned",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2717,11 +2645,12 @@
       "r_multiple": -0.0464,
       "sized_r": -0.0232,
       "size_fraction": 0.5,
-      "confidence": 0.683,
+      "confidence": 0.819,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2738,11 +2667,12 @@
       "r_multiple": -0.5967,
       "sized_r": -0.2983,
       "size_fraction": 0.5,
-      "confidence": 0.683,
+      "confidence": 0.819,
       "daily_trend": "short",
       "setup_trend": "long",
       "trend_alignment": "mixed",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     },
     {
       "period": "2024-2025-bull",
@@ -2759,11 +2689,12 @@
       "r_multiple": -0.0785,
       "sized_r": -0.0393,
       "size_fraction": 0.5,
-      "confidence": 0.683,
+      "confidence": 0.819,
       "daily_trend": "neutral",
       "setup_trend": "long",
       "trend_alignment": "counter_trend",
-      "entry_mode": "touch"
+      "entry_mode": "touch",
+      "target_policy": "tp2"
     }
   ]
 }

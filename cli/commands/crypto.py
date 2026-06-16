@@ -315,6 +315,11 @@ def crypto_daily(
     risk_pct: float = typer.Option(0.005, "--risk-pct"),
     include_options: bool = typer.Option(True, "--options/--no-options"),
     options_source: str = typer.Option("deribit", "--options-source"),
+    adaptive_threshold: bool = typer.Option(
+        True,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold in the daily review.",
+    ),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
     """Same as [bold]nave daily[/bold] — when to enter BTC/ETH today."""
@@ -325,6 +330,7 @@ def crypto_daily(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=_json_default))
@@ -339,6 +345,11 @@ def position_review(
     risk_pct: float = typer.Option(0.005, "--risk-pct"),
     include_options: bool = typer.Option(True, "--options/--no-options"),
     options_source: str = typer.Option("deribit", "--options-source"),
+    adaptive_threshold: bool = typer.Option(
+        True,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold in the position review.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Unified BTC/ETH: COT + momentum + regime + options."""
@@ -349,6 +360,7 @@ def position_review(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=_json_default))

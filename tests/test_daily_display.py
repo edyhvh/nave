@@ -150,3 +150,37 @@ def test_render_daily_shows_primary_enter_risk_hint(capsys):
     captured = capsys.readouterr()
     assert "0.75%" in captured.out
     assert "advisory" in captured.out
+
+
+def test_render_daily_shows_blocked_risk_hint(capsys):
+    payload = {
+        "generated_at": "2026-06-02T12:00:00+00:00",
+        "summary": {"actionable_count": 1, "watch_count": 0, "stand_aside_count": 0},
+        "recommendations": [
+            {
+                "coin": "BTC",
+                "action": "enter",
+                "direction": "long",
+                "confidence": 0.96,
+                "regime_phase": "continuation_long",
+                "entry_zone": [70000, 71000],
+                "invalidation": 69000,
+                "momentum_score": 96,
+                "playbook": "test",
+                "reasons": ["ok"],
+                "blockers": [],
+                "targets": [73000],
+                "suggested_risk": {
+                    "mode": "advisory",
+                    "current_risk_pct": 0.005,
+                    "suggested_risk_pct": 0.005,
+                    "blocked": True,
+                    "blockers": ["COT history is stale"],
+                },
+            }
+        ],
+    }
+    render_daily_entry_check(payload)
+    captured = capsys.readouterr()
+    assert "blocked" in captured.out
+    assert "COT history is stale" in captured.out

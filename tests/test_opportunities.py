@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 
-from trading.crypto.analysis.opportunities import detect_secondary_opportunities
+from trading.crypto.analysis.opportunities import _demand_zone, _supply_zone, detect_secondary_opportunities
 from trading.crypto.analysis.regime import RegimeAssessment, assess_regime
 
 
@@ -145,6 +145,58 @@ def test_forming_breakdown_short_when_momentum_blocked_by_daily():
     assert forming[0]["entry_zone"] == [1640.0, 1670.0]
     assert forming[0]["invalidation"] == 1700.0
     assert forming[0]["size_fraction"] == 0.5
+
+
+def test_forming_breakdown_short_uses_structured_daily_stage():
+    cot = MagicMock(bias="bearish", confidence=0.73, historical_percentile=50)
+    regime = RegimeAssessment(
+        phase="neutral",
+        bias="neutral",
+        confidence=0.0,
+        playbook="test",
+        supply_zone=None,
+        continuation_trigger=None,
+        metrics={"bounce_from_14d_low_pct": 5.0, "drawdown_from_28d_high_pct": 10.0},
+    )
+    daily = _frame([100.0] * 30)
+    setup = _frame([100.0] * 30, freq="4h")
+    plans = [
+        {
+            "side": "short",
+            "confidence_score": 52,
+            "setup_status": "invalid",
+            "entry_zone": [1640.0, 1670.0],
+            "invalidation": 1700.0,
+            "tp1": 1600.0,
+            "tp2": 1550.0,
+            "diagnostics": {
+                "theory_overlay": {
+                    "passed": False,
+                    "stage": "daily",
+                    "reason": "confirmation missing",
+                }
+            },
+        }
+    ]
+
+    opps = detect_secondary_opportunities(
+        daily=daily,
+        setup=setup,
+        cot_bias=cot,
+        regime=regime,
+        plans=plans,
+        primary_action="stand_aside",
+    )
+
+    assert any(o["kind"] == "forming_short" for o in opps)
+
+
+def test_supply_and_demand_zones_are_ordered():
+    supply = _supply_zone(high_28d=100.0, ema_fast_s=120.0, close_s=110.0)
+    demand = _demand_zone(low_28d=100.0, ema_fast_s=80.0, close_s=90.0)
+
+    assert supply[0] < supply[1]
+    assert demand[0] < demand[1]
 
 
 def test_no_secondary_when_primary_enter():

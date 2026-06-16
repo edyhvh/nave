@@ -1,6 +1,8 @@
 {
   "assumptions": [
-    "COT bias is reconstructed from cached net non-commercial history.",
+    "COT bias is reconstructed from cached net non-commercial history using directional percentile rank.",
+    "Historical COT confidence is a proxy because cached history lacks complete live OI/FITS inputs.",
+    "Primary action is approximated from momentum tradeability and COT-side plans for research only.",
     "WATCH entries are filled on first 1H touch of the emitted 4H zone.",
     "Rejection mode enters at the rejection candle close after zone touch.",
     "Rejection-mode exits begin on the next 1H candle, excluding pre-entry range.",

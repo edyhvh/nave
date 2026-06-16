@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 
 from trading.crypto.analysis import review_positions
+from trading.crypto.analysis.service import CryptoAnalysisService
 
 
 def test_review_positions_enter_when_momentum_tradeable_and_cot_aligned():
@@ -73,6 +74,20 @@ def test_review_positions_enter_when_momentum_tradeable_and_cot_aligned():
     assert rec["direction"] == "short"
     assert rec["primary_source"] == "momentum+cot+regime"
     assert "suggested_risk" not in rec
+
+
+def test_crypto_analysis_service_forwards_cadence_policy_flag():
+    service = CryptoAnalysisService(momentum=MagicMock())
+
+    with patch("trading.crypto.analysis.service.review_positions", return_value={"ok": True}) as mocked:
+        payload = service.review(
+            ["BTC"],
+            include_options=False,
+            apply_cadence_policy=False,
+        )
+
+    assert payload == {"ok": True}
+    assert mocked.call_args.kwargs["apply_cadence_policy"] is False
 
 
 def test_review_positions_adds_advisory_conviction_risk_for_primary_enter():

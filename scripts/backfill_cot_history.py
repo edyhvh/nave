@@ -142,10 +142,21 @@ def backfill(
 ) -> dict[str, Any]:
     cache = _load_cache(cache_path)
     fetched: dict[str, dict[str, int]] = {}
+    errors: list[dict[str, Any]] = []
 
     for report_type in report_types:
         for year in years:
-            frame = fetch_annual_frame(report_type, year)
+            try:
+                frame = fetch_annual_frame(report_type, year)
+            except Exception as exc:  # noqa: BLE001 - keep historical backfill best-effort per year.
+                errors.append(
+                    {
+                        "report_type": report_type,
+                        "year": year,
+                        "error": str(exc),
+                    }
+                )
+                continue
             for asset in assets:
                 rows = extract_asset_rows(frame, asset=asset, include_micro=include_micro)
                 key = _history_cache_key(asset, report_type, include_micro)
@@ -175,6 +186,7 @@ def backfill(
         "include_micro": include_micro,
         "cache_path": str(cache_path),
         "fetched": fetched,
+        "errors": errors,
         "coverage": coverage,
     }
 

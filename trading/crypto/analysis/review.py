@@ -209,13 +209,8 @@ def _primary_conviction_risk_hint(
 
     base = min(max(current_risk_pct, cfg.risk.min_risk_pct), cfg.risk.max_risk_pct)
     suggested = base
-    rationale = "default risk"
-    if score >= 90:
-        suggested = min(0.0075, cfg.risk.max_risk_pct)
-        rationale = "score >= 90 primary momentum entry"
-    elif score >= cfg.score_tradeable_threshold:
-        suggested = min(base, cfg.risk.max_risk_pct)
-        rationale = "tradeable score below conviction band"
+    suggested = min(0.0075, cfg.risk.max_risk_pct)
+    rationale = "score >= 90 primary momentum entry"
 
     if blockers:
         suggested = base

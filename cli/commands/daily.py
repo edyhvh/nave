@@ -36,6 +36,11 @@ def daily_entry(
     risk_pct: float = typer.Option(0.005, "--risk-pct"),
     include_options: bool = typer.Option(True, "--options/--no-options"),
     options_source: str = typer.Option("deribit", "--options-source"),
+    adaptive_threshold: bool = typer.Option(
+        True,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold in the daily review.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Daily entry check for BTC/ETH — enter, watch, or stand aside in one screen."""
@@ -49,6 +54,7 @@ def daily_entry(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=_json_default))

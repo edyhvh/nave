@@ -418,6 +418,7 @@ class HermesNaveIntegration:
                             "coins": {"type": "string", "default": "BTC ETH"},
                             "account_equity": {"type": "number", "default": 10000.0},
                             "risk_pct": {"type": "number", "default": 0.005},
+                            "apply_cadence_policy": {"type": "boolean", "default": True},
                             "include_options": {"type": "boolean", "default": True},
                             "options_source": {"type": "string", "default": "deribit"},
                         },
@@ -1219,6 +1220,7 @@ class HermesNaveIntegration:
         coins: str = "BTC ETH",
         account_equity: float = 10_000.0,
         risk_pct: float = 0.005,
+        apply_cadence_policy: bool = True,
         include_options: bool = True,
         options_source: str = "deribit",
     ) -> dict[str, Any]:
@@ -1230,6 +1232,7 @@ class HermesNaveIntegration:
             coin_list,
             account_equity=account_equity,
             risk_pct=risk_pct,
+            apply_cadence_policy=apply_cadence_policy,
             include_options=include_options,
             options_source=options_source,
         )

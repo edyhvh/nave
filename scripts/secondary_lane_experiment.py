@@ -28,7 +28,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from trading.crypto.analysis.opportunities import detect_secondary_opportunities  # noqa: E402
 from trading.crypto.analysis.regime import assess_regime  # noqa: E402
 from trading.crypto.cot.cot_analyzer import COTBias  # noqa: E402
-from trading.crypto.cot.cot_gate import compute_cot_state, load_cached_cot_history  # noqa: E402
+from trading.crypto.cot.cot_gate import load_cached_cot_history  # noqa: E402
 from trading.crypto.cot.context import cot_side_from_bias  # noqa: E402
 from trading.crypto.momentum import MomentumSetupEngine, load_momentum_config  # noqa: E402
 from trading.crypto.momentum.filters import normalize_frame  # noqa: E402
@@ -94,29 +94,49 @@ def historical_cot_bias(symbol: str, as_of: pd.Timestamp) -> COTBias | None:
     """Build a lightweight COTBias from cached historical net positioning."""
     coin = symbol.upper().replace("USDT", "")
     history = load_cached_cot_history("BTC" if coin == "BTC" else coin)
-    state = compute_cot_state(history, as_of)
-    if state is None:
+    if history.empty:
         return None
 
-    spec_side, net, pct = state
-    if spec_side == "long":
+    sub = history[history["report_date"] <= as_of].tail(104)
+    if len(sub) < 12:
+        return None
+
+    net = float(sub["net_non_commercial"].iloc[-1])
+    previous = float(sub["net_non_commercial"].iloc[-2]) if len(sub) >= 2 else net
+    change = net - previous
+    percentile = int(round(float((sub["net_non_commercial"] < net).mean()) * 100))
+    percentile_extremity = abs(percentile - 50) / 50
+    change_scale = float(sub["net_non_commercial"].diff().abs().quantile(0.75) or 1.0)
+    change_signal = min(abs(change) / max(change_scale, 1.0), 1.0)
+    score = min(100, int(40 * percentile_extremity + 30 * change_signal + 21))
+
+    if net > 0:
         bias = "bearish"
-    elif spec_side == "short":
+        spec_side = "long"
+    elif net < 0:
         bias = "bullish"
+        spec_side = "short"
     else:
         bias = "neutral"
+        spec_side = "neutral"
 
-    confidence = 0.5 if bias == "neutral" else max(0.65, min(0.85, pct))
+    confidence = 0.5 if bias == "neutral" else min(0.9, max(0.5, 0.45 + 0.45 * (score / 100.0)))
     return COTBias(
         asset=coin,
         net_non_commercial=int(net),
         pct_oi_non_com=0.0,
-        weekly_change=0,
+        weekly_change=int(change),
         bias=bias,
         confidence=confidence,
         bias_label=bias.upper(),
-        historical_percentile=int(round(pct * 100)),
-        metadata={"source": "cached_history_proxy", "spec_side": spec_side},
+        historical_percentile=percentile,
+        metadata={
+            "source": "cached_history_directional_proxy",
+            "spec_side": spec_side,
+            "history_points": len(sub),
+            "fits_weighted_score": score,
+            "confidence_rule": "proxy = clamp(0.50, 0.90, 0.45 + 0.45*(score/100))",
+        },
     )
 
 
@@ -382,8 +402,6 @@ def run_experiment(
             for stop in range(warmup, len(setup), step_bars):
                 setup_slice = setup.iloc[: stop + 1]
                 end_time = pd.Timestamp(setup_slice.index[-1])
-                if any(end_time < ts for ts in active_until.values()):
-                    continue
                 trigger_slice = trigger.loc[trigger.index <= end_time]
                 if len(trigger_slice) < warmup:
                     continue
@@ -452,7 +470,9 @@ def run_experiment(
 
     return {
         "assumptions": [
-            "COT bias is reconstructed from cached net non-commercial history.",
+            "COT bias is reconstructed from cached net non-commercial history using directional percentile rank.",
+            "Historical COT confidence is a proxy because cached history lacks complete live OI/FITS inputs.",
+            "Primary action is approximated from momentum tradeability and COT-side plans for research only.",
             "WATCH entries are filled on first 1H touch of the emitted 4H zone.",
             "Rejection mode enters at the rejection candle close after zone touch.",
             "Rejection-mode exits begin on the next 1H candle, excluding pre-entry range.",

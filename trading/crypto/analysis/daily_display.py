@@ -37,7 +37,7 @@ def _format_risk_hint(rec: dict[str, Any]) -> str:
     suggested = float(hint.get("suggested_risk_pct") or current)
     label = f"{suggested * 100:.2f}%"
     if hint.get("blocked"):
-        return f"{current * 100:.2f}%"
+        return f"{current * 100:.2f}% blocked"
     if suggested > current:
         return f"{label}*"
     return label
@@ -119,7 +119,11 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
         if targets:
             out.print(f"  targets: {' / '.join(f'{t:,.0f}' for t in targets[:3])}")
         risk_hint = rec.get("suggested_risk") or {}
-        if risk_hint and not risk_hint.get("blocked"):
+        if risk_hint and risk_hint.get("blocked"):
+            blockers = risk_hint.get("blockers") or []
+            reason = f": {', '.join(str(item) for item in blockers[:2])}" if blockers else ""
+            out.print(f"  risk hint blocked{reason}")
+        elif risk_hint:
             current = float(risk_hint.get("current_risk_pct") or 0.0)
             suggested = float(risk_hint.get("suggested_risk_pct") or current)
             if suggested > current:
@@ -186,6 +190,7 @@ def run_daily_entry_check(
     risk_pct: float = 0.005,
     include_options: bool = True,
     options_source: str = "deribit",
+    apply_cadence_policy: bool = True,
 ) -> dict[str, Any]:
     from trading.crypto.analysis import CryptoAnalysisService
 
@@ -195,6 +200,7 @@ def run_daily_entry_check(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=apply_cadence_policy,
     )
     payload["check_type"] = "daily_entry"
     payload["checked_at"] = datetime.now(timezone.utc).isoformat()

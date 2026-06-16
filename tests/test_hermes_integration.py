@@ -69,6 +69,26 @@ def test_dispatch_tool_call_uses_registered_handler(monkeypatch: pytest.MonkeyPa
     assert result["result"]["args"]["coins"] == "BTC ETH"
 
 
+def test_position_review_forwards_cadence_policy_to_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, bool] = {}
+
+    from trading.crypto.analysis import CryptoAnalysisService
+
+    def fake_review(self, coins, **kwargs):
+        captured["apply_cadence_policy"] = kwargs["apply_cadence_policy"]
+        return {"recommendations": []}
+
+    monkeypatch.setattr(CryptoAnalysisService, "review", fake_review)
+    result = HermesNaveIntegration().position_review(
+        coins="BTC",
+        include_options=False,
+        apply_cadence_policy=False,
+    )
+
+    assert result == {"recommendations": []}
+    assert captured["apply_cadence_policy"] is False
+
+
 def test_cli_registers_hermes_group() -> None:
     result = runner.invoke(app, ["--help"])
 

@@ -56,6 +56,13 @@ def _ema(frame: pd.DataFrame, span: int) -> float:
     return float(frame["close"].ewm(span=span, adjust=False).mean().iloc[-1])
 
 
+def _ordered_zone(lo: float, hi: float) -> list[float] | None:
+    low, high = sorted((float(lo), float(hi)))
+    if high <= low:
+        return None
+    return [low, high]
+
+
 def _supply_zone(
     *,
     high_28d: float,
@@ -64,7 +71,7 @@ def _supply_zone(
 ) -> list[float]:
     supply_hi = max(high_28d * 0.98, ema_fast_s * 1.01, close_s)
     supply_lo = min(ema_fast_s * 0.99, close_s * 0.995)
-    return [float(supply_lo), float(supply_hi)]
+    return _ordered_zone(supply_lo, supply_hi) or [float(supply_lo), float(supply_hi)]
 
 
 def _demand_zone(
@@ -75,7 +82,7 @@ def _demand_zone(
 ) -> list[float]:
     demand_lo = min(low_28d * 1.02, ema_fast_s * 0.99, close_s)
     demand_hi = max(ema_fast_s * 1.01, close_s * 1.005)
-    return [float(demand_lo), float(demand_hi)]
+    return _ordered_zone(demand_lo, demand_hi) or [float(demand_lo), float(demand_hi)]
 
 
 def _relief_rally_fade(
@@ -253,7 +260,14 @@ def _forming_breakdown_short(
         return None
 
     reason = str(overlay.get("reason") or "")
-    blocked_by_daily = "daily" in reason.lower()
+    stage = str(overlay.get("stage") or overlay.get("blocked_stage") or "").lower()
+    blockers = [str(item).lower() for item in overlay.get("blockers") or []]
+    blocked_by_daily = (
+        stage == "daily"
+        or "daily" in blockers
+        or any("daily" in item for item in blockers)
+        or "daily" in reason.lower()
+    )
     if not blocked_by_daily:
         return None
 

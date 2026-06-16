@@ -124,13 +124,14 @@ Experiment command:
 | ETH cached COT rows | 232 (`2022-01-04` → `2026-06-09`) |
 | Historical source | CFTC annual compressed futures-and-options combined files |
 | Scan density | Every 24 4H bars (sampled research run) |
+| COT replay fidelity | Directional net-position percentile proxy; cached history does not include full live OI/F.I.T.S. context |
 
 ### Touch vs rejection
 
 | Entry mode | Trades | Win% | Exp (R) | Sized exp | Max DD |
 |------------|-------:|-----:|--------:|----------:|-------:|
-| touch | 124 | 29.8% | **−0.191** | −0.087 | 10.75R |
-| 1H rejection | 75 | 42.7% | **−0.072** | −0.038 | 2.96R |
+| touch | 115 | 31.3% | **−0.168** | −0.074 | 8.56R |
+| 1H rejection | 76 | 43.4% | **−0.045** | −0.023 | 2.19R |
 
 **Conclusion:** secondary lanes should not be executed on zone touch. Requiring
 a 1H rejection candle materially improves win rate, expectancy, and drawdown,
@@ -142,9 +143,9 @@ turns the rejection-mode results positive.
 
 | Lane | Trades | Win% | Exp (R) | Sized exp | Verdict |
 |------|-------:|-----:|--------:|----------:|---------|
-| `notrend_range_long` | 16 | 62.5% | **+0.031** | +0.008 | Fragile positive, keep researching |
-| `relief_rally_fade` | 52 | 40.4% | −0.062 | −0.031 | Needs tighter supply/rejection filter |
-| `forming_short` | 7 | 14.3% | −0.380 | −0.190 | Do not execute yet |
+| `notrend_range_long` | 18 | 55.6% | **+0.011** | +0.003 | Fragile positive, keep researching |
+| `relief_rally_fade` | 50 | 40.0% | −0.048 | −0.024 | Needs tighter supply/rejection filter |
+| `forming_short` | 8 | 37.5% | −0.154 | −0.077 | Do not execute yet |
 
 ### Notrend target-policy check
 
@@ -168,10 +169,10 @@ Counter-trend status is not, by itself, the defect. Under rejection mode:
 
 | Trend bucket | Trades | Win% | Exp (R) |
 |--------------|-------:|-----:|--------:|
-| aligned | 39 | 35.9% | −0.102 |
-| counter_trend | 20 | 45.0% | −0.050 |
-| mixed | 9 | 44.4% | −0.026 |
-| neutral | 7 | 71.4% | −0.026 |
+| aligned | 39 | 41.0% | −0.066 |
+| counter_trend | 20 | 40.0% | −0.026 |
+| mixed | 9 | 33.3% | −0.067 |
+| neutral | 8 | 75.0% | +0.035 |
 
 That matches the playbook intent: secondary lanes may be counter-trend. The
 engine should label alignment and use it for sizing/review, not hard-block every
@@ -181,6 +182,12 @@ especially for `forming_short` and broad `relief_rally_fade` zones.
 The implementation also fixed a COT cache parsing issue: cached rows use
 `report_date` / `report_date_as_yyyy_mm_dd`, while the previous parser only
 accepted CFTC-style `report_week` labels.
+
+Research fidelity note: the secondary experiment now uses directional
+net-position percentile rank rather than absolute net magnitude percentile, but
+it still remains a proxy because cached history lacks the full live OI/F.I.T.S.
+inputs. Treat the secondary-lane artifacts as directional research, not as a
+production-grade replay of `position-review`.
 
 ---
 
@@ -250,6 +257,9 @@ The branch now exposes conviction sizing as an **advisory hint only**:
 - Blocks the raised hint when COT history has fewer than 12 rows or is stale.
 - Does not change the `risk_pct` passed into momentum scanning, options scans,
   or execution paths.
+- Adaptive score thresholds remain enabled by default for operator review, but
+  callers can disable them with `apply_cadence_policy=False` or
+  `--no-adaptive-threshold`.
 
 This gives the operator visibility into the sizing candidate without silently
 changing production risk.
@@ -284,6 +294,7 @@ overlay.
 7. **Cached COT date parsing** — supports both `report_week` labels and cached ISO report-date fields.
 8. **Conviction-sizing experiment scaffold** — evaluates primary-entry score-band risk overlays without changing entries/exits.
 9. **Advisory conviction sizing in live review** — `suggested_risk` appears only for eligible primary ENTER rows; execution sizing remains unchanged.
+10. **Review hardening pass** — adaptive-threshold opt-outs, directional COT proxy replay, per-lane secondary overlap, resilient COT backfill, ordered zones, structured daily blocker handling, and blocked-risk display.
 
 ---
 

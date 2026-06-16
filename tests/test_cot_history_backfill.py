@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from scripts.backfill_cot_history import extract_asset_rows
+from scripts.backfill_cot_history import backfill, extract_asset_rows
 
 
 def test_extract_asset_rows_keeps_main_contract_and_maps_cache_shape():
@@ -56,3 +56,40 @@ def test_extract_asset_rows_can_include_micro_contracts():
         "ETHER CASH SETTLED - CHICAGO MERCANTILE EXCHANGE",
         "MICRO ETHER - CHICAGO MERCANTILE EXCHANGE",
     ]
+
+
+def test_backfill_records_year_errors_and_continues(monkeypatch, tmp_path):
+    frame = pd.DataFrame(
+        [
+            {
+                "Market and Exchange Names": "BITCOIN - CHICAGO MERCANTILE EXCHANGE",
+                "As of Date in Form YYYY-MM-DD": "2024-12-31",
+                "Noncommercial Positions-Long (All)": 27_686,
+                "Noncommercial Positions-Short (All)": 28_128,
+            }
+        ]
+    )
+
+    def fake_fetch(report_type: str, year: int) -> pd.DataFrame:
+        if year == 2023:
+            raise RuntimeError("missing archive")
+        return frame
+
+    monkeypatch.setattr("scripts.backfill_cot_history.fetch_annual_frame", fake_fetch)
+    payload = backfill(
+        years=[2023, 2024],
+        report_types=["futures_and_options"],
+        assets=["BTC"],
+        cache_path=tmp_path / "history.json",
+    )
+
+    key = "BTC|futures_and_options|micro=0"
+    assert payload["fetched"][key]["2024"] == 1
+    assert payload["errors"] == [
+        {
+            "report_type": "futures_and_options",
+            "year": 2023,
+            "error": "missing archive",
+        }
+    ]
+    assert payload["coverage"][key]["rows"] == 1

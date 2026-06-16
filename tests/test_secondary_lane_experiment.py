@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from scripts.secondary_lane_experiment import simulate_secondary_trade
+from scripts.secondary_lane_experiment import historical_cot_bias, simulate_secondary_trade
 
 
 def _trigger_frame(rows: list[tuple[float, float, float]]) -> pd.DataFrame:
@@ -18,6 +18,27 @@ def _trigger_frame(rows: list[tuple[float, float, float]]) -> pd.DataFrame:
         },
         index=idx,
     )
+
+
+def test_historical_cot_bias_uses_directional_percentile_proxy(monkeypatch):
+    dates = pd.date_range("2025-01-01", periods=12, freq="W", tz="UTC")
+    history = pd.DataFrame(
+        {
+            "report_date": dates,
+            "net_non_commercial": [-100, -80, -60, -40, -20, 0, 10, 20, 30, 40, 50, 60],
+        }
+    )
+    monkeypatch.setattr(
+        "scripts.secondary_lane_experiment.load_cached_cot_history",
+        lambda asset: history,
+    )
+
+    bias = historical_cot_bias("BTCUSDT", dates[-1])
+
+    assert bias is not None
+    assert bias.bias == "bearish"
+    assert bias.historical_percentile == 92
+    assert bias.metadata["source"] == "cached_history_directional_proxy"
 
 
 def test_short_secondary_trade_enters_on_zone_touch_and_hits_target():

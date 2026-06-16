@@ -33,6 +33,7 @@
       "2026": 23
     }
   },
+  "errors": [],
   "coverage": {
     "BTC|futures_and_options|micro=0": {
       "rows": 232,
