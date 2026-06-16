@@ -31,12 +31,11 @@ The primary stack (COT → regime → momentum 4H/1H → perp) was **correctly b
 
 **What happened:** Specs covered shorts during the rally → percentile dropped from P97 to P50. Macro bear thesis is *weaker* but not gone. Price is bouncing into supply on 4H while daily remains below slow EMA.
 
-**Primary stack today:** Still `stand_aside` — no tradeable momentum (scores 42–52 vs 78 threshold), theory v2 blocked at daily confirmation.
+**Primary stack today:** `WATCH short` on both coins — regime now arms on COT confidence (72–73%) even at P50; momentum still not tradeable (scores 42–52 vs 78 threshold), theory v2 blocked at daily confirmation. Stops/targets backfilled on the primary row from the relief-rally lane.
 
-**Secondary lanes now visible:**
-- `relief_rally_fade` — short into supply on 1H rejection (half size)
-- `forming_short` — ETH short score 52, waiting daily confirm
-- `notrend_range_long` — counter-trend scalp if price in lower half of range (quarter size)
+**Secondary lanes now visible (additive only):**
+- ETH: `forming_short` — short score 52, waiting daily confirm
+- BTC: no secondary rows (primary already covers relief-rally fade with execution levels)
 
 ---
 

@@ -74,7 +74,7 @@ def _demand_zone(
     return [float(demand_lo), float(demand_hi)]
 
 
-def _forming_short(
+def _relief_rally_fade(
     *,
     daily: pd.DataFrame,
     setup: pd.DataFrame,
@@ -115,9 +115,15 @@ def _forming_short(
     tp1 = close_s * 0.97
     tp2 = close_s * 0.94
 
+    if slope_bps > 0:
+        slope_note = "counter-trend bounce"
+    elif slope_bps < 0:
+        slope_note = "bounce stalling"
+    else:
+        slope_note = "flat 4H"
     reasons = [
         f"Bearish COT ({cot_conf:.0%}) + {bounce_pct:.1f}% relief rally into supply",
-        f"Daily below slow EMA; 4H slope {slope_bps:.0f} bps (counter-trend bounce)",
+        f"Daily below slow EMA; 4H slope {slope_bps:.0f} bps ({slope_note})",
     ]
     if drawdown >= cfg.min_drawdown_from_high * 100:
         reasons.append(f"Still {drawdown:.1f}% below 28d high — macro bear leg intact")
@@ -299,7 +305,7 @@ def detect_secondary_opportunities(
 
     candidates: list[SecondaryOpportunity] = []
 
-    fade = _forming_short(
+    fade = _relief_rally_fade(
         daily=daily,
         setup=setup,
         cot_side=cot_side,

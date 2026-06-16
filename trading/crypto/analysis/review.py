@@ -409,6 +409,17 @@ def review_positions(
             primary_action=action,
         )
 
+        # Primary WATCH from regime often lacks stop/targets; backfill from the
+        # matching secondary lane, then drop redundant rows from the table.
+        if action == "watch" and secondary:
+            backfill = next((o for o in secondary if o.get("kind") == regime.phase), None)
+            if backfill:
+                if invalidation is None and backfill.get("invalidation") is not None:
+                    invalidation = backfill["invalidation"]
+                if not targets and backfill.get("targets"):
+                    targets = list(backfill["targets"])
+                secondary = [o for o in secondary if o.get("kind") != regime.phase]
+
         rec_dict = PositionRecommendation(
             coin=coin,
             direction=direction,
