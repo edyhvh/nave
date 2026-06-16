@@ -189,9 +189,18 @@ def fetch_latest_cot(
     data: Dict[str, Any] = {}
     try:
         from openbb import obb
+        openbb_error: Exception | None = None
+    except Exception as exc:  # noqa: BLE001
+        obb = None
+        openbb_error = exc
 
-        # Fetch one combined DataFrame per asset via OpenBB CFTC endpoint
-        for asset, symbol in [("BTC", "BTC"), ("ETH", "ETH")]:
+    # Fetch one combined DataFrame per asset via OpenBB CFTC endpoint, falling
+    # back to the official CFTC long report pages when OpenBB is unavailable.
+    for asset, symbol in [("BTC", "BTC"), ("ETH", "ETH")]:
+        try:
+            if obb is None:
+                raise RuntimeError(f"OpenBB unavailable: {openbb_error}")
+
             try:
                 df = _fetch_openbb_cot(obb, asset, report_type, debug=debug)
 
@@ -277,10 +286,51 @@ def fetch_latest_cot(
                 )
 
             except Exception as e_asset:
-                raise RuntimeError(f"COT fetch for {asset} failed: {e_asset}") from e_asset
+                direct_df, direct_as_of = _fetch_cftc_direct_asset_rows(
+                    asset,
+                    report_type=report_type,
+                    include_micro=include_micro,
+                    debug=debug,
+                )
+                if direct_df.empty:
+                    raise RuntimeError(
+                        f"COT fetch for {asset} failed via OpenBB and direct CFTC fallback: "
+                        f"{e_asset}"
+                    ) from e_asset
 
-    except Exception as e:
-        raise RuntimeError(f"OpenBB COT fetch failed: {e}") from e
+                direct_release = _derive_release_date(direct_as_of)
+                data[asset] = {
+                    "raw": direct_df.to_dict("records"),
+                    "latest_date": direct_as_of,
+                    "as_of_date": direct_as_of,
+                    "release_date": direct_release,
+                    "symbol": symbol,
+                    "report_type": report_type,
+                    "cached": False,
+                    "source": "cftc_direct",
+                }
+                data[asset]["raw"] = _augment_with_local_history(
+                    asset=asset,
+                    report_type=report_type,
+                    include_micro=include_micro,
+                    rows=data[asset]["raw"],
+                )
+                _persist_history_rows(
+                    asset=asset,
+                    report_type=report_type,
+                    include_micro=include_micro,
+                    rows=data[asset]["raw"],
+                )
+                logger.debug(
+                    "Fetched COT for %s from direct CFTC fallback after OpenBB failure: "
+                    "as-of %s, released %s",
+                    asset,
+                    direct_as_of,
+                    direct_release,
+                )
+
+        except Exception as e_asset:
+            raise RuntimeError(f"COT fetch for {asset} failed: {e_asset}") from e_asset
 
     # Cache result
     cache_data = {

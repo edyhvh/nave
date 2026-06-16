@@ -271,7 +271,7 @@ _MONTH_PATTERN = (
 )
 
 _MONTH_RE = re.compile(
-    rf"(?P<month>{_MONTH_PATTERN})\s+\d{{4}}"
+    rf"(?P<month>{_MONTH_PATTERN}\s+\d{{4}})"
 )
 
 _PMI_RE_MANUF = re.compile(

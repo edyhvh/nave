@@ -132,6 +132,22 @@ def test_parse_prefers_kind_aligned_heading_month_over_body_mentions():
     assert report.pmi == 54.8
 
 
+def test_parse_generic_month_fallback_keeps_year():
+    html = """
+        <html>
+            <body>
+                <p>ISM PMI Reports Roundup: May 2026 Services</p>
+                <p>The Services PMI registered 54.4 percent.</p>
+            </body>
+        </html>
+        """
+    fetcher = ISMReportFetcher()
+    report = fetcher._parse(html, kind="services",
+                            source_url="fixture://roundup-services")
+
+    assert report.report_month == "May 2026"
+
+
 def test_by_sector_deduplicates_preserving_order():
     fetcher = ISMReportFetcher()
     report = fetcher._parse(
