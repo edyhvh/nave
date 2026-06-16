@@ -26,6 +26,21 @@ def test_parse_report_week_standard():
     assert ts.month == 4 and ts.day == 1
 
 
+def test_load_cot_history_frame_accepts_cached_report_date_shape():
+    frame = load_cot_history_frame(
+        [
+            {
+                "report_date_as_yyyy_mm_dd": "2026-06-09",
+                "noncomm_positions_long_all": 12_000,
+                "noncomm_positions_short_all": 7_500,
+            }
+        ]
+    )
+    assert len(frame) == 1
+    assert frame["report_date"].iloc[0] == pd.Timestamp("2026-06-09", tz="UTC")
+    assert frame["net_non_commercial"].iloc[0] == 4_500
+
+
 def test_filter_permissive_when_no_history():
     passes, bias, reason = weekly_cot_filter("short", None, pd.Timestamp.now(tz="UTC"))
     assert passes is True

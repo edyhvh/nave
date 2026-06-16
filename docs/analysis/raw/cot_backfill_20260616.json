@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-06-16T18:16:37.925179+00:00",
+  "source": "CFTC Historical Compressed annual archives",
+  "years": [
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "report_types": [
+    "futures_and_options"
+  ],
+  "assets": [
+    "BTC",
+    "ETH"
+  ],
+  "include_micro": false,
+  "cache_path": "/home/david/.cache/nave/cot/history_cot.json",
+  "fetched": {
+    "BTC|futures_and_options|micro=0": {
+      "2022": 52,
+      "2023": 52,
+      "2024": 53,
+      "2025": 52,
+      "2026": 23
+    },
+    "ETH|futures_and_options|micro=0": {
+      "2022": 52,
+      "2023": 52,
+      "2024": 53,
+      "2025": 52,
+      "2026": 23
+    }
+  },
+  "coverage": {
+    "BTC|futures_and_options|micro=0": {
+      "rows": 232,
+      "start": "2022-01-04",
+      "end": "2026-06-09"
+    },
+    "ETH|futures_and_options|micro=0": {
+      "rows": 232,
+      "start": "2022-01-04",
+      "end": "2026-06-09"
+    }
+  }
+}

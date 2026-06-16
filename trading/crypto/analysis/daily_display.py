@@ -29,6 +29,20 @@ def _format_zone(zone: list[float] | None) -> str:
     return f"{zone[0]:,.0f} – {zone[1]:,.0f}"
 
 
+def _format_risk_hint(rec: dict[str, Any]) -> str:
+    hint = rec.get("suggested_risk") or {}
+    if not hint:
+        return "—"
+    current = float(hint.get("current_risk_pct") or 0.0)
+    suggested = float(hint.get("suggested_risk_pct") or current)
+    label = f"{suggested * 100:.2f}%"
+    if hint.get("blocked"):
+        return f"{current * 100:.2f}%"
+    if suggested > current:
+        return f"{label}*"
+    return label
+
+
 def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None = None) -> None:
     """Human-first daily view: when to enter BTC/ETH."""
     out = console or Console()
@@ -73,6 +87,7 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
     table.add_column("Entry zone", justify="right")
     table.add_column("Stop", justify="right")
     table.add_column("Score", justify="right")
+    table.add_column("Risk", justify="right")
     table.add_column("Options")
 
     for rec in recs:
@@ -86,6 +101,7 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
             _format_zone(rec.get("entry_zone")),
             f"{rec['invalidation']:,.2f}" if rec.get("invalidation") else "—",
             str(rec.get("momentum_score") or "—"),
+            _format_risk_hint(rec),
             format_options_display(rec.get("options")) or "—",
         )
     out.print(table)
@@ -102,6 +118,15 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
         targets = rec.get("targets") or []
         if targets:
             out.print(f"  targets: {' / '.join(f'{t:,.0f}' for t in targets[:3])}")
+        risk_hint = rec.get("suggested_risk") or {}
+        if risk_hint and not risk_hint.get("blocked"):
+            current = float(risk_hint.get("current_risk_pct") or 0.0)
+            suggested = float(risk_hint.get("suggested_risk_pct") or current)
+            if suggested > current:
+                out.print(
+                    f"  risk hint: {suggested * 100:.2f}% "
+                    f"([dim]advisory, primary ENTER only[/dim])"
+                )
         thesis = rec.get("thesis") or {}
         if thesis.get("thesis_state") == "active":
             out.print(

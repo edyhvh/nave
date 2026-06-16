@@ -1,0 +1,342 @@
+{
+  "source_artifacts": [
+    "docs/analysis/raw/momentum_backtest_2017-bull+2018-bear_20260616T175420Z.json",
+    "docs/analysis/raw/momentum_backtest_2019-recovery_20260616T175542Z.json"
+  ],
+  "trade_count": 33,
+  "base_risk_pct": 0.005,
+  "policies": {
+    "flat_0_5pct": {
+      "metrics": {
+        "trades": 33,
+        "win_rate": 0.9697,
+        "avg_weighted_r": 2.6323,
+        "total_weighted_r": 86.865,
+        "max_dd_weighted_r": 0.288,
+        "return_pct": 0.4343,
+        "max_dd_pct": 0.0014,
+        "delta_return_pct_vs_flat": 0.0,
+        "delta_max_dd_pct_vs_flat": 0.0
+      },
+      "average_risk_pct": 0.005,
+      "by_score_band": {
+        "80-89": {
+          "trades": 3,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.704,
+          "total_weighted_r": 8.112,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0406,
+          "max_dd_pct": 0.0
+        },
+        "90-94": {
+          "trades": 7,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.2351,
+          "total_weighted_r": 22.646,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1132,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 2.4394,
+          "total_weighted_r": 56.107,
+          "max_dd_weighted_r": 0.288,
+          "return_pct": 0.2805,
+          "max_dd_pct": 0.0014
+        }
+      },
+      "by_period": {
+        "2017-bull+2018-bear": {
+          "trades": 25,
+          "win_rate": 0.96,
+          "avg_weighted_r": 2.6844,
+          "total_weighted_r": 67.111,
+          "max_dd_weighted_r": 0.288,
+          "return_pct": 0.3356,
+          "max_dd_pct": 0.0014
+        },
+        "2019-recovery": {
+          "trades": 8,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.4693,
+          "total_weighted_r": 19.754,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0988,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 2.617,
+          "total_weighted_r": 60.192,
+          "max_dd_weighted_r": 0.288,
+          "return_pct": 0.301,
+          "max_dd_pct": 0.0014
+        },
+        "ETHUSDT": {
+          "trades": 10,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.6673,
+          "total_weighted_r": 26.673,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1334,
+          "max_dd_pct": 0.0
+        }
+      }
+    },
+    "proposed_90plus_0_75pct": {
+      "metrics": {
+        "trades": 33,
+        "win_rate": 0.9697,
+        "avg_weighted_r": 3.8255,
+        "total_weighted_r": 126.2415,
+        "max_dd_weighted_r": 0.432,
+        "return_pct": 0.6312,
+        "max_dd_pct": 0.0022,
+        "delta_return_pct_vs_flat": 0.1969,
+        "delta_max_dd_pct_vs_flat": 0.0008
+      },
+      "average_risk_pct": 0.007273,
+      "by_score_band": {
+        "80-89": {
+          "trades": 3,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.704,
+          "total_weighted_r": 8.112,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0406,
+          "max_dd_pct": 0.0
+        },
+        "90-94": {
+          "trades": 7,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.8527,
+          "total_weighted_r": 33.969,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1698,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 3.6592,
+          "total_weighted_r": 84.1605,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4208,
+          "max_dd_pct": 0.0022
+        }
+      },
+      "by_period": {
+        "2017-bull+2018-bear": {
+          "trades": 25,
+          "win_rate": 0.96,
+          "avg_weighted_r": 3.8644,
+          "total_weighted_r": 96.6105,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4831,
+          "max_dd_pct": 0.0022
+        },
+        "2019-recovery": {
+          "trades": 8,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.7039,
+          "total_weighted_r": 29.631,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1482,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 3.7492,
+          "total_weighted_r": 86.232,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4312,
+          "max_dd_pct": 0.0022
+        },
+        "ETHUSDT": {
+          "trades": 10,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.0009,
+          "total_weighted_r": 40.0095,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.2,
+          "max_dd_pct": 0.0
+        }
+      }
+    },
+    "conservative_95plus_0_75pct": {
+      "metrics": {
+        "trades": 33,
+        "win_rate": 0.9697,
+        "avg_weighted_r": 3.6539,
+        "total_weighted_r": 120.58,
+        "max_dd_weighted_r": 0.432,
+        "return_pct": 0.6029,
+        "max_dd_pct": 0.0022,
+        "delta_return_pct_vs_flat": 0.1686,
+        "delta_max_dd_pct_vs_flat": 0.0008
+      },
+      "average_risk_pct": 0.007008,
+      "by_score_band": {
+        "80-89": {
+          "trades": 3,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.704,
+          "total_weighted_r": 8.112,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0406,
+          "max_dd_pct": 0.0
+        },
+        "90-94": {
+          "trades": 7,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.0439,
+          "total_weighted_r": 28.3075,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1415,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 3.6592,
+          "total_weighted_r": 84.1605,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4208,
+          "max_dd_pct": 0.0022
+        }
+      },
+      "by_period": {
+        "2017-bull+2018-bear": {
+          "trades": 25,
+          "win_rate": 0.96,
+          "avg_weighted_r": 3.6685,
+          "total_weighted_r": 91.7122,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4586,
+          "max_dd_pct": 0.0022
+        },
+        "2019-recovery": {
+          "trades": 8,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.6085,
+          "total_weighted_r": 28.8678,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1443,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 3.5988,
+          "total_weighted_r": 82.7715,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4139,
+          "max_dd_pct": 0.0022
+        },
+        "ETHUSDT": {
+          "trades": 10,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.7808,
+          "total_weighted_r": 37.8085,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.189,
+          "max_dd_pct": 0.0
+        }
+      }
+    },
+    "quality_gate_90plus_only": {
+      "metrics": {
+        "trades": 30,
+        "win_rate": 0.9667,
+        "avg_weighted_r": 3.9376,
+        "total_weighted_r": 118.1295,
+        "max_dd_weighted_r": 0.432,
+        "return_pct": 0.5906,
+        "max_dd_pct": 0.0022,
+        "delta_return_pct_vs_flat": 0.1563,
+        "delta_max_dd_pct_vs_flat": 0.0008
+      },
+      "average_risk_pct": 0.0075,
+      "by_score_band": {
+        "80-89": {
+          "trades": 0,
+          "win_rate": 0.0,
+          "avg_weighted_r": 0.0,
+          "total_weighted_r": 0.0,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0,
+          "max_dd_pct": 0.0
+        },
+        "90-94": {
+          "trades": 7,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.8527,
+          "total_weighted_r": 33.969,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1698,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 23,
+          "win_rate": 0.9565,
+          "avg_weighted_r": 3.6592,
+          "total_weighted_r": 84.1605,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4208,
+          "max_dd_pct": 0.0022
+        }
+      },
+      "by_period": {
+        "2017-bull+2018-bear": {
+          "trades": 22,
+          "win_rate": 0.9545,
+          "avg_weighted_r": 4.0227,
+          "total_weighted_r": 88.4985,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.4425,
+          "max_dd_pct": 0.0022
+        },
+        "2019-recovery": {
+          "trades": 8,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.7039,
+          "total_weighted_r": 29.631,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.1482,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 20,
+          "win_rate": 0.95,
+          "avg_weighted_r": 3.906,
+          "total_weighted_r": 78.12,
+          "max_dd_weighted_r": 0.432,
+          "return_pct": 0.3906,
+          "max_dd_pct": 0.0022
+        },
+        "ETHUSDT": {
+          "trades": 10,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.0009,
+          "total_weighted_r": 40.0095,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.2,
+          "max_dd_pct": 0.0
+        }
+      }
+    }
+  }
+}

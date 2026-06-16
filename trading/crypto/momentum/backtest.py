@@ -9,6 +9,7 @@ from trading.crypto.momentum.config import MomentumConfig, load_momentum_config
 from trading.crypto.momentum.engine import MomentumSetupEngine
 from trading.crypto.momentum.execution_plan import TradePlan
 from trading.crypto.momentum.filters import normalize_frame
+from trading.crypto.momentum.theory_overlay import build_weekly_frame
 
 
 @dataclass(frozen=True)
@@ -77,15 +78,19 @@ class MomentumBacktester:
         open_interest: pd.DataFrame | pd.Series | None = None,
         baseline: bool = False,
         skip_baseline_compare: bool = False,
+        step_bars: int = 1,
     ) -> dict[str, Any]:
+        if step_bars <= 0:
+            raise ValueError("step_bars must be positive")
         daily = normalize_frame(daily_frame)
         setup = normalize_frame(setup_frame)
         trigger = normalize_frame(trigger_frame)
         trades: list[BacktestTrade] = []
         active_until: pd.Timestamp | None = None
+        weekly_cache: dict[pd.Timestamp, pd.DataFrame] = {}
 
         warmup = max(60, self.config.breakout.lookback_bars + 10)
-        for stop in range(warmup, len(setup)):
+        for stop in range(warmup, len(setup), step_bars):
             setup_slice = setup.iloc[: stop + 1]
             end_time = setup_slice.index[-1]
             if active_until is not None and end_time < active_until:
@@ -98,11 +103,14 @@ class MomentumBacktester:
                 as_of = as_of.tz_localize("UTC")
             else:
                 as_of = as_of.tz_convert("UTC")
+            daily_slice = daily.loc[daily.index <= end_time]
+            weekly_slice = self._weekly_for_daily_slice(daily_slice, weekly_cache)
             plans = self.engine.evaluate_symbol(
                 symbol=symbol,
-                daily_frame=daily.loc[daily.index <= end_time],
+                daily_frame=daily_slice,
                 setup_frame=setup_slice,
                 trigger_frame=trigger_slice,
+                weekly_frame=weekly_slice,
                 funding_rate=None if baseline else funding_rate,
                 open_interest=None if baseline else open_interest,
                 as_of=as_of,
@@ -129,6 +137,7 @@ class MomentumBacktester:
                 funding_rate=funding_rate,
                 open_interest=open_interest,
                 baseline=True,
+                step_bars=step_bars,
             )["metrics"]
         payload = {
             "symbol": symbol,
@@ -167,6 +176,7 @@ class MomentumBacktester:
         setup = normalize_frame(setup_frame)
         trigger = normalize_frame(trigger_frame)
         active_until: pd.Timestamp | None = None
+        weekly_cache: dict[pd.Timestamp, pd.DataFrame] = {}
 
         warmup = max(60, self.config.breakout.lookback_bars + 10)
         for stop in range(warmup, len(setup)):
@@ -179,11 +189,14 @@ class MomentumBacktester:
                 continue
             as_of = pd.Timestamp(end_time)
             as_of = as_of.tz_localize("UTC") if as_of.tzinfo is None else as_of.tz_convert("UTC")
+            daily_slice = daily.loc[daily.index <= end_time]
+            weekly_slice = self._weekly_for_daily_slice(daily_slice, weekly_cache)
             plans = self.engine.evaluate_symbol(
                 symbol=symbol,
-                daily_frame=daily.loc[daily.index <= end_time],
+                daily_frame=daily_slice,
                 setup_frame=setup_slice,
                 trigger_frame=trigger_slice,
+                weekly_frame=weekly_slice,
                 funding_rate=funding_rate,
                 open_interest=open_interest,
                 as_of=as_of,
@@ -203,6 +216,20 @@ class MomentumBacktester:
         if baseline:
             return plan.setup_status in {"confirmed", "pending"}
         return plan.tradeable
+
+    def _weekly_for_daily_slice(
+        self,
+        daily_slice: pd.DataFrame,
+        cache: dict[pd.Timestamp, pd.DataFrame],
+    ) -> pd.DataFrame:
+        if daily_slice.empty:
+            return daily_slice.copy()
+        key = pd.Timestamp(daily_slice.index[-1])
+        cached = cache.get(key)
+        if cached is None:
+            cached = build_weekly_frame(daily_slice)
+            cache[key] = cached
+        return cached
 
     def _simulate_trade(self, plan: TradePlan, future_trigger: pd.DataFrame) -> BacktestTrade | None:
         if future_trigger.empty:

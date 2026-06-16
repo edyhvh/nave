@@ -780,6 +780,69 @@ def test_recommend_position_sizes_from_fired_scan() -> None:
     assert result["safety"]["suggested_mcp_call"]["tool"] == "open_position"
 
 
+def test_recommend_position_surfaces_advisory_risk_without_resizing() -> None:
+    integration = HermesNaveIntegration()
+    entry = _fired_scan_entry()
+    entry["suggested_risk"] = {
+        "mode": "advisory",
+        "applies_to": "primary ENTER only",
+        "current_risk_pct": 0.005,
+        "suggested_risk_pct": 0.0075,
+        "blocked": False,
+        "blockers": [],
+        "rationale": "90+ primary momentum score with fresh COT history",
+    }
+
+    result = integration.recommend_position(
+        coin_scan=entry,
+        capital_usd=10000.0,
+        leverage=10.0,
+        risk_pct=0.005,
+    )
+
+    sizing = result["sizing"]
+    assert sizing["risk_pct"] == pytest.approx(0.005)
+    assert sizing["coin_qty"] == pytest.approx(0.025, rel=1e-3)
+    assert sizing["notional_usd"] == pytest.approx(1800.0, rel=1e-3)
+
+    advisory = result["safety"]["risk_advisory"]
+    assert advisory["mode"] == "advisory"
+    assert advisory["blocked"] is False
+    assert advisory["sizing_unchanged"] is True
+    assert advisory["caller_risk_pct"] == pytest.approx(0.005)
+    assert advisory["suggested_risk_pct"] == pytest.approx(0.0075)
+    assert advisory["advisory_coin_qty"] == pytest.approx(0.0375, rel=1e-3)
+    assert advisory["advisory_notional_usd"] == pytest.approx(2700.0, rel=1e-3)
+    assert "risk_advisory_pct" not in result["safety"]["suggested_mcp_call"]["arguments"]
+
+
+def test_recommend_position_preserves_blocked_advisory_reason() -> None:
+    integration = HermesNaveIntegration()
+    entry = _fired_scan_entry()
+    entry["recommendation"] = {
+        "suggested_risk": {
+            "mode": "advisory",
+            "current_risk_pct": 0.005,
+            "suggested_risk_pct": 0.005,
+            "blocked": True,
+            "blockers": ["cot_history_rows<12"],
+            "rationale": "COT history is too shallow for raised sizing",
+        }
+    }
+
+    result = integration.recommend_position(
+        coin_scan=entry,
+        capital_usd=10000.0,
+        risk_pct=0.005,
+    )
+
+    advisory = result["safety"]["risk_advisory"]
+    assert advisory["blocked"] is True
+    assert advisory["blockers"] == ["cot_history_rows<12"]
+    assert advisory["suggested_risk_pct"] == pytest.approx(0.005)
+    assert result["sizing"]["risk_pct"] == pytest.approx(0.005)
+
+
 def test_recommend_position_stand_aside_on_unfired_scan() -> None:
     integration = HermesNaveIntegration()
     result = integration.recommend_position(

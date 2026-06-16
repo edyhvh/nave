@@ -41,6 +41,20 @@ def parse_report_week(value: str) -> pd.Timestamp | None:
         return None
 
 
+def parse_report_date(row: dict[str, Any]) -> pd.Timestamp | None:
+    """Parse either cached ISO report dates or CFTC report-week labels."""
+    for key in ("report_date_as_yyyy_mm_dd", "report_date"):
+        value = row.get(key)
+        if not value:
+            continue
+        try:
+            ts = pd.Timestamp(value)
+            return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+        except (TypeError, ValueError):
+            pass
+    return parse_report_week(str(row.get("report_week", "")))
+
+
 def _row_net_non_commercial(row: dict[str, Any]) -> float | None:
     long_val = row.get("noncomm_positions_long_all")
     short_val = row.get("noncomm_positions_short_all")
@@ -55,7 +69,7 @@ def _row_net_non_commercial(row: dict[str, Any]) -> float | None:
 def load_cot_history_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     records: list[tuple[pd.Timestamp, float]] = []
     for row in rows:
-        ts = parse_report_week(str(row.get("report_week", "")))
+        ts = parse_report_date(row)
         if ts is None:
             continue
         net = _row_net_non_commercial(row)
