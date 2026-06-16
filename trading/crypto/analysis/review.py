@@ -14,6 +14,7 @@ from trading.crypto.analysis.constants import (
     REGIME_OPTIONS_WITHOUT_TRADEABLE,
 )
 from trading.crypto.analysis.options_bridge import summarize_options_opportunity
+from trading.crypto.analysis.opportunities import detect_secondary_opportunities
 from trading.crypto.analysis.regime import RegimeAssessment, assess_regime
 from trading.crypto.analysis.regime_config import load_regime_config
 from trading.crypto.analysis.regime_thesis import (
@@ -399,6 +400,15 @@ def review_positions(
             store=thesis_store,
             max_age_hours=regime_cfg.thesis_max_age_hours,
         )
+        secondary = detect_secondary_opportunities(
+            daily=frames["daily"],
+            setup=frames["setup"],
+            cot_bias=cot_bias,
+            regime=regime,
+            plans=all_plans,
+            primary_action=action,
+        )
+
         rec_dict = PositionRecommendation(
             coin=coin,
             direction=direction,
@@ -418,6 +428,11 @@ def review_positions(
             options_summary=options_summary,
             instruments=instruments,
         ).to_dict()
+        rec_dict["secondary_opportunities"] = secondary
+        rec_dict["market_context"] = {
+            "cot_percentile": int(cot_bias.historical_percentile) if cot_bias else None,
+            "regime_metrics": regime.metrics,
+        }
         recommendations.append(apply_thesis_to_recommendation(rec_dict, thesis_overlay))
 
     per_coin_momentum = {

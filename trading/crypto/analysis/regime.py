@@ -245,6 +245,7 @@ def assess_regime(
     setup_pullback = close_s <= ema_fast_s / cfg.supply_ema_proximity and close_d > ema_slow_d
 
     crowded_cot = cot_pct >= cfg.cot_crowded_percentile_min
+    directional_cot = cot_conf >= cfg.cot_confidence_min and cot_side in {"short", "long"}
 
     metrics = {
         "drawdown_from_28d_high_pct": drawdown_from_high * 100,
@@ -260,7 +261,12 @@ def assess_regime(
     plan_tradeable = bool((best_plan or {}).get("tradeable"))
     mf_watch = bool(((best_plan or {}).get("diagnostics") or {}).get("momentum_failure_watch"))
 
-    if cot_side == "short" and crowded_cot and drawdown_from_high >= cfg.min_drawdown_from_high:
+    cot_bear_armed = (
+        cot_side == "short"
+        and drawdown_from_high >= cfg.min_drawdown_from_high
+        and (crowded_cot or directional_cot)
+    )
+    if cot_bear_armed:
         return _bear_assessment(
             cfg=cfg,
             cot_conf=cot_conf,
@@ -282,7 +288,12 @@ def assess_regime(
             metrics=metrics,
         )
 
-    if cot_side == "long" and crowded_cot and rally_from_low >= cfg.min_drawdown_from_high:
+    cot_bull_armed = (
+        cot_side == "long"
+        and rally_from_low >= cfg.min_drawdown_from_high
+        and (crowded_cot or directional_cot)
+    )
+    if cot_bull_armed:
         return _bull_assessment(
             cfg=cfg,
             cot_conf=cot_conf,
