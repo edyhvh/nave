@@ -92,13 +92,15 @@ def _forming_short(
     ema_fast_s = _ema(setup, cfg.ema_fast)
     ema_slow_d = _ema(daily, cfg.ema_slow)
     close_d = float(daily["close"].iloc[-1])
-    bounce = metrics.get("bounce_from_14d_low_pct", 0.0)
+    bounce_pct = metrics.get("bounce_from_14d_low_pct", 0.0)
     drawdown = metrics.get("drawdown_from_28d_high_pct", 0.0)
+    bounce_min_pct = cfg.relief_bounce_min * 100
+    bounce_max_pct = cfg.relief_bounce_max * 100
 
     # Rally into supply while daily structure still bearish.
     in_supply = close_s >= ema_fast_s * cfg.supply_ema_proximity
     daily_bear = close_d < ema_slow_d
-    if not (in_supply and daily_bear and bounce >= cfg.relief_bounce_min):
+    if not (in_supply and daily_bear and bounce_min_pct <= bounce_pct <= bounce_max_pct):
         return None
 
     # 4H slope positive = counter-trend bounce (classic fade setup).
@@ -114,7 +116,7 @@ def _forming_short(
     tp2 = close_s * 0.94
 
     reasons = [
-        f"Bearish COT ({cot_conf:.0%}) + {bounce:.1f}% relief rally into supply",
+        f"Bearish COT ({cot_conf:.0%}) + {bounce_pct:.1f}% relief rally into supply",
         f"Daily below slow EMA; 4H slope {slope_bps:.0f} bps (counter-trend bounce)",
     ]
     if drawdown >= cfg.min_drawdown_from_high * 100:
@@ -152,8 +154,9 @@ def _notrend_range_long(
     if cot_side != "short":
         return None
 
-    bounce = metrics.get("bounce_from_14d_low_pct", 0.0)
-    if bounce < cfg.relief_bounce_min or bounce > cfg.notrend_bounce_max:
+    bounce_pct = metrics.get("bounce_from_14d_low_pct", 0.0)
+    bounce_min_pct = cfg.relief_bounce_min * 100
+    if bounce_pct < bounce_min_pct or bounce_pct > cfg.notrend_bounce_max:
         return None
 
     close_s = float(setup["close"].iloc[-1])
@@ -204,7 +207,7 @@ def _notrend_range_long(
         targets=[mid, float(max(supply))],
         reasons=[
             f"Range {range_pct:.1f}% wide; price at {range_pos:.0%} of 14d range",
-            f"Bounce {bounce:.1f}% underway while COT still bearish — local mean-revert lane",
+            f"Bounce {bounce_pct:.1f}% underway while COT still bearish — local mean-revert lane",
         ],
         blockers=[
             "Counter-trend to COT — quarter size max",
