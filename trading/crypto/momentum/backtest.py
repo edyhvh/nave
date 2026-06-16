@@ -145,6 +145,60 @@ class MomentumBacktester:
             }
         return payload
 
+    def iter_entries(
+        self,
+        *,
+        symbol: str,
+        daily_frame: pd.DataFrame,
+        setup_frame: pd.DataFrame,
+        trigger_frame: pd.DataFrame,
+        funding_rate: float | None = None,
+        open_interest: pd.DataFrame | pd.Series | None = None,
+    ):
+        """Yield ``(plan, future_trigger, baseline_trade)`` for each tradeable entry.
+
+        Mirrors :meth:`evaluate`'s entry-detection loop so alternative exit
+        policies can be A/B tested against identical entries without changing
+        production simulation behavior. ``baseline_trade`` is the current
+        single-exit-at-tp2 result and is also used to advance ``active_until``
+        so the entry set is policy-independent.
+        """
+        daily = normalize_frame(daily_frame)
+        setup = normalize_frame(setup_frame)
+        trigger = normalize_frame(trigger_frame)
+        active_until: pd.Timestamp | None = None
+
+        warmup = max(60, self.config.breakout.lookback_bars + 10)
+        for stop in range(warmup, len(setup)):
+            setup_slice = setup.iloc[: stop + 1]
+            end_time = setup_slice.index[-1]
+            if active_until is not None and end_time < active_until:
+                continue
+            trigger_slice = trigger.loc[trigger.index <= end_time]
+            if len(trigger_slice) < warmup:
+                continue
+            as_of = pd.Timestamp(end_time)
+            as_of = as_of.tz_localize("UTC") if as_of.tzinfo is None else as_of.tz_convert("UTC")
+            plans = self.engine.evaluate_symbol(
+                symbol=symbol,
+                daily_frame=daily.loc[daily.index <= end_time],
+                setup_frame=setup_slice,
+                trigger_frame=trigger_slice,
+                funding_rate=funding_rate,
+                open_interest=open_interest,
+                as_of=as_of,
+                cot_overlay_mode="historical",
+            )
+            for plan in plans:
+                if not plan.tradeable:
+                    continue
+                future_trigger = trigger.loc[trigger.index > end_time]
+                baseline_trade = self._simulate_trade(plan, future_trigger)
+                if baseline_trade is not None:
+                    active_until = baseline_trade.exit_time
+                    yield plan, future_trigger, baseline_trade
+                    break
+
     def _should_enter(self, plan: TradePlan, *, baseline: bool) -> bool:
         if baseline:
             return plan.setup_status in {"confirmed", "pending"}

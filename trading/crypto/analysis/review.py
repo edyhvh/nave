@@ -231,6 +231,7 @@ def review_positions(
     include_options: bool = True,
     options_days_to_exp: int = 30,
     options_source: str = "deribit",
+    apply_cadence_policy: bool = True,
 ) -> dict[str, Any]:
     """Canonical BTC/ETH analysis: enter / watch / stand_aside per coin."""
     coin_list = [coin.upper() for coin in coins]
@@ -243,6 +244,7 @@ def review_positions(
         timeframes=tf,
         account_equity=account_equity,
         risk_pct=risk_pct,
+        apply_cadence_policy=apply_cadence_policy,
     )
 
     cot_biases = fetch_cot_biases()

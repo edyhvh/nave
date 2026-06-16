@@ -32,9 +32,10 @@ class SecondaryOpportunity:
     targets: list[float]
     reasons: list[str]
     blockers: list[str]
+    size_fraction: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out = {
             "kind": self.kind,
             "direction": self.direction,
             "action": self.action,
@@ -46,6 +47,9 @@ class SecondaryOpportunity:
             "reasons": self.reasons,
             "blockers": self.blockers,
         }
+        if self.size_fraction is not None:
+            out["size_fraction"] = self.size_fraction
+        return out
 
 
 def _ema(frame: pd.DataFrame, span: int) -> float:
@@ -142,6 +146,7 @@ def _relief_rally_fade(
         targets=[tp1, tp2],
         reasons=reasons,
         blockers=["Requires 1H rejection trigger — not a blind short"],
+        size_fraction=0.5,
     )
 
 
@@ -219,6 +224,7 @@ def _notrend_range_long(
             "Counter-trend to COT — quarter size max",
             "Exit at range mid; do not hold through supply",
         ],
+        size_fraction=0.25,
     )
 
 
@@ -272,6 +278,7 @@ def _forming_breakdown_short(
             f"Theory blocker: {reason}",
         ],
         blockers=["Wait for daily confirmation or 4H breakdown retest"],
+        size_fraction=0.5,
     )
 
 

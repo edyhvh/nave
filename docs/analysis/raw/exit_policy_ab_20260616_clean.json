@@ -1,0 +1,128 @@
+{
+  "policies": {
+    "baseline": {
+      "trades": 63,
+      "win_rate": 0.7937,
+      "expectancy": 1.8172,
+      "total_r": 114.483,
+      "max_dd": 3.0
+    },
+    "tp1_be_tp2": {
+      "trades": 63,
+      "win_rate": 0.8889,
+      "expectancy": 1.5592,
+      "total_r": 98.232,
+      "max_dd": 1.234
+    },
+    "tp1_tp2_be": {
+      "trades": 63,
+      "win_rate": 0.8889,
+      "expectancy": 1.5913,
+      "total_r": 100.252,
+      "max_dd": 1.234
+    },
+    "tp1_be_runner": {
+      "trades": 63,
+      "win_rate": 0.8889,
+      "expectancy": 1.6554,
+      "total_r": 104.293,
+      "max_dd": 1.234
+    }
+  },
+  "per_period": [
+    {
+      "period": "2022-bear",
+      "baseline": {
+        "trades": 13,
+        "win_rate": 0.9231,
+        "expectancy": 2.5922,
+        "total_r": 33.698,
+        "max_dd": 1.0
+      },
+      "tp1_be_tp2": {
+        "trades": 13,
+        "win_rate": 1.0,
+        "expectancy": 2.0892,
+        "total_r": 27.159,
+        "max_dd": 0.0
+      },
+      "tp1_tp2_be": {
+        "trades": 13,
+        "win_rate": 1.0,
+        "expectancy": 1.9136,
+        "total_r": 24.876,
+        "max_dd": 0.0
+      },
+      "tp1_be_runner": {
+        "trades": 13,
+        "win_rate": 1.0,
+        "expectancy": 2.13,
+        "total_r": 27.691,
+        "max_dd": 0.0
+      }
+    },
+    {
+      "period": "2023-recovery",
+      "baseline": {
+        "trades": 31,
+        "win_rate": 0.7742,
+        "expectancy": 1.6354,
+        "total_r": 50.698,
+        "max_dd": 1.234
+      },
+      "tp1_be_tp2": {
+        "trades": 31,
+        "win_rate": 0.9032,
+        "expectancy": 1.499,
+        "total_r": 46.469,
+        "max_dd": 1.234
+      },
+      "tp1_tp2_be": {
+        "trades": 31,
+        "win_rate": 0.9032,
+        "expectancy": 1.5547,
+        "total_r": 48.195,
+        "max_dd": 1.234
+      },
+      "tp1_be_runner": {
+        "trades": 31,
+        "win_rate": 0.9032,
+        "expectancy": 1.6225,
+        "total_r": 50.298,
+        "max_dd": 1.234
+      }
+    },
+    {
+      "period": "2024-2025-bull",
+      "baseline": {
+        "trades": 19,
+        "win_rate": 0.7368,
+        "expectancy": 1.5835,
+        "total_r": 30.087,
+        "max_dd": 2.0
+      },
+      "tp1_be_tp2": {
+        "trades": 19,
+        "win_rate": 0.7895,
+        "expectancy": 1.2949,
+        "total_r": 24.603,
+        "max_dd": 1.0
+      },
+      "tp1_tp2_be": {
+        "trades": 19,
+        "win_rate": 0.7895,
+        "expectancy": 1.4306,
+        "total_r": 27.181,
+        "max_dd": 1.0
+      },
+      "tp1_be_runner": {
+        "trades": 19,
+        "win_rate": 0.7895,
+        "expectancy": 1.3844,
+        "total_r": 26.305,
+        "max_dd": 1.0
+      }
+    }
+  ]
+}
+

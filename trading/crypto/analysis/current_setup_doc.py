@@ -168,6 +168,8 @@ def render_current_setup_markdown(
                 lines.append(f"  - Entry: {_fmt_zone(opp.get('entry_zone'))}")
                 if opp.get("invalidation") is not None:
                     lines.append(f"  - Stop: {_fmt_price(opp['invalidation'])}")
+                if opp.get("size_fraction") is not None:
+                    lines.append(f"  - Size: {float(opp['size_fraction']):.0%} of base risk")
                 opp_targets = opp.get("targets") or []
                 if opp_targets:
                     lines.append(

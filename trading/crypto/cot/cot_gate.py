@@ -252,6 +252,9 @@ def weekly_cot_filter(
     return passes, result.effective_bias, result.reason
 
 
+_COT_HISTORY_CACHE: dict[tuple[str, float], dict[str, pd.DataFrame]] = {}
+
+
 def load_cached_cot_history(
     asset: str,
     report_type: str = "futures_and_options",
@@ -259,14 +262,34 @@ def load_cached_cot_history(
     cache_path: Path | None = None,
 ) -> pd.DataFrame:
     path = cache_path or (Path.home() / ".cache" / "nave" / "cot" / "history_cot.json")
+    empty = pd.DataFrame(columns=["report_date", "net_non_commercial"])
     if not path.exists():
-        return pd.DataFrame(columns=["report_date", "net_non_commercial"])
+        return empty
     import json
 
+    # The history JSON is static within a process run but is read once per bar
+    # during historical backtests (long + short). Cache parsed frames keyed by
+    # (path, mtime) so a weekly COT refresh still invalidates the cache.
     try:
-        blob = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError):
-        return pd.DataFrame(columns=["report_date", "net_non_commercial"])
+        mtime = path.stat().st_mtime
+    except OSError:
+        return empty
+    cache_key = (str(path), mtime)
+    per_path = _COT_HISTORY_CACHE.get(cache_key)
+    if per_path is None:
+        try:
+            blob = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            return empty
+        per_path = {
+            blob_key: load_cot_history_frame(rows)
+            for blob_key, rows in blob.items()
+        }
+        _COT_HISTORY_CACHE.clear()
+        _COT_HISTORY_CACHE[cache_key] = per_path
+
     key = f"{asset}|{report_type}|micro={int(include_micro)}"
-    rows = blob.get(key, [])
-    return load_cot_history_frame(rows)
+    frame = per_path.get(key)
+    if frame is None:
+        return empty
+    return frame.copy()

@@ -144,6 +144,7 @@ def test_forming_breakdown_short_when_momentum_blocked_by_daily():
     assert forming[0]["direction"] == "short"
     assert forming[0]["entry_zone"] == [1640.0, 1670.0]
     assert forming[0]["invalidation"] == 1700.0
+    assert forming[0]["size_fraction"] == 0.5
 
 
 def test_no_secondary_when_primary_enter():
