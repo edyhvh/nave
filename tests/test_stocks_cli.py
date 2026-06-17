@@ -25,7 +25,26 @@ def test_stocks_ism_report_telegram_preview(monkeypatch) -> None:
                         "driver_industry": "Electrical Equipment",
                     }
                 ],
-                "shorts": [],
+                "shorts": [
+                    {
+                        "symbol": "GIS",
+                        "side": "short",
+                        "sector": "Consumer Staples",
+                        "score": 0.23,
+                        "confidence": 0.92,
+                        "driver_industry": "food",
+                    }
+                ],
+                "ondo_shorts": [
+                    {
+                        "symbol": "GIS",
+                        "side": "short",
+                        "sector": "Consumer Staples",
+                        "score": 0.23,
+                        "confidence": 0.92,
+                        "driver_industry": "food",
+                    }
+                ],
             },
         },
     )
@@ -35,6 +54,8 @@ def test_stocks_ism_report_telegram_preview(monkeypatch) -> None:
     assert result.exit_code == 0
     assert "NAVE ISM MANUFACTURING" in result.stdout
     assert "ETN" in result.stdout
+    assert "GIS" in result.stdout
+    assert "Ondo\\-shortable shorts" in result.stdout
 
 
 def test_stocks_x_analyze_telegram_preview(monkeypatch) -> None:
