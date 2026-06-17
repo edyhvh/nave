@@ -48,6 +48,41 @@ def _to_jsonable(value: Any) -> Any:
     return value
 
 
+def _extract_suggested_risk(coin_scan: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a normalized advisory risk hint from review/scan payloads."""
+    raw = coin_scan.get("suggested_risk")
+    if raw is None:
+        recommendation = coin_scan.get("recommendation")
+        if isinstance(recommendation, dict):
+            raw = recommendation.get("suggested_risk")
+    if not isinstance(raw, dict):
+        return None
+
+    suggested = raw.get("suggested_risk_pct")
+    current = raw.get("current_risk_pct")
+    if suggested is None and raw.get("risk_pct") is not None:
+        suggested = raw.get("risk_pct")
+    try:
+        suggested_pct = float(suggested)
+    except (TypeError, ValueError):
+        return None
+    try:
+        current_pct = float(current) if current is not None else None
+    except (TypeError, ValueError):
+        current_pct = None
+
+    return {
+        "mode": raw.get("mode", "advisory"),
+        "applies_to": raw.get("applies_to"),
+        "current_risk_pct": current_pct,
+        "suggested_risk_pct": suggested_pct,
+        "blocked": bool(raw.get("blocked", False)),
+        "blockers": list(raw.get("blockers") or []),
+        "rationale": raw.get("rationale"),
+        "source": "coin_scan.suggested_risk",
+    }
+
+
 def _operational_hints(
     *,
     preferred_execution: str,
@@ -383,6 +418,7 @@ class HermesNaveIntegration:
                             "coins": {"type": "string", "default": "BTC ETH"},
                             "account_equity": {"type": "number", "default": 10000.0},
                             "risk_pct": {"type": "number", "default": 0.005},
+                            "apply_cadence_policy": {"type": "boolean", "default": True},
                             "include_options": {"type": "boolean", "default": True},
                             "options_source": {"type": "string", "default": "deribit"},
                         },
@@ -418,7 +454,9 @@ class HermesNaveIntegration:
                         "Size a position from a theory_v2_scan fired signal. Takes the "
                         "coin's scan entry (as returned by theory_v2_scan) plus capital "
                         "and leverage, and returns notional, coin quantity, risk in USD, "
-                        "reward at ZC1/ZC2, and a human-readable order summary."
+                        "reward at ZC1/ZC2, and a human-readable order summary. If the "
+                        "scan includes suggested_risk, Hermes returns it as advisory "
+                        "context without changing caller-requested sizing."
                     ),
                     "input_schema": {
                         "type": "object",
@@ -1182,6 +1220,7 @@ class HermesNaveIntegration:
         coins: str = "BTC ETH",
         account_equity: float = 10_000.0,
         risk_pct: float = 0.005,
+        apply_cadence_policy: bool = True,
         include_options: bool = True,
         options_source: str = "deribit",
     ) -> dict[str, Any]:
@@ -1193,6 +1232,7 @@ class HermesNaveIntegration:
             coin_list,
             account_equity=account_equity,
             risk_pct=risk_pct,
+            apply_cadence_policy=apply_cadence_policy,
             include_options=include_options,
             options_source=options_source,
         )
@@ -1413,6 +1453,7 @@ class HermesNaveIntegration:
             raise HermesIntegrationError(
                 "stop_loss must differ from entry_price")
 
+        risk_advisory = _extract_suggested_risk(coin_scan)
         risk_usd = capital_usd * risk_pct
         coin_qty = risk_usd / stop_distance  # size so loss at stop = risk_usd
         notional_usd = coin_qty * entry
@@ -1443,6 +1484,34 @@ class HermesNaveIntegration:
             f"  Leverage  : {leverage:.1f}x → margin ${margin_required_usd:,.2f}"
         )
 
+        safety: dict[str, Any] = {
+            "default_dry_run": True,
+            "suggested_mcp_call": {
+                "tool": "open_position",
+                "arguments": {
+                    "coin": coin,
+                    "side": direction,
+                    "size_usd": round(notional_usd, 2),
+                    "dry_run": True,
+                },
+            },
+        }
+        if risk_advisory is not None:
+            suggested_pct = risk_advisory["suggested_risk_pct"]
+            advisory_risk_usd = capital_usd * suggested_pct
+            advisory_qty = advisory_risk_usd / stop_distance
+            advisory_notional = advisory_qty * entry
+            risk_advisory.update(
+                {
+                    "sizing_unchanged": True,
+                    "caller_risk_pct": risk_pct,
+                    "advisory_risk_usd": round(advisory_risk_usd, 2),
+                    "advisory_coin_qty": round(advisory_qty, 8),
+                    "advisory_notional_usd": round(advisory_notional, 2),
+                }
+            )
+            safety["risk_advisory"] = risk_advisory
+
         return {
             "recommendation": "open_position",
             "direction": direction,
@@ -1466,18 +1535,7 @@ class HermesNaveIntegration:
                 "zc2_rr": round(rr_zc2, 3) if rr_zc2 is not None else None,
             },
             "order_summary": human,
-            "safety": {
-                "default_dry_run": True,
-                "suggested_mcp_call": {
-                    "tool": "open_position",
-                    "arguments": {
-                        "coin": coin,
-                        "side": direction,
-                        "size_usd": round(notional_usd, 2),
-                        "dry_run": True,
-                    },
-                },
-            },
+            "safety": safety,
         }
 
     def scan_history(

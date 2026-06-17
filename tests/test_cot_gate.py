@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
+import trading.crypto.cot.cot_gate as cot_gate_module
 from trading.crypto.cot_gate import (
-    compute_cot_state,
     contrarian_bias_from_state,
     evaluate_cot_permission,
+    load_cached_cot_history,
     load_cot_history_frame,
     parse_report_week,
     weekly_cot_filter,
@@ -24,6 +27,48 @@ def test_parse_report_week_standard():
     assert ts is not None
     assert ts.year == 2025
     assert ts.month == 4 and ts.day == 1
+
+
+def test_load_cot_history_frame_accepts_cached_report_date_shape():
+    frame = load_cot_history_frame(
+        [
+            {
+                "report_date_as_yyyy_mm_dd": "2026-06-09",
+                "noncomm_positions_long_all": 12_000,
+                "noncomm_positions_short_all": 7_500,
+            }
+        ]
+    )
+    assert len(frame) == 1
+    assert frame["report_date"].iloc[0] == pd.Timestamp("2026-06-09", tz="UTC")
+    assert frame["net_non_commercial"].iloc[0] == 4_500
+
+
+def test_load_cached_cot_history_refreshes_only_matching_path(tmp_path):
+    cot_gate_module._COT_HISTORY_CACHE.clear()
+    path_a = tmp_path / "a.json"
+    path_b = tmp_path / "b.json"
+    payload = {
+        "BTC|futures_and_options|micro=0": [
+            {
+                "report_date": "2026-06-09",
+                "noncomm_positions_long_all": 12_000,
+                "noncomm_positions_short_all": 7_500,
+            }
+        ]
+    }
+    path_a.write_text(json.dumps(payload), encoding="utf-8")
+    path_b.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert not load_cached_cot_history("BTC", cache_path=path_a).empty
+    assert not load_cached_cot_history("BTC", cache_path=path_b).empty
+    assert len(cot_gate_module._COT_HISTORY_CACHE) == 2
+
+    path_a.write_text(json.dumps(payload), encoding="utf-8")
+    path_a.touch()
+    assert not load_cached_cot_history("BTC", cache_path=path_a).empty
+
+    assert any(key[0] == str(path_b) for key in cot_gate_module._COT_HISTORY_CACHE)
 
 
 def test_filter_permissive_when_no_history():

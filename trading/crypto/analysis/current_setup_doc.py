@@ -76,7 +76,6 @@ def render_current_setup_markdown(
 ) -> str:
     """Build markdown for BTC/ETH from ``review_positions`` output."""
     generated = review.get("generated_at") or datetime.now(timezone.utc).isoformat()
-    coins = review.get("coins") or ["BTC", "ETH"]
     theory_by_coin = theory_by_coin or {}
 
     lines = [
@@ -155,6 +154,43 @@ def render_current_setup_markdown(
 
         lines.append("")
         lines.extend(_options_section(rec.get("options")))
+
+        secondary = rec.get("secondary_opportunities") or []
+        if secondary:
+            lines.append("")
+            lines.append("**Secondary opportunities**")
+            for opp in secondary:
+                lines.append(
+                    f"- `{opp.get('kind', '—')}` **{str(opp.get('direction', '—')).upper()}** "
+                    f"({float(opp.get('confidence') or 0):.0%}) — {opp.get('playbook', '—')}"
+                )
+                lines.append(f"  - Entry: {_fmt_zone(opp.get('entry_zone'))}")
+                if opp.get("invalidation") is not None:
+                    lines.append(f"  - Stop: {_fmt_price(opp['invalidation'])}")
+                if opp.get("size_fraction") is not None:
+                    lines.append(f"  - Size: {float(opp['size_fraction']):.0%} of base risk")
+                opp_targets = opp.get("targets") or []
+                if opp_targets:
+                    lines.append(
+                        f"  - Targets: {', '.join(_fmt_price(t) for t in opp_targets[:3])}"
+                    )
+                for blocker in (opp.get("blockers") or [])[:2]:
+                    lines.append(f"  - Blocker: {blocker}")
+
+        ctx = rec.get("market_context") or {}
+        if ctx.get("cot_percentile") is not None:
+            lines.append("")
+            lines.append("**Market context**")
+            lines.append(f"- COT percentile: P{ctx['cot_percentile']}")
+            metrics = ctx.get("regime_metrics") or {}
+            if metrics.get("drawdown_from_28d_high_pct") is not None:
+                lines.append(
+                    f"- Drawdown from 28d high: {metrics['drawdown_from_28d_high_pct']:.1f}%"
+                )
+            if metrics.get("bounce_from_14d_low_pct") is not None:
+                lines.append(
+                    f"- Bounce from 14d low: {metrics['bounce_from_14d_low_pct']:.1f}%"
+                )
 
         theory = theory_by_coin.get(coin)
         if theory is not None:

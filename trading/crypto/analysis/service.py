@@ -25,6 +25,7 @@ class CryptoAnalysisService:
         include_options: bool = True,
         options_days_to_exp: int = 30,
         options_source: str = "deribit",
+        apply_cadence_policy: bool = True,
     ) -> dict[str, Any]:
         if isinstance(coins, str):
             coin_list = [part.strip().upper() for part in coins.replace(",", " ").split() if part.strip()]
@@ -39,6 +40,7 @@ class CryptoAnalysisService:
             include_options=include_options,
             options_days_to_exp=options_days_to_exp,
             options_source=options_source,
+            apply_cadence_policy=apply_cadence_policy,
         )
 
     def scan(

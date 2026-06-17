@@ -14,7 +14,6 @@ from trading.crypto.momentum import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService
 from trading.crypto.analysis import CryptoAnalysisService
 from trading.crypto.analysis.daily_display import render_daily_entry_check, run_daily_entry_check
-from trading.crypto.analysis.review import format_options_display
 
 crypto_app = ProfessionalTyper(help="Crypto BTC/ETH — use [bold]nave daily[/bold] for entry checks")
 DEFAULT_SCORE_THRESHOLD = load_momentum_config().score_tradeable_threshold
@@ -315,6 +314,11 @@ def crypto_daily(
     risk_pct: float = typer.Option(0.005, "--risk-pct"),
     include_options: bool = typer.Option(True, "--options/--no-options"),
     options_source: str = typer.Option("deribit", "--options-source"),
+    adaptive_threshold: bool = typer.Option(
+        True,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold in the daily review.",
+    ),
     json_out: bool = typer.Option(False, "--json"),
 ) -> None:
     """Same as [bold]nave daily[/bold] — when to enter BTC/ETH today."""
@@ -325,6 +329,7 @@ def crypto_daily(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=_json_default))
@@ -339,6 +344,11 @@ def position_review(
     risk_pct: float = typer.Option(0.005, "--risk-pct"),
     include_options: bool = typer.Option(True, "--options/--no-options"),
     options_source: str = typer.Option("deribit", "--options-source"),
+    adaptive_threshold: bool = typer.Option(
+        True,
+        "--adaptive-threshold/--no-adaptive-threshold",
+        help="Apply the cadence-recommended threshold in the position review.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Unified BTC/ETH: COT + momentum + regime + options."""
@@ -349,6 +359,7 @@ def position_review(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=adaptive_threshold,
     )
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=_json_default))

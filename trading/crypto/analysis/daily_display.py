@@ -29,10 +29,23 @@ def _format_zone(zone: list[float] | None) -> str:
     return f"{zone[0]:,.0f} – {zone[1]:,.0f}"
 
 
+def _format_risk_hint(rec: dict[str, Any]) -> str:
+    hint = rec.get("suggested_risk") or {}
+    if not hint:
+        return "—"
+    current = float(hint.get("current_risk_pct") or 0.0)
+    suggested = float(hint.get("suggested_risk_pct") or current)
+    label = f"{suggested * 100:.2f}%"
+    if hint.get("blocked"):
+        return f"{current * 100:.2f}% blocked"
+    if suggested > current:
+        return f"{label}*"
+    return label
+
+
 def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None = None) -> None:
     """Human-first daily view: when to enter BTC/ETH."""
     out = console or Console()
-    summary = payload.get("summary") or {}
     recs = payload.get("recommendations") or []
     generated = payload.get("generated_at", "")[:19].replace("T", " ")
 
@@ -73,6 +86,7 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
     table.add_column("Entry zone", justify="right")
     table.add_column("Stop", justify="right")
     table.add_column("Score", justify="right")
+    table.add_column("Risk", justify="right")
     table.add_column("Options")
 
     for rec in recs:
@@ -86,6 +100,7 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
             _format_zone(rec.get("entry_zone")),
             f"{rec['invalidation']:,.2f}" if rec.get("invalidation") else "—",
             str(rec.get("momentum_score") or "—"),
+            _format_risk_hint(rec),
             format_options_display(rec.get("options")) or "—",
         )
     out.print(table)
@@ -102,6 +117,19 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
         targets = rec.get("targets") or []
         if targets:
             out.print(f"  targets: {' / '.join(f'{t:,.0f}' for t in targets[:3])}")
+        risk_hint = rec.get("suggested_risk") or {}
+        if risk_hint and risk_hint.get("blocked"):
+            blockers = risk_hint.get("blockers") or []
+            reason = f": {', '.join(str(item) for item in blockers[:2])}" if blockers else ""
+            out.print(f"  risk hint blocked{reason}")
+        elif risk_hint:
+            current = float(risk_hint.get("current_risk_pct") or 0.0)
+            suggested = float(risk_hint.get("suggested_risk_pct") or current)
+            if suggested > current:
+                out.print(
+                    f"  risk hint: {suggested * 100:.2f}% "
+                    f"([dim]advisory, primary ENTER only[/dim])"
+                )
         thesis = rec.get("thesis") or {}
         if thesis.get("thesis_state") == "active":
             out.print(
@@ -109,8 +137,43 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
                 f"({thesis.get('thesis_phase', '')})"
             )
 
+    secondary_rows = [
+        (rec, opp)
+        for rec in recs
+        for opp in (rec.get("secondary_opportunities") or [])
+    ]
+    if secondary_rows:
+        out.print("\n[bold yellow]Secondary opportunities[/bold yellow] [dim](notrend / fade / forming)[/dim]")
+        sec_table = Table(show_header=True, header_style="bold", show_lines=False)
+        sec_table.add_column("Coin")
+        sec_table.add_column("Kind")
+        sec_table.add_column("Side")
+        sec_table.add_column("Conf", justify="right")
+        sec_table.add_column("Entry zone", justify="right")
+        sec_table.add_column("Stop", justify="right")
+        for rec, opp in secondary_rows:
+            sec_table.add_row(
+                rec.get("coin", "?"),
+                opp.get("kind", "—"),
+                opp.get("direction", "—"),
+                f"{float(opp.get('confidence') or 0):.0%}",
+                _format_zone(opp.get("entry_zone")),
+                f"{opp['invalidation']:,.2f}" if opp.get("invalidation") else "—",
+            )
+        out.print(sec_table)
+        for rec, opp in secondary_rows[:4]:
+            out.print(
+                f"  [yellow]{rec['coin']}[/yellow] {opp.get('kind')}: {opp.get('playbook', '')[:100]}"
+            )
+
     if aside and not enters and not watches:
-        out.print("\n[dim]Both coins are stand-aside — no COT+momentum entry today.[/dim]")
+        if secondary_rows:
+            out.print(
+                "\n[dim]Primary stack: stand aside — see secondary lanes above for "
+                "relief-rally fades and notrend scalps.[/dim]"
+            )
+        else:
+            out.print("\n[dim]Both coins are stand-aside — no COT+momentum entry today.[/dim]")
 
     out.print(
         "\n[dim]Stack: COT → regime → momentum 4H/1H → perp (primary). "
@@ -126,6 +189,7 @@ def run_daily_entry_check(
     risk_pct: float = 0.005,
     include_options: bool = True,
     options_source: str = "deribit",
+    apply_cadence_policy: bool = True,
 ) -> dict[str, Any]:
     from trading.crypto.analysis import CryptoAnalysisService
 
@@ -135,6 +199,7 @@ def run_daily_entry_check(
         risk_pct=risk_pct,
         include_options=include_options,
         options_source=options_source,
+        apply_cadence_policy=apply_cadence_policy,
     )
     payload["check_type"] = "daily_entry"
     payload["checked_at"] = datetime.now(timezone.utc).isoformat()

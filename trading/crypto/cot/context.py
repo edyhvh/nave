@@ -18,9 +18,10 @@ OverlayMode = Literal["live", "historical"]
 
 
 def cot_history_for_coin(coin: str) -> pd.DataFrame:
-    if coin in {"BTC", "ETH"}:
-        return load_cached_cot_history("BTC")
-    return load_cached_cot_history(coin)
+    normalized = coin.upper().replace("USDT", "")
+    if normalized in {"BTC", "ETH"}:
+        return load_cached_cot_history(normalized)
+    return load_cached_cot_history(normalized)
 
 
 def fetch_cot_biases(*, cot_data: dict[str, Any] | None = None) -> dict[str, COTBias]:

@@ -1,0 +1,380 @@
+{
+  "source_artifacts": [
+    "docs/analysis/raw/momentum_backtest_2022-bear_sampled6_20260616T185325Z.json",
+    "docs/analysis/raw/momentum_backtest_2023-recovery_sampled6_20260616T185325Z.json",
+    "docs/analysis/raw/momentum_backtest_2024-ETF-approval_sampled6_20260616T185325Z.json",
+    "docs/analysis/raw/momentum_backtest_2024-2025-bull_sampled6_20260616T185325Z.json"
+  ],
+  "trade_count": 13,
+  "base_risk_pct": 0.005,
+  "policies": {
+    "flat_0_5pct": {
+      "metrics": {
+        "trades": 13,
+        "win_rate": 0.7692,
+        "avg_weighted_r": 1.7838,
+        "total_weighted_r": 23.19,
+        "max_dd_weighted_r": 1.0,
+        "return_pct": 0.1159,
+        "max_dd_pct": 0.005,
+        "delta_return_pct_vs_flat": 0.0,
+        "delta_max_dd_pct_vs_flat": 0.0
+      },
+      "average_risk_pct": 0.005,
+      "by_score_band": {
+        "90-94": {
+          "trades": 2,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.022,
+          "total_weighted_r": 6.044,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0302,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 11,
+          "win_rate": 0.7273,
+          "avg_weighted_r": 1.5587,
+          "total_weighted_r": 17.146,
+          "max_dd_weighted_r": 1.044,
+          "return_pct": 0.0857,
+          "max_dd_pct": 0.0052
+        }
+      },
+      "by_period": {
+        "2022-bear": {
+          "trades": 3,
+          "win_rate": 0.6667,
+          "avg_weighted_r": 1.921,
+          "total_weighted_r": 5.763,
+          "max_dd_weighted_r": 1.0,
+          "return_pct": 0.0288,
+          "max_dd_pct": 0.005
+        },
+        "2023-recovery": {
+          "trades": 4,
+          "win_rate": 0.75,
+          "avg_weighted_r": 2.3062,
+          "total_weighted_r": 9.225,
+          "max_dd_weighted_r": 0.044,
+          "return_pct": 0.0461,
+          "max_dd_pct": 0.0002
+        },
+        "2024-2025-bull": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 1.3424,
+          "total_weighted_r": 6.712,
+          "max_dd_weighted_r": 1.0,
+          "return_pct": 0.0336,
+          "max_dd_pct": 0.005
+        },
+        "2024-ETF-approval": {
+          "trades": 1,
+          "win_rate": 1.0,
+          "avg_weighted_r": 1.49,
+          "total_weighted_r": 1.49,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0075,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 8,
+          "win_rate": 0.75,
+          "avg_weighted_r": 1.3768,
+          "total_weighted_r": 11.014,
+          "max_dd_weighted_r": 1.0,
+          "return_pct": 0.0551,
+          "max_dd_pct": 0.005
+        },
+        "ETHUSDT": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 2.4352,
+          "total_weighted_r": 12.176,
+          "max_dd_weighted_r": 0.044,
+          "return_pct": 0.0609,
+          "max_dd_pct": 0.0002
+        }
+      }
+    },
+    "proposed_90plus_0_75pct": {
+      "metrics": {
+        "trades": 13,
+        "win_rate": 0.7692,
+        "avg_weighted_r": 2.6758,
+        "total_weighted_r": 34.785,
+        "max_dd_weighted_r": 1.5,
+        "return_pct": 0.1739,
+        "max_dd_pct": 0.0075,
+        "delta_return_pct_vs_flat": 0.058,
+        "delta_max_dd_pct_vs_flat": 0.0025
+      },
+      "average_risk_pct": 0.0075,
+      "by_score_band": {
+        "90-94": {
+          "trades": 2,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.533,
+          "total_weighted_r": 9.066,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0453,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 11,
+          "win_rate": 0.7273,
+          "avg_weighted_r": 2.3381,
+          "total_weighted_r": 25.719,
+          "max_dd_weighted_r": 1.566,
+          "return_pct": 0.1286,
+          "max_dd_pct": 0.0078
+        }
+      },
+      "by_period": {
+        "2022-bear": {
+          "trades": 3,
+          "win_rate": 0.6667,
+          "avg_weighted_r": 2.8815,
+          "total_weighted_r": 8.6445,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0432,
+          "max_dd_pct": 0.0075
+        },
+        "2023-recovery": {
+          "trades": 4,
+          "win_rate": 0.75,
+          "avg_weighted_r": 3.4594,
+          "total_weighted_r": 13.8375,
+          "max_dd_weighted_r": 0.066,
+          "return_pct": 0.0692,
+          "max_dd_pct": 0.0003
+        },
+        "2024-2025-bull": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 2.0136,
+          "total_weighted_r": 10.068,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0503,
+          "max_dd_pct": 0.0075
+        },
+        "2024-ETF-approval": {
+          "trades": 1,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.235,
+          "total_weighted_r": 2.235,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0112,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 8,
+          "win_rate": 0.75,
+          "avg_weighted_r": 2.0651,
+          "total_weighted_r": 16.521,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0826,
+          "max_dd_pct": 0.0075
+        },
+        "ETHUSDT": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 3.6528,
+          "total_weighted_r": 18.264,
+          "max_dd_weighted_r": 0.066,
+          "return_pct": 0.0913,
+          "max_dd_pct": 0.0003
+        }
+      }
+    },
+    "conservative_95plus_0_75pct": {
+      "metrics": {
+        "trades": 13,
+        "win_rate": 0.7692,
+        "avg_weighted_r": 2.5595,
+        "total_weighted_r": 33.274,
+        "max_dd_weighted_r": 1.5,
+        "return_pct": 0.1664,
+        "max_dd_pct": 0.0075,
+        "delta_return_pct_vs_flat": 0.0505,
+        "delta_max_dd_pct_vs_flat": 0.0025
+      },
+      "average_risk_pct": 0.007308,
+      "by_score_band": {
+        "90-94": {
+          "trades": 2,
+          "win_rate": 1.0,
+          "avg_weighted_r": 3.7775,
+          "total_weighted_r": 7.555,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0378,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 11,
+          "win_rate": 0.7273,
+          "avg_weighted_r": 2.3381,
+          "total_weighted_r": 25.719,
+          "max_dd_weighted_r": 1.566,
+          "return_pct": 0.1286,
+          "max_dd_pct": 0.0078
+        }
+      },
+      "by_period": {
+        "2022-bear": {
+          "trades": 3,
+          "win_rate": 0.6667,
+          "avg_weighted_r": 2.8815,
+          "total_weighted_r": 8.6445,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0432,
+          "max_dd_pct": 0.0075
+        },
+        "2023-recovery": {
+          "trades": 4,
+          "win_rate": 0.75,
+          "avg_weighted_r": 3.2669,
+          "total_weighted_r": 13.0675,
+          "max_dd_weighted_r": 0.066,
+          "return_pct": 0.0653,
+          "max_dd_pct": 0.0003
+        },
+        "2024-2025-bull": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 1.8654,
+          "total_weighted_r": 9.327,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0466,
+          "max_dd_pct": 0.0075
+        },
+        "2024-ETF-approval": {
+          "trades": 1,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.235,
+          "total_weighted_r": 2.235,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0112,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 8,
+          "win_rate": 0.75,
+          "avg_weighted_r": 1.9725,
+          "total_weighted_r": 15.78,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0789,
+          "max_dd_pct": 0.0075
+        },
+        "ETHUSDT": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 3.4988,
+          "total_weighted_r": 17.494,
+          "max_dd_weighted_r": 0.066,
+          "return_pct": 0.0875,
+          "max_dd_pct": 0.0003
+        }
+      }
+    },
+    "quality_gate_90plus_only": {
+      "metrics": {
+        "trades": 13,
+        "win_rate": 0.7692,
+        "avg_weighted_r": 2.6758,
+        "total_weighted_r": 34.785,
+        "max_dd_weighted_r": 1.5,
+        "return_pct": 0.1739,
+        "max_dd_pct": 0.0075,
+        "delta_return_pct_vs_flat": 0.058,
+        "delta_max_dd_pct_vs_flat": 0.0025
+      },
+      "average_risk_pct": 0.0075,
+      "by_score_band": {
+        "90-94": {
+          "trades": 2,
+          "win_rate": 1.0,
+          "avg_weighted_r": 4.533,
+          "total_weighted_r": 9.066,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0453,
+          "max_dd_pct": 0.0
+        },
+        "95-100": {
+          "trades": 11,
+          "win_rate": 0.7273,
+          "avg_weighted_r": 2.3381,
+          "total_weighted_r": 25.719,
+          "max_dd_weighted_r": 1.566,
+          "return_pct": 0.1286,
+          "max_dd_pct": 0.0078
+        }
+      },
+      "by_period": {
+        "2022-bear": {
+          "trades": 3,
+          "win_rate": 0.6667,
+          "avg_weighted_r": 2.8815,
+          "total_weighted_r": 8.6445,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0432,
+          "max_dd_pct": 0.0075
+        },
+        "2023-recovery": {
+          "trades": 4,
+          "win_rate": 0.75,
+          "avg_weighted_r": 3.4594,
+          "total_weighted_r": 13.8375,
+          "max_dd_weighted_r": 0.066,
+          "return_pct": 0.0692,
+          "max_dd_pct": 0.0003
+        },
+        "2024-2025-bull": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 2.0136,
+          "total_weighted_r": 10.068,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0503,
+          "max_dd_pct": 0.0075
+        },
+        "2024-ETF-approval": {
+          "trades": 1,
+          "win_rate": 1.0,
+          "avg_weighted_r": 2.235,
+          "total_weighted_r": 2.235,
+          "max_dd_weighted_r": 0.0,
+          "return_pct": 0.0112,
+          "max_dd_pct": 0.0
+        }
+      },
+      "by_symbol": {
+        "BTCUSDT": {
+          "trades": 8,
+          "win_rate": 0.75,
+          "avg_weighted_r": 2.0651,
+          "total_weighted_r": 16.521,
+          "max_dd_weighted_r": 1.5,
+          "return_pct": 0.0826,
+          "max_dd_pct": 0.0075
+        },
+        "ETHUSDT": {
+          "trades": 5,
+          "win_rate": 0.8,
+          "avg_weighted_r": 3.6528,
+          "total_weighted_r": 18.264,
+          "max_dd_weighted_r": 0.066,
+          "return_pct": 0.0913,
+          "max_dd_pct": 0.0003
+        }
+      }
+    }
+  }
+}

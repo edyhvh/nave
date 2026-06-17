@@ -141,6 +141,52 @@ def test_crypto_scan_can_apply_adaptive_threshold(monkeypatch) -> None:
     assert decoded["summary"]["cadence_policy_applied"] is True
 
 
+def test_crypto_position_review_can_disable_adaptive_threshold(monkeypatch) -> None:
+    captured: dict[str, bool] = {}
+
+    from trading.crypto.analysis.service import CryptoAnalysisService
+
+    def fake_review(self, coins, **kwargs):
+        captured["apply_cadence_policy"] = kwargs["apply_cadence_policy"]
+        return {
+            "generated_at": "2026-06-16T00:00:00+00:00",
+            "summary": {},
+            "recommendations": [],
+        }
+
+    monkeypatch.setattr(CryptoAnalysisService, "review", fake_review)
+    result = runner.invoke(
+        app,
+        ["crypto", "position-review", "--no-adaptive-threshold", "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["apply_cadence_policy"] is False
+
+
+def test_crypto_daily_can_disable_adaptive_threshold(monkeypatch) -> None:
+    captured: dict[str, bool] = {}
+
+    import cli.commands.crypto as crypto_commands
+
+    def fake_daily(coins, **kwargs):
+        captured["apply_cadence_policy"] = kwargs["apply_cadence_policy"]
+        return {
+            "generated_at": "2026-06-16T00:00:00+00:00",
+            "summary": {},
+            "recommendations": [],
+        }
+
+    monkeypatch.setattr(crypto_commands, "run_daily_entry_check", fake_daily)
+    result = runner.invoke(
+        app,
+        ["crypto", "daily", "--no-adaptive-threshold", "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["apply_cadence_policy"] is False
+
+
 def test_crypto_momentum_scan_telegram_preview(monkeypatch) -> None:
     payload = {
         "strategy": "derivatives_momentum_v1",

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+import pandas as pd
+
 from trading.crypto.analysis.constants import (
     BEARISH_REGIME_PHASES,
     BULLISH_REGIME_PHASES,
@@ -14,6 +16,7 @@ from trading.crypto.analysis.constants import (
     REGIME_OPTIONS_WITHOUT_TRADEABLE,
 )
 from trading.crypto.analysis.options_bridge import summarize_options_opportunity
+from trading.crypto.analysis.opportunities import detect_secondary_opportunities
 from trading.crypto.analysis.regime import RegimeAssessment, assess_regime
 from trading.crypto.analysis.regime_config import load_regime_config
 from trading.crypto.analysis.regime_thesis import (
@@ -21,7 +24,8 @@ from trading.crypto.analysis.regime_thesis import (
     apply_thesis_to_recommendation,
     reconcile_regime_thesis,
 )
-from trading.crypto.cot.context import cot_side_from_bias, fetch_cot_biases
+from trading.crypto.cot.context import cot_history_for_coin, cot_side_from_bias, fetch_cot_biases
+from trading.crypto.momentum.config import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService, MomentumTimeframes
 from trading.crypto.theory_v2 import build_signals_for_coins
 
@@ -45,6 +49,7 @@ class PositionRecommendation:
     playbook: str | None = None
     options_summary: dict[str, Any] | None = None
     instruments: list[str] | None = None
+    suggested_risk: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -67,6 +72,8 @@ class PositionRecommendation:
         }
         if self.options_summary is not None:
             out["options"] = self.options_summary
+        if self.suggested_risk is not None:
+            out["suggested_risk"] = self.suggested_risk
         return out
 
 
@@ -151,6 +158,76 @@ def _instruments_for(
     return out
 
 
+def _cot_history_quality(coin: str, *, now: datetime | None = None) -> dict[str, Any]:
+    history = cot_history_for_coin(coin)
+    rows = len(history)
+    latest = None
+    age_days = None
+    stale = True
+    if not history.empty:
+        latest_ts = pd.Timestamp(history["report_date"].max())
+        latest_ts = latest_ts.tz_localize("UTC") if latest_ts.tzinfo is None else latest_ts.tz_convert("UTC")
+        latest = latest_ts.isoformat()
+        now_ts = pd.Timestamp(now or datetime.now(timezone.utc))
+        now_ts = now_ts.tz_localize("UTC") if now_ts.tzinfo is None else now_ts.tz_convert("UTC")
+        age_days = int((now_ts - latest_ts).days)
+        stale = age_days > 21
+    return {
+        "rows": rows,
+        "latest_report_date": latest,
+        "age_days": age_days,
+        "stale": stale,
+        "minimum_rows": 12,
+    }
+
+
+def _primary_conviction_risk_hint(
+    *,
+    coin: str,
+    action: str,
+    primary_source: str,
+    best: dict[str, Any] | None,
+    current_risk_pct: float,
+) -> dict[str, Any] | None:
+    """Advisory-only risk suggestion for primary ENTER recommendations."""
+    if action != "enter" or not best or not best.get("tradeable"):
+        return None
+    if "momentum" not in primary_source:
+        return None
+
+    score = int(best.get("confidence_score", 0) or 0)
+    if score < 90:
+        return None
+
+    cfg = load_momentum_config()
+    quality = _cot_history_quality(coin)
+    blockers: list[str] = []
+    if quality["rows"] < quality["minimum_rows"]:
+        blockers.append("COT history below minimum depth")
+    if quality["stale"]:
+        blockers.append("COT history is stale")
+
+    base = min(max(current_risk_pct, cfg.risk.min_risk_pct), cfg.risk.max_risk_pct)
+    suggested = base
+    suggested = min(0.0075, cfg.risk.max_risk_pct)
+    rationale = "score >= 90 primary momentum entry"
+
+    if blockers:
+        suggested = base
+
+    return {
+        "mode": "advisory",
+        "applies_to": "primary_enter_only",
+        "current_risk_pct": round(base, 6),
+        "suggested_risk_pct": round(suggested, 6),
+        "score": score,
+        "rationale": rationale,
+        "blocked": bool(blockers),
+        "blockers": blockers,
+        "cot_history": quality,
+    }
+
+
 def _scan_options_for_coin(
     coin: str,
     *,
@@ -230,6 +307,7 @@ def review_positions(
     include_options: bool = True,
     options_days_to_exp: int = 30,
     options_source: str = "deribit",
+    apply_cadence_policy: bool = True,
 ) -> dict[str, Any]:
     """Canonical BTC/ETH analysis: enter / watch / stand_aside per coin."""
     coin_list = [coin.upper() for coin in coins]
@@ -242,6 +320,7 @@ def review_positions(
         timeframes=tf,
         account_equity=account_equity,
         risk_pct=risk_pct,
+        apply_cadence_policy=apply_cadence_policy,
     )
 
     cot_biases = fetch_cot_biases()
@@ -399,6 +478,26 @@ def review_positions(
             store=thesis_store,
             max_age_hours=regime_cfg.thesis_max_age_hours,
         )
+        secondary = detect_secondary_opportunities(
+            daily=frames["daily"],
+            setup=frames["setup"],
+            cot_bias=cot_bias,
+            regime=regime,
+            plans=all_plans,
+            primary_action=action,
+        )
+
+        # Primary WATCH from regime often lacks stop/targets; backfill from the
+        # matching secondary lane, then drop redundant rows from the table.
+        if action == "watch" and secondary:
+            backfill = next((o for o in secondary if o.get("kind") == regime.phase), None)
+            if backfill:
+                if invalidation is None and backfill.get("invalidation") is not None:
+                    invalidation = backfill["invalidation"]
+                if not targets and backfill.get("targets"):
+                    targets = list(backfill["targets"])
+                secondary = [o for o in secondary if o.get("kind") != regime.phase]
+
         rec_dict = PositionRecommendation(
             coin=coin,
             direction=direction,
@@ -417,7 +516,19 @@ def review_positions(
             playbook=regime.playbook,
             options_summary=options_summary,
             instruments=instruments,
+            suggested_risk=_primary_conviction_risk_hint(
+                coin=coin,
+                action=action,
+                primary_source=primary_source,
+                best=best,
+                current_risk_pct=risk_pct,
+            ),
         ).to_dict()
+        rec_dict["secondary_opportunities"] = secondary
+        rec_dict["market_context"] = {
+            "cot_percentile": int(cot_bias.historical_percentile) if cot_bias else None,
+            "regime_metrics": regime.metrics,
+        }
         recommendations.append(apply_thesis_to_recommendation(rec_dict, thesis_overlay))
 
     per_coin_momentum = {
