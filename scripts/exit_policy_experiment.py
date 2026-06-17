@@ -110,7 +110,6 @@ def simulate_policy(
     for _, row in horizon.iterrows():
         low = float(row["low"])
         high = float(row["high"])
-        close = float(row["close"])
 
         # 1) stop check first (conservative)
         if hit_stop(low, high):

@@ -46,7 +46,6 @@ def _format_risk_hint(rec: dict[str, Any]) -> str:
 def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None = None) -> None:
     """Human-first daily view: when to enter BTC/ETH."""
     out = console or Console()
-    summary = payload.get("summary") or {}
     recs = payload.get("recommendations") or []
     generated = payload.get("generated_at", "")[:19].replace("T", " ")
 

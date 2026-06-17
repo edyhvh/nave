@@ -8,7 +8,6 @@ import pandas as pd
 
 import trading.crypto.cot.cot_gate as cot_gate_module
 from trading.crypto.cot_gate import (
-    compute_cot_state,
     contrarian_bias_from_state,
     evaluate_cot_permission,
     load_cached_cot_history,

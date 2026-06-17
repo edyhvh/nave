@@ -14,7 +14,6 @@ from trading.crypto.momentum import load_momentum_config
 from trading.crypto.momentum.service import MomentumMarketService
 from trading.crypto.analysis import CryptoAnalysisService
 from trading.crypto.analysis.daily_display import render_daily_entry_check, run_daily_entry_check
-from trading.crypto.analysis.review import format_options_display
 
 crypto_app = ProfessionalTyper(help="Crypto BTC/ETH — use [bold]nave daily[/bold] for entry checks")
 DEFAULT_SCORE_THRESHOLD = load_momentum_config().score_tradeable_threshold

@@ -76,7 +76,6 @@ def render_current_setup_markdown(
 ) -> str:
     """Build markdown for BTC/ETH from ``review_positions`` output."""
     generated = review.get("generated_at") or datetime.now(timezone.utc).isoformat()
-    coins = review.get("coins") or ["BTC", "ETH"]
     theory_by_coin = theory_by_coin or {}
 
     lines = [

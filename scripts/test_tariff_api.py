@@ -6,7 +6,6 @@ Test script to verify US Treasury Tariff Revenue API
 import urllib.request
 import urllib.parse
 import json
-from datetime import datetime, timedelta
 
 import pytest
 
@@ -30,13 +29,15 @@ def _run_tariff_api_check() -> tuple[bool, str | None]:
     print("🔍 Testing US Treasury Tariff Revenue API")
     print("=" * 60)
 
-    # URL provided by user
-    api_url = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/daily_treasury_statement"
+    api_url = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/mts/mts_table_9"
 
     # Test parameters
     params = {
-        'filter': 'record_date:gte:2025-10-01',
-        'fields': 'record_date,customs_duties',
+        'filter': 'record_date:gte:2025-01-01,line_code_nbr:eq:100',
+        'fields': (
+            'record_date,classification_desc,current_month_rcpt_outly_amt,'
+            'current_fytd_rcpt_outly_amt,line_code_nbr'
+        ),
         'format': 'json',
         'page[size]': 10,  # Limit to avoid too much data
         'sort': '-record_date'  # Most recent first
@@ -55,7 +56,7 @@ def _run_tariff_api_check() -> tuple[bool, str | None]:
 
             if response.getcode() == 200:
                 data = json.loads(response.read().decode())
-                print(f"✅ API call successful!")
+                print("✅ API call successful!")
 
                 # Check if we got data
                 if 'data' in data and data['data']:
@@ -65,16 +66,16 @@ def _run_tariff_api_check() -> tuple[bool, str | None]:
                     print("\n📋 Sample records:")
                     for i, record in enumerate(data['data'][:3]):  # Show first 3
                         record_date = record.get('record_date', 'N/A')
-                        customs_duties = record.get('customs_duties', 'N/A')
+                        customs_duties = record.get('current_month_rcpt_outly_amt', 'N/A')
                         print(
                             f"  {i+1}. Date: {record_date}, Customs Duties: {customs_duties}")
 
                     # Calculate totals if available
                     valid_records = [r for r in data['data']
-                                     if r.get('customs_duties')]
+                                     if r.get('current_month_rcpt_outly_amt')]
                     if valid_records:
-                        total = sum(float(r['customs_duties'])
-                                    for r in valid_records if r['customs_duties'])
+                        total = sum(float(r['current_month_rcpt_outly_amt'])
+                                    for r in valid_records if r['current_month_rcpt_outly_amt'])
                         print(
                             f"\n💰 Total customs duties in sample: ${total:,.0f}")
 
@@ -106,19 +107,18 @@ def _run_alternative_endpoints_check() -> tuple[bool, str | None]:
     print("\n🔄 Testing alternative API endpoints")
     print("=" * 60)
 
-    # Alternative: MTS Table 9 (Monthly Treasury Statement)
     mts_url = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/mts/mts_table_9"
 
     params = {
-        # Line 120 = customs duties
-        'filter': 'record_date:gte:2025-01-01,line_code_nbr:eq:120',
-        'fields': 'record_date,line_code_nbr,line_description,amount',
+        # Line 100 = Customs Duties in Monthly Treasury Statement table 9.
+        'filter': 'record_date:gte:2025-01-01,line_code_nbr:eq:100',
+        'fields': 'record_date,line_code_nbr,classification_desc,current_month_rcpt_outly_amt',
         'sort': '-record_date',
         'page[size]': 5
     }
 
     try:
-        print(f"📡 Testing MTS Table 9 endpoint...")
+        print("📡 Testing MTS Table 9 endpoint...")
         url_with_params = mts_url + '?' + urllib.parse.urlencode(params)
 
         with urllib.request.urlopen(url_with_params) as response:
@@ -129,7 +129,7 @@ def _run_alternative_endpoints_check() -> tuple[bool, str | None]:
                         f"✅ MTS endpoint works! Found {len(data['data'])} records")
                     for record in data['data'][:2]:
                         print(
-                            f"  Date: {record.get('record_date')}, Amount: {record.get('amount')}, Desc: {record.get('line_description')}")
+                            f"  Date: {record.get('record_date')}, Amount: {record.get('current_month_rcpt_outly_amt')}, Desc: {record.get('classification_desc')}")
                     return True, None
 
         print(f"⚠️  MTS endpoint status: {response.getcode()}")
