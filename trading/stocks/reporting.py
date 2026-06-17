@@ -15,7 +15,9 @@ from trading.stocks.data_provider import (
 from trading.stocks.ism_calendar import load_calendar
 from trading.stocks.ism_scraper import ISMReport, ISMReportFetcher
 from trading.stocks.ondo_universe import (
+    ONDO_STOCK_PERP_EXECUTION_STATUS,
     ONDO_STOCK_PERP_UNIVERSE,
+    ONDO_STOCK_PERP_UNIVERSE_SOURCE,
     ONDO_STOCK_PERP_VENUE,
     is_ondo_stock_perp,
 )
@@ -198,6 +200,8 @@ def build_ism_industry_report(
             ),
             "venue": ONDO_STOCK_PERP_VENUE,
             "ondo_universe_size": len(ONDO_STOCK_PERP_UNIVERSE),
+            "ondo_universe_source": ONDO_STOCK_PERP_UNIVERSE_SOURCE,
+            "ondo_execution_status": ONDO_STOCK_PERP_EXECUTION_STATUS,
             "ondo_tradeable_count": len(ondo_short_candidates),
             "non_ondo_short_count": len(non_ondo_short_candidates),
         },

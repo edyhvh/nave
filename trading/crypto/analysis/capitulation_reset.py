@@ -364,7 +364,9 @@ def assess_cot_early_trend_entry(
     h1_breakdown = _has_1h_breakdown(trigger, setup_level)
     trend_oi_expansion = oi_delta is not None and oi_delta > 0
     funding_not_hot = funding_rate is None or funding_rate <= max_hot_funding_rate
-    funding_short_supportive = funding_rate is None or funding_rate >= 0
+    funding_short_supportive = funding_rate is not None and funding_rate >= 0
+    funding_not_too_negative = funding_rate is None or funding_rate >= 0
+    short_derivative_confirmed = trend_oi_expansion or funding_short_supportive
 
     opportunities: list[CapitulationResetAssessment] = []
 
@@ -429,12 +431,18 @@ def assess_cot_early_trend_entry(
         short_blockers.append("No 4H lower-high / failed-reclaim structure")
     if not h1_breakdown:
         short_blockers.append("No 1H breakdown/retest trigger")
-    if not funding_short_supportive:
+    if not funding_not_too_negative:
         short_blockers.append("Funding is too negative; short may be crowded")
-    if not trend_oi_expansion and funding_rate is None:
+    if not short_derivative_confirmed:
         short_blockers.append("No OI/funding confirmation for short continuation")
 
-    if crowded_bearish and h4_lower_high and h1_breakdown and funding_short_supportive:
+    if (
+        crowded_bearish
+        and h4_lower_high
+        and h1_breakdown
+        and funding_not_too_negative
+        and short_derivative_confirmed
+    ):
         close_s = float(setup["close"].iloc[-1])
         recent_high = float(setup["high"].tail(min(len(setup), 12)).max())
         recent_low = float(setup["low"].tail(min(len(setup), 20)).min())

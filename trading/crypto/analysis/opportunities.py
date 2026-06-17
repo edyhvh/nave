@@ -320,13 +320,15 @@ def detect_secondary_opportunities(
     open_interest: pd.DataFrame | pd.Series | None = None,
     config: RegimeConfig | None = None,
 ) -> list[dict[str, Any]]:
-    """Return ranked secondary opportunities when primary action is not enter."""
-    if primary_action == "enter":
-        return []
+    """Return ranked secondary opportunities and COT risk-control lanes."""
 
     cfg = config or load_regime_config()
     cot_side = cot_side_from_bias(cot_bias)
     cot_conf = float(cot_bias.confidence) if cot_bias else 0.0
+    cot_pct = int(cot_bias.historical_percentile or 0) if cot_bias else 0
+    crowded_long_context = bool(
+        cot_bias and cot_bias.bias == "bearish" and cot_pct >= 85
+    )
     metrics = regime.metrics
 
     if daily.empty or setup.empty:
@@ -443,4 +445,6 @@ def detect_secondary_opportunities(
     }
     reset_rows = [o for o in ranked_dicts if o.get("kind") in reset_kinds]
     other_rows = [o for o in ranked_dicts if o.get("kind") not in reset_kinds]
+    if primary_action == "enter":
+        return reset_rows[: cfg.max_secondary_opportunities] if crowded_long_context else []
     return (reset_rows + other_rows)[: cfg.max_secondary_opportunities]

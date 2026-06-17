@@ -129,6 +129,8 @@ def test_ism_report_exposes_top_bad_industries_and_ondo_short_context() -> None:
     assert thesis["top_bad_sectors"][0]["sector"] == "Materials"
     assert thesis["ondo_tradeable_count"] == 1
     assert thesis["ondo_universe_size"] >= 50
+    assert thesis["ondo_universe_source"] == "research_proxy_default_universe"
+    assert thesis["ondo_execution_status"] == "proxy_not_live_manifest"
     short = payload["candidates"]["shorts"][0]
     assert short["side"] == "short"
     assert short["venue"] == "ondo_stock_perp"
@@ -142,6 +144,8 @@ def test_ism_report_exposes_top_bad_industries_and_ondo_short_context() -> None:
     assert short["stop"]["price"] is None
     assert short["holding_window_days"] == 28
     assert short["risk_pct"] == 0.01
+    assert "$0.00" not in short["size_guidance"]
+    assert "Research signal only" in short["size_guidance"]
     assert short["max_leverage"] == 1.0
     assert short["trade_plan"]["target"] == short["target"]
     assert payload["candidates"]["ondo_shorts"][0]["symbol"] == "NUE"

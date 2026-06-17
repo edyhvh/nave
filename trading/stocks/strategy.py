@@ -364,6 +364,17 @@ def build_ism_short_trade_plan(
         if rounded_entry is not None
         else None
     )
+    if allocation_usd > 0:
+        size_guidance = (
+            f"Cap notional near ${allocation_usd:,.2f}; keep account risk near "
+            f"{risk_pct:.1%} and do not exceed {max_leverage:.1f}x leverage."
+        )
+    else:
+        size_guidance = (
+            f"Research signal only until account equity is supplied; keep account risk near "
+            f"{risk_pct:.1%} and do not exceed {max_leverage:.1f}x leverage."
+        )
+
     return {
         "entry_rule": (
             f"Enter short {item.symbol} on the next Ondo stock-perp session after an ISM "
@@ -382,10 +393,7 @@ def build_ism_short_trade_plan(
         "holding_window_days": holding_window_days,
         "risk_pct": risk_pct,
         "max_leverage": max_leverage,
-        "size_guidance": (
-            f"Cap notional near ${allocation_usd:,.2f}; keep account risk near "
-            f"{risk_pct:.1%} and do not exceed {max_leverage:.1f}x leverage."
-        ),
+        "size_guidance": size_guidance,
     }
 
 

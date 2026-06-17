@@ -11,7 +11,12 @@ from typing import Any, Literal
 import pandas as pd
 
 from trading.stocks.ism_calendar import load_calendar
-from trading.stocks.ondo_universe import ONDO_STOCK_PERP_UNIVERSE, is_ondo_stock_perp
+from trading.stocks.ondo_universe import (
+    ONDO_STOCK_PERP_EXECUTION_STATUS,
+    ONDO_STOCK_PERP_UNIVERSE,
+    ONDO_STOCK_PERP_UNIVERSE_SOURCE,
+    is_ondo_stock_perp,
+)
 from trading.stocks.price_provider import PriceProviderLike, YFinancePriceProvider, price_on_or_before
 from trading.stocks.strategy import (
     DEFAULT_SHORT_HOLDING_WINDOW_DAYS,
@@ -45,6 +50,7 @@ class ShortBacktestTrade:
     risk_pct: float
     size_guidance: str
     max_leverage: float
+    exit_reason: str
 
     def to_dict(self) -> dict[str, Any]:
         out = {
@@ -72,6 +78,7 @@ class ShortBacktestTrade:
             "risk_pct": round(self.risk_pct, 4),
             "size_guidance": self.size_guidance,
             "max_leverage": round(self.max_leverage, 4),
+            "exit_reason": self.exit_reason,
         }
         out["trade_plan"] = {
             "entry_rule": self.entry_rule,
@@ -174,6 +181,15 @@ class ISMShortBacktester:
                     entry_price=entry_px,
                     holding_window_days=max((exit_date - entry_date).days, 1),
                 )
+                simulated_exit_date, simulated_exit_px, exit_reason = _simulate_short_exit(
+                    prices.get(symbol, pd.Series(dtype=float)),
+                    entry_date=entry_date,
+                    fallback_exit_date=exit_date,
+                    entry_price=entry_px,
+                    target_price=_optional_float(trade_plan["target"].get("price")),
+                    stop_price=_optional_float(trade_plan["stop"].get("price")),
+                )
+                return_pct = (entry_px - simulated_exit_px) / entry_px * 100.0
                 trades.append(
                     ShortBacktestTrade(
                         symbol=symbol,
@@ -181,9 +197,9 @@ class ISMShortBacktester:
                         kind=cycle["kind"],
                         covers_month=cycle["covers_month"],
                         entry_date=entry_date.isoformat(),
-                        exit_date=exit_date.isoformat(),
+                        exit_date=simulated_exit_date.isoformat(),
                         entry_price=entry_px,
-                        exit_price=exit_px,
+                        exit_price=simulated_exit_px,
                         return_pct=return_pct,
                         confidence=float(row.get("confidence") or 0.0),
                         score=float(row.get("score") or 0.0),
@@ -198,6 +214,7 @@ class ISMShortBacktester:
                         risk_pct=float(trade_plan["risk_pct"]),
                         size_guidance=str(trade_plan["size_guidance"]),
                         max_leverage=float(trade_plan["max_leverage"]),
+                        exit_reason=exit_reason,
                     )
                 )
 
@@ -395,6 +412,39 @@ def _priced_trade_plan(
     }
 
 
+def _simulate_short_exit(
+    prices: pd.Series,
+    *,
+    entry_date: date,
+    fallback_exit_date: date,
+    entry_price: float,
+    target_price: float | None,
+    stop_price: float | None,
+) -> tuple[date, float, str]:
+    if prices.empty:
+        return fallback_exit_date, entry_price, "missing_price_path"
+    series = prices.sort_index()
+    for ts, value in series.items():
+        row_date = _timestamp_to_date(ts)
+        if row_date < entry_date:
+            continue
+        if row_date > fallback_exit_date:
+            break
+        close = float(value)
+        if target_price is not None and close <= target_price:
+            return row_date, close, "target"
+        if stop_price is not None and close >= stop_price:
+            return row_date, close, "stop"
+    fallback_px = price_on_or_before(series, fallback_exit_date)
+    return fallback_exit_date, float(fallback_px or entry_price), "time_exit"
+
+
+def _timestamp_to_date(value: Any) -> date:
+    if hasattr(value, "date"):
+        return value.date()
+    return pd.Timestamp(value).date()
+
+
 def _size_guidance_or_default(value: Any, risk_pct: float) -> str:
     if isinstance(value, str) and value.strip() and "$0.00" not in value:
         return value
@@ -466,6 +516,8 @@ def _summarize(
             "research_mode": research_mode,
             "ondo_only": ondo_only,
             "ondo_universe_size": len(ONDO_STOCK_PERP_UNIVERSE),
+            "ondo_universe_source": ONDO_STOCK_PERP_UNIVERSE_SOURCE,
+            "ondo_execution_status": ONDO_STOCK_PERP_EXECUTION_STATUS,
         },
         "snapshots_used": [
             {"path": row["path"], "kind": row["kind"], "covers_month": row["covers_month"]}

@@ -77,6 +77,7 @@ def test_short_backtest_uses_fixture_snapshots_and_static_prices(tmp_path: Path)
     assert trade["risk_pct"] == 0.01
     assert trade["max_leverage"] == 1.0
     assert trade["trade_plan"]["entry_price"] == trade["entry_price"]
+    assert trade["exit_reason"] == "time_exit"
 
 
 def test_short_backtest_filters_non_ondo_when_enabled(tmp_path: Path) -> None:
@@ -105,6 +106,78 @@ def test_short_backtest_filters_non_ondo_when_enabled(tmp_path: Path) -> None:
         ondo_only=True,
     )
     assert payload["summary"]["trade_count"] == 0
+
+
+def test_short_backtest_exits_at_target_before_next_release(tmp_path: Path) -> None:
+    snapshot = {
+        "report_month": "March 2026",
+        "kind": "manufacturing",
+        "candidates": {
+            "shorts": [
+                {
+                    "symbol": "GIS",
+                    "side": "short",
+                    "sector": "Consumer Staples",
+                    "confidence": 0.9,
+                    "score": 0.2,
+                }
+            ]
+        },
+    }
+    (tmp_path / "ism_manufacturing_2026-03.json").write_text(json.dumps(snapshot))
+    (tmp_path / "ism_manufacturing_2026-04.json").write_text(
+        json.dumps({"report_month": "April 2026", "kind": "manufacturing", "candidates": {"shorts": []}})
+    )
+    prices = {"GIS": _price_series("2026-04-01", [100.0, 84.0, 82.0, 90.0])}
+
+    payload = ISMShortBacktester(price_provider=StaticPriceProvider(prices)).evaluate(
+        snapshot_dir=tmp_path,
+        kinds=["manufacturing"],
+        from_month="2026-03",
+        to_month="2026-04",
+        ondo_only=True,
+    )
+
+    trade = payload["trades"][0]
+    assert trade["exit_reason"] == "target"
+    assert trade["exit_date"] == "2026-04-02"
+    assert trade["return_pct"] == 16.0
+
+
+def test_short_backtest_exits_at_stop_before_next_release(tmp_path: Path) -> None:
+    snapshot = {
+        "report_month": "March 2026",
+        "kind": "manufacturing",
+        "candidates": {
+            "shorts": [
+                {
+                    "symbol": "GIS",
+                    "side": "short",
+                    "sector": "Consumer Staples",
+                    "confidence": 0.9,
+                    "score": 0.2,
+                }
+            ]
+        },
+    }
+    (tmp_path / "ism_manufacturing_2026-03.json").write_text(json.dumps(snapshot))
+    (tmp_path / "ism_manufacturing_2026-04.json").write_text(
+        json.dumps({"report_month": "April 2026", "kind": "manufacturing", "candidates": {"shorts": []}})
+    )
+    prices = {"GIS": _price_series("2026-04-01", [100.0, 109.0, 80.0])}
+
+    payload = ISMShortBacktester(price_provider=StaticPriceProvider(prices)).evaluate(
+        snapshot_dir=tmp_path,
+        kinds=["manufacturing"],
+        from_month="2026-03",
+        to_month="2026-04",
+        ondo_only=True,
+    )
+
+    trade = payload["trades"][0]
+    assert trade["exit_reason"] == "stop"
+    assert trade["exit_date"] == "2026-04-02"
+    assert trade["return_pct"] == -9.0
 
 
 def test_short_backtest_filters_non_deteriorating_short_scores(tmp_path: Path) -> None:

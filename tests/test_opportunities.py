@@ -202,7 +202,7 @@ def test_supply_and_demand_zones_are_ordered():
 def test_no_secondary_when_primary_enter():
     daily = _frame([100.0] * 30)
     setup = _frame([100.0] * 30, freq="4h")
-    cot = MagicMock(bias="bearish", confidence=0.8, historical_percentile=90)
+    cot = MagicMock(bias="bearish", confidence=0.8, historical_percentile=50)
     regime = RegimeAssessment(
         phase="leg_down",
         bias="bearish",
@@ -223,3 +223,35 @@ def test_no_secondary_when_primary_enter():
         )
         == []
     )
+
+
+def test_cot_reset_rows_remain_visible_when_primary_enter_in_crowded_context():
+    daily = _frame([100.0] * 10 + [95, 90, 84, 80, 78, 76])
+    setup = _frame([100, 95, 90, 84, 80, 76, 74, 73, 72, 71, 70, 70.5, 71], freq="4h")
+    cot = MagicMock(bias="bearish", confidence=0.86, historical_percentile=96)
+    regime = RegimeAssessment(
+        phase="leg_down",
+        bias="bearish",
+        confidence=0.7,
+        playbook="test",
+        supply_zone=None,
+        continuation_trigger=None,
+        metrics={"drawdown_from_28d_high_pct": 20.0},
+    )
+
+    opps = detect_secondary_opportunities(
+        daily=daily,
+        setup=setup,
+        cot_bias=cot,
+        regime=regime,
+        plans=[],
+        primary_action="enter",
+    )
+
+    assert opps
+    assert {row["kind"] for row in opps} <= {
+        "capitulation_reclaim_long",
+        "failed_reset_continuation_short",
+        "early_trend_long",
+        "early_trend_short",
+    }

@@ -272,6 +272,46 @@ def test_early_trend_short_uses_failed_reclaim_and_1h_breakdown() -> None:
     assert any("COT crowded long" in item for item in short.reset_evidence)
 
 
+def test_early_trend_short_requires_explicit_derivative_confirmation() -> None:
+    setup = _frame([100, 96, 92, 88, 84, 80, 78, 76, 74, 72, 70, 69, 71, 70, 69, 68])
+    trigger = _frame([70.2, 70.0, 69.8, 69.5, 69.2, 68.7], freq="1h")
+
+    results = assess_cot_early_trend_entry(
+        daily=_daily(),
+        setup=setup,
+        trigger=trigger,
+        cot_bias=_cot(),
+        funding_rate=None,
+        open_interest=None,
+    )
+
+    assert results
+    assert all(item.action == "watch" for item in results)
+    assert any(
+        "No OI/funding confirmation" in blocker
+        for item in results
+        for blocker in item.blockers
+    )
+
+
+def test_early_trend_short_can_use_oi_expansion_when_funding_missing() -> None:
+    setup = _frame([100, 96, 92, 88, 84, 80, 78, 76, 74, 72, 70, 69, 71, 70, 69, 68])
+    trigger = _frame([70.2, 70.0, 69.8, 69.5, 69.2, 68.7], freq="1h")
+    oi_expanding = pd.Series([100.0] * 20 + [110.0])
+
+    results = assess_cot_early_trend_entry(
+        daily=_daily(),
+        setup=setup,
+        trigger=trigger,
+        cot_bias=_cot(),
+        funding_rate=None,
+        open_interest=oi_expanding,
+    )
+
+    short = next(item for item in results if item.kind == "early_trend_short")
+    assert short.action in {"starter_trend_short", "confirmed_trend_short"}
+
+
 def test_incomplete_early_trend_stack_is_watch_only() -> None:
     setup = _frame([100, 95, 90, 84, 80, 76, 74, 73, 72, 71, 70, 70.5, 71])
 

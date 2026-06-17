@@ -1,8 +1,8 @@
-"""Ondo stock perp tradability helpers.
+"""Ondo stock perp research-universe helpers.
 
 Ondo Global Markets lists 250+ tokenized US equities. Nave's ISM workflow
-screens a curated DEFAULT_UNIVERSE of liquid names; we treat that set as the
-v1 Ondo perp universe until a live venue manifest is wired.
+screens a curated DEFAULT_UNIVERSE of liquid names; this module treats that
+set as a research proxy until a live venue manifest is wired.
 """
 
 from __future__ import annotations
@@ -10,6 +10,8 @@ from __future__ import annotations
 from trading.stocks.universe import DEFAULT_UNIVERSE
 
 ONDO_STOCK_PERP_VENUE = "ondo_stock_perp"
+ONDO_STOCK_PERP_UNIVERSE_SOURCE = "research_proxy_default_universe"
+ONDO_STOCK_PERP_EXECUTION_STATUS = "proxy_not_live_manifest"
 
 ONDO_STOCK_PERP_UNIVERSE: frozenset[str] = frozenset(
     symbol.upper()
