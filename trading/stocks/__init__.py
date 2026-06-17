@@ -26,7 +26,8 @@ from trading.stocks.ism_scraper import (
     GICS_MAPPING,
 )
 from trading.stocks.journal import StockJournal
-from trading.stocks.reporting import DEFAULT_UNIVERSE, build_ism_industry_report
+from trading.stocks.reporting import build_ism_industry_report
+from trading.stocks.universe import DEFAULT_UNIVERSE
 from trading.stocks.formatters import (
     render_ism_report_markdown_v2,
     render_x_summary_markdown_v2,
@@ -42,7 +43,7 @@ from trading.stocks.social_analyzer import (
     analyze_tickers,
     analyze_tickers_async,
 )
-from trading.stocks.strategy import ISMSectorStrategy, StockPlan
+from trading.stocks.strategy import ISMShortPerpStrategy, ISMSectorStrategy, StockPlan
 from trading.stocks.x_client import XClient, XClientError, XPost
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "ISMReport",
     "ISMReportFetcher",
     "ISMSectorStrategy",
+    "ISMShortPerpStrategy",
     "MassiveClient",
     "MassiveRateLimitError",
     "DEFAULT_UNIVERSE",

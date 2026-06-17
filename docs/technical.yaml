@@ -793,6 +793,90 @@ technical_philosophy:
           and the flip occurs within a BEN (block-between-levels) — the zone
           between the true swing and the nearest institutional level.
         invalidation: 4H close back through the flipped level.
+      capitulation_reclaim_long:
+        context: >
+          Secondary-only long setup after crowded-long COT liquidation. It is
+          not a normal trend long and must not override the weekly anti-chase
+          COT guard.
+        stages:
+          stage_1_capitulation_watch: >
+            COT is crowded long, price has broken down sharply, funding/OI are
+            monitored for reset. No trade.
+          stage_2_optional_starter: >
+            After a liquidity sweep and 1H reclaim/higher-low inside the 4H
+            zone, a starter long is allowed at 10-25% normal size only.
+          stage_3_add_after_4h_retest: >
+            Add only if 4H reclaims the prior breakdown level and a retest
+            holds above it. This add is upward/on confirmation, not lower into
+            weakness.
+          stage_4_full_trend_long: >
+            Full trend-long framing only after daily structure flips or
+            confirms. Until then it remains a secondary reset lane.
+        invalidation: >
+          New low after reclaim, or a 4H/1H failure back below the reclaimed
+          breakdown level.
+        discipline: >
+          Never average down blindly. A cheaper price is not confirmation.
+          Add only after reclaim confirmation and only while invalidation
+          remains clear.
+      failed_reset_continuation_short:
+        context: >
+          Secondary-only short/fade setup after crowded-long COT liquidation
+          when the reset long has not confirmed. Crowded-long COT plus a sharp
+          drawdown is treated as trapped-long liquidation first, not as an
+          automatic dip-buy signal.
+        trigger_4h: >
+          Price fails to reclaim the prior 4H breakdown level, loses that
+          level after reclaim, prints a new low after reclaim, or bounces while
+          funding remains positive and OI is flat/rising.
+        trigger_1h: >
+          Enter only after a 1H rejection/lower-high at the 4H breakdown or
+          failed reclaim level. Do not short blindly into the first extension
+          without a 1H trigger.
+        invalidation: >
+          4H reclaim retest holds and 1H higher-low confirms, or derivatives
+          reset with cooled/negative funding and material OI contraction.
+        discipline: >
+          This lane preserves short/fade priority while reset evidence is
+          missing. It is secondary and reduced-size; it must not override a
+          primary system entry.
+      early_trend_long:
+        context: >
+          COT is used only as context/fuel. A long is early-trend eligible
+          only when the 4H/1H structure proves that liquidation has shifted
+          into demand, not merely because price fell.
+        trigger_4h: >
+          4H closes above the prior breakdown/reclaim level and preferably
+          retests that level as support. If COT is still crowded long, the
+          retest is required before moving beyond starter size.
+        trigger_1h: >
+          1H forms a higher-low or micro-reclaim inside the 4H reclaim zone.
+          OI should expand after the reclaim and funding must not be hot.
+        sizing: >
+          Starter trend long is 10-25% normal risk. Confirmed trend long can
+          increase only after the 4H retest holds and daily structure flips or
+          confirms bullish.
+        invalidation: >
+          New low below the post-reclaim base or a 4H close back below the
+          reclaimed level.
+      early_trend_short:
+        context: >
+          Crowded-long COT and failed reset can fuel a strong bearish trend,
+          but the entry still requires lower-timeframe structure. COT alone
+          cannot be shorted.
+        trigger_4h: >
+          4H fails to reclaim the breakdown level, prints a lower-high after
+          a bounce, or loses the reclaimed level.
+        trigger_1h: >
+          1H breakdown/retest or rejection at the failed reclaim level.
+          Positive/neutral funding with OI expansion supports trapped-long
+          continuation; deeply negative funding warns the short may be late.
+        sizing: >
+          Starter trend short is reduced size until daily structure confirms.
+          Add only after breakdown retest holds, not lower into extension.
+        invalidation: >
+          4H reclaim retest holds, 1H higher-low confirms, or daily structure
+          flips bullish.
 
   entry_triggers_1h:
     description: >

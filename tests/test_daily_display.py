@@ -83,6 +83,81 @@ def test_render_daily_stand_aside_with_secondary_hint(capsys):
     assert "relief_rally_fade" in captured.out
 
 
+def test_render_daily_shows_capitulation_reclaim_as_secondary(capsys):
+    payload = {
+        "generated_at": "2026-06-17T12:00:00+00:00",
+        "summary": {"actionable_count": 0, "watch_count": 0, "stand_aside_count": 1},
+        "recommendations": [
+            {
+                "coin": "BTC",
+                "action": "stand_aside",
+                "direction": None,
+                "confidence": 0,
+                "regime_phase": "relief_rally_fade",
+                "reasons": ["Primary remains conservative"],
+                "blockers": ["normal long blocked by COT"],
+                "secondary_opportunities": [
+                    {
+                        "kind": "capitulation_reclaim_long",
+                        "direction": "long",
+                        "action": "starter_long",
+                        "size_fraction": 0.25,
+                        "confidence": 0.64,
+                        "playbook": "Crowded-long liquidation reset",
+                        "entry_zone": [70000, 70800],
+                        "invalidation": 69000,
+                        "reset_evidence": ["Funding cooled"],
+                        "blockers": [],
+                    }
+                ],
+            },
+        ],
+    }
+    render_daily_entry_check(payload)
+    captured = capsys.readouterr()
+    assert "capitulation_reclaim_long" in captured.out
+    assert "starter_long" in captured.out
+    assert "25%" in captured.out
+
+
+def test_render_daily_shows_failed_reset_short_as_secondary(capsys):
+    payload = {
+        "generated_at": "2026-06-17T12:00:00+00:00",
+        "summary": {"actionable_count": 0, "watch_count": 0, "stand_aside_count": 1},
+        "recommendations": [
+            {
+                "coin": "BTC",
+                "action": "stand_aside",
+                "direction": None,
+                "confidence": 0,
+                "regime_phase": "leg_down",
+                "reasons": ["Primary remains conservative"],
+                "blockers": ["normal long blocked by COT"],
+                "secondary_opportunities": [
+                    {
+                        "kind": "failed_reset_continuation_short",
+                        "direction": "short",
+                        "action": "watch",
+                        "size_fraction": 0.5,
+                        "confidence": 0.72,
+                        "playbook": "Crowded-long failed reset",
+                        "entry_zone": [70000, 70800],
+                        "invalidation": 72000,
+                        "reset_evidence": ["Funding/OI did not reset"],
+                        "blockers": [],
+                    }
+                ],
+            },
+        ],
+    }
+    render_daily_entry_check(payload)
+    captured = capsys.readouterr()
+    assert "failed_reset_continuation_short" in captured.out
+    assert "short" in captured.out
+    assert "50%" in captured.out
+    assert "failed-reset shorts" in captured.out
+
+
 def test_render_daily_does_not_crash(capsys):
     payload = {
         "generated_at": "2026-06-02T12:00:00+00:00",

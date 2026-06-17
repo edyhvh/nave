@@ -127,14 +127,21 @@ class COTHistoricalAnalyzer:
         end_date = df.iloc[end_idx]["report_date"].date()
         for month in range(1, months + 1):
             target_start = self._subtract_calendar_months(end_date, month)
-            start_candidates = df.index[df["report_date"].dt.date >= target_start].tolist()
-            start_idx = start_candidates[0] if start_candidates else 0
+            start_idx = self._period_start_index(df, target_start)
             label = f"Last {month} Month" if month == 1 else f"Last {month} Months"
             periods.append(
                 self._compose_period_row(df=df, label=label, start_idx=start_idx, end_idx=end_idx)
             )
 
         return periods
+
+    def _period_start_index(self, df: pd.DataFrame, target_start: date) -> int:
+        """Pick the report at or before the calendar anchor, never the end row by accident."""
+        before_or_at = df.index[df["report_date"].dt.date <= target_start].tolist()
+        if before_or_at:
+            return before_or_at[-1]
+        after = df.index[df["report_date"].dt.date > target_start].tolist()
+        return after[0] if after else 0
 
     def _compose_period_row(
         self, *, df: pd.DataFrame, label: str, start_idx: int, end_idx: int

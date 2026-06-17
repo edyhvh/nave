@@ -14,6 +14,11 @@ from trading.stocks.data_provider import (
 )
 from trading.stocks.ism_calendar import load_calendar
 from trading.stocks.ism_scraper import ISMReport, ISMReportFetcher
+from trading.stocks.ondo_universe import (
+    ONDO_STOCK_PERP_UNIVERSE,
+    ONDO_STOCK_PERP_VENUE,
+    is_ondo_stock_perp,
+)
 from trading.stocks.screener import (
     MassiveLike,
     ScreenerMode,
@@ -22,6 +27,12 @@ from trading.stocks.screener import (
     StockScreenerError,
     _safe_sector_avg_pe,
 )
+from trading.stocks.strategy import (
+    build_ism_short_trade_plan,
+    short_candidate_quality,
+    _normalize_min_short_score,
+)
+from trading.stocks.universe import DEFAULT_UNIVERSE
 
 
 class ISMReportFetcherLike(Protocol):
@@ -29,25 +40,6 @@ class ISMReportFetcherLike(Protocol):
 
     def fetch_report(self, *, kind: str) -> ISMReport:
         ...
-
-
-# Keep this short so FMP daily-budget usage stays practical.
-# The default basket leans toward names whose public-company industries map
-# more cleanly onto ISM buckets than broad mega-cap sector placeholders do.
-DEFAULT_UNIVERSE: dict[str, list[str]] = {
-    "Information Technology": ["AAPL", "HPQ", "DELL", "AMAT", "GLW"],
-    "Industrials": ["GE", "ETN", "CAT", "PH", "EMR", "ITW", "ROK"],
-    "Health Care": ["LLY", "JNJ", "UNH", "ABT"],
-    "Consumer Discretionary": ["NKE", "DECK", "WHR", "LEN", "MHK", "MLKN"],
-    "Materials": ["NUE", "FCX", "IP", "DD", "LIN", "LYB", "DOW", "EMN"],
-    "Energy": ["XOM", "PSX", "VLO", "MPC"],
-    "Financials": ["JPM", "BAC", "V", "MS"],
-    "Consumer Staples": ["MO", "KO", "MDLZ", "GIS", "KHC", "CPB", "PM"],
-    "Communication Services": ["GOOGL", "META", "NFLX", "DIS"],
-    "Utilities": ["NEE", "DUK", "SO"],
-    "Real Estate": ["PLD", "AMT", "EQIX"],
-}
-
 
 def build_ism_industry_report(
     *,
@@ -57,6 +49,8 @@ def build_ism_industry_report(
     max_sectors_per_trend: int = 4,
     min_eps_growth_next_year: float | None = None,
     min_confidence: float = 0.3,
+    min_short_score: float | None = None,
+    research_mode: bool = False,
     universe: Mapping[str, list[str]] | None = None,
     fetcher: ISMReportFetcherLike | None = None,
     massive: MassiveLike | None = None,
@@ -74,6 +68,10 @@ def build_ism_industry_report(
     effective_mode: ScreenerMode = cast("ScreenerMode", mode or kind)
     if effective_mode not in {"manufacturing", "services"}:
         raise ValueError("mode must be 'manufacturing' or 'services'")
+    effective_min_short_score = _normalize_min_short_score(
+        min_short_score,
+        research_mode=research_mode,
+    )
 
     report_fetcher = fetcher or ISMReportFetcher()
     report = report_fetcher.fetch_report(kind=cast("Any", kind))
@@ -119,10 +117,16 @@ def build_ism_industry_report(
         side="short",
         top_n=top_n,
         min_confidence=min_confidence,
+        min_short_score=effective_min_short_score,
+        research_mode=research_mode,
+    )
+    ondo_short_candidates, non_ondo_short_candidates = _split_ondo_short_candidates(
+        short_candidates
     )
 
     expanding_primary_industry = _sector_primary_industry(report.expanding)
     contracting_primary_industry = _sector_primary_industry(report.contracting)
+    contracting_sector_rank = _sector_badness_rank(report.contracting)
     expanding_sectors = report.by_sector("expanding")
     contracting_sectors = report.by_sector("contracting")
 
@@ -157,6 +161,8 @@ def build_ism_industry_report(
             "max_sectors_per_trend": max_sectors_per_trend,
             "min_eps_growth_next_year": min_eps_growth_next_year,
             "min_confidence": min_confidence,
+            "min_short_score": effective_min_short_score,
+            "research_mode": research_mode,
         },
         "hottest_industries": [
             {
@@ -174,6 +180,27 @@ def build_ism_industry_report(
             }
             for item in report.contracting
         ],
+        "short_thesis": {
+            "source": f"ISM {report.kind} report",
+            "lookback": "latest report plus 6-month backtest window",
+            "top_bad_industries": [
+                {
+                    "rank": item.rank,
+                    "industry": item.industry,
+                    "gics_sector": item.gics_sector,
+                }
+                for item in report.contracting[:5]
+            ],
+            "top_bad_sectors": _top_bad_sectors(report.contracting, limit=5),
+            "execution_context": (
+                "Short candidates are research candidates for listed stock perps "
+                "where the Ondo venue supports the symbol; broker execution remains stubbed."
+            ),
+            "venue": ONDO_STOCK_PERP_VENUE,
+            "ondo_universe_size": len(ONDO_STOCK_PERP_UNIVERSE),
+            "ondo_tradeable_count": len(ondo_short_candidates),
+            "non_ondo_short_count": len(non_ondo_short_candidates),
+        },
         "candidates": {
             "longs": [
                 _candidate_to_dict(
@@ -188,8 +215,26 @@ def build_ism_industry_report(
                     item,
                     ism_industry_hint=contracting_primary_industry,
                     industry_momentum="losing",
+                    venue=ONDO_STOCK_PERP_VENUE if is_ondo_stock_perp(item.symbol) else None,
+                    perp_candidate=is_ondo_stock_perp(item.symbol),
+                    ondo_perp_available=is_ondo_stock_perp(item.symbol),
+                    sector_badness_rank=contracting_sector_rank.get(item.sector),
+                    min_short_score=effective_min_short_score,
                 )
                 for item in short_candidates
+            ],
+            "ondo_shorts": [
+                _candidate_to_dict(
+                    item,
+                    ism_industry_hint=contracting_primary_industry,
+                    industry_momentum="losing",
+                    venue=ONDO_STOCK_PERP_VENUE,
+                    perp_candidate=True,
+                    ondo_perp_available=True,
+                    sector_badness_rank=contracting_sector_rank.get(item.sector),
+                    min_short_score=effective_min_short_score,
+                )
+                for item in ondo_short_candidates
             ],
             # Backward compatibility keys
             "expanding": [
@@ -205,6 +250,11 @@ def build_ism_industry_report(
                     item,
                     ism_industry_hint=contracting_primary_industry,
                     industry_momentum="losing",
+                    venue=ONDO_STOCK_PERP_VENUE if is_ondo_stock_perp(item.symbol) else None,
+                    perp_candidate=is_ondo_stock_perp(item.symbol),
+                    ondo_perp_available=is_ondo_stock_perp(item.symbol),
+                    sector_badness_rank=contracting_sector_rank.get(item.sector),
+                    min_short_score=effective_min_short_score,
                 )
                 for item in short_candidates
             ],
@@ -214,6 +264,7 @@ def build_ism_industry_report(
             "worst_sector_count": len(contracting_sectors),
             "long_candidates": len(long_candidates),
             "short_candidates": len(short_candidates),
+            "ondo_short_candidates": len(ondo_short_candidates),
             "screened_symbol_count": len(screened_all_symbols),
             # Backward compatibility summary keys
             "expanding_candidates": len(long_candidates),
@@ -301,6 +352,11 @@ def _candidate_to_dict(
     *,
     ism_industry_hint: Mapping[str, str] | None = None,
     industry_momentum: str | None = None,
+    venue: str | None = None,
+    perp_candidate: bool = False,
+    ondo_perp_available: bool | None = None,
+    sector_badness_rank: int | None = None,
+    min_short_score: float = 0.0,
 ) -> dict[str, Any]:
     fundamentals_industry = item.industry
     hinted_industry = item.driver_industry or (
@@ -313,7 +369,7 @@ def _candidate_to_dict(
     else:
         industry_source = None
 
-    return {
+    out = {
         "symbol": item.symbol,
         "company_name": item.company_name,
         "sector": item.sector,
@@ -336,6 +392,47 @@ def _candidate_to_dict(
         "revenue_growth_source": item.revenue_growth_source,
         "reason": item.reason,
     }
+    if venue is not None:
+        out["venue"] = venue
+    if perp_candidate:
+        out["perp_candidate"] = True
+    if ondo_perp_available is not None:
+        out["ondo_perp_available"] = ondo_perp_available
+    if item.side == "short":
+        trade_plan = build_ism_short_trade_plan(
+            item,
+            allocation_usd=0.0,
+            min_short_score=min_short_score,
+        )
+        out["short_quality_score"] = short_candidate_quality(
+            item,
+            sector_badness_rank=sector_badness_rank,
+            ondo_available=bool(ondo_perp_available),
+        )
+        out["short_gate"] = "bearish_growth_score"
+        out["entry_rule"] = trade_plan["entry_rule"]
+        out["entry_price"] = trade_plan["entry_price"]
+        out["target"] = trade_plan["target"]
+        out["stop"] = trade_plan["stop"]
+        out["holding_window_days"] = trade_plan["holding_window_days"]
+        out["risk_pct"] = trade_plan["risk_pct"]
+        out["size_guidance"] = trade_plan["size_guidance"]
+        out["max_leverage"] = trade_plan["max_leverage"]
+        out["trade_plan"] = trade_plan
+    return out
+
+
+def _split_ondo_short_candidates(
+    short_candidates: list[StockCandidate],
+) -> tuple[list[StockCandidate], list[StockCandidate]]:
+    ondo: list[StockCandidate] = []
+    non_ondo: list[StockCandidate] = []
+    for item in short_candidates:
+        if is_ondo_stock_perp(item.symbol):
+            ondo.append(item)
+        else:
+            non_ondo.append(item)
+    return ondo, non_ondo
 
 
 def _sector_primary_industry(rankings: list[Any]) -> dict[str, str]:
@@ -346,6 +443,40 @@ def _sector_primary_industry(rankings: list[Any]) -> dict[str, str]:
         industry = getattr(item, "industry", None)
         if isinstance(sector, str) and sector and isinstance(industry, str) and industry:
             out.setdefault(sector, industry)
+    return out
+
+
+def _top_bad_sectors(rankings: list[Any], *, limit: int) -> list[dict[str, Any]]:
+    seen: dict[str, dict[str, Any]] = {}
+    for item in rankings:
+        sector = getattr(item, "gics_sector", None)
+        industry = getattr(item, "industry", None)
+        rank = getattr(item, "rank", None)
+        if not isinstance(sector, str) or not sector:
+            continue
+        if sector not in seen:
+            seen[sector] = {
+                "sector": sector,
+                "first_rank": rank,
+                "driver_industries": [],
+            }
+        if isinstance(industry, str) and industry:
+            seen[sector]["driver_industries"].append(industry)
+    return list(seen.values())[:limit]
+
+
+def _sector_badness_rank(rankings: list[Any]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for item in rankings:
+        sector = getattr(item, "gics_sector", None)
+        rank = getattr(item, "rank", None)
+        if not isinstance(sector, str) or not sector:
+            continue
+        try:
+            rank_int = int(rank)
+        except (TypeError, ValueError):
+            continue
+        out[sector] = min(rank_int, out.get(sector, rank_int))
     return out
 
 
@@ -381,10 +512,16 @@ def _filter_report_candidates(
     side: str,
     top_n: int,
     min_confidence: float,
+    min_short_score: float = 0.0,
+    research_mode: bool = False,
 ) -> list[StockCandidate]:
     filtered: list[StockCandidate] = []
     for item in candidates:
         if item.confidence < min_confidence:
+            continue
+        if side == "short" and item.score <= min_short_score and not research_mode:
+            continue
+        if side == "short" and item.score < min_short_score and research_mode:
             continue
         filtered.append(item)
     return filtered[:top_n]

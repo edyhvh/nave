@@ -481,10 +481,13 @@ def review_positions(
         secondary = detect_secondary_opportunities(
             daily=frames["daily"],
             setup=frames["setup"],
+            trigger=frames.get("trigger"),
             cot_bias=cot_bias,
             regime=regime,
             plans=all_plans,
             primary_action=action,
+            funding_rate=frames.get("funding_rate"),
+            open_interest=frames.get("open_interest"),
         )
 
         # Primary WATCH from regime often lacks stop/targets; backfill from the

@@ -56,13 +56,19 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
     headline = Text()
     if enters:
         headline.append("ENTER NOW: ", style="bold")
-        headline.append(", ".join(f"{r['coin']} {r['direction']}" for r in enters), style="bold green")
+        headline.append(
+            ", ".join(f"{r['coin']} {r['direction']}" for r in enters),
+            style="bold green",
+        )
     if watches:
         if enters:
             headline.append("  |  ", style="dim")
         else:
             headline.append("WATCH: ", style="bold")
-        headline.append(", ".join(f"{r['coin']} {r['direction']}" for r in watches), style="bold yellow")
+        headline.append(
+            ", ".join(f"{r['coin']} {r['direction']}" for r in watches),
+            style="bold yellow",
+        )
     if not enters and not watches:
         headline.append("NO ENTRY", style="bold dim")
         headline.append(" — stand aside on BTC/ETH today", style="dim")
@@ -143,19 +149,27 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
         for opp in (rec.get("secondary_opportunities") or [])
     ]
     if secondary_rows:
-        out.print("\n[bold yellow]Secondary opportunities[/bold yellow] [dim](notrend / fade / forming)[/dim]")
+        out.print(
+            "\n[bold yellow]Secondary opportunities[/bold yellow] "
+            "[dim](reset / failed-reset / fade / forming)[/dim]"
+        )
         sec_table = Table(show_header=True, header_style="bold", show_lines=False)
         sec_table.add_column("Coin")
         sec_table.add_column("Kind")
+        sec_table.add_column("Action")
         sec_table.add_column("Side")
+        sec_table.add_column("Size", justify="right")
         sec_table.add_column("Conf", justify="right")
         sec_table.add_column("Entry zone", justify="right")
         sec_table.add_column("Stop", justify="right")
         for rec, opp in secondary_rows:
+            size = opp.get("size_fraction")
             sec_table.add_row(
                 rec.get("coin", "?"),
                 opp.get("kind", "—"),
+                opp.get("action", "watch"),
                 opp.get("direction", "—"),
+                f"{float(size):.0%}" if size is not None else "—",
                 f"{float(opp.get('confidence') or 0):.0%}",
                 _format_zone(opp.get("entry_zone")),
                 f"{opp['invalidation']:,.2f}" if opp.get("invalidation") else "—",
@@ -163,14 +177,22 @@ def render_daily_entry_check(payload: dict[str, Any], *, console: Console | None
         out.print(sec_table)
         for rec, opp in secondary_rows[:4]:
             out.print(
-                f"  [yellow]{rec['coin']}[/yellow] {opp.get('kind')}: {opp.get('playbook', '')[:100]}"
+                f"  [yellow]{rec['coin']}[/yellow] {opp.get('kind')} "
+                f"({opp.get('action', 'watch')}): {opp.get('playbook', '')[:100]}"
             )
+            detail_parts = []
+            for key in ("context", "trigger", "confirmation", "invalidation_detail"):
+                values = opp.get(key) or []
+                if values:
+                    detail_parts.append(f"{key}={values[0]}")
+            if detail_parts:
+                out.print(f"    [dim]{' | '.join(detail_parts[:3])}[/dim]")
 
     if aside and not enters and not watches:
         if secondary_rows:
             out.print(
                 "\n[dim]Primary stack: stand aside — see secondary lanes above for "
-                "relief-rally fades and notrend scalps.[/dim]"
+                "failed-reset shorts, relief-rally fades, resets, and notrend scalps.[/dim]"
             )
         else:
             out.print("\n[dim]Both coins are stand-aside — no COT+momentum entry today.[/dim]")

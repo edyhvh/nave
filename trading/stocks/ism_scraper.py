@@ -31,7 +31,7 @@ from typing import Iterable, Literal
 
 import httpx
 
-from trading.stocks.mapping import GICS_MAPPING, sector_for_ism_industry
+from trading.stocks.mapping import GICS_MAPPING, sector_for_ism_industry  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -373,6 +373,14 @@ def _extract_pmi(
 ) -> float | None:
     """Return headline composite PMI, not threshold references like 'above 47.5'."""
     kind_label = "Manufacturing" if kind == "manufacturing" else "Services"
+    if source_url:
+        slug_match = re.search(r"pmi-at-(\d{2}(?:-\d)?)-", source_url, re.IGNORECASE)
+        if slug_match is not None:
+            return float(slug_match.group(1).replace("-", "."))
+        slug_match = re.search(r"pmi-at-(\d{2}(?:\.\d)?)-", source_url, re.IGNORECASE)
+        if slug_match is not None:
+            return float(slug_match.group(1))
+
     registered = re.search(
         rf"{kind_label}\s+PMI(?:®)?\s+registered\s+(\d{{2}}\.\d)\s*percent",
         text,
@@ -388,11 +396,6 @@ def _extract_pmi(
     )
     if at_headline is not None:
         return float(at_headline.group(1))
-
-    if source_url:
-        slug_match = re.search(r"pmi-at-(\d{2}(?:\.\d)?)-", source_url, re.IGNORECASE)
-        if slug_match is not None:
-            return float(slug_match.group(1))
 
     pattern = _PMI_RE_MANUF if kind == "manufacturing" else _PMI_RE_SERVICES
     for match in pattern.finditer(text):

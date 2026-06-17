@@ -12,7 +12,7 @@ from trading.journal import TradeEnvironment
 from trading.stocks.data_provider import FundamentalSnapshot
 from trading.stocks.ism_scraper import ISMIndustryRanking, ISMReport
 from trading.stocks.screener import SectorScreener, StockScreenerError
-from trading.stocks.strategy import ISMSectorStrategy
+from trading.stocks.strategy import ISMShortPerpStrategy, ISMSectorStrategy
 
 
 class _FakeMassive:
@@ -312,6 +312,201 @@ def test_strategy_live_mode_routes_through_broker():
     )
     strategy.run_once()
     assert broker.opens == [("GE", "buy", 1000.0)]
+
+
+def test_short_perp_strategy_filters_to_ondo_universe():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=50.0,
+        source_url="fixture://mfg",
+        contracting=[
+            ISMIndustryRanking(
+                industry="wood products",
+                trend="contracting",
+                rank=1,
+                gics_sector="Materials",
+            )
+        ],
+    )
+    snapshots = {
+        "NUE": FundamentalSnapshot(
+            "NUE",
+            "Materials",
+            pe_ratio=14.0,
+            forward_pe=12.0,
+            eps_growth_next_year=-8.0,
+            raw={},
+        )
+    }
+    massive = _FakeMassive({"Materials": 18.0}, snapshots)
+    broker = _CountingBroker()
+
+    class _StubFetcher:
+        def fetch_report(self, kind, url=None):  # noqa: ARG002
+            return report
+
+    strategy = ISMShortPerpStrategy(
+        broker=broker,
+        massive=massive,
+        universe={"Materials": ["NUE"]},
+        capital_usd=1000.0,
+        max_positions=2,
+        min_confidence=0.0,
+        dry_run=True,
+        fetcher=_StubFetcher(),
+    )
+    summary = strategy.run_once()
+    assert summary["strategy"] == "ISMShortPerpStrategy"
+    assert len(summary["plan"]) == 1
+    assert summary["plan"][0].side == "short"
+    assert "ondo_stock_perp" in summary["plan"][0].reason
+    plan = summary["plan"][0].as_dict()
+    assert plan["entry_price"] == 100.0
+    assert plan["target"]["price"] == 85.0
+    assert plan["stop"]["price"] == 108.0
+    assert plan["holding_window_days"] == 28
+    assert plan["risk_pct"] == 0.01
+    assert plan["max_leverage"] == 1.0
+    assert plan["trade_plan"]["entry_rule"] == plan["entry_rule"]
+
+
+def test_short_perp_strategy_rejects_non_bearish_growth_scores():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=49.0,
+        source_url="fixture://mfg",
+        contracting=[
+            ISMIndustryRanking(
+                industry="wood products",
+                trend="contracting",
+                rank=1,
+                gics_sector="Materials",
+            )
+        ],
+    )
+    snapshots = {
+        "NUE": FundamentalSnapshot(
+            "NUE",
+            "Materials",
+            pe_ratio=14.0,
+            forward_pe=12.0,
+            eps_growth_next_year=8.0,
+            raw={},
+        )
+    }
+    broker = _CountingBroker()
+
+    class _StubFetcher:
+        def fetch_report(self, kind, url=None):  # noqa: ARG002
+            return report
+
+    strategy = ISMShortPerpStrategy(
+        broker=broker,
+        massive=_FakeMassive({"Materials": 18.0}, snapshots),
+        universe={"Materials": ["NUE"]},
+        capital_usd=1000.0,
+        max_positions=1,
+        min_confidence=0.0,
+        dry_run=True,
+        fetcher=_StubFetcher(),
+    )
+
+    summary = strategy.run_once()
+
+    assert summary["plan"] == []
+
+
+def test_short_perp_strategy_clamps_negative_short_score_outside_research_mode():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=49.0,
+        source_url="fixture://mfg",
+        contracting=[
+            ISMIndustryRanking(
+                industry="wood products",
+                trend="contracting",
+                rank=1,
+                gics_sector="Materials",
+            )
+        ],
+    )
+    snapshots = {
+        "NUE": FundamentalSnapshot(
+            "NUE",
+            "Materials",
+            pe_ratio=14.0,
+            forward_pe=12.0,
+            eps_growth_next_year=0.0,
+            raw={},
+        )
+    }
+
+    class _StubFetcher:
+        def fetch_report(self, kind, url=None):  # noqa: ARG002
+            return report
+
+    strategy = ISMShortPerpStrategy(
+        broker=_CountingBroker(),
+        massive=_FakeMassive({"Materials": 18.0}, snapshots),
+        universe={"Materials": ["NUE"]},
+        capital_usd=1000.0,
+        max_positions=1,
+        min_confidence=0.0,
+        min_short_score=-0.5,
+        dry_run=True,
+        fetcher=_StubFetcher(),
+    )
+
+    assert strategy.run_once()["plan"] == []
+
+
+def test_short_perp_strategy_research_mode_can_include_threshold_equality():
+    report = ISMReport(
+        kind="manufacturing",
+        report_month="March 2026",
+        pmi=49.0,
+        source_url="fixture://mfg",
+        contracting=[
+            ISMIndustryRanking(
+                industry="wood products",
+                trend="contracting",
+                rank=1,
+                gics_sector="Materials",
+            )
+        ],
+    )
+    snapshots = {
+        "NUE": FundamentalSnapshot(
+            "NUE",
+            "Materials",
+            pe_ratio=14.0,
+            forward_pe=12.0,
+            eps_growth_next_year=0.0,
+            raw={},
+        )
+    }
+
+    class _StubFetcher:
+        def fetch_report(self, kind, url=None):  # noqa: ARG002
+            return report
+
+    strategy = ISMShortPerpStrategy(
+        broker=_CountingBroker(),
+        massive=_FakeMassive({"Materials": 18.0}, snapshots),
+        universe={"Materials": ["NUE"]},
+        capital_usd=1000.0,
+        max_positions=1,
+        min_confidence=0.0,
+        min_short_score=0.0,
+        research_mode=True,
+        dry_run=True,
+        fetcher=_StubFetcher(),
+    )
+
+    assert len(strategy.run_once()["plan"]) == 1
 
 
 def test_alpaca_and_ondo_stubs_raise_not_implemented():

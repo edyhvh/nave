@@ -97,6 +97,15 @@ def test_blocks_chase_long_into_crowded_specs():
     assert "reversal" in perm.reason.lower() or "crowded" in perm.reason.lower()
 
 
+def test_crowded_long_still_blocks_normal_fresh_long_after_reset_feature():
+    nets = [300] * 20 + [9_999]
+    hist = _history(nets)
+    as_of = hist["report_date"].iloc[-1]
+    perm = evaluate_cot_permission("long", hist, as_of)
+    assert perm.permission == "block"
+    assert "do not chase fresh longs" in perm.reason
+
+
 def test_blocks_chase_short_into_crowded_specs_short():
     nets = [-300] * 20 + [-9_999]
     hist = _history(nets)
