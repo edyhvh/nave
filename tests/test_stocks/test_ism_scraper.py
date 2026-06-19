@@ -113,6 +113,29 @@ def test_extract_pmi_ignores_threshold_above_clause():
     assert report.pmi == 54.0
 
 
+def test_extract_pmi_prefers_prnewswire_slug_over_related_link_noise():
+    html = """
+        <html>
+            <head><title>Services PMI® at 52%; August 2025 ISM® Services PMI® Report</title></head>
+            <body>
+                <h1>Services PMI® at 52%; August 2025 ISM® Services PMI® Report</h1>
+                <p>Also from this source: Services PMI® at 54.5%; May 2026 ISM® Services PMI® Report.</p>
+            </body>
+        </html>
+        """
+    fetcher = ISMReportFetcher()
+    report = fetcher._parse(
+        html,
+        kind="services",
+        source_url=(
+            "https://www.prnewswire.com/news-releases/"
+            "services-pmi-at-52-august-2025-ism-services-pmi-report-302545705.html"
+        ),
+    )
+
+    assert report.pmi == 52.0
+
+
 def test_parse_prefers_kind_aligned_heading_month_over_body_mentions():
     html = """
         <html>

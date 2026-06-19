@@ -93,7 +93,7 @@ def _render_scan(payload: dict) -> None:
                 plan["setup_status"],
                 "yes" if plan["tradeable"] else "no",
                 str(plan["confidence_score"]),
-                f"{plan['entry_zone'][-1]:.2f}",
+                _format_entry_reference(plan),
                 f"{plan['invalidation']:.2f}",
                 f"{plan['tp2']:.2f}",
                 f"{plan['rr_estimated']:.2f}",
@@ -111,6 +111,18 @@ def _render_playbook(payload: dict) -> None:
     console.print(f"invalidation: {plan['invalidation']:.2f}")
     console.print(f"targets: {plan['tp1']:.2f} / {plan['tp2']:.2f} / {plan['tp3']:.2f}")
     console.print(f"expected move: {plan['expected_move_pct'] * 100:.1f}%  RR: {plan['rr_estimated']:.2f}")
+
+
+def _format_entry_reference(plan: dict[str, Any]) -> str:
+    zone = plan.get("entry_zone") or []
+    if not zone:
+        return "—"
+    try:
+        if str(plan.get("side") or "").lower() == "short":
+            return f"{float(zone[0]):.2f}"
+        return f"{float(zone[-1]):.2f}"
+    except (TypeError, ValueError):
+        return "—"
 
 
 def _emit_scan_payload(payload: dict, *, json_out: bool, telegram_markdown_v2: bool) -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pandas as pd
+
 from trading.cot.cot_historical_analyzer import COTHistoricalAnalyzer
 from trading.cot.cot_position_generator import COTPositionGenerator, MAX_CONFIDENCE
 from trading.cot.cot_report_generator import COTReportGenerator
@@ -224,6 +226,31 @@ def test_historical_analyzer_returns_precise_calendar_ranges() -> None:
     assert rows[0]["start_date"] == "2026-03-24"
     assert rows[0]["end_date"] == "2026-03-31"
     assert rows[1]["period"] == "Last 1 Month"
+
+
+def test_historical_analyzer_monthly_periods_do_not_collapse_to_latest_row() -> None:
+    analyzer = COTHistoricalAnalyzer()
+    rows = []
+    for idx, ts in enumerate(pd.date_range("2026-01-06", periods=18, freq="W-TUE")):
+        rows.append(
+            {
+                "report_date_as_yyyy_mm_dd": ts.strftime("%Y-%m-%d"),
+                "noncomm_positions_long_all": 1000 + idx * 20,
+                "noncomm_positions_short_all": 800,
+                "comm_positions_long_all": 700,
+                "comm_positions_short_all": 900 + idx * 5,
+                "open_interest_all": 5000 + idx * 10,
+            }
+        )
+    cot_data = {"BTC": {"as_of_date": "2026-05-05", "raw": rows}}
+
+    report = analyzer.generate_historical_variation(months=3, cot_data=cot_data)
+    periods = report["assets"]["BTC"]
+    monthly = [row for row in periods if row["period"].startswith("Last ") and "Month" in row["period"]]
+
+    assert monthly
+    assert all(row["start_date"] != row["end_date"] for row in monthly)
+    assert len({row["start_date"] for row in monthly}) == 3
 
 
 def test_report_generator_formats_trader_counts() -> None:

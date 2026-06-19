@@ -622,3 +622,18 @@ terms:
 - spanish: Pastilla roja
   english: Red Pill (Pana's Matrix metaphor for seeing the market as an
     institutional system rather than a chart)
+
+# --- Crypto COT reset / perp execution ---
+- spanish: Liquidación de largos saturados
+  english: Crowded-Long Liquidation (non-commercials are historically crowded
+    long while price breaks down; first read is trapped-long risk, not a buy
+    signal)
+- spanish: Reclaim de capitulación
+  english: Capitulation Reclaim (after a liquidation leg, price reclaims a
+    prior breakdown level with funding/OI reset evidence and 1H/4H structure)
+- spanish: Long de sondeo
+  english: Probe Long / Starter Long (reduced-size long, normally 10-25% of
+    normal size, allowed only after objective reset and 1H reclaim evidence)
+- spanish: Contracción de OI
+  english: Open Interest Contraction (perp participation shrinking during a
+    selloff; evidence that leveraged longs are being flushed instead of added)

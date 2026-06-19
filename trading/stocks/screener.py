@@ -22,11 +22,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Iterable, Literal, Mapping, Protocol
 
-from trading.stocks.data_provider import (
-    FundamentalSnapshot,
-    MassiveClient,
-    MassiveRateLimitError,
-)
+from trading.stocks.data_provider import FundamentalSnapshot
 from trading.stocks.ism_scraper import ISMIndustryRanking, ISMReport
 from trading.stocks.mapping import best_ism_match
 

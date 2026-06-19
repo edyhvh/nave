@@ -14,6 +14,11 @@ import pandas as pd
 
 from trading.crypto.analysis.regime import RegimeAssessment
 from trading.crypto.analysis.regime_config import RegimeConfig, load_regime_config
+from trading.crypto.analysis.capitulation_reset import (
+    assess_cot_early_trend_entry,
+    assess_crowded_long_failed_reset_short,
+    assess_crowded_long_reset,
+)
 from trading.crypto.cot.cot_analyzer import COTBias
 from trading.crypto.cot.context import cot_side_from_bias
 
@@ -33,6 +38,8 @@ class SecondaryOpportunity:
     reasons: list[str]
     blockers: list[str]
     size_fraction: float | None = None
+    reclaim_levels: list[float] | None = None
+    reset_evidence: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         out = {
@@ -49,6 +56,10 @@ class SecondaryOpportunity:
         }
         if self.size_fraction is not None:
             out["size_fraction"] = self.size_fraction
+        if self.reclaim_levels is not None:
+            out["reclaim_levels"] = self.reclaim_levels
+        if self.reset_evidence is not None:
+            out["reset_evidence"] = self.reset_evidence
         return out
 
 
@@ -300,19 +311,24 @@ def detect_secondary_opportunities(
     *,
     daily: pd.DataFrame,
     setup: pd.DataFrame,
+    trigger: pd.DataFrame | None = None,
     cot_bias: COTBias | None,
     regime: RegimeAssessment,
     plans: list[dict[str, Any]],
     primary_action: str,
+    funding_rate: float | None = None,
+    open_interest: pd.DataFrame | pd.Series | None = None,
     config: RegimeConfig | None = None,
 ) -> list[dict[str, Any]]:
-    """Return ranked secondary opportunities when primary action is not enter."""
-    if primary_action == "enter":
-        return []
+    """Return ranked secondary opportunities and COT risk-control lanes."""
 
     cfg = config or load_regime_config()
     cot_side = cot_side_from_bias(cot_bias)
     cot_conf = float(cot_bias.confidence) if cot_bias else 0.0
+    cot_pct = int(cot_bias.historical_percentile or 0) if cot_bias else 0
+    crowded_long_context = bool(
+        cot_bias and cot_bias.bias == "bearish" and cot_pct >= 85
+    )
     metrics = regime.metrics
 
     if daily.empty or setup.empty:
@@ -325,6 +341,44 @@ def detect_secondary_opportunities(
     )
 
     candidates: list[SecondaryOpportunity] = []
+    raw_candidates: list[dict[str, Any]] = []
+
+    reset = assess_crowded_long_reset(
+        daily=daily,
+        setup=setup,
+        trigger=trigger,
+        cot_bias=cot_bias,
+        funding_rate=funding_rate,
+        open_interest=open_interest,
+        min_cot_percentile=85,
+        min_drawdown_pct=15.0,
+    )
+    if reset:
+        raw_candidates.append(reset.to_opportunity())
+
+    failed_reset_short = assess_crowded_long_failed_reset_short(
+        daily=daily,
+        setup=setup,
+        trigger=trigger,
+        cot_bias=cot_bias,
+        funding_rate=funding_rate,
+        open_interest=open_interest,
+        min_cot_percentile=85,
+        min_drawdown_pct=15.0,
+    )
+    if failed_reset_short:
+        raw_candidates.append(failed_reset_short.to_opportunity())
+
+    early_trends = assess_cot_early_trend_entry(
+        daily=daily,
+        setup=setup,
+        trigger=trigger,
+        cot_bias=cot_bias,
+        funding_rate=funding_rate,
+        open_interest=open_interest,
+        min_cot_percentile=85,
+    )
+    raw_candidates.extend(item.to_opportunity() for item in early_trends)
 
     fade = _relief_rally_fade(
         daily=daily,
@@ -366,4 +420,31 @@ def detect_secondary_opportunities(
             by_kind[opp.kind] = opp
 
     ranked = sorted(by_kind.values(), key=lambda o: o.confidence, reverse=True)
-    return [o.to_dict() for o in ranked[: cfg.max_secondary_opportunities]]
+    structured = [o.to_dict() for o in ranked]
+
+    # Keep the reset lane visible when it exists; it is a risk-control branch,
+    # not just another optional secondary idea.
+    merged = raw_candidates + structured
+    deduped: dict[str, dict[str, Any]] = {}
+    for item in merged:
+        prev = deduped.get(str(item.get("kind")))
+        item_conf = float(item.get("confidence") or 0.0)
+        prev_conf = float(prev.get("confidence") or 0.0) if prev else 0.0
+        if prev is None or item_conf > prev_conf:
+            deduped[str(item.get("kind"))] = item
+    ranked_dicts = sorted(
+        deduped.values(),
+        key=lambda o: float(o.get("confidence") or 0.0),
+        reverse=True,
+    )
+    reset_kinds = {
+        "capitulation_reclaim_long",
+        "failed_reset_continuation_short",
+        "early_trend_long",
+        "early_trend_short",
+    }
+    reset_rows = [o for o in ranked_dicts if o.get("kind") in reset_kinds]
+    other_rows = [o for o in ranked_dicts if o.get("kind") not in reset_kinds]
+    if primary_action == "enter":
+        return reset_rows[: cfg.max_secondary_opportunities] if crowded_long_context else []
+    return (reset_rows + other_rows)[: cfg.max_secondary_opportunities]

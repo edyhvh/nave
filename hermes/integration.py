@@ -510,6 +510,9 @@ class HermesNaveIntegration:
                             },
                             "top_n": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
                             "min_eps_growth_next_year": {"type": "number"},
+                            "min_confidence": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.3},
+                            "min_short_score": {"type": "number"},
+                            "research_mode": {"type": "boolean", "default": False},
                         },
                     },
                 },
@@ -1599,6 +1602,9 @@ class HermesNaveIntegration:
         kind: str = "manufacturing",
         top_n: int = 5,
         min_eps_growth_next_year: float | None = None,
+        min_confidence: float = 0.3,
+        min_short_score: float | None = None,
+        research_mode: bool = False,
     ) -> dict[str, Any]:
         """Return ISM industry heatmap + filtered stock candidates."""
         if kind not in {"manufacturing", "services"}:
@@ -1606,6 +1612,8 @@ class HermesNaveIntegration:
                 "kind must be manufacturing or services")
         if top_n < 1 or top_n > 20:
             raise HermesIntegrationError("top_n must be in [1, 20]")
+        if min_confidence < 0 or min_confidence > 1:
+            raise HermesIntegrationError("min_confidence must be in [0, 1]")
 
         from trading.stocks.reporting import build_ism_industry_report
         from trading.stocks.formatters import render_ism_report_markdown_v2
@@ -1615,6 +1623,9 @@ class HermesNaveIntegration:
                 kind=kind,
                 top_n=top_n,
                 min_eps_growth_next_year=min_eps_growth_next_year,
+                min_confidence=min_confidence,
+                min_short_score=min_short_score,
+                research_mode=research_mode,
             )
         except ValueError as exc:
             raise HermesIntegrationError(str(exc)) from exc

@@ -488,12 +488,18 @@ def stocks_ism_report(
     kind: str = "manufacturing",
     top_n: int = 5,
     min_eps_growth_next_year: float | None = None,
+    min_confidence: float = 0.3,
+    min_short_score: float | None = None,
+    research_mode: bool = False,
 ) -> str:
     """Return ISM hottest/worst industries and filtered stock candidates JSON."""
     payload = hermes.stocks_ism_report(
         kind=kind,
         top_n=top_n,
         min_eps_growth_next_year=min_eps_growth_next_year,
+        min_confidence=min_confidence,
+        min_short_score=min_short_score,
+        research_mode=research_mode,
     )
     return json.dumps(payload, indent=2)
 

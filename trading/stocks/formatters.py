@@ -52,6 +52,12 @@ def render_ism_report_markdown_v2(
             rows=_candidate_rows(candidates, "shorts", "contracting"),
         )
     )
+    blocks.append(
+        _candidate_block(
+            title="Ondo-shortable shorts",
+            rows=_candidate_rows(candidates, "ondo_shorts", "contracting"),
+        )
+    )
     return _chunk_blocks(blocks, max_message_chars=max_message_chars)
 
 

@@ -141,6 +141,104 @@ contrarian_usage:
     - Contrarian trades must still respect macro — do not go against rates.
     - Contrarian trades use half the normal position size.
 
+crowded_long_liquidation_reset:
+  description: >
+    A separate secondary playbook for the case where weekly COT shows
+    non-commercials crowded long, price breaks down sharply, and the market
+    may be transitioning from trapped-long liquidation either into a reclaim
+    or into a failed-reset continuation short. This branch does NOT weaken the
+    anti-chase rule: normal fresh longs remain blocked while COT is crowded
+    long.
+  interpretation:
+    - >
+      COT is stale and weekly. After a crash, the latest report may describe
+      trapped positioning from before or during the selloff, not current live
+      willingness to buy.
+    - >
+      Non-commercial crowded long plus sharp price breakdown is first a
+      trapped-long liquidation risk. It is not bullish confirmation just
+      because price has fallen.
+    - >
+      Fresh longs remain blocked until objective reset evidence appears on
+      perps and lower-timeframe price structure.
+    - >
+      If the reclaim fails, never appears, or funding/OI stay crowded during
+      the bounce, the same context favors short/fade priority rather than a
+      delayed long.
+  reset_evidence:
+    required_context:
+      - COT non-commercial crowded long percentile >= 85.
+      - Price drawdown from recent high is large enough to imply liquidation
+        pressure, normally 15-20% or more.
+    evidence_stack:
+      - Perp/open interest contracts during the selloff.
+      - Funding cools materially or turns negative.
+      - Price stops making fresh lows.
+      - 4H closes back above a prior breakdown level.
+      - 1H forms a higher-low trigger or micro-PFQ/reclaim inside the 4H zone.
+      - >
+        Next COT shows non-commercial net-long reduction, OR price reclaims
+        strongly before the next COT release and lower-timeframe confirmation
+        is already present.
+  sizing:
+    starter_probe: >
+      Allowed only after reset evidence plus 1H reclaim. Use 10-25% of normal
+      size or maximum 0.10%-0.25% account risk. This is a probe, not a swing
+      confirmation.
+    confirmed_long: >
+      Full size is only allowed after reclaim plus 4H/1H confirmation, ideally
+      a 4H reclaim retest hold. Do not promote the primary thesis bullish
+      while the full stack is incomplete.
+  invalidation:
+    - New low after reclaim.
+    - Failure back below the reclaimed breakdown level.
+    - Funding turns positive while OI expands into the bounce.
+  failed_reset_short:
+    context: >
+      Crowded-long COT plus liquidation drawdown remains bearish when the 4H
+      reclaim has not appeared, the reclaim loses its level, a new low prints
+      after reclaim, or funding stays positive while OI is flat/rising.
+    execution: >
+      This is a secondary short/fade lane only. Wait for a 1H rejection at the
+      reclaimed/breakdown level or a 4H lower-high before entry. It keeps
+      short priority visible but does not override a primary signal.
+    sizing: >
+      Use reduced size, normally up to half normal risk, because the market is
+      already extended from the original liquidation break.
+    invalidation:
+      - 4H reclaim retest holds and 1H higher-low confirms.
+      - Funding cools/turns negative while OI contracts materially.
+      - Daily structure flips bullish.
+  early_trend_entries:
+    description: >
+      COT can help identify fuel for a strong early trend, but it is context
+      only. The entry trigger must come from 4H/1H structure and derivative
+      confirmation. Do not enter because COT is extreme.
+    long_conditions:
+      - >
+        If crowded-long COT is present, early trend longs require a completed
+        reset: 4H reclaim, 1H higher-low/reclaim, and ideally a 4H reclaim
+        retest hold.
+      - OI should expand after the reclaim, not during the liquidation.
+      - Funding must be cooled/not overheated; hot funding blocks early longs.
+      - Full-size trend long waits for daily structure to flip bullish.
+    short_conditions:
+      - >
+        Crowded-long COT plus failed reset can fuel early trend shorts only
+        after 4H lower-high or failed reclaim structure.
+      - 1H must print breakdown/retest or rejection; no blind short into lows.
+      - Funding/OI should show trapped longs or trend participation, while
+        deeply negative funding warns that the short may already be crowded.
+      - Full-size trend short waits for daily structure to confirm bearish.
+    output_contract:
+      - context: COT/macro/positioning state.
+      - trigger: 1H execution event.
+      - confirmation: 4H retest and daily structure state.
+      - invalidation_detail: exact conditions that cancel the trend-entry lane.
+  execution_rule: >
+    Never average down into weakness. Add only upward/on confirmation after
+    the reclaim holds; do not add lower because price is cheaper.
+
 alignment_with:
   fits_framework: >
     COT lives primarily in the Sentiment and Fundamental layers of F.I.T.S.

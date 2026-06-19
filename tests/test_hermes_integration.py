@@ -720,6 +720,8 @@ def test_stocks_ism_report_validates_bounds() -> None:
         integration.stocks_ism_report(kind="bad")
     with pytest.raises(HermesIntegrationError):
         integration.stocks_ism_report(top_n=0)
+    with pytest.raises(HermesIntegrationError):
+        integration.stocks_ism_report(min_confidence=1.1)
 
 
 def test_stocks_ism_report_propagates_freshness_metadata(
@@ -736,15 +738,51 @@ def test_stocks_ism_report_propagates_freshness_metadata(
             "expected_covers_month": "2026-04",
             "is_expected_month": False,
             "freshness_status": "stale",
-            "criteria": {"top_n": kwargs.get("top_n", 5)},
+            "criteria": {
+                "top_n": kwargs.get("top_n", 5),
+                "min_confidence": kwargs.get("min_confidence"),
+                "min_short_score": kwargs.get("min_short_score"),
+                "research_mode": kwargs.get("research_mode"),
+            },
+            "candidates": {
+                "shorts": [
+                    {
+                        "symbol": "GIS",
+                        "side": "short",
+                        "sector": "Consumer Staples",
+                        "score": 0.2,
+                        "confidence": 0.9,
+                    }
+                ],
+                "ondo_shorts": [
+                    {
+                        "symbol": "GIS",
+                        "side": "short",
+                        "sector": "Consumer Staples",
+                        "score": 0.2,
+                        "confidence": 0.9,
+                    }
+                ],
+            },
         },
     )
 
-    payload = integration.stocks_ism_report(kind="services", top_n=5)
+    payload = integration.stocks_ism_report(
+        kind="services",
+        top_n=5,
+        min_confidence=0.4,
+        min_short_score=0.05,
+        research_mode=True,
+    )
     assert payload["freshness_status"] == "stale"
     assert payload["expected_covers_month"] == "2026-04"
     assert payload["report_month_key"] == "2026-03"
+    assert payload["criteria"]["min_confidence"] == 0.4
+    assert payload["criteria"]["min_short_score"] == 0.05
+    assert payload["criteria"]["research_mode"] is True
     assert isinstance(payload["telegram_markdown_v2"], list)
+    assert "Top shorts" in payload["telegram_markdown_v2"][0]
+    assert "Ondo\\-shortable shorts" in payload["telegram_markdown_v2"][0]
     assert payload["operational_hints"]["agent_reminder_min_interval_minutes"] == 60
 
 

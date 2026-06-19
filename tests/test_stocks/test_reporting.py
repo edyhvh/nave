@@ -99,6 +99,87 @@ def test_ism_report_candidate_includes_fmp_industry() -> None:
     assert payload["candidates"]["longs"][0]["confidence"] >= 0.7
 
 
+def test_ism_report_exposes_top_bad_industries_and_ondo_short_context() -> None:
+    report = _make_report()
+    snapshots = {
+        "NUE": FundamentalSnapshot(
+            symbol="NUE",
+            sector="Materials",
+            pe_ratio=14.0,
+            forward_pe=12.0,
+            eps_growth_next_year=-6.0,
+            raw={},
+            industry="Steel",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        )
+    }
+
+    payload = build_ism_industry_report(
+        fetcher=_StubFetcher(report),
+        massive=_StubMassive(snapshots, {"Materials": 18.0}),
+        universe={"Materials": ["NUE"]},
+        top_n=1,
+        max_sectors_per_trend=1,
+        min_confidence=0.0,
+    )
+
+    thesis = payload["short_thesis"]
+    assert thesis["top_bad_industries"][0]["industry"] == "wood products"
+    assert thesis["top_bad_sectors"][0]["sector"] == "Materials"
+    assert thesis["ondo_tradeable_count"] == 1
+    assert thesis["ondo_universe_size"] >= 50
+    assert thesis["ondo_universe_source"] == "research_proxy_default_universe"
+    assert thesis["ondo_execution_status"] == "proxy_not_live_manifest"
+    short = payload["candidates"]["shorts"][0]
+    assert short["side"] == "short"
+    assert short["venue"] == "ondo_stock_perp"
+    assert short["perp_candidate"] is True
+    assert short["ondo_perp_available"] is True
+    assert short["short_gate"] == "bearish_growth_score"
+    assert short["short_quality_score"] > 0
+    assert short["entry_rule"].startswith("Enter short")
+    assert short["entry_price"] is None
+    assert short["target"]["price"] is None
+    assert short["stop"]["price"] is None
+    assert short["holding_window_days"] == 28
+    assert short["risk_pct"] == 0.01
+    assert "$0.00" not in short["size_guidance"]
+    assert "Research signal only" in short["size_guidance"]
+    assert short["max_leverage"] == 1.0
+    assert short["trade_plan"]["target"] == short["target"]
+    assert payload["candidates"]["ondo_shorts"][0]["symbol"] == "NUE"
+
+
+def test_ism_report_filters_short_candidates_without_bearish_score() -> None:
+    report = _make_report()
+    snapshots = {
+        "NUE": FundamentalSnapshot(
+            symbol="NUE",
+            sector="Materials",
+            pe_ratio=14.0,
+            forward_pe=12.0,
+            eps_growth_next_year=6.0,
+            raw={},
+            industry="Steel",
+            eps_growth_source="vendor_estimate",
+            eps_growth_confidence=1.0,
+        )
+    }
+
+    payload = build_ism_industry_report(
+        fetcher=_StubFetcher(report),
+        massive=_StubMassive(snapshots, {"Materials": 18.0}),
+        universe={"Materials": ["NUE"]},
+        top_n=1,
+        max_sectors_per_trend=1,
+        min_confidence=0.0,
+    )
+
+    assert payload["candidates"]["shorts"] == []
+    assert payload["candidates"]["ondo_shorts"] == []
+
+
 def test_ism_report_candidate_falls_back_to_ism_industry_hint() -> None:
     report = _make_report()
     snapshots = {

@@ -19,18 +19,19 @@ from rich.table import Table
 
 from cli.professional_typer import ProfessionalTyper
 from core.logger import configure_logger
-from trading.brokers import AlpacaBroker
+from trading.brokers import AlpacaBroker, OndoBroker
 from trading.stocks import (
     DEFAULT_UNIVERSE,
     ISMReportFetcher,
     ISMSectorStrategy,
+    ISMShortPerpStrategy,
     MassiveClient,
-    SectorScreener,
     StockJournal,
     build_ism_industry_report,
     render_ism_report_markdown_v2,
     render_x_summary_markdown_v2,
 )
+from trading.stocks.short_backtest import ISMShortBacktester
 from trading.stocks.ism_calendar import (
     CalendarKind,
     ISMCalendarError,
@@ -70,6 +71,16 @@ def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
         raise typer.BadParameter(
             "--universe-json must be an object mapping sector → [tickers]")
     return {str(k): [str(t) for t in v] for k, v in parsed.items()}
+
+
+def _format_plan_leg(value: object) -> str:
+    if isinstance(value, dict):
+        price = value.get("price")
+        rule = value.get("rule")
+        if price is None:
+            return str(rule or "?")
+        return f"{price} ({rule or '?'})"
+    return str(value or "?")
 
 
 @stocks_app.command("ism-scan")
@@ -221,6 +232,160 @@ def screen(
         )
 
 
+@stocks_app.command("screen-shorts")
+def screen_shorts(
+    kind: str = typer.Option("manufacturing", "--kind", help="ISM report flavour"),
+    mode: Optional[str] = typer.Option(
+        None,
+        "--mode",
+        help="Screening strategy; defaults to --kind.",
+    ),
+    top_n: int = typer.Option(5, "--top-n", help="Return the top N Ondo short candidates"),
+    capital: float = typer.Option(10000.0, "--capital", help="USD to equal-weight across shorts"),
+    min_eps_growth: Optional[float] = typer.Option(None, "--min-eps-growth"),
+    min_confidence: float = typer.Option(0.3, "--min-confidence"),
+    min_short_score: Optional[float] = typer.Option(
+        None,
+        "--min-short-score",
+        help="Require short score above this floor; defaults to 0.05 in normal mode.",
+    ),
+    research_mode: bool = typer.Option(
+        False,
+        "--research-mode",
+        help="Allow explicit relaxed short-score research thresholds.",
+    ),
+    universe_json: Optional[str] = typer.Option(None, "--universe-json"),
+    json_out: bool = typer.Option(False, "--json"),
+    dry_run: bool = typer.Option(True, "--dry-run/--live"),
+) -> None:
+    """Screen ISM contracting sectors for Ondo stock-perp short candidates."""
+    if kind not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--kind must be manufacturing or services")
+    effective_mode = mode or kind
+    if effective_mode not in {"manufacturing", "services"}:
+        raise typer.BadParameter("--mode must be manufacturing or services")
+    universe = _resolve_universe(universe_json)
+    strategy = ISMShortPerpStrategy(
+        OndoBroker(),
+        massive=MassiveClient(),
+        universe=universe,
+        report_kind=kind,  # type: ignore[arg-type]
+        mode=effective_mode,  # type: ignore[arg-type]
+        capital_usd=capital,
+        max_positions=top_n,
+        min_eps_growth_next_year=min_eps_growth,
+        min_confidence=min_confidence,
+        min_short_score=min_short_score,
+        research_mode=research_mode,
+        dry_run=dry_run,
+    )
+    summary = strategy.run_once()
+    if json_out:
+        payload = {
+            "strategy": summary["strategy"],
+            "broker": summary["broker"],
+            "venue": "ondo_stock_perp",
+            "dry_run": summary["dry_run"],
+            "plan": [p.as_dict() for p in summary["plan"]],
+            "result": summary["result"],
+        }
+        typer.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
+    typer.echo(
+        f"{summary['strategy']} via {summary['broker']} / ondo_stock_perp "
+        f"(dry_run={summary['dry_run']})"
+    )
+    if not summary["plan"]:
+        typer.echo("No Ondo-eligible short candidates.")
+        return
+    for item in summary["plan"]:
+        typer.echo(
+            f"  short {item.symbol:<6}  ~${item.size_usd:>9,.2f}  "
+            f"[{item.sector}] score={item.score:+.3f}  {item.reason}"
+        )
+        plan = item.as_dict().get("trade_plan")
+        if isinstance(plan, dict):
+            typer.echo(
+                "      plan: "
+                f"entry={plan.get('entry_rule')} | "
+                f"entry_px={plan.get('entry_price')} | "
+                f"target={_format_plan_leg(plan.get('target'))} | "
+                f"stop={_format_plan_leg(plan.get('stop'))} | "
+                f"hold={plan.get('holding_window_days')}d | "
+                f"risk={plan.get('risk_pct')} | "
+                f"max_lev={plan.get('max_leverage')}"
+            )
+
+
+@stocks_app.command("ism-short-backtest")
+def ism_short_backtest(
+    snapshot_dir: str = typer.Option("stocks_history", "--snapshot-dir"),
+    kinds: str = typer.Option("manufacturing,services", "--kinds"),
+    from_month: Optional[str] = typer.Option(None, "--from"),
+    to_month: Optional[str] = typer.Option(None, "--to"),
+    min_confidence: float = typer.Option(0.3, "--min-confidence"),
+    min_short_score: Optional[float] = typer.Option(
+        None,
+        "--min-short-score",
+        help="Require short score above this floor; defaults to 0.05 in normal mode.",
+    ),
+    research_mode: bool = typer.Option(
+        False,
+        "--research-mode",
+        help="Allow explicit relaxed short-score research thresholds.",
+    ),
+    latest_months: int = typer.Option(
+        6,
+        "--latest-months",
+        help="Use the latest N snapshot months when --from is omitted.",
+    ),
+    all_months: bool = typer.Option(
+        False,
+        "--all",
+        help="Disable the latest-months window and use all matching snapshots.",
+    ),
+    include_non_ondo: bool = typer.Option(False, "--include-non-ondo"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Backtest ISM short candidates over stored monthly snapshots."""
+    selected_kinds = [part.strip() for part in kinds.split(",") if part.strip()]
+    backtester = ISMShortBacktester()
+    payload = backtester.evaluate(
+        snapshot_dir=snapshot_dir,
+        kinds=selected_kinds,
+        from_month=from_month,
+        to_month=to_month,
+        min_confidence=min_confidence,
+        min_short_score=min_short_score,
+        research_mode=research_mode,
+        latest_months=None if all_months else latest_months,
+        ondo_only=not include_non_ondo,
+    )
+    if json_out:
+        typer.echo(_json.dumps(payload, indent=2))
+        return
+
+    summary = payload["summary"]
+    typer.echo("ISM Ondo short backtest")
+    lookback = payload.get("lookback") or {}
+    typer.echo(
+        "Window: "
+        f"{lookback.get('from_month')} -> {lookback.get('to_month')} "
+        f"(latest_months={lookback.get('latest_months')})"
+    )
+    typer.echo(f"Snapshots used: {len(payload['snapshots_used'])}")
+    typer.echo(
+        f"Trades: {summary['trade_count']} | Win rate: {summary['win_rate']:.1%} | "
+        f"Avg return: {summary['avg_return_pct']:.2f}%"
+    )
+    for kind_name, stats in payload.get("by_kind", {}).items():
+        typer.echo(
+            f"  {kind_name}: {stats['trade_count']} trades, "
+            f"avg {stats['avg_return_pct']:.2f}%"
+        )
+
+
 @stocks_app.command("ism-report")
 def ism_report(
     kind: str = typer.Option("manufacturing", "--kind",
@@ -244,6 +409,16 @@ def ism_report(
         0.3,
         "--min-confidence",
         help="Minimum final confidence score (0-1) for report candidates.",
+    ),
+    min_short_score: Optional[float] = typer.Option(
+        None,
+        "--min-short-score",
+        help="Require short score above this floor; defaults to 0.05 in normal mode.",
+    ),
+    research_mode: bool = typer.Option(
+        False,
+        "--research-mode",
+        help="Allow explicit relaxed short-score research thresholds.",
     ),
     universe_json: Optional[str] = typer.Option(
         None,
@@ -293,6 +468,8 @@ def ism_report(
         top_n=top_n,
         min_eps_growth_next_year=min_eps_growth,
         min_confidence=min_confidence,
+        min_short_score=min_short_score,
+        research_mode=research_mode,
         universe=_resolve_universe(universe_json),
         persist_snapshot=save_snapshot,
         snapshot_dir=snapshot_dir,
@@ -362,7 +539,26 @@ def ism_report(
             f"  {item['rank']:>2}. {item['industry']}  ->  {item['gics_sector'] or '?'}")
     typer.echo()
 
-    for label, key in (("Top longs (hottest sectors)", "longs"), ("Top shorts (worst sectors)", "shorts")):
+    short_thesis = payload.get("short_thesis")
+    if isinstance(short_thesis, dict):
+        typer.echo("Short thesis (Ondo stock perps):")
+        typer.echo(f"  Venue: {short_thesis.get('venue')}")
+        typer.echo(
+            f"  Ondo tradeable: {short_thesis.get('ondo_tradeable_count')} / "
+            f"{short_thesis.get('short_candidates', payload['summary'].get('short_candidates'))}"
+        )
+        for sector in short_thesis.get("top_bad_sectors") or []:
+            industries = ", ".join(sector.get("driver_industries") or [])
+            typer.echo(
+                f"  - {sector.get('sector')}: {industries or 'n/a'}"
+            )
+        typer.echo()
+
+    for label, key in (
+        ("Top longs (hottest sectors)", "longs"),
+        ("Top shorts (worst sectors)", "shorts"),
+        ("Ondo-shortable (worst sectors)", "ondo_shorts"),
+    ):
         typer.echo(f"{label}:")
         rows = payload["candidates"].get(key) or payload["candidates"][
             "expanding" if key == "longs" else "contracting"
@@ -375,13 +571,25 @@ def ism_report(
             driver_industry = row.get("driver_industry") or "?"
             momentum = row.get("industry_momentum") or "?"
             side = row.get("side") or ("long" if key == "longs" else "short")
+            venue = row.get("venue") or "—"
             typer.echo(
                 f"  {row['symbol']:<6} [{row['sector']}] company={industry}  driver={driver_industry}  "
-                f"{side.upper()} momentum={momentum}  "
+                f"{side.upper()} momentum={momentum}  venue={venue}  "
                 f"conf={row.get('confidence', '?')}  score={row['score']:+.3f}  "
                 f"EPS(next)={row['eps_growth_next_year']}% "
                 f"src={row.get('eps_growth_source') or '?'}"
             )
+            plan = row.get("trade_plan")
+            if isinstance(plan, dict) and side == "short":
+                typer.echo(
+                    "      plan: "
+                    f"entry={plan.get('entry_rule')} | "
+                    f"target={_format_plan_leg(plan.get('target'))} | "
+                    f"stop={_format_plan_leg(plan.get('stop'))} | "
+                    f"hold={plan.get('holding_window_days')}d | "
+                    f"risk={plan.get('risk_pct')} | "
+                    f"max_lev={plan.get('max_leverage')}"
+                )
 
 
 def _render_ism_report_sheet(payload: dict[str, object]) -> None:
