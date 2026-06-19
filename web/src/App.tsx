@@ -2,12 +2,16 @@ import AAIIIndicator from "./components/indicators/AAIIIndicator";
 import CBDCIndicator from "./components/indicators/CBDCIndicator";
 import TariffIndicator from "./components/indicators/TariffIndicator";
 import OpenBBIndicatorGrid from "./components/indicators/OpenBBIndicatorGrid";
+import DonationLink from "./components/DonationLink";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-canvas text-ink p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Nave Trading Dashboard</h1>
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold">Nave Trading Dashboard</h1>
+          <DonationLink />
+        </header>
 
         {/* Market Sentiment Section */}
         <section className="mb-12">
