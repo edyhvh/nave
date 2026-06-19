@@ -4,10 +4,6 @@
 
 <h1 align="center">NAVE</h1>
 
-<p align="center">
-	<a href="https://ko-fi.com/davar">Support Nave on Ko-fi</a>
-</p>
-
 Nave is a **terminal-first trading copilot**: one CLI, structured JSON for agents, and
 documented theory you can refine over time. It is built for operators who want a clear
 **enter / watch / stand aside** verdict—not another charting app.
