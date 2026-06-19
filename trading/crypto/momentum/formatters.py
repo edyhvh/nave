@@ -63,7 +63,8 @@ def render_momentum_scan_markdown_v2(
                 (
                     f"\\- *{escape_markdown_v2(row['symbol'])}* \\| "
                     f"{escape_markdown_v2(row['action'])} \\| score *{row['score']}* \\| "
-                    f"entrada {escape_markdown_v2(_fmt_zone(row['entry_zone']))} \\| "
+                    f"zona {escape_markdown_v2(_fmt_zone(row['entry_zone']))} \\| "
+                    f"entrada ref {escape_markdown_v2(_fmt_price(row['entry_reference']))} \\| "
                     f"inv {escape_markdown_v2(_fmt_price(row['invalidation']))} \\| "
                     f"RR {escape_markdown_v2(_fmt_rr(row['rr_estimated']))}"
                 )
@@ -86,19 +87,23 @@ def render_momentum_scan_markdown_v2(
         symbol_lines.append(
             f"Sesgo: {escape_markdown_v2(_side_label(best.get('side')))} \\| estado: {escape_markdown_v2(best.get('setup_status') or '?')}"
         )
-        symbol_lines.append(
-            (
-                f"Entrada: {escape_markdown_v2(_fmt_zone(best.get('entry_zone')))} \\| "
-                f"Invalida: {escape_markdown_v2(_fmt_price(best.get('invalidation')))}"
+        if _has_active_levels(best):
+            symbol_lines.append(
+                (
+                    f"Zona: {escape_markdown_v2(_fmt_zone(best.get('entry_zone')))} \\| "
+                    f"Entrada ref: {escape_markdown_v2(_fmt_price(_entry_reference(best)))} \\| "
+                    f"Invalida: {escape_markdown_v2(_fmt_price(best.get('invalidation')))}"
+                )
             )
-        )
-        symbol_lines.append(
-            (
-                f"TP1/TP2/TP3: {escape_markdown_v2(_fmt_price(best.get('tp1')))} / "
-                f"{escape_markdown_v2(_fmt_price(best.get('tp2')))} / "
-                f"{escape_markdown_v2(_fmt_price(best.get('tp3')))}"
+            symbol_lines.append(
+                (
+                    f"TP1/TP2/TP3: {escape_markdown_v2(_fmt_price(best.get('tp1')))} / "
+                    f"{escape_markdown_v2(_fmt_price(best.get('tp2')))} / "
+                    f"{escape_markdown_v2(_fmt_price(best.get('tp3')))}"
+                )
             )
-        )
+        else:
+            symbol_lines.append("Niveles: inactivos hasta nuevo breakout/retest valido")
         symbol_lines.append(
             f"RR: {escape_markdown_v2(_fmt_rr(best.get('rr_estimated')))} \\| score: *{_safe_int(best.get('confidence_score'))}*"
         )
@@ -202,7 +207,7 @@ def _build_watch_rows(results: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(plans, list):
             continue
         best = _best_plan(plans)
-        if not best:
+        if not best or not _has_active_levels(best):
             continue
         rows.append(
             {
@@ -210,6 +215,7 @@ def _build_watch_rows(results: dict[str, Any]) -> list[dict[str, Any]]:
                 "action": "TRADEABLE" if bool(best.get("tradeable")) else "WATCH",
                 "score": _safe_int(best.get("confidence_score")),
                 "entry_zone": best.get("entry_zone"),
+                "entry_reference": _entry_reference(best),
                 "invalidation": best.get("invalidation"),
                 "rr_estimated": best.get("rr_estimated"),
             }
@@ -224,9 +230,41 @@ def _best_plan(plans: list[Any]) -> dict[str, Any] | None:
         return None
     return sorted(
         valid,
-        key=lambda plan: (bool(plan.get("tradeable")), _safe_int(plan.get("confidence_score"))),
+        key=lambda plan: (
+            bool(plan.get("tradeable")),
+            _status_rank(plan.get("setup_status")),
+            _safe_int(plan.get("confidence_score")),
+        ),
         reverse=True,
     )[0]
+
+
+def _status_rank(status: Any) -> int:
+    status_text = str(status or "").lower()
+    if status_text == "confirmed":
+        return 2
+    if status_text == "pending":
+        return 1
+    return 0
+
+
+def _has_active_levels(plan: dict[str, Any]) -> bool:
+    return bool(plan.get("tradeable")) or str(plan.get("setup_status") or "").lower() in {
+        "confirmed",
+        "pending",
+    }
+
+
+def _entry_reference(plan: dict[str, Any]) -> float | None:
+    zone = plan.get("entry_zone")
+    if not isinstance(zone, list) or not zone:
+        return None
+    try:
+        if str(plan.get("side") or "").lower() == "short":
+            return float(zone[0])
+        return float(zone[-1])
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_default_risk(results: dict[str, Any]) -> str | None:

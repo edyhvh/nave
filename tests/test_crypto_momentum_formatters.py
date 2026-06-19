@@ -135,6 +135,70 @@ def test_render_momentum_scan_markdown_flags_extended_setup() -> None:
     assert "no trail de entrada fresca" in joined
 
 
+def test_render_momentum_scan_markdown_does_not_publish_invalid_levels_as_watchlist() -> None:
+    payload = {
+        "generated_at": "2026-06-18T12:00:00+00:00",
+        "summary": {"tradeable_count": 0, "effective_score_threshold": 90},
+        "results": {
+            "BTCUSDT": {
+                "plans": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "side": "short",
+                        "setup_status": "invalid",
+                        "tradeable": False,
+                        "confidence_score": 47,
+                        "entry_zone": [66745.0, 67821.0],
+                        "invalidation": 67483.0,
+                        "tp1": 65000.0,
+                        "tp2": 63000.0,
+                        "tp3": 61000.0,
+                        "rr_estimated": 1.8,
+                        "reasoning": {"blockers": ["retest invalid"]},
+                    }
+                ]
+            }
+        },
+    }
+
+    text = "\n".join(render_momentum_scan_markdown_v2(payload))
+
+    assert "Watchlist prioritaria" not in text
+    assert "Niveles: inactivos" in text
+    assert "Zona: 66,745.00" not in text
+
+
+def test_render_momentum_scan_markdown_uses_side_aware_short_entry_reference() -> None:
+    payload = _scan_payload()
+    payload["results"] = {
+        "BTCUSDT": {
+            "plans": [
+                {
+                    "symbol": "BTCUSDT",
+                    "side": "short",
+                    "setup_status": "pending",
+                    "tradeable": False,
+                    "confidence_score": 80,
+                    "entry_zone": [66745.0, 67821.0],
+                    "invalidation": 69000.0,
+                    "tp1": 65000.0,
+                    "tp2": 63000.0,
+                    "tp3": 61000.0,
+                    "rr_estimated": 2.1,
+                    "sizing": {"risk_pct": 0.005},
+                    "reasoning": {"blockers": ["falta trigger 1H"]},
+                }
+            ]
+        }
+    }
+
+    text = "\n".join(render_momentum_scan_markdown_v2(payload))
+
+    assert "zona 66,745\\.00 \\- 67,821\\.00" in text
+    assert "entrada ref 66,745\\.00" in text
+    assert "Entrada ref: 66,745\\.00" in text
+
+
 def test_render_entry_zone_alert_markdown() -> None:
     message = render_entry_zone_alert_markdown_v2(
         {

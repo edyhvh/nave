@@ -4,6 +4,7 @@ import json
 
 from typer.testing import CliRunner
 
+from cli.commands.crypto import _format_entry_reference
 from cli.main import app
 
 runner = CliRunner()
@@ -76,6 +77,11 @@ def test_crypto_momentum_playbook_json(monkeypatch) -> None:
     decoded = json.loads(result.stdout)
     assert decoded["plan"]["side"] == "short"
     assert decoded["plan"]["tradeable"] is True
+
+
+def test_crypto_scan_entry_reference_is_side_aware() -> None:
+    assert _format_entry_reference({"side": "long", "entry_zone": [100.0, 101.0]}) == "101.00"
+    assert _format_entry_reference({"side": "short", "entry_zone": [100.0, 101.0]}) == "100.00"
 
 
 def test_crypto_scan_alias_defaults_to_momentum(monkeypatch) -> None:
