@@ -16,9 +16,14 @@ class ZoneWatchCandidate:
     side: str
     entry_zone: tuple[float, float]
     invalidation: float
+    tp1: float | None
+    tp2: float | None
+    tp3: float | None
+    expected_move_pct: float | None
     confidence_score: int
     rr_estimated: float
     setup_status: str
+    tradeable: bool
 
 
 def build_zone_watch_candidates(
@@ -48,6 +53,8 @@ def build_zone_watch_candidates(
             score = _safe_int(plan.get("confidence_score"))
             if score < threshold:
                 continue
+            if not bool(plan.get("tradeable")):
+                continue
             side = str(plan.get("side") or "").lower()
             if side not in {"long", "short"}:
                 continue
@@ -75,9 +82,14 @@ def build_zone_watch_candidates(
                     side=side,
                     entry_zone=(low, high),
                     invalidation=invalidation,
+                    tp1=_coerce_float(plan.get("tp1")),
+                    tp2=_coerce_float(plan.get("tp2")),
+                    tp3=_coerce_float(plan.get("tp3")),
+                    expected_move_pct=_coerce_float(plan.get("expected_move_pct")),
                     confidence_score=score,
                     rr_estimated=rr_estimated,
                     setup_status=str(plan.get("setup_status") or "unknown"),
+                    tradeable=True,
                 )
             )
 
@@ -122,6 +134,11 @@ class EntryZoneMonitor:
                 "confidence_score": candidate.confidence_score,
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
+                "tradeable": candidate.tradeable,
+                "tp1": candidate.tp1,
+                "tp2": candidate.tp2,
+                "tp3": candidate.tp3,
+                "expected_move_pct": candidate.expected_move_pct,
                 "watch_status": watch_status,
                 "event_at": now_iso,
             }
@@ -137,6 +154,11 @@ class EntryZoneMonitor:
                 "confidence_score": candidate.confidence_score,
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
+                "tradeable": candidate.tradeable,
+                "tp1": candidate.tp1,
+                "tp2": candidate.tp2,
+                "tp3": candidate.tp3,
+                "expected_move_pct": candidate.expected_move_pct,
                 "watch_status": watch_status,
                 "price": price,
                 "inside": inside,
@@ -153,6 +175,11 @@ class EntryZoneMonitor:
                 "confidence_score": candidate.confidence_score,
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
+                "tradeable": candidate.tradeable,
+                "tp1": candidate.tp1,
+                "tp2": candidate.tp2,
+                "tp3": candidate.tp3,
+                "expected_move_pct": candidate.expected_move_pct,
                 "watch_status": watch_status,
                 "last_price": price,
                 "last_checked_at": now_iso,

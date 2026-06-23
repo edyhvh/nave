@@ -173,6 +173,17 @@ def render_entry_zone_alert_markdown_v2(event: dict[str, Any]) -> str:
     entry_zone = escape_markdown_v2(_fmt_zone(event.get("entry_zone")))
     invalidation = escape_markdown_v2(_fmt_price(event.get("invalidation")))
     score = escape_markdown_v2(str(_safe_int(event.get("confidence_score"))))
+    rr = escape_markdown_v2(_fmt_rr(event.get("rr_estimated")))
+    expected_move = escape_markdown_v2(_fmt_optional_pct(event.get("expected_move_pct")))
+    targets = escape_markdown_v2(
+        " / ".join(
+            [
+                _fmt_price(event.get("tp1")),
+                _fmt_price(event.get("tp2")),
+                _fmt_price(event.get("tp3")),
+            ]
+        )
+    )
 
     return "\n".join(
         [
@@ -180,7 +191,8 @@ def render_entry_zone_alert_markdown_v2(event: dict[str, Any]) -> str:
             f"{symbol} entro en zona \\({side}\\)",
             f"Precio actual: *{price_now}*",
             f"Zona: {entry_zone}",
-            f"Invalidacion: {invalidation} \\| score: *{score}*",
+            f"Invalidacion: {invalidation} \\| score: *{score}* \\| RR: {rr}",
+            f"TP1/TP2/TP3: {targets} \\| move esp: {expected_move}",
             "Accion: esperar confirmacion de trigger antes de ejecutar\\.",
         ]
     )

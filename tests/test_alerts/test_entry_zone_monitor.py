@@ -17,14 +17,20 @@ def _scan_payload() -> dict:
                 "plans": [
                     {
                         "side": "long",
+                        "tradeable": True,
                         "confidence_score": 84,
                         "entry_zone": [81112.86, 82479.0],
                         "invalidation": 81052.5,
+                        "tp1": 85778.16,
+                        "tp2": 89077.32,
+                        "tp3": 93036.31,
+                        "expected_move_pct": 0.08,
                         "rr_estimated": 4.63,
-                        "setup_status": "pending",
+                        "setup_status": "confirmed",
                     },
                     {
                         "side": "short",
+                        "tradeable": False,
                         "confidence_score": 36,
                         "entry_zone": [77530.75, 78781.25],
                         "invalidation": 84146.94,
@@ -45,11 +51,16 @@ def _scan_payload_with_zone(*, entry_zone: list[float], invalidation: float) -> 
                 "plans": [
                     {
                         "side": "long",
+                        "tradeable": True,
                         "confidence_score": 84,
                         "entry_zone": entry_zone,
                         "invalidation": invalidation,
+                        "tp1": 85778.16,
+                        "tp2": 89077.32,
+                        "tp3": 93036.31,
+                        "expected_move_pct": 0.08,
                         "rr_estimated": 4.63,
-                        "setup_status": "pending",
+                        "setup_status": "confirmed",
                     }
                 ]
             }
@@ -65,6 +76,13 @@ def test_build_zone_watch_candidates_filters_by_score() -> None:
     assert candidate.symbol == "BTCUSDT"
     assert candidate.side == "long"
     assert candidate.confidence_score == 84
+
+
+def test_build_zone_watch_candidates_requires_tradeable_plan() -> None:
+    payload = _scan_payload()
+    payload["results"]["BTCUSDT"]["plans"][0]["tradeable"] = False
+
+    assert build_zone_watch_candidates(payload) == []
 
 
 def test_entry_zone_monitor_alerts_once_per_zone(tmp_path) -> None:
@@ -86,6 +104,8 @@ def test_entry_zone_monitor_alerts_once_per_zone(tmp_path) -> None:
 
     assert first["alert_count"] == 1
     assert second["alert_count"] == 0
+    assert first["alerts"][0]["tp1"] == 85778.16
+    assert first["alerts"][0]["expected_move_pct"] == 0.08
 
 
 def test_entry_zone_monitor_skips_alert_when_invalidated(tmp_path) -> None:
