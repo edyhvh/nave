@@ -843,9 +843,14 @@ class HermesNaveIntegration:
                 "side": candidate.side,
                 "entry_zone": [candidate.entry_zone[0], candidate.entry_zone[1]],
                 "invalidation": candidate.invalidation,
+                "tp1": candidate.tp1,
+                "tp2": candidate.tp2,
+                "tp3": candidate.tp3,
+                "expected_move_pct": candidate.expected_move_pct,
                 "confidence_score": candidate.confidence_score,
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
+                "tradeable": candidate.tradeable,
             }
             for candidate in candidates
         ]

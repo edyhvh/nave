@@ -207,6 +207,11 @@ def test_render_entry_zone_alert_markdown() -> None:
             "price": 81900.0,
             "entry_zone": [81112.86, 82479.0],
             "invalidation": 81052.5,
+            "tp1": 85778.16,
+            "tp2": 89077.32,
+            "tp3": 93036.31,
+            "expected_move_pct": 0.08,
+            "rr_estimated": 4.63,
             "confidence_score": 84,
         }
     )
@@ -215,3 +220,5 @@ def test_render_entry_zone_alert_markdown() -> None:
     assert "BTCUSDT" in message
     assert "LONG" in message
     assert "score" in message
+    assert "TP1/TP2/TP3" in message
+    assert "move esp" in message
