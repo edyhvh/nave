@@ -58,8 +58,8 @@ missing technical setup.
 ## Monthly cadence
 
 The funding date is the 26th. `monthly_review_date` moves it to the next
-weekday, and skips the small default holiday list (including US Thanksgiving),
-when the 26th is closed; it does not force a purchase. On or after that date,
+weekday and skips NYSE closures (including observed fixed-date holidays) plus
+the desk's configured Argentine closure dates; it does not force a purchase. On or after that date,
 until a report for the month already exists, the manager should:
 
 1. snapshot current positions and cash;
@@ -111,7 +111,9 @@ provisional rather than inferred from a wallet or a broker balance.
 The live stocks desk is Discord `#quant`. Hermes should start every stocks,
 ONDO, ISM, STOCK Act, options, or Portfolio Manager message with `STOCKS:`.
 The monthly review cron delivers only the due-date report back to the originating
-`#quant` thread. It never places orders.
+`#quant` thread at 14:00 UTC. A report counts as complete only after Hermes records
+successful delivery, so transport failures remain eligible for a later retry. It
+never places orders.
 
 ## Wallet scope
 

@@ -44,6 +44,7 @@ CONFIRMED = "confirmed_on_chain"
 PENDING = "pending_review"
 RESIDUAL_STATUS = "average_cost_residual"
 CONFIRMED_STATUS = "on_chain_confirmed"
+INCOMPLETE_STATUS = "incomplete_history"
 ClientFactory = Callable[[str], Any]
 
 
@@ -109,6 +110,25 @@ def economic_key(fill: dict[str, Any]) -> tuple[Any, ...] | None:
     if not (mint and side and quantity is not None and stamp):
         return None
     return (mint, side, str(_as_decimal(quantity)), stamp)
+
+
+def _signatures_can_fallback_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    """Match a legacy truncated signature only to its canonical prefix.
+
+    Distinct valid signatures are separate transactions even when their economic
+    fields happen to be identical in the same second.
+    """
+    left_raw = str(left.get("signature") or "")
+    right_raw = str(right.get("signature") or "")
+    left_canonical = canonicalize_signature(left_raw)
+    right_canonical = canonicalize_signature(right_raw)
+    if left_canonical and right_canonical:
+        return left_canonical == right_canonical
+    if left_canonical and right_raw:
+        return len(right_raw) >= 80 and left_canonical.startswith(right_raw)
+    if right_canonical and left_raw:
+        return len(left_raw) >= 80 and right_canonical.startswith(left_raw)
+    return False
 
 
 def redact_rpc_error(message: str) -> str:
@@ -178,14 +198,21 @@ def normalize_existing_fills(fills: list[dict[str, Any]]) -> list[dict[str, Any]
     """Dedup by canonical signature and by mint/side/qty/timestamp."""
     normalized: list[dict[str, Any]] = []
     by_signature: dict[tuple[Any, Any, Any], int] = {}
-    by_economic: dict[tuple[Any, ...], int] = {}
+    by_economic: dict[tuple[Any, ...], list[int]] = {}
     for fill in fills:
         row = _enrich_fill(fill)
         sig_key = _signature_key(row)
         econ = economic_key(row)
         index = by_signature.get(sig_key) if sig_key else None
         if index is None and econ is not None:
-            index = by_economic.get(econ)
+            index = next(
+                (
+                    candidate
+                    for candidate in by_economic.get(econ, [])
+                    if _signatures_can_fallback_match(normalized[candidate], row)
+                ),
+                None,
+            )
         if index is not None:
             normalized[index] = _prefer_fill(normalized[index], row)
             sig_key = _signature_key(normalized[index])
@@ -193,14 +220,16 @@ def normalize_existing_fills(fills: list[dict[str, Any]]) -> list[dict[str, Any]
             if sig_key:
                 by_signature[sig_key] = index
             if econ:
-                by_economic[econ] = index
+                by_economic.setdefault(econ, [])
+                if index not in by_economic[econ]:
+                    by_economic[econ].append(index)
             continue
         index = len(normalized)
         normalized.append(row)
         if sig_key:
             by_signature[sig_key] = index
         if econ:
-            by_economic[econ] = index
+            by_economic.setdefault(econ, []).append(index)
     return normalized
 
 
@@ -291,7 +320,12 @@ def residual_average_cost(fills: list[dict[str, Any]]) -> dict[str, Any]:
         "realized_pnl_usd": realized,
         "cost_basis_status": status,
         "gross_purchase_usd": sum(
-            (-_as_decimal(fill.get("usdc_delta")) for fill in fills if fill.get("side") == "BUY"),
+            (
+                -_as_decimal(fill.get("usdc_delta"))
+                for fill in fills
+                if fill.get("side") == "BUY"
+                and fill.get("reconciliation_status") != PENDING
+            ),
             Decimal(0),
         ),
     }
@@ -347,6 +381,7 @@ def _discover_token_accounts(
     allow_empty: bool,
 ) -> tuple[Any, list[dict[str, Any]], list[str]]:
     rpc_errors: list[str] = []
+    empty_responses: list[Any] = []
     for rpc_url in rpc_urls:
         try:
             candidate = client_factory(rpc_url)
@@ -356,6 +391,9 @@ def _discover_token_accounts(
             continue
         if not token_accounts and require_accounts and not allow_empty:
             rpc_errors.append(redact_rpc_error(f"{rpc_url}: empty token account set"))
+            empty_responses.append(candidate)
+            if len(empty_responses) >= 2:
+                return candidate, [], rpc_errors
             continue
         return candidate, token_accounts, rpc_errors
     raise RuntimeError("all Solana RPC endpoints failed: " + " | ".join(rpc_errors))
@@ -395,8 +433,10 @@ def refresh(
     activities: list[dict[str, Any]] = []
     signatures: dict[str, dict[str, Any]] = {}
     history_complete = True
-    for account in ondo_accounts:
-        pubkey = account.get("pubkey")
+    history_addresses = [wallet] + [
+        account.get("pubkey") for account in ondo_accounts if account.get("pubkey")
+    ]
+    for pubkey in dict.fromkeys(history_addresses):
         if not pubkey:
             continue
         try:
@@ -428,11 +468,14 @@ def refresh(
                 for change in changes
                 if change.get("mint") in USDC_MINTS
             )
-            apply_cash = len(ondo_changes) == 1 and usdc_delta != 0
             for change in ondo_changes:
                 ondo_delta = int(change.get("delta_raw_amount", 0))
                 if not ondo_delta:
                     continue
+                apply_cash = len(ondo_changes) == 1 and (
+                    (ondo_delta > 0 and usdc_delta < 0)
+                    or (ondo_delta < 0 and usdc_delta > 0)
+                )
                 fill = new_fill(
                     activity,
                     change["mint"],
@@ -482,22 +525,24 @@ def refresh(
                 "sale_proceeds_usd": str(basis["sale_proceeds_usd"]),
                 "realized_pnl_usd": str(basis["realized_pnl_usd"]),
                 "cost_basis_usd": str(basis["cost_basis_usd"]),
-                "cost_basis_status": basis["cost_basis_status"],
+                "cost_basis_status": (
+                    basis["cost_basis_status"] if history_complete else INCOMPLETE_STATUS
+                ),
             }
         )
 
     positions_by_ticker = {position["ticker"]: position for position in positions}
-    for mint, amount in by_mint.items():
-        _symbol, underlying = lookup_ondo(mint)
-        if underlying == "UNKNOWN":
-            continue
+    for mint, (_symbol, underlying) in KNOWN_ONDO.items():
         position = positions_by_ticker.get(underlying)
         if position is None:
             continue
+        amount = by_mint.get(mint, Decimal(0))
         basis = residual_average_cost(fills_by_mint.get(mint, []))
         position["quantity"] = float(amount)
         position["cost_basis_usd"] = float(basis["cost_basis_usd"])
-        position["cost_basis_status"] = basis["cost_basis_status"]
+        position["cost_basis_status"] = (
+            basis["cost_basis_status"] if history_complete else INCOMPLETE_STATUS
+        )
         position["sale_proceeds_usd"] = float(basis["sale_proceeds_usd"])
         position["realized_pnl_usd"] = float(basis["realized_pnl_usd"])
 

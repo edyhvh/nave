@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from solders.signature import Signature
 
 from trading.crypto.chain_audit import summarize_solana_transaction
 from trading.stocks.portfolio_ledger import (
@@ -46,6 +47,7 @@ def test_existing_fills_are_normalized_and_deduplicated_by_signature():
 
 
 def test_truncated_and_canonical_signatures_merge_on_economic_key():
+    canonical = str(Signature.from_bytes(bytes([7]) * 64))
     fills = [
         {
             "symbol": "TSLAON",
@@ -54,7 +56,7 @@ def test_truncated_and_canonical_signatures_merge_on_economic_key():
             "quantity": "0.012138236",
             "usdc_delta": "-5.00",
             "date_utc": "2026-02-20T20:09:14Z",
-            "signature": "truncated-sig-87-chars-not-a-real-signature-xxxxxxxxxxxxxxxxxxxxx",
+            "signature": canonical[:-1],
         },
         {
             "symbol": "TSLAON",
@@ -63,7 +65,7 @@ def test_truncated_and_canonical_signatures_merge_on_economic_key():
             "quantity": "0.012138236",
             "usdc_delta": "-5",
             "date_utc": "2026-02-20T20:09:14+00:00",
-            "signature": "canonical-sig-88-chars-not-a-real-signature-xxxxxxxxxxxxxxxxxxxxxx",
+            "signature": canonical,
             "reconciliation_status": "confirmed_on_chain",
         },
     ]
@@ -71,6 +73,25 @@ def test_truncated_and_canonical_signatures_merge_on_economic_key():
     assert len(normalized) == 1
     assert economic_key(normalized[0])[2] == "0.012138236"
     assert normalized[0]["reconciliation_status"] == "confirmed_on_chain"
+
+
+def test_distinct_valid_signatures_with_same_economic_fields_do_not_merge():
+    first = str(Signature.from_bytes(bytes([1]) * 64))
+    second = str(Signature.from_bytes(bytes([2]) * 64))
+    base = {
+        "mint": TSLA_MINT,
+        "side": "BUY",
+        "quantity": "1",
+        "date_utc": "2026-02-20T20:09:14Z",
+        "reconciliation_status": "confirmed_on_chain",
+    }
+    normalized = normalize_existing_fills(
+        [
+            {**base, "signature": first, "usdc_delta": "-10"},
+            {**base, "signature": second, "usdc_delta": "-20"},
+        ]
+    )
+    assert len(normalized) == 2
 
 
 def test_unknown_ondo_mint_is_retained_as_pending():
@@ -107,6 +128,45 @@ def test_shared_usdc_across_two_mints_stays_pending():
     assert first["reconciliation_status"] == "pending_review"
     assert first["usdc_delta"] == "0"
     assert second["usdc_delta"] == "0"
+
+
+def test_cash_direction_must_oppose_ondo_direction(tmp_path):
+    accounts = [
+        {"pubkey": "acct-amzn", "mint": AMZN_MINT, "raw_amount": "1", "decimals": 9}
+    ]
+    transaction = _tx(
+        signature="sig-wrong-way",
+        block_time=1_700_000_000,
+        balances=[
+            {
+                "accountIndex": 0,
+                "owner": WALLET,
+                "mint": AMZN_MINT,
+                "uiTokenAmount": {"amount": "1", "decimals": 9},
+            },
+            {
+                "accountIndex": 1,
+                "owner": WALLET,
+                "mint": USDC_MINT,
+                "uiTokenAmount": {"amount": "1000000", "decimals": 6},
+            },
+        ],
+    )
+    client = _FakeClient(
+        accounts,
+        {"acct-amzn": [{"signature": "sig-wrong-way"}]},
+        {"sig-wrong-way": transaction},
+    )
+    state_path, audit_path = _state_and_audit(tmp_path)
+    refresh(
+        state_path=state_path,
+        audit_path=audit_path,
+        rpc_urls=["https://example.invalid"],
+        client_factory=lambda _url: client,
+    )
+    fill = json.loads(audit_path.read_text(encoding="utf-8"))["fills"][0]
+    assert fill["reconciliation_status"] == "pending_review"
+    assert fill["usdc_delta"] == "0"
 
 
 def test_missing_usdc_does_not_lock_out_later_confirmed_fill():
@@ -180,6 +240,7 @@ def test_pending_fills_are_excluded_from_average_cost():
     basis = residual_average_cost(fills)
     assert basis["cost_basis_usd"] == Decimal(0)
     assert basis["cost_basis_status"] == "pending_review"
+    assert basis["gross_purchase_usd"] == Decimal(0)
 
 
 def test_token_2022_ui_amount_uses_raw_over_decimals():
@@ -319,6 +380,65 @@ def test_refresh_rejects_empty_inventory_when_book_has_positions(tmp_path):
             client_factory=lambda _url: client,
         )
     assert json.loads(state_path.read_text())["positions"][0].get("quantity") is None
+
+
+def test_refresh_accepts_empty_inventory_after_two_rpc_endpoints_agree(tmp_path):
+    state_path, audit_path = _state_and_audit(
+        tmp_path,
+        positions=[{"ticker": "AMZN", "quantity": 1.0, "cost_basis_usd": 100.0}],
+    )
+    clients = {
+        "https://one.invalid": _FakeClient([], {}, {}),
+        "https://two.invalid": _FakeClient([], {}, {}),
+    }
+    refresh(
+        state_path=state_path,
+        audit_path=audit_path,
+        rpc_urls=list(clients),
+        client_factory=clients.__getitem__,
+    )
+    position = json.loads(state_path.read_text(encoding="utf-8"))["positions"][0]
+    assert position["quantity"] == 0.0
+
+
+def test_refresh_zeroes_known_position_absent_from_complete_inventory(tmp_path):
+    positions = [
+        {"ticker": "AMZN", "quantity": 1.0, "cost_basis_usd": 100.0},
+        {"ticker": "TSLA", "quantity": 2.0, "cost_basis_usd": 200.0},
+    ]
+    accounts = [
+        {"pubkey": "acct-amzn", "mint": AMZN_MINT, "raw_amount": "1", "decimals": 9}
+    ]
+    state_path, audit_path = _state_and_audit(tmp_path, positions=positions)
+    client = _FakeClient(accounts, {"acct-amzn": []}, {})
+    refresh(
+        state_path=state_path,
+        audit_path=audit_path,
+        rpc_urls=["https://example.invalid"],
+        client_factory=lambda _url: client,
+    )
+    saved = json.loads(state_path.read_text(encoding="utf-8"))
+    by_ticker = {row["ticker"]: row for row in saved["positions"]}
+    assert by_ticker["AMZN"]["quantity"] == 1e-9
+    assert by_ticker["TSLA"]["quantity"] == 0.0
+
+
+def test_incomplete_history_degrades_cost_basis_status(tmp_path):
+    accounts = [
+        {"pubkey": "acct-amzn", "mint": AMZN_MINT, "raw_amount": "1", "decimals": 9}
+    ]
+    state_path, audit_path = _state_and_audit(tmp_path)
+    client = _FakeClient(accounts, {WALLET: [{"signature": "missing"}]}, {})
+    refresh(
+        state_path=state_path,
+        audit_path=audit_path,
+        rpc_urls=["https://example.invalid"],
+        client_factory=lambda _url: client,
+    )
+    position = json.loads(state_path.read_text(encoding="utf-8"))["positions"][0]
+    assert position["cost_basis_status"] == "incomplete_history"
+    audit_position = json.loads(audit_path.read_text(encoding="utf-8"))["positions"][0]
+    assert audit_position["cost_basis_status"] == "incomplete_history"
 
 
 def test_failed_transaction_meta_err_does_not_create_fill(tmp_path):

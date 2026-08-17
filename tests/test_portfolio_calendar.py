@@ -28,3 +28,13 @@ def test_review_skips_thanksgiving():
     assert next_business_day_for_monthly_review(2026, 11) == date(2026, 11, 27)
     assert not review_is_due(date(2026, 11, 26))
     assert review_is_due(date(2026, 11, 27))
+
+
+def test_review_skips_memorial_day():
+    assert date(2025, 5, 26) in default_review_holidays(2025)
+    assert next_business_day_for_monthly_review(2025, 5) == date(2025, 5, 27)
+
+
+def test_fixed_us_holidays_use_observed_market_date():
+    assert date(2026, 7, 3) in default_review_holidays(2026)
+    assert date(2027, 12, 31) in default_review_holidays(2027)
