@@ -76,6 +76,7 @@ class Candidate:
     price: float | None = None
     entry_zone: tuple[float, float] | None = None
     invalidation: float | None = None
+    direct_defense: bool = False
 
 
 @dataclass(frozen=True)
@@ -135,6 +136,10 @@ def rank_candidates(candidates: Iterable[Candidate], *, policy: PortfolioPolicy)
         evidence = candidate.evidence.bounded()
         score = _score(evidence)
         reasons: list[str] = []
+        if candidate.direct_defense:
+            decisions.append(Decision(candidate.ticker.upper(), Action.REVIEW, score,
+                                      ("direct_defense_excluded",)))
+            continue
         if evidence.ism_score >= 0.6:
             reasons.append("ism_support")
         if evidence.congress_score >= 0.6:

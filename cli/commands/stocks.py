@@ -93,6 +93,7 @@ def portfolio_review(
                 price=item.get("price"),
                 entry_zone=tuple(item["entry_zone"]) if item.get("entry_zone") else None,
                 invalidation=item.get("invalidation"),
+                direct_defense=bool(item.get("direct_defense", False)),
             )
             for item in raw_candidates
         ]

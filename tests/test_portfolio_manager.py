@@ -114,6 +114,17 @@ def test_missing_entry_zone_is_watch_even_with_perfect_evidence() -> None:
     assert "entry_zone_not_checked" in decisions[0].reason_codes
 
 
+def test_direct_defense_candidate_is_excluded_from_entry() -> None:
+    decisions = rank_candidates(
+        [Candidate("GE", Evidence(technical_score=1.0), price=100.0,
+                   entry_zone=(90.0, 110.0), direct_defense=True)],
+        policy=PortfolioPolicy(),
+    )
+
+    assert decisions[0].action is Action.REVIEW
+    assert decisions[0].reason_codes == ("direct_defense_excluded",)
+
+
 def test_broken_thesis_is_exit_and_profit_or_drawdown_is_review() -> None:
     policy = PortfolioPolicy()
     decisions = review_positions(
