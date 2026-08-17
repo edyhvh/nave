@@ -79,6 +79,9 @@ nave congress                              # new STOCK Act filings since last ru
 
 Deeper command lists: [docs/commands/README.md](docs/commands/README.md).
 
+The long-term, human-gated stock portfolio workflow is documented in
+[docs/portfolio_manager.md](docs/portfolio_manager.md).
+
 ---
 
 ## Quick setup

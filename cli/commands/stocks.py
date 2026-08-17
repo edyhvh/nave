@@ -31,7 +31,6 @@ from trading.stocks import (
     render_ism_report_markdown_v2,
     render_x_summary_markdown_v2,
 )
-from trading.stocks.short_backtest import ISMShortBacktester
 from trading.stocks.ism_calendar import (
     CalendarKind,
     ISMCalendarError,
@@ -39,6 +38,14 @@ from trading.stocks.ism_calendar import (
     load_calendar,
     next_release,
 )
+from trading.stocks.portfolio_manager import (
+    Candidate,
+    Evidence,
+    PortfolioPolicy,
+    allocate_monthly_budget,
+    rank_candidates,
+)
+from trading.stocks.short_backtest import ISMShortBacktester
 from trading.stocks.social_analyzer import (
     analyze_tickers,
     render_sheet as render_x_sheet,
@@ -57,6 +64,56 @@ ism_calendar_app = ProfessionalTyper(
     help="Internal ISM release calendar (sourced from FMP)."
 )
 stocks_app.add_typer(ism_calendar_app, name="ism-calendar")
+
+
+@stocks_app.command("portfolio-review")
+def portfolio_review(
+    candidates_json: str = typer.Option(
+        ...,
+        "--candidates-json",
+        help="JSON array of normalised candidates and evidence from upstream adapters.",
+    ),
+    monthly_budget: float = typer.Option(300.0, "--monthly-budget", min=0.0),
+    json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Build a human-gated monthly portfolio review; never places orders."""
+    try:
+        raw_candidates = _json.loads(candidates_json)
+        if not isinstance(raw_candidates, list):
+            raise TypeError("candidates JSON must be an array")
+        candidates = [
+            Candidate(
+                ticker=str(item["ticker"]),
+                evidence=Evidence(**dict(item.get("evidence", {}))),
+                price=item.get("price"),
+                entry_zone=tuple(item["entry_zone"]) if item.get("entry_zone") else None,
+                invalidation=item.get("invalidation"),
+            )
+            for item in raw_candidates
+        ]
+    except (KeyError, TypeError, ValueError, _json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"invalid --candidates-json: {exc}") from exc
+
+    policy = PortfolioPolicy(monthly_budget=monthly_budget)
+    ranked = rank_candidates(candidates, policy=policy)
+    allocations = allocate_monthly_budget(ranked, policy=policy)
+    payload = {
+        "mode": "human_gated_dry_run",
+        "policy": {"monthly_budget": policy.monthly_budget,
+                   "reserve_cash_weight": policy.reserve_cash_weight},
+        "ranked": [decision.as_dict() for decision in ranked],
+        "allocations": [decision.as_dict() for decision in allocations],
+    }
+    if json_out:
+        typer.echo(_json.dumps(payload, indent=2))
+        return
+    typer.echo("NAVE PORTFOLIO REVIEW — human-gated dry-run")
+    for decision in ranked:
+        allocation = f" → ${decision.allocation_usd:.2f}" if decision.allocation_usd else ""
+        typer.echo(f"{decision.action.value.upper():7} {decision.ticker:6} "
+                   f"score={decision.score:.2f}{allocation} "
+                   f"[{', '.join(decision.reason_codes) or 'no flags'}]")
+    typer.echo("No orders were placed.")
 
 
 def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
