@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from enum import StrEnum
 from typing import Any
+
+from trading.stocks.portfolio_calendar import next_business_day_for_monthly_review
 
 
 class Action(StrEnum):
@@ -106,18 +108,12 @@ class PortfolioPolicy:
 
 
 def monthly_review_date(year: int, month: int, review_day: int = 26) -> date:
-    """Return the first weekday on/after the funding date (no forced execution)."""
-    if not 1 <= review_day <= 28:
-        raise ValueError("review_day must be between 1 and 28")
-    current = date(year, month, review_day)
-    while current.weekday() >= 5:
-        current += timedelta(days=1)
-    return current
+    """Return the funding date, skipping weekends and configured holidays."""
+    return next_business_day_for_monthly_review(year, month, review_day=review_day)
 
 
 def _score(evidence: Evidence) -> float:
     e = evidence.bounded()
-    # Fundamentals/macro and execution quality dominate; social is confirmation only.
     score = (
         0.28 * e.ism_score
         + 0.18 * e.congress_score
@@ -154,22 +150,39 @@ def rank_candidates(candidates: Iterable[Candidate], *, policy: PortfolioPolicy)
         action = Action.ENTER if score >= policy.min_entry_score else (
             Action.WATCH if score >= policy.min_watch_score else Action.REVIEW
         )
+        if candidate.price is not None and candidate.entry_zone is not None:
+            low, high = candidate.entry_zone
+            if not (low <= candidate.price <= high):
+                action = Action.WATCH
+                reasons.append("price_outside_entry_zone")
+        elif candidate.entry_zone is None:
+            reasons.append("entry_zone_not_checked")
         decisions.append(Decision(candidate.ticker.upper(), action, score, tuple(reasons)))
     return sorted(decisions, key=lambda decision: decision.score, reverse=True)
 
 
 def allocate_monthly_budget(
-    decisions: Iterable[Decision], *, policy: PortfolioPolicy
+    decisions: Iterable[Decision],
+    *,
+    policy: PortfolioPolicy,
+    open_tickers: Iterable[str] = (),
 ) -> list[Decision]:
-    """Allocate only to actionable entries, preserving cash and position caps."""
-    entries = [decision for decision in decisions if decision.action is Action.ENTER]
-    investable = max(0.0, policy.monthly_budget * (1.0 - policy.reserve_cash_weight))
-    if not entries:
+    """Allocate only to new ENTER names that fit remaining position slots."""
+    open_set = {ticker.upper() for ticker in open_tickers}
+    new_entries = [
+        decision
+        for decision in decisions
+        if decision.action is Action.ENTER and decision.ticker.upper() not in open_set
+    ]
+    slots = max(0, policy.max_positions - len(open_set))
+    chosen = new_entries[:slots]
+    if not chosen:
         return []
-    amount = min(investable / len(entries), policy.monthly_budget * policy.max_single_new_weight)
+    investable = max(0.0, policy.monthly_budget * (1.0 - policy.reserve_cash_weight))
+    amount = min(investable / len(chosen), policy.monthly_budget * policy.max_single_new_weight)
     return [
         Decision(d.ticker, d.action, d.score, d.reason_codes, round(amount, 2))
-        for d in entries[:policy.max_positions]
+        for d in chosen
     ]
 
 

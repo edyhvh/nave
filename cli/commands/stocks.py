@@ -74,6 +74,11 @@ def portfolio_review(
         help="JSON array of normalised candidates and evidence from upstream adapters.",
     ),
     monthly_budget: float = typer.Option(300.0, "--monthly-budget", min=0.0),
+    open_tickers: Optional[str] = typer.Option(
+        None,
+        "--open-tickers",
+        help="JSON array of tickers already held; used to enforce max_positions.",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
 ) -> None:
     """Build a human-gated monthly portfolio review; never places orders."""
@@ -91,12 +96,18 @@ def portfolio_review(
             )
             for item in raw_candidates
         ]
+        held: list[str] = []
+        if open_tickers:
+            parsed_open = _json.loads(open_tickers)
+            if not isinstance(parsed_open, list):
+                raise TypeError("open tickers JSON must be an array")
+            held = [str(ticker) for ticker in parsed_open]
     except (KeyError, TypeError, ValueError, _json.JSONDecodeError) as exc:
-        raise typer.BadParameter(f"invalid --candidates-json: {exc}") from exc
+        raise typer.BadParameter(f"invalid portfolio-review input: {exc}") from exc
 
     policy = PortfolioPolicy(monthly_budget=monthly_budget)
     ranked = rank_candidates(candidates, policy=policy)
-    allocations = allocate_monthly_budget(ranked, policy=policy)
+    allocations = allocate_monthly_budget(ranked, policy=policy, open_tickers=held)
     payload = {
         "mode": "human_gated_dry_run",
         "policy": {"monthly_budget": policy.monthly_budget,
@@ -108,8 +119,10 @@ def portfolio_review(
         typer.echo(_json.dumps(payload, indent=2))
         return
     typer.echo("NAVE PORTFOLIO REVIEW — human-gated dry-run")
+    allocated = {decision.ticker: decision.allocation_usd for decision in allocations}
     for decision in ranked:
-        allocation = f" → ${decision.allocation_usd:.2f}" if decision.allocation_usd else ""
+        amount = allocated.get(decision.ticker)
+        allocation = f" → ${amount:.2f}" if amount else ""
         typer.echo(f"{decision.action.value.upper():7} {decision.ticker:6} "
                    f"score={decision.score:.2f}{allocation} "
                    f"[{', '.join(decision.reason_codes) or 'no flags'}]")

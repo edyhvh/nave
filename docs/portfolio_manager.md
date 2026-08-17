@@ -58,8 +58,9 @@ missing technical setup.
 ## Monthly cadence
 
 The funding date is the 26th. `monthly_review_date` moves it to the next
-weekday when the 26th is a weekend; it does not force a purchase. On or after
-that date, the manager should:
+weekday, and skips the small default holiday list (including US Thanksgiving),
+when the 26th is closed; it does not force a purchase. On or after that date,
+until a report for the month already exists, the manager should:
 
 1. snapshot current positions and cash;
 2. refresh ISM, congress, ONDO, technical and Reserve evidence;

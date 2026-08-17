@@ -207,8 +207,7 @@ def _primary_conviction_risk_hint(
         blockers.append("COT history below minimum depth")
 
     base = min(max(current_risk_pct, cfg.risk.min_risk_pct), cfg.risk.max_risk_pct)
-    suggested = base
-    suggested = 0.0075
+    suggested = min(0.0075, cfg.risk.max_risk_pct)
     rationale = "score >= 90 primary momentum entry"
 
     if quality["rows"] < quality["minimum_rows"]:

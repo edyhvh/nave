@@ -326,7 +326,7 @@ def build_solana_snapshot(
             transaction = client.get_transaction(signature["signature"])
             if transaction is not None:
                 activity.append(
-                    _summarize_solana_transaction(
+                    summarize_solana_transaction(
                         transaction, address, signature=signature["signature"]
                     )
                 )
@@ -357,37 +357,56 @@ def build_solana_snapshot(
     }
 
 
-def _summarize_solana_transaction(
+def summarize_solana_transaction(
     transaction: dict[str, Any], wallet: str, *, signature: str | None = None
 ) -> dict[str, Any]:
-    """Extract evidence useful for cost-basis review without guessing a swap."""
+    """Extract per-mint wallet deltas without guessing a swap.
+
+    Token-account rows are keyed by account index so two accounts of the same
+    mint are not last-write-wins. Deltas are then summed per mint.
+    """
     meta = transaction.get("meta") or {}
-    changes: list[dict[str, Any]] = []
-    before = {
-        (row.get("owner"), row.get("mint")): row.get("uiTokenAmount") or {}
-        for row in meta.get("preTokenBalances") or []
-        if row.get("owner") == wallet
-    }
-    after = {
-        (row.get("owner"), row.get("mint")): row.get("uiTokenAmount") or {}
-        for row in meta.get("postTokenBalances") or []
-        if row.get("owner") == wallet
-    }
-    for key in sorted(set(before) | set(after)):
-        pre = before.get(key, {})
-        post = after.get(key, {})
-        pre_raw = int(pre.get("amount", 0))
-        post_raw = int(post.get("amount", 0))
-        if pre_raw != post_raw:
-            changes.append(
-                {
-                    "mint": key[1],
-                    "decimals": post.get("decimals", pre.get("decimals")),
-                    "pre_raw_amount": str(pre_raw),
-                    "post_raw_amount": str(post_raw),
-                    "delta_raw_amount": str(post_raw - pre_raw),
-                }
-            )
+    before = _token_balances_by_account(meta.get("preTokenBalances") or [], wallet)
+    after = _token_balances_by_account(meta.get("postTokenBalances") or [], wallet)
+    per_mint: dict[str, dict[str, Any]] = {}
+    for account_index in set(before) | set(after):
+        pre_row = before.get(account_index, {})
+        post_row = after.get(account_index, {})
+        mint = post_row.get("mint") or pre_row.get("mint")
+        if not mint:
+            continue
+        pre_amount = pre_row.get("uiTokenAmount") or {}
+        post_amount = post_row.get("uiTokenAmount") or {}
+        pre_raw = int(pre_amount.get("amount", 0) or 0)
+        post_raw = int(post_amount.get("amount", 0) or 0)
+        delta = post_raw - pre_raw
+        if delta == 0:
+            continue
+        current = per_mint.setdefault(
+            mint,
+            {
+                "mint": mint,
+                "decimals": post_amount.get("decimals", pre_amount.get("decimals")),
+                "pre_raw_amount": 0,
+                "post_raw_amount": 0,
+                "delta_raw_amount": 0,
+            },
+        )
+        current["pre_raw_amount"] += pre_raw
+        current["post_raw_amount"] += post_raw
+        current["delta_raw_amount"] += delta
+        if current.get("decimals") is None:
+            current["decimals"] = post_amount.get("decimals", pre_amount.get("decimals"))
+    changes = [
+        {
+            "mint": row["mint"],
+            "decimals": row["decimals"],
+            "pre_raw_amount": str(row["pre_raw_amount"]),
+            "post_raw_amount": str(row["post_raw_amount"]),
+            "delta_raw_amount": str(row["delta_raw_amount"]),
+        }
+        for row in per_mint.values()
+    ]
     block_time = transaction.get("blockTime")
     return {
         "signature": signature,
@@ -400,6 +419,19 @@ def _summarize_solana_transaction(
         "token_balance_changes": changes,
         "classification": "on_chain_evidence_only",
     }
+
+
+def _token_balances_by_account(rows: list[dict[str, Any]], wallet: str) -> dict[Any, dict[str, Any]]:
+    indexed: dict[Any, dict[str, Any]] = {}
+    for index, row in enumerate(rows):
+        if row.get("owner") != wallet:
+            continue
+        account_index = row.get("accountIndex", index)
+        indexed[account_index] = row
+    return indexed
+
+
+_summarize_solana_transaction = summarize_solana_transaction
 
 
 def write_snapshot(snapshot: dict[str, Any], path: str | Path) -> Path:

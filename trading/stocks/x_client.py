@@ -112,15 +112,10 @@ class XClient:
 def _build_query(ticker: str, *, days: int) -> str:
     """Build a permissive X search query for a ticker symbol."""
     sym = ticker.strip().upper()
-    # Accept ONDO symbols at the boundary, but always search X by the
-    # underlying stock cashtag (e.g. MSFTon -> $MSFT).
     if ticker.strip().lower().endswith("on") and len(sym) > 3:
         sym = sym[:-2]
     since = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
-    # Use the underlying-stock cashtag only (for example, $MSFT).
-    # ONDO token suffixes such as MSFTon belong to asset/chain mapping,
-    # not to the social sentiment query. Exclude retweets to keep the
-    # corpus authored.
+    # Search the underlying cashtag; ONDO suffixes are not X cashtags.
     return f"${sym} lang:en -is:retweet since:{since}"
 
 

@@ -9,6 +9,7 @@ from trading.crypto.chain_audit import (
     EvmRpcClient,
     SolanaBalance,
     SolanaRpcClient,
+    summarize_solana_transaction,
     write_snapshot,
 )
 
@@ -111,6 +112,59 @@ def test_solana_signature_limit_is_bounded() -> None:
 
     with pytest.raises(ValueError, match="between 1 and 1000"):
         client.get_signatures("11111111111111111111111111111111", limit=1001)
+
+
+def test_summarize_aggregates_same_mint_across_token_accounts() -> None:
+    wallet = "Wallet1111111111111111111111111111111111111"
+    mint = "Mint111111111111111111111111111111111111111"
+    transaction = {
+        "slot": 2,
+        "blockTime": 1_700_000_100,
+        "meta": {
+            "fee": 5000,
+            "err": None,
+            "preTokenBalances": [
+                {
+                    "accountIndex": 4,
+                    "owner": wallet,
+                    "mint": mint,
+                    "uiTokenAmount": {"amount": "10", "decimals": 6},
+                },
+                {
+                    "accountIndex": 7,
+                    "owner": wallet,
+                    "mint": mint,
+                    "uiTokenAmount": {"amount": "3", "decimals": 6},
+                },
+            ],
+            "postTokenBalances": [
+                {
+                    "accountIndex": 4,
+                    "owner": wallet,
+                    "mint": mint,
+                    "uiTokenAmount": {"amount": "11", "decimals": 6},
+                },
+                {
+                    "accountIndex": 7,
+                    "owner": wallet,
+                    "mint": mint,
+                    "uiTokenAmount": {"amount": "8", "decimals": 6},
+                },
+            ],
+        },
+    }
+
+    summary = summarize_solana_transaction(transaction, wallet, signature="sig")
+
+    assert summary["token_balance_changes"] == [
+        {
+            "mint": mint,
+            "decimals": 6,
+            "pre_raw_amount": "13",
+            "post_raw_amount": "19",
+            "delta_raw_amount": "6",
+        }
+    ]
 
 
 def test_write_snapshot_creates_json_file(tmp_path) -> None:

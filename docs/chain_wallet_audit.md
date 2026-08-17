@@ -12,7 +12,6 @@ NAVE can inspect public wallets without Moralis, paid APIs, private keys, or tra
 Install the project dependencies inside the local virtual environment:
 
 ```bash
-cd /home/david/nave-portfolio
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
@@ -75,7 +74,6 @@ The read-only command accepts a public address and does not write a file unless
 `--snapshot-path` is supplied:
 
 ```bash
-cd /home/david/nave-portfolio
 PYTHONPATH=. .venv/bin/python cli/main.py wallet audit \
   --chain bsc \
   0xPUBLIC_EVM_ADDRESS \
