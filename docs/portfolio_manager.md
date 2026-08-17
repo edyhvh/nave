@@ -106,6 +106,13 @@ This command only emits a dry-run plan. Current quotes and position quantities
 remain local portfolio inputs; missing quantities or fills must be reported as
 provisional rather than inferred from a wallet or a broker balance.
 
+## Discord
+
+The live stocks desk is Discord `#quant`. Hermes should start every stocks,
+ONDO, ISM, STOCK Act, options, or Portfolio Manager message with `STOCKS:`.
+The monthly review cron delivers only the due-date report back to the originating
+`#quant` thread. It never places orders.
+
 ## Wallet scope
 
 The ETH and SOL addresses supplied by the operator are separate read-only audit
