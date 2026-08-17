@@ -25,7 +25,8 @@ def test_rank_requires_confluence_and_ondo_liquidity_penalty() -> None:
         Candidate("NVDA", Evidence(ism_score=1.0, congress_score=.8,
                                     technical_score=1.0, reserve_ai_score=1.0,
                                     social_score=.8, ondo_available=True,
-                                    ondo_liquid=True)),
+                                    ondo_liquid=True),
+                 price=100.0, entry_zone=(90.0, 110.0)),
         Candidate("TSLA", Evidence(ism_score=.9, technical_score=.2,
                                     ondo_available=True, ondo_liquid=False)),
     ]
@@ -42,10 +43,12 @@ def test_allocator_keeps_cash_and_caps_each_position() -> None:
         *rank_candidates(
             [Candidate("NVDA", Evidence(ism_score=1, technical_score=1,
                                           reserve_ai_score=1, ondo_available=True,
-                                          ondo_liquid=True)),
+                                          ondo_liquid=True),
+                       price=100.0, entry_zone=(90.0, 110.0)),
              Candidate("AMD", Evidence(ism_score=1, technical_score=1,
-                                         reserve_ai_score=1, ondo_available=True,
-                                         ondo_liquid=True))],
+                                        reserve_ai_score=1, ondo_available=True,
+                                        ondo_liquid=True),
+                       price=100.0, entry_zone=(90.0, 110.0))],
             policy=policy,
         )
     ]
@@ -97,6 +100,18 @@ def test_price_outside_entry_zone_is_watch() -> None:
     )
     assert decisions[0].action is Action.WATCH
     assert "price_outside_entry_zone" in decisions[0].reason_codes
+
+
+def test_missing_entry_zone_is_watch_even_with_perfect_evidence() -> None:
+    decisions = rank_candidates(
+        [Candidate("NVDA", Evidence(ism_score=1, congress_score=1,
+                                     technical_score=1, reserve_ai_score=1,
+                                     social_score=1, ondo_available=True,
+                                     ondo_liquid=True))],
+        policy=PortfolioPolicy(),
+    )
+    assert decisions[0].action is Action.WATCH
+    assert "entry_zone_not_checked" in decisions[0].reason_codes
 
 
 def test_broken_thesis_is_exit_and_profit_or_drawdown_is_review() -> None:

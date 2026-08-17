@@ -150,13 +150,14 @@ def rank_candidates(candidates: Iterable[Candidate], *, policy: PortfolioPolicy)
         action = Action.ENTER if score >= policy.min_entry_score else (
             Action.WATCH if score >= policy.min_watch_score else Action.REVIEW
         )
-        if candidate.price is not None and candidate.entry_zone is not None:
+        if candidate.price is None or candidate.entry_zone is None:
+            action = Action.WATCH
+            reasons.append("entry_zone_not_checked")
+        else:
             low, high = candidate.entry_zone
             if not (low <= candidate.price <= high):
                 action = Action.WATCH
                 reasons.append("price_outside_entry_zone")
-        elif candidate.entry_zone is None:
-            reasons.append("entry_zone_not_checked")
         decisions.append(Decision(candidate.ticker.upper(), action, score, tuple(reasons)))
     return sorted(decisions, key=lambda decision: decision.score, reverse=True)
 
