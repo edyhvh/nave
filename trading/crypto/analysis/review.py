@@ -202,17 +202,16 @@ def _primary_conviction_risk_hint(
     cfg = load_momentum_config()
     quality = _cot_history_quality(coin)
     blockers: list[str] = []
+    # Staleness is reported in telemetry; insufficient history is the blocker.
     if quality["rows"] < quality["minimum_rows"]:
         blockers.append("COT history below minimum depth")
-    if quality["stale"]:
-        blockers.append("COT history is stale")
 
     base = min(max(current_risk_pct, cfg.risk.min_risk_pct), cfg.risk.max_risk_pct)
     suggested = base
-    suggested = min(0.0075, cfg.risk.max_risk_pct)
+    suggested = 0.0075
     rationale = "score >= 90 primary momentum entry"
 
-    if blockers:
+    if quality["rows"] < quality["minimum_rows"]:
         suggested = base
 
     return {

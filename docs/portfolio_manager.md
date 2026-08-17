@@ -12,6 +12,28 @@ The portfolio is systematic in process, not rigid in outcome. The policy must
 be reviewed when evidence quality, execution venue, or observed results reveal
 that a rule is failing.
 
+## Strategy and source hierarchy
+
+Yahoo Finance is the default quote source for current indicative prices and
+basic chart data. It is not a complete thesis engine. NAVE combines that quote
+with the minimum portfolio-specific evidence needed to act:
+
+1. **Position truth:** confirmed quantity, average cost, fees, execution date,
+   and the user's own execution journal.
+2. **Current market:** Yahoo Finance price/chart data and a technical entry
+   zone, invalidation, and risk/reward.
+3. **Context:** ISM, STOCK Act disclosures, Reserve research indexes, and X
+   sentiment when available. These can support a decision but cannot replace a
+   current price or broken-thesis check.
+4. **Venue:** ONDO availability and liquidity only when the user intends to
+   execute through ONDO. Wallet balances are audited separately and never
+   become stock positions automatically.
+
+The strategy is long-term, staged, and human-gated: preserve cash, add only to
+validated theses, wait when price is outside the zone, and exit only after the
+thesis is invalidated or the user confirms a review decision. No source alone
+can create an order.
+
 ## Decision contract
 
 Every candidate is normalised into these evidence lanes:
@@ -79,12 +101,12 @@ PYTHONPATH=. python cli/main.py stocks portfolio-review \
   ]' --json
 ```
 
-This command only emits a dry-run plan. Provider adapters and a position
-snapshot/journal integration are follow-up work for subsequent PRs; they must
-be implemented with current-data tests and explicit read-back verification.
+This command only emits a dry-run plan. Current quotes and position quantities
+remain local portfolio inputs; missing quantities or fills must be reported as
+provisional rather than inferred from a wallet or a broker balance.
 
 ## Wallet scope
 
-The ETH and SOL addresses supplied by the operator are execution context for
-future ONDO adapters, not secrets and not authorization to transact. This PR
-does not read from or write to either wallet.
+The ETH and SOL addresses supplied by the operator are separate read-only audit
+inputs, not stock positions and not authorization to transact. Wallet snapshots
+may be written only to an explicitly selected local path outside the repository.
