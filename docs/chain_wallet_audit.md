@@ -5,8 +5,9 @@ NAVE can inspect public wallets without Moralis, paid APIs, private keys, or tra
 ## Libraries
 
 - `web3.py` for Ethereum, BNB Chain, and other EVM networks;
-- `solana-py` for Solana JSON-RPC;
-- `solders` for Solana public-key and RPC types.
+- `solana-py` and `solders` for Solana JSON-RPC and public-key types;
+- Solana SPL and Token-2022 accounts are discovered through public RPC;
+- recent signatures and parsed transaction balance deltas are stored as evidence;
 
 Install the project dependencies inside the local virtual environment:
 
