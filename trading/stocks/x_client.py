@@ -19,7 +19,7 @@ import logging
 import os
 import re
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -111,14 +111,17 @@ class XClient:
 
 def _build_query(ticker: str, *, days: int) -> str:
     """Build a permissive X search query for a ticker symbol."""
-    sym = ticker.upper().strip()
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
-    # $NVDA cashtag, #NVDA hashtag, or "NVDA stock" plain mention.
-    # English-only, exclude retweets to keep the corpus authored.
-    return (
-        f"(${sym} OR #{sym} OR \"{sym} stock\") "
-        f"lang:en -is:retweet since:{since}"
-    )
+    sym = ticker.strip().upper()
+    # Accept ONDO symbols at the boundary, but always search X by the
+    # underlying stock cashtag (e.g. MSFTon -> $MSFT).
+    if ticker.strip().lower().endswith("on") and len(sym) > 3:
+        sym = sym[:-2]
+    since = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+    # Use the underlying-stock cashtag only (for example, $MSFT).
+    # ONDO token suffixes such as MSFTon belong to asset/chain mapping,
+    # not to the social sentiment query. Exclude retweets to keep the
+    # corpus authored.
+    return f"${sym} lang:en -is:retweet since:{since}"
 
 
 def _to_xpost(tweet: Any, *, ticker: str) -> XPost:
@@ -128,7 +131,7 @@ def _to_xpost(tweet: Any, *, ticker: str) -> XPost:
     display_name = getattr(user, "displayname", None) if user else None
     created = getattr(tweet, "date", None)
     if isinstance(created, datetime):
-        created_iso = created.astimezone(timezone.utc).isoformat()
+        created_iso = created.astimezone(UTC).isoformat()
     else:
         created_iso = str(created) if created else ""
     return XPost(
@@ -173,7 +176,7 @@ def get_x_client() -> XClient | Any:
         from trading.stocks.data_provider import _maybe_load_repo_dotenv_once
 
         _maybe_load_repo_dotenv_once()
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     from trading.stocks.x_official_client import XOfficialClient, official_x_configured

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -10,7 +10,7 @@ from trading.stocks.social_analyzer import (
     analyze_tickers,
     render_sheet,
 )
-from trading.stocks.x_client import XClient, XClientError, XPost
+from trading.stocks.x_client import XClient, XClientError, XPost, _build_query
 
 
 class _StubXClient(XClient):
@@ -20,7 +20,7 @@ class _StubXClient(XClient):
         self._posts_by_ticker = posts_by_ticker
         self._raise_for = raise_for or set()
 
-    async def fetch_recent_posts(self, ticker, *, days, limit):  # noqa: ARG002
+    async def fetch_recent_posts(self, ticker, *, days, limit):
         if ticker in self._raise_for:
             raise XClientError(f"forced failure for {ticker}")
         return list(self._posts_by_ticker.get(ticker, []))
@@ -33,13 +33,20 @@ def _make_post(ticker: str, *, idx: int, likes: int = 10) -> XPost:
         text=f"$"f"{ticker} looks good at this level — earnings beat, guidance raised.",
         username=f"user{idx}",
         display_name=f"User {idx}",
-        created_at=datetime(2026, 4, 25, 10, idx, tzinfo=timezone.utc).isoformat(),
+        created_at=datetime(2026, 4, 25, 10, idx, tzinfo=UTC).isoformat(),
         likes=likes,
         replies=2,
         retweets=3,
         views=1000 + idx,
         url=f"https://x.com/user{idx}/status/{ticker}-{idx}",
     )
+
+
+def test_build_query_uses_underlying_ticker_cashtag() -> None:
+    query = _build_query("msfton", days=7)
+    assert query.startswith("$MSFT ")
+    assert "#MSFT" not in query
+    assert '"MSFT stock"' not in query
 
 
 def test_analyze_tickers_packages_prompt_and_posts(tmp_path) -> None:
@@ -80,7 +87,8 @@ def test_analyze_tickers_persists_snapshot_to_repo_dir(tmp_path) -> None:
     )
     saved = payload.get("saved_to")
     assert isinstance(saved, str)
-    reloaded = json.loads(open(saved).read())
+    with open(saved, encoding="utf-8") as handle:
+        reloaded = json.load(handle)
     assert reloaded["tickers"] == ["NVDA"]
     assert reloaded["analysis_prompt"]["system"] == X_POSTS_ANALYSIS_SYSTEM_PROMPT
 
