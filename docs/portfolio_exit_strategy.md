@@ -9,6 +9,9 @@ single price drop as an automatic exit.
 - `REVIEW`: deterioration that deserves a human decision, such as a close below
   SMA50 while the position is down at least 5%, an accelerating five-day decline,
   or a profitable position losing its short-term trend after a meaningful run.
+- `REVIEW` with `profit_taking_window`: the position is profitable, close to its
+  recent high, and technically extended. This is a prompt to consider selling a
+  portion and withdrawing gains while keeping a core position.
 - `EXIT`: only after thesis invalidation, a confirmed structural risk, or a
   previously agreed protection/invalidation level. The assistant explains the
   evidence and waits for Joni's manual execution.
@@ -40,9 +43,25 @@ For each position the monitor should maintain an evidence trail:
 6. the last alert and the reason it changed.
 
 A winning position can therefore generate a `REVIEW` when it loses short-term
-trend, without forcing a sale. A losing position can remain `HOLD` when the thesis
-is intact, and can become `EXIT` only when the thesis or agreed invalidation is
-broken.
+trend, without forcing a sale. A losing position can remain `HOLD` when the
+thesis is intact, and can become `EXIT` only when the thesis or agreed invalidation
+is broken.
+
+## Profit-taking framework
+
+Profit-taking is separate from damage control. The default review ladder is:
+
+1. Around +12% with price near a 20-session high and extended above SMA20:
+   consider a partial sale, generally 25–33%, after reviewing the thesis and
+   liquidity.
+2. Around +20–30% or after another confirmed extension: consider another partial
+   sale or move part of the proceeds to cash/reserve.
+3. Keep a core position while the thesis and trend remain healthy.
+4. Exit the remainder only on thesis invalidation, structural deterioration, or
+   an agreed trailing/invalidation rule.
+
+These are review thresholds, not orders. The actual percentage and execution are
+approved and performed manually by Joni.
 
 ## New entries and waiting targets
 
