@@ -89,10 +89,13 @@ def review_is_due(
     review_day: int = 26,
     holidays: frozenset[date] | set[date] | None = None,
     last_report_date: date | None = None,
+    skip_weekends: bool = True,
 ) -> bool:
     """True on or after this month's review day until a report exists."""
-    scheduled = next_business_day_for_monthly_review(
-        today.year, today.month, review_day=review_day, holidays=holidays
+    scheduled = (
+        next_business_day_for_monthly_review(today.year, today.month, review_day=review_day, holidays=holidays)
+        if skip_weekends
+        else date(today.year, today.month, review_day)
     )
     if last_report_date is not None and last_report_date >= scheduled:
         return False

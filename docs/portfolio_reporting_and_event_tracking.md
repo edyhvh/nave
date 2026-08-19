@@ -6,10 +6,14 @@ Formal portfolio, price, congressional, ISM, and ONDO reports use the `STOCKS:` 
 
 ## Daily and scheduled coverage
 
-- Price review: 10:00 and 16:00 ART on business days; silent when there is no material change.
-- Congressional disclosures: 17:00 ART on business days; the scanner deduplicates disclosures and records newly observed trades.
+- Continuous price review: the cron may run every 30 minutes, including weekends, except during the seasonal Shabbat pause in Buenos Aires.
+- Congressional disclosures: every 30 minutes outside the Shabbat pause; the report elevates presidential positions and large-capital disclosures from the STOCK Act feed.
 - ISM: release-day Manufacturing and Services reports plus monthly context. Services remains paused until report-month freshness is verified.
-- Monthly portfolio review: the 26th or the next valid business day, after a read-only ledger refresh.
+- Monthly portfolio review: on or after the 26th, including weekends when due, except during the Shabbat pause.
+
+### Shabbat operational pause
+
+The default fixed rule is Friday 18:30 ART through Saturday 18:30 ART. The implementation calculates Buenos Aires sunset seasonally with a conservative boundary (18 minutes before Friday sunset through 42 minutes after Saturday sunset). If the calculation fails, it falls back to the fixed 18:30–18:30 rule. This is an operational pause only; no trade execution exists in the system.
 
 Each report must separate:
 

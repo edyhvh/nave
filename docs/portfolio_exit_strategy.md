@@ -18,8 +18,7 @@ single price drop as an automatic exit.
 
 ## What a price review checks
 
-Twice each weekday at 10:00 and 16:00 America/Argentina/Buenos_Aires, the local
-read-only monitor checks:
+The portfolio monitor may run every 30 minutes, including weekends, but remains silent during the seasonal Buenos Aires Shabbat pause. It never places orders.
 
 - current price;
 - SMA20 and SMA50;
