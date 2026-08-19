@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -117,6 +117,26 @@ class PortfolioPolicy:
     profit_review_pct: float = 0.20
 
 
+def _research_gate_passes(evidence: Evidence) -> bool:
+    """Require fresh web and X evidence before allowing an ENTER decision."""
+    if not evidence.research_verified:
+        return False
+    required = ("web", "x")
+    if any(not str(evidence.research_sources.get(key) or "").strip() for key in required):
+        return False
+    if any(not str(evidence.source_dates.get(key) or "").strip() for key in required):
+        return False
+    today = date.today()
+    for key in required:
+        try:
+            observed = datetime.fromisoformat(evidence.source_dates[key].replace("Z", "+00:00")).date()
+        except (TypeError, ValueError):
+            return False
+        if observed > today or today - observed > timedelta(days=7):
+            return False
+    return True
+
+
 def monthly_review_date(year: int, month: int, review_day: int = 26) -> date:
     """Return the funding date, skipping weekends and configured holidays."""
     return next_business_day_for_monthly_review(year, month, review_day=review_day)
@@ -172,7 +192,7 @@ def rank_candidates(candidates: Iterable[Candidate], *, policy: PortfolioPolicy)
             if not (low <= candidate.price <= high):
                 action = Action.WATCH
                 reasons.append("price_outside_entry_zone")
-        if action is Action.ENTER and not evidence.research_verified:
+        if action is Action.ENTER and not _research_gate_passes(evidence):
             action = Action.WATCH
             reasons.append("fresh_web_and_x_research_required")
         decisions.append(Decision(candidate.ticker.upper(), action, score, tuple(reasons)))

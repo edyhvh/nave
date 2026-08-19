@@ -382,7 +382,7 @@ def test_refresh_rejects_empty_inventory_when_book_has_positions(tmp_path):
     assert json.loads(state_path.read_text())["positions"][0].get("quantity") is None
 
 
-def test_refresh_accepts_empty_inventory_after_two_rpc_endpoints_agree(tmp_path):
+def test_refresh_rejects_empty_inventory_after_two_rpc_endpoints_agree(tmp_path):
     state_path, audit_path = _state_and_audit(
         tmp_path,
         positions=[{"ticker": "AMZN", "quantity": 1.0, "cost_basis_usd": 100.0}],
@@ -391,14 +391,16 @@ def test_refresh_accepts_empty_inventory_after_two_rpc_endpoints_agree(tmp_path)
         "https://one.invalid": _FakeClient([], {}, {}),
         "https://two.invalid": _FakeClient([], {}, {}),
     }
-    refresh(
-        state_path=state_path,
-        audit_path=audit_path,
-        rpc_urls=list(clients),
-        client_factory=clients.__getitem__,
-    )
+    with pytest.raises(RuntimeError, match="refusing to rewrite existing positions"):
+        refresh(
+            state_path=state_path,
+            audit_path=audit_path,
+            rpc_urls=list(clients),
+            client_factory=clients.__getitem__,
+        )
     position = json.loads(state_path.read_text(encoding="utf-8"))["positions"][0]
-    assert position["quantity"] == 0.0
+    assert position["quantity"] == 1.0
+    assert position["cost_basis_usd"] == 100.0
 
 
 def test_refresh_zeroes_known_position_absent_from_complete_inventory(tmp_path):
