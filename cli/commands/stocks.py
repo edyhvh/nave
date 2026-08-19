@@ -1038,6 +1038,57 @@ def ism_calendar_next(
     )
 
 
+@stocks_app.command("events-list")
+def events_list(
+    status: str | None = typer.Option(None, "--status"),
+    ticker: str | None = typer.Option(None, "--ticker"),
+    due_only: bool = typer.Option(False, "--due-only"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """List material events that still need review."""
+    from trading.stocks.event_journal import list_events
+
+    events = list_events(status=status, ticker=ticker, due_only=due_only)
+    if json_out:
+        typer.echo(_json.dumps(events, indent=2, default=str))
+        return
+    if not events:
+        typer.echo("No portfolio events require review.")
+        return
+    for event in events:
+        typer.echo(
+            f"{event.get('event_id')} | {event.get('status')} | "
+            f"{event.get('importance')} | {event.get('ticker')} | "
+            f"{event.get('event_type')} | next={event.get('next_review_date') or '?'}"
+        )
+
+
+@stocks_app.command("events-mark")
+def events_mark(
+    event_id: str = typer.Argument(...),
+    status: str = typer.Option(..., "--status", help="new|watching|reviewed|closed"),
+    note: str | None = typer.Option(None, "--note"),
+    next_review_date: str | None = typer.Option(None, "--next-review-date"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Mark a material event after human review; never executes an order."""
+    from trading.stocks.event_journal import mark_event
+
+    try:
+        event = mark_event(
+            event_id,
+            status=status,
+            note=note,
+            next_review_date=next_review_date,
+        )
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        typer.echo(_json.dumps(event, indent=2, default=str))
+    else:
+        typer.echo(f"Marked {event_id}: {event['status']}")
+
+
 @stocks_app.command("journal-stats")
 def journal_stats(json_out: bool = typer.Option(False, "--json")) -> None:
     """Print stock-only journal stats (filters by asset_class=stock)."""

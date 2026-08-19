@@ -36,6 +36,9 @@ class Evidence:
     social_score: float = 0.0
     ondo_available: bool = False
     ondo_liquid: bool = False
+    # A candidate cannot become ENTER without fresh primary-web and X research.
+    research_verified: bool = False
+    research_sources: Mapping[str, str] = field(default_factory=dict)
     source_dates: Mapping[str, str] = field(default_factory=dict)
 
     def bounded(self) -> Evidence:
@@ -49,8 +52,14 @@ class Evidence:
                 "social_score",
             )
         }
-        return Evidence(**values, ondo_available=self.ondo_available,
-                        ondo_liquid=self.ondo_liquid, source_dates=self.source_dates)
+        return Evidence(
+            **values,
+            ondo_available=self.ondo_available,
+            ondo_liquid=self.ondo_liquid,
+            research_verified=self.research_verified,
+            research_sources=self.research_sources,
+            source_dates=self.source_dates,
+        )
 
 
 @dataclass(frozen=True)
@@ -163,6 +172,9 @@ def rank_candidates(candidates: Iterable[Candidate], *, policy: PortfolioPolicy)
             if not (low <= candidate.price <= high):
                 action = Action.WATCH
                 reasons.append("price_outside_entry_zone")
+        if action is Action.ENTER and not evidence.research_verified:
+            action = Action.WATCH
+            reasons.append("fresh_web_and_x_research_required")
         decisions.append(Decision(candidate.ticker.upper(), action, score, tuple(reasons)))
     return sorted(decisions, key=lambda decision: decision.score, reverse=True)
 

@@ -25,7 +25,7 @@ def test_rank_requires_confluence_and_ondo_liquidity_penalty() -> None:
         Candidate("NVDA", Evidence(ism_score=1.0, congress_score=.8,
                                     technical_score=1.0, reserve_ai_score=1.0,
                                     social_score=.8, ondo_available=True,
-                                    ondo_liquid=True),
+                                    ondo_liquid=True, research_verified=True),
                  price=100.0, entry_zone=(90.0, 110.0)),
         Candidate("TSLA", Evidence(ism_score=.9, technical_score=.2,
                                     ondo_available=True, ondo_liquid=False)),
@@ -43,11 +43,11 @@ def test_allocator_keeps_cash_and_caps_each_position() -> None:
         *rank_candidates(
             [Candidate("NVDA", Evidence(ism_score=1, technical_score=1,
                                           reserve_ai_score=1, ondo_available=True,
-                                          ondo_liquid=True),
+                                          ondo_liquid=True, research_verified=True),
                        price=100.0, entry_zone=(90.0, 110.0)),
              Candidate("AMD", Evidence(ism_score=1, technical_score=1,
                                         reserve_ai_score=1, ondo_available=True,
-                                        ondo_liquid=True),
+                                        ondo_liquid=True, research_verified=True),
                        price=100.0, entry_zone=(90.0, 110.0))],
             policy=policy,
         )
@@ -77,6 +77,30 @@ def test_allocator_respects_existing_open_book() -> None:
     )
     open_book = ["BAC", "MSFT", "FCX", "AMZN", "META", "TSLA", "COST", "SPY"]
     assert allocate_monthly_budget(decisions, policy=policy, open_tickers=open_book) == []
+
+
+
+
+def test_enter_requires_fresh_web_and_x_research() -> None:
+    decisions = rank_candidates(
+        [
+            Candidate(
+                "NVDA",
+                Evidence(
+                    ism_score=1,
+                    technical_score=1,
+                    reserve_ai_score=1,
+                    ondo_available=True,
+                    ondo_liquid=True,
+                ),
+                price=100.0,
+                entry_zone=(90.0, 110.0),
+            )
+        ],
+        policy=PortfolioPolicy(),
+    )
+    assert decisions[0].action is Action.WATCH
+    assert "fresh_web_and_x_research_required" in decisions[0].reason_codes
 
 
 def test_price_outside_entry_zone_is_watch() -> None:
