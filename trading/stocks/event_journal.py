@@ -20,6 +20,10 @@ DEFAULT_PATH = Path(os.path.expanduser("~/.hermes/state/portfolio_manager/event_
 STATUSES = {"new", "watching", "reviewed", "closed"}
 
 
+class JournalCorruptError(RuntimeError):
+    """Raised when the persistent event journal cannot be safely loaded."""
+
+
 def _path(path: str | Path | None = None) -> Path:
     return Path(path or os.getenv("PORTFOLIO_EVENT_JOURNAL") or DEFAULT_PATH)
 
@@ -30,10 +34,10 @@ def _load(path: str | Path | None = None) -> dict[str, Any]:
         return {"version": 1, "events": []}
     try:
         payload = json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"version": 1, "events": []}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise JournalCorruptError(f"cannot safely load event journal: {target}") from exc
     if not isinstance(payload, dict) or not isinstance(payload.get("events"), list):
-        return {"version": 1, "events": []}
+        raise JournalCorruptError(f"event journal has invalid structure: {target}")
     return {"version": 1, "events": payload["events"]}
 
 
@@ -122,7 +126,8 @@ def upsert_event(event: dict[str, Any], *, path: str | Path | None = None) -> di
     row["ticker"] = str(row.get("ticker") or "?").upper()
     row["event_id"] = row.get("event_id") or _event_id(row)
     row["importance"] = row.get("importance") or "medium"
-    row["status"] = row.get("status") if row.get("status") in STATUSES else "new"
+    if row.get("status") not in STATUSES:
+        row.pop("status", None)
     row.setdefault("observed_at", now)
     row.setdefault("review_count", 0)
     legacy_id = _legacy_event_id(row)
@@ -142,6 +147,9 @@ def upsert_event(event: dict[str, Any], *, path: str | Path | None = None) -> di
             events[index] = row
             break
     else:
+        row.setdefault("status", "new")
+        row.setdefault("review_status", "unreviewed")
+        row.setdefault("next_review_date", (datetime.now(UTC).date() + timedelta(days=7)).isoformat())
         events.append(row)
     _save(payload, path)
     return row
@@ -161,10 +169,6 @@ def record_politician_trades(
                 "event_date": row.get("transaction_date") or row.get("disclosure_date"),
                 "event_type": str(row.get("transaction_type") or "disclosure").lower(),
                 "importance": importance_for_trade(row),
-                "review_status": "unreviewed",
-                "next_review_date": (
-                    datetime.now(UTC).date() + timedelta(days=7)
-                ).isoformat(),
             }
         )
         rows.append(upsert_event(row, path=path))

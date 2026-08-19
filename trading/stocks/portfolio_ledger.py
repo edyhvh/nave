@@ -422,6 +422,11 @@ def refresh(
         require_accounts=require_accounts,
         allow_empty=allow_empty,
     )
+    if require_accounts and not token_accounts:
+        raise RuntimeError(
+            "all Solana RPC endpoints returned an empty token account set; "
+            "refusing to rewrite existing positions"
+        )
 
     ondo_accounts = [account for account in token_accounts if is_ondo_mint(account.get("mint"))]
     known_signatures = {

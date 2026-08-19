@@ -1,4 +1,7 @@
+import pytest
+
 from trading.stocks.event_journal import (
+    JournalCorruptError,
     list_events,
     mark_event,
     record_politician_trades,
@@ -47,6 +50,40 @@ def test_duplicate_event_is_idempotent(tmp_path) -> None:
     record_politician_trades([trade], path=path)
     record_politician_trades([trade], path=path)
     assert len(list_events(path=path)) == 1
+
+
+def test_corrupt_event_journal_fails_closed(tmp_path) -> None:
+    path = tmp_path / "events.json"
+    path.write_text("{not-json", encoding="utf-8")
+
+    with pytest.raises(JournalCorruptError):
+        record_politician_trades(
+            [
+                {
+                    "symbol": "MSFT",
+                    "transaction_type": "Purchase",
+                    "amount_range": "$1,001 - $15,000",
+                    "transaction_date": "2026-03-10",
+                    "link": "https://example.test/msft",
+                }
+            ],
+            path=path,
+        )
+
+
+def test_reviewed_event_status_is_preserved_on_upsert(tmp_path) -> None:
+    path = tmp_path / "events.json"
+    trade = {
+        "symbol": "MSFT",
+        "transaction_type": "Purchase",
+        "amount_range": "$1,001 - $15,000",
+        "transaction_date": "2026-03-10",
+        "link": "https://example.test/msft",
+    }
+    row = record_politician_trades([trade], path=path)[0]
+    mark_event(row["event_id"], status="closed", path=path)
+    updated = record_politician_trades([trade], path=path)[0]
+    assert updated["status"] == "closed"
 
 
 def test_distinct_trades_in_one_filing_are_preserved(tmp_path) -> None:
