@@ -33,9 +33,11 @@ def run_daily_scan(
     provider: TradesProvider | None = None,
     store: SeenStore | None = None,
     persist: bool = True,
+    event_journal_path: str | None = None,
 ) -> dict[str, Any]:
     """Fetch latest disclosures, return only those unseen since the last scan."""
     provider = provider or FMPPoliticianTradesProvider()
+    store_was_default = store is None
     store = store or SeenStore()
     assert provider is not None
     assert store is not None
@@ -54,7 +56,11 @@ def run_daily_scan(
         # feed. The journal is local state and does not trigger any trade.
         from trading.stocks.event_journal import record_politician_trades
 
-        record_politician_trades(asdict(t) for t in new_trades)
+        if store_was_default or event_journal_path:
+            record_politician_trades(
+                (asdict(t) for t in new_trades),
+                path=event_journal_path,
+            )
 
     return {
         "generated_at": fetched_at,
