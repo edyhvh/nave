@@ -47,3 +47,33 @@ def test_duplicate_event_is_idempotent(tmp_path) -> None:
     record_politician_trades([trade], path=path)
     record_politician_trades([trade], path=path)
     assert len(list_events(path=path)) == 1
+
+
+def test_distinct_trades_in_one_filing_are_preserved(tmp_path) -> None:
+    path = tmp_path / "events.json"
+    trades = [
+        {
+            "symbol": "MSFT",
+            "politician": "P",
+            "transaction_type": "Purchase",
+            "amount_range": "$1,001 - $15,000",
+            "transaction_date": "2026-03-10",
+            "disclosure_date": "2026-03-20",
+            "link": "https://example.test/filing",
+        },
+        {
+            "symbol": "MSFT",
+            "politician": "P",
+            "transaction_type": "Sale",
+            "amount_range": "$15,001 - $50,000",
+            "transaction_date": "2026-03-10",
+            "disclosure_date": "2026-03-20",
+            "link": "https://example.test/filing",
+        },
+    ]
+
+    record_politician_trades(trades, path=path)
+
+    events = list_events(path=path)
+    assert len(events) == 2
+    assert {event["event_type"] for event in events} == {"purchase", "sale"}

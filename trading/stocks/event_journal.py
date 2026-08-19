@@ -6,6 +6,7 @@ scan.  It is read/write local state only; it never executes trades.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -50,11 +51,53 @@ def _save(payload: dict[str, Any], path: str | Path | None = None) -> None:
             os.unlink(temporary)
 
 
-def _event_id(event: dict[str, Any]) -> str:
+def _legacy_event_id(event: dict[str, Any]) -> str:
     source = str(event.get("source_url") or event.get("source") or "unknown")
     ticker = str(event.get("ticker") or "?").upper()
     event_date = str(event.get("event_date") or "unknown")
     return f"{source}|{ticker}|{event_date}"
+
+
+def _event_id(event: dict[str, Any]) -> str:
+    """Return a stable identity that preserves distinct rows in one filing."""
+    identity = {
+        key: event.get(key)
+        for key in (
+            "source_url",
+            "source",
+            "ticker",
+            "event_date",
+            "event_type",
+            "amount_range",
+            "politician",
+            "disclosure_date",
+            "asset_description",
+        )
+    }
+    encoded = json.dumps(identity, sort_keys=True, separators=(",", ":"), default=str)
+    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
+    return f"{_legacy_event_id(event)}|{digest}"
+
+
+def _same_trade_identity(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    """Match legacy rows only when all available trade identity fields agree."""
+    keys = (
+        "source_url",
+        "source",
+        "ticker",
+        "event_date",
+        "event_type",
+        "amount_range",
+        "politician",
+        "disclosure_date",
+        "asset_description",
+    )
+    return all(
+        left.get(key) is None
+        or right.get(key) is None
+        or left.get(key) == right.get(key)
+        for key in keys
+    )
 
 
 def importance_for_trade(trade: dict[str, Any]) -> str:
@@ -82,10 +125,17 @@ def upsert_event(event: dict[str, Any], *, path: str | Path | None = None) -> di
     row["status"] = row.get("status") if row.get("status") in STATUSES else "new"
     row.setdefault("observed_at", now)
     row.setdefault("review_count", 0)
+    legacy_id = _legacy_event_id(row)
     payload = _load(path)
     events = payload["events"]
     for index, existing in enumerate(events):
-        if isinstance(existing, dict) and existing.get("event_id") == row["event_id"]:
+        if isinstance(existing, dict) and (
+            existing.get("event_id") == row["event_id"]
+            or (
+                existing.get("event_id") == legacy_id
+                and _same_trade_identity(existing, row)
+            )
+        ):
             preserved = dict(existing)
             preserved.update({key: value for key, value in row.items() if value is not None})
             row = preserved
