@@ -57,7 +57,9 @@ python-dateutil>=2.8.0
 # Web3 / Trading
 mnemonic>=0.20           # BIP39 seed phrase generation
 eth-account>=0.11.0      # EVM HD wallet derivation and signing
-web3>=6.0.0              # Ethereum JSON-RPC client
+web3>=6.0.0              # EVM JSON-RPC client (read-only wallet auditing)
+solana>=0.36.0,<0.37.0    # Solana JSON-RPC client (sync API)
+solders>=0.26.0          # Solana public-key and RPC types
 hyperliquid-python-sdk>=0.22.0  # Hyperliquid exchange API SDK
 cryptography>=42.0.0    # Fernet encryption for wallet vault
 

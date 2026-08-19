@@ -79,6 +79,10 @@ nave congress                              # new STOCK Act filings since last ru
 
 Deeper command lists: [docs/commands/README.md](docs/commands/README.md).
 
+The long-term, human-gated stock portfolio workflow is documented in
+[docs/portfolio_manager.md](docs/portfolio_manager.md). The read-only, public-RPC
+wallet audit is documented in [docs/chain_wallet_audit.md](docs/chain_wallet_audit.md).
+
 ---
 
 ## Quick setup

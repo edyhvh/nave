@@ -99,6 +99,8 @@ desktop.ini
 # ─── Web3 / Wallet Security (CRITICAL — never commit these) ──────────────────
 .secrets/
 wallets/
+portfolio.json
+*ondo_solana_audit.json
 *.key
 *.pem
 *.enc
