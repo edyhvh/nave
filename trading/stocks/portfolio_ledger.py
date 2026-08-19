@@ -350,7 +350,7 @@ def _collect_signatures(
     *,
     page_limit: int = 1_000,
     max_items: int = 5_000,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], bool]:
     rows: list[dict[str, Any]] = []
     before = None
     while len(rows) < max_items:
@@ -362,14 +362,14 @@ def _collect_signatures(
             signature = row.get("signature")
             canonical = canonicalize_signature(signature) if signature else None
             if signature in known_signatures or (canonical and canonical in known_signatures):
-                return rows
+                return rows, False
             rows.append(row)
         if len(page) < requested:
             break
         before = page[-1].get("signature")
         if not before:
             break
-    return rows[:max_items]
+    return rows[:max_items], len(rows) >= max_items
 
 
 def _discover_token_accounts(
@@ -440,7 +440,10 @@ def refresh(
         if not pubkey:
             continue
         try:
-            account_signatures = _collect_signatures(client, pubkey, known_signatures)
+            account_signatures, truncated = _collect_signatures(client, pubkey, known_signatures)
+            if truncated:
+                history_complete = False
+                rpc_errors.append(f"signatures:{pubkey}: history truncated at max_items")
         except Exception as exc:
             history_complete = False
             rpc_errors.append(redact_rpc_error(f"signatures:{pubkey}: {exc}"))
