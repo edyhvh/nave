@@ -26,3 +26,7 @@ See `00_baseline.md` for the comparison rules every experiment must beat.
 | 06 | (extend forward window 14d → 21d) | resolution window | +44.65 | +0.51 | ❌ noise; ETH WR drops 6pp | — |
 | 06b | (trail SL to +0.5R after ZC1 hit) | exit policy | +43.42 | -0.72 | ❌ ETH regresses | — |
 | 07 | experiment/add-link | LINK as 4th coin | +67.15 | +23.01 | ✅ ship | #18 |
+| N1 | (post-mortem) | BTC 63k→78k rally — 5 modifications tested | — | — | ❌ REJECT all — no modification passes robustness gate | — |
+| N2 | experiment/n2-regime-transition | regime-transition (post-crash recovery) detector as 3rd weekly bias source | +24.11 vs control +28.39 (current data) | −4.28 | ❌ REJECT — WR −18.7pp (86.4→67.7%), 78% FP, misses 2026 OOS window | — |
+| N3 | (probe) | cross-asset momentum-agreement confirmation (relative strength) | agree=100% WR (0/12 losses) vs neutral=66.7% (all 3 losses) | hard-filter would −6.69R | ⚠️ PROBE — real discriminator but not shippable as hard filter; refine as soft confirmation | — |
+| BASELINE | — | **re-captured 2026-08-25** — old +44.14R was STALE; current code = +27.69R | — | — | ⚠️ all Δ vs base must use new baseline | — |
