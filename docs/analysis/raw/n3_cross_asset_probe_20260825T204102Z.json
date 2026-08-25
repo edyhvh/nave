@@ -1,0 +1,794 @@
+{
+  "oos": {
+    "BTC": {
+      "fired": 0,
+      "correct": 0,
+      "incorrect": 0,
+      "unresolved": 0,
+      "total_r": 0.0,
+      "agree": {
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "fired": 0
+      },
+      "disagree": {
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "fired": 0
+      },
+      "neutral_other": {
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "fired": 0
+      },
+      "trades": []
+    },
+    "ETH": {
+      "fired": 0,
+      "correct": 0,
+      "incorrect": 0,
+      "unresolved": 0,
+      "total_r": 0.0,
+      "agree": {
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "fired": 0
+      },
+      "disagree": {
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "fired": 0
+      },
+      "neutral_other": {
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "fired": 0
+      },
+      "trades": []
+    }
+  },
+  "periods": {
+    "2017-bull+2018-bear": {
+      "BTC": {
+        "fired": 6,
+        "correct": 4,
+        "incorrect": 0,
+        "unresolved": 2,
+        "total_r": 5.8000000000000025,
+        "agree": {
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 2.9,
+          "fired": 4
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.900000000000003,
+          "fired": 2
+        },
+        "trades": [
+          {
+            "week": "2017-10-30",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2017-11-20",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2017-11-27",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.2
+          },
+          {
+            "week": "2018-03-26",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": null,
+            "pnl_r": 0.0
+          },
+          {
+            "week": "2018-06-11",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": null,
+            "pnl_r": 0.0
+          },
+          {
+            "week": "2018-07-23",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "correct",
+            "pnl_r": 1.2
+          }
+        ]
+      },
+      "ETH": {
+        "fired": 6,
+        "correct": 3,
+        "incorrect": 1,
+        "unresolved": 2,
+        "total_r": 4.099999999999998,
+        "agree": {
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 3.3999999999999986,
+          "fired": 3
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 1,
+          "incorrect": 1,
+          "unresolved": 1,
+          "total_r": 0.6999999999999997,
+          "fired": 3
+        },
+        "trades": [
+          {
+            "week": "2017-11-20",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2018-01-01",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2018-01-08",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "incorrect",
+            "pnl_r": -1.0
+          },
+          {
+            "week": "2018-02-05",
+            "direction": "short",
+            "other_bias": "neutral",
+            "outcome": null,
+            "pnl_r": 0.0
+          },
+          {
+            "week": "2018-04-23",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2018-06-11",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": null,
+            "pnl_r": 0.0
+          }
+        ]
+      }
+    },
+    "2019-recovery": {
+      "BTC": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": []
+      },
+      "ETH": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": []
+      }
+    },
+    "2020-covid-crash": {
+      "BTC": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": []
+      },
+      "ETH": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": []
+      }
+    },
+    "2020-recovery+2021-ATH": {
+      "BTC": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": []
+      },
+      "ETH": {
+        "fired": 1,
+        "correct": 0,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": -1.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": -1.0,
+          "fired": 1
+        },
+        "trades": [
+          {
+            "week": "2021-11-08",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "incorrect",
+            "pnl_r": -1.0
+          }
+        ]
+      }
+    },
+    "2022-bear": {
+      "BTC": {
+        "fired": 1,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 1.4565398249277508,
+        "agree": {
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.4565398249277508,
+          "fired": 1
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": [
+          {
+            "week": "2022-05-09",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": "correct",
+            "pnl_r": 1.4565
+          }
+        ]
+      },
+      "ETH": {
+        "fired": 4,
+        "correct": 3,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 4.600000000000001,
+        "agree": {
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 3.400000000000001,
+          "fired": 2
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 1.2000000000000002,
+          "fired": 2
+        },
+        "trades": [
+          {
+            "week": "2022-03-28",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": null,
+            "pnl_r": 0.0
+          },
+          {
+            "week": "2022-05-09",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2022-06-13",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2022-08-08",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "correct",
+            "pnl_r": 1.2
+          }
+        ]
+      }
+    },
+    "2023-recovery": {
+      "BTC": {
+        "fired": 4,
+        "correct": 4,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 7.6675153570714665,
+        "agree": {
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 5.967515357071467,
+          "fired": 3
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.6999999999999995,
+          "fired": 1
+        },
+        "trades": [
+          {
+            "week": "2023-01-09",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 3.4949
+          },
+          {
+            "week": "2023-03-13",
+            "direction": "long",
+            "other_bias": "neutral",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2023-05-08",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": "correct",
+            "pnl_r": 1.1444
+          },
+          {
+            "week": "2023-12-04",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.3283
+          }
+        ]
+      },
+      "ETH": {
+        "fired": 2,
+        "correct": 2,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 2.8732910860102336,
+        "agree": {
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.8732910860102336,
+          "fired": 2
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": [
+          {
+            "week": "2023-01-09",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.5509
+          },
+          {
+            "week": "2023-10-23",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": "correct",
+            "pnl_r": 1.3224
+          }
+        ]
+      }
+    },
+    "2024-ETF-approval": {
+      "BTC": {
+        "fired": 1,
+        "correct": 1,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 2.195246100868644,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.195246100868644,
+          "fired": 1
+        },
+        "trades": [
+          {
+            "week": "2024-06-24",
+            "direction": "short",
+            "other_bias": "neutral",
+            "outcome": "correct",
+            "pnl_r": 2.1952
+          }
+        ]
+      },
+      "ETH": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": []
+      }
+    },
+    "2024-2025-bull": {
+      "BTC": {
+        "fired": 3,
+        "correct": 0,
+        "incorrect": 1,
+        "unresolved": 2,
+        "total_r": -1.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 0.0,
+          "fired": 1
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 1,
+          "total_r": -1.0,
+          "fired": 2
+        },
+        "trades": [
+          {
+            "week": "2024-07-08",
+            "direction": "short",
+            "other_bias": "neutral",
+            "outcome": "incorrect",
+            "pnl_r": -1.0
+          },
+          {
+            "week": "2024-09-02",
+            "direction": "short",
+            "other_bias": "neutral",
+            "outcome": null,
+            "pnl_r": 0.0
+          },
+          {
+            "week": "2025-03-10",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": null,
+            "pnl_r": 0.0
+          }
+        ]
+      },
+      "ETH": {
+        "fired": 2,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 2,
+        "total_r": 0.0,
+        "agree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 0.0,
+          "fired": 2
+        },
+        "disagree": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "neutral_other": {
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "fired": 0
+        },
+        "trades": [
+          {
+            "week": "2024-11-11",
+            "direction": "long",
+            "other_bias": "long",
+            "outcome": null,
+            "pnl_r": 0.0
+          },
+          {
+            "week": "2025-03-10",
+            "direction": "short",
+            "other_bias": "short",
+            "outcome": null,
+            "pnl_r": 0.0
+          }
+        ]
+      }
+    }
+  },
+  "pooled": {
+    "agree": {
+      "correct": 12,
+      "incorrect": 0,
+      "unresolved": 6,
+      "total_r": 19.99734626800945,
+      "fired": 18
+    },
+    "disagree": {
+      "correct": 0,
+      "incorrect": 0,
+      "unresolved": 0,
+      "total_r": 0.0,
+      "fired": 0
+    },
+    "neutral_other": {
+      "correct": 6,
+      "incorrect": 3,
+      "unresolved": 3,
+      "total_r": 6.695246100868647,
+      "fired": 12
+    },
+    "all": {
+      "correct": 18,
+      "incorrect": 3,
+      "unresolved": 9,
+      "total_r": 26.692592368878095,
+      "fired": 30
+    }
+  }
+}
