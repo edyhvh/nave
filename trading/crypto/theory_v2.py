@@ -505,10 +505,13 @@ class TheoryV2Engine:
         source: str = "theory_v2",
         confidence: float = 0.65,
         cot_history_fn: CotHistoryFn | None = None,
+        recovery_config: RecoveryTransitionConfig | None = None,
     ):
         self.source = source
         self.confidence = confidence
         self.cot_history_fn = cot_history_fn
+        # N2 experiment: None disables the detector (production default).
+        self.recovery_config = recovery_config
 
     def evaluate(
         self,
@@ -528,11 +531,25 @@ class TheoryV2Engine:
             if rb_bias != "neutral":
                 bias = rb_bias
                 bias_source = "range_breakout"
-            else:
+            elif self.recovery_config is not None:
+                # N2 experiment — regime-transition detector for the
+                # post-crash-recovery blind spot (N1: gradual recoveries have
+                # near-zero velocity AND a 3+ ATR wide range, so both the
+                # momentum and range-breakout gates miss them). Lazy import to
+                # avoid the heavy trading.crypto.analysis package __init__.
+                from trading.crypto.analysis.recovery_detector import (  # noqa: PLC0415
+                    detect_recovery_transition,
+                )
+                rec_bias, rec_diag = detect_recovery_transition(daily, self.recovery_config)
+                if rec_bias != "neutral":
+                    bias = rec_bias
+                    bias_source = "recovery_transition"
+                    breakout_diag = rec_diag
+            if bias == "neutral":
                 vel_str = f"{velocity:+.2f}" if velocity is not None else "n/a"
                 return TheoryV2Decision(
                     coin, bias, False, False, "weekly",
-                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout)",
+                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout, no recovery transition)",
                 )
 
         if self.cot_history_fn is not None:

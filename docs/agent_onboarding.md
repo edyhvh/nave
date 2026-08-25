@@ -173,6 +173,17 @@ relevant:
   catches consolidation breakouts the momentum gate misses, but only
   when the prior 7-bar range is ≤ 1.5 weekly ATRs. Very deep
   consolidations may still fire late. COT filter still applies.
+  **Confirmed by N1 post-mortem (2026-08-25):** the BTC 63k→78k rally
+  (Mar–Apr 2026) was a 7-week gradual recovery from a liquidation crash
+  with a 3+ ATR wide range. The gate fired only at the peak. No parameter
+  modification produced a profitable earlier signal. Requires a new
+  regime-transition detector, not a parameter tune.
+  **N2 experiment (2026-08-25, REJECTED):** a structural post-crash
+  recovery classifier (crash → EMA-20 reclaim + higher-low) was tested as
+  a third weekly bias source. It strictly degraded the baseline (−4.28R,
+  WR −18.7pp, 78% false-positive rate) and, critically, did NOT catch the
+  2026 window (0/26 weekly arming on BTC). The blind spot remains OPEN —
+  a naive daily-structure recovery detector is insufficient.
 
 When a fire has `signal.bias_source == "range_breakout"` the agent
 should mention that explicitly — the trade is a breakout play, not a

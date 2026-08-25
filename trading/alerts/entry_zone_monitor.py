@@ -24,6 +24,7 @@ class ZoneWatchCandidate:
     rr_estimated: float
     setup_status: str
     tradeable: bool
+    alert_kind: str = "entry_zone"
 
 
 def build_zone_watch_candidates(
@@ -53,11 +54,20 @@ def build_zone_watch_candidates(
             score = _safe_int(plan.get("confidence_score"))
             if score < threshold:
                 continue
-            if not bool(plan.get("tradeable")):
-                continue
             side = str(plan.get("side") or "").lower()
             if side not in {"long", "short"}:
                 continue
+            is_tradeable = bool(plan.get("tradeable"))
+            alert_kind = "entry_zone"
+            if not is_tradeable:
+                if not _is_breakdown_watch_candidate(
+                    plan,
+                    side=side,
+                    score=score,
+                    threshold=threshold,
+                ):
+                    continue
+                alert_kind = "breakdown_watch"
             zone = plan.get("entry_zone")
             if not isinstance(zone, list) or len(zone) < 2:
                 continue
@@ -89,7 +99,8 @@ def build_zone_watch_candidates(
                     confidence_score=score,
                     rr_estimated=rr_estimated,
                     setup_status=str(plan.get("setup_status") or "unknown"),
-                    tradeable=True,
+                    tradeable=is_tradeable,
+                    alert_kind=alert_kind,
                 )
             )
 
@@ -135,6 +146,7 @@ class EntryZoneMonitor:
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
                 "tradeable": candidate.tradeable,
+                "alert_kind": candidate.alert_kind,
                 "tp1": candidate.tp1,
                 "tp2": candidate.tp2,
                 "tp3": candidate.tp3,
@@ -155,6 +167,7 @@ class EntryZoneMonitor:
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
                 "tradeable": candidate.tradeable,
+                "alert_kind": candidate.alert_kind,
                 "tp1": candidate.tp1,
                 "tp2": candidate.tp2,
                 "tp3": candidate.tp3,
@@ -176,6 +189,7 @@ class EntryZoneMonitor:
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
                 "tradeable": candidate.tradeable,
+                "alert_kind": candidate.alert_kind,
                 "tp1": candidate.tp1,
                 "tp2": candidate.tp2,
                 "tp3": candidate.tp3,
@@ -202,7 +216,15 @@ class EntryZoneMonitor:
             if invalidated and not current.get("invalidated_at"):
                 next_state["invalidated_at"] = now_iso
 
-            should_alert = bool(inside and not invalidated and not current.get("alert_sent_at"))
+            first_breakdown_watch = (
+                candidate.alert_kind == "breakdown_watch"
+                and not current.get("alert_sent_at")
+            )
+            should_alert = bool(
+                not invalidated
+                and not current.get("alert_sent_at")
+                and (inside or first_breakdown_watch)
+            )
             if should_alert:
                 next_state["alert_sent_at"] = now_iso
                 events.append(event)
@@ -289,3 +311,45 @@ def _safe_int(value: Any) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _is_breakdown_watch_candidate(
+    plan: dict[str, Any],
+    *,
+    side: str,
+    score: int,
+    threshold: int,
+) -> bool:
+    """Allow high-conviction 4H short breaks before the 1H entry trigger.
+
+    This is a risk/direction watch, not a confirmed entry. It exists so fast
+    breakdowns do not stay silent while the engine waits for a clean 1H retest.
+    """
+    if side != "short" or score < max(90, threshold):
+        return False
+
+    diagnostics = plan.get("diagnostics")
+    if isinstance(diagnostics, dict):
+        theory_overlay = diagnostics.get("theory_overlay")
+        if isinstance(theory_overlay, dict) and theory_overlay.get("passed") is False:
+            return False
+        cot_overlay = diagnostics.get("cot_overlay")
+        if isinstance(cot_overlay, dict) and cot_overlay.get("passed") is False:
+            return False
+
+    setup_status = str(plan.get("setup_status") or "").lower()
+    if setup_status in {"confirmed", "pending"}:
+        return True
+
+    breakout_status = ""
+    if isinstance(diagnostics, dict):
+        breakout_status = str(diagnostics.get("breakout_status") or "").lower()
+    if breakout_status == "breakout":
+        return True
+
+    reasoning = plan.get("reasoning")
+    human = reasoning.get("human") if isinstance(reasoning, dict) else None
+    if isinstance(human, list):
+        joined = " ".join(str(item).lower() for item in human)
+        return "breakout=yes" in joined and ("retest=pending" in joined or "trigger" in joined)
+    return False

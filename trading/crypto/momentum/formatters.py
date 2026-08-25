@@ -167,6 +167,7 @@ def render_momentum_scan_markdown_v2(
 
 def render_entry_zone_alert_markdown_v2(event: dict[str, Any]) -> str:
     """Render an entry-zone touch event for Telegram MarkdownV2."""
+    alert_kind = str(event.get("alert_kind") or "entry_zone")
     symbol = escape_markdown_v2(event.get("symbol") or "?")
     side = escape_markdown_v2(_side_label(event.get("side")))
     price_now = escape_markdown_v2(_fmt_price(event.get("price")))
@@ -185,15 +186,24 @@ def render_entry_zone_alert_markdown_v2(event: dict[str, Any]) -> str:
         )
     )
 
+    if alert_kind == "breakdown_watch":
+        title = "*BREAKDOWN WATCH*"
+        context = f"{symbol} rompio 4H con sesgo {side}; retest/trigger 1H pendiente"
+        action = "Accion: no perseguir market; esperar retest/trigger o evaluar hedge chico\\."
+    else:
+        title = "*Alerta de Entrada*"
+        context = f"{symbol} entro en zona \\({side}\\)"
+        action = "Accion: esperar confirmacion de trigger antes de ejecutar\\."
+
     return "\n".join(
         [
-            "*Alerta de Entrada*",
-            f"{symbol} entro en zona \\({side}\\)",
+            title,
+            context,
             f"Precio actual: *{price_now}*",
             f"Zona: {entry_zone}",
             f"Invalidacion: {invalidation} \\| score: *{score}* \\| RR: {rr}",
             f"TP1/TP2/TP3: {targets} \\| move esp: {expected_move}",
-            "Accion: esperar confirmacion de trigger antes de ejecutar\\.",
+            action,
         ]
     )
 
