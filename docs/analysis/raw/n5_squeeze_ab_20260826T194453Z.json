@@ -1,0 +1,1880 @@
+{
+  "experiment": "N5",
+  "hypothesis": "Volatility squeeze as 4th weekly bias source",
+  "date": "2026-08-26T19:44:53.929454+00:00",
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "per_period": {
+    "control": {
+      "2017-bull+2018-bear": {
+        "BTC": {
+          "fired": 6,
+          "correct": 4,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 5.800000000000003,
+          "stage_counts": {
+            "chase_gate": 10,
+            "weekly": 63,
+            "4H": 15,
+            "climax_cooldown": 6,
+            "daily": 5,
+            "fired": 6
+          },
+          "rejected_by": {
+            "chase_gate": 10,
+            "weekly": 63,
+            "4H": 15,
+            "climax_cooldown": 6,
+            "daily": 5
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2017-10-30",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 6100.83,
+              "sl": 5547.08,
+              "targets": [
+                6931.45,
+                7485.2
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2017-11-20",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 8047.53,
+              "sl": 7023.82,
+              "targets": [
+                9583.09,
+                10606.79
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2017-11-27",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 9499.99,
+              "sl": 8604.72,
+              "targets": [
+                10842.9,
+                11738.17
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            },
+            {
+              "week": "2018-03-26",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 8369.79,
+              "sl": 9417.99,
+              "targets": [
+                6000.01,
+                4951.81
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-06-11",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 6706.14,
+              "sl": 7354.0,
+              "targets": [
+                5734.35,
+                5086.49
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-07-23",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 7469.78,
+              "sl": 6965.77,
+              "targets": [
+                8225.79,
+                8729.8
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 6,
+          "correct": 3,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 4.099999999999998,
+          "stage_counts": {
+            "weekly": 76,
+            "fired": 6,
+            "climax_cooldown": 4,
+            "chase_gate": 10,
+            "daily": 5,
+            "4H": 4
+          },
+          "rejected_by": {
+            "weekly": 76,
+            "climax_cooldown": 4,
+            "chase_gate": 10,
+            "daily": 5,
+            "4H": 4
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2017-11-20",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 354.76,
+              "sl": 319.75,
+              "targets": [
+                407.27,
+                442.28
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2018-01-01",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 727.62,
+              "sl": 561.94,
+              "targets": [
+                976.15,
+                1141.83
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2018-01-08",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1188.98,
+              "sl": 1002.31,
+              "targets": [
+                1468.99,
+                1655.66
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-02-05",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 838.85,
+              "sl": 1056.41,
+              "targets": [
+                504.99,
+                287.43
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-04-23",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 628.0,
+              "sl": 564.56,
+              "targets": [
+                723.16,
+                786.6
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2018-06-11",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 515.6,
+              "sl": 580.59,
+              "targets": [
+                418.12,
+                353.12
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            }
+          ]
+        }
+      },
+      "2019-recovery": {
+        "BTC": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "rejected_by": {
+            "weekly": 52
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "rejected_by": {
+            "weekly": 52
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2020-covid-crash": {
+        "BTC": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "rejected_by": {
+            "weekly": 26
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "rejected_by": {
+            "weekly": 26
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2020-recovery+2021-ATH": {
+        "BTC": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 78
+          },
+          "rejected_by": {
+            "weekly": 78
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 78
+          },
+          "rejected_by": {
+            "weekly": 78
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2022-bear": {
+        "BTC": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.4565398249277508,
+          "stage_counts": {
+            "weekly": 37,
+            "chase_gate": 4,
+            "4H": 3,
+            "daily": 5,
+            "fired": 1,
+            "climax_cooldown": 2
+          },
+          "rejected_by": {
+            "weekly": 37,
+            "chase_gate": 4,
+            "4H": 3,
+            "daily": 5,
+            "climax_cooldown": 2
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2022-05-09",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 34142.51,
+              "sl": 37153.35,
+              "targets": [
+                29626.25,
+                26615.41
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.46,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 4,
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 4.600000000000001,
+          "stage_counts": {
+            "4H": 6,
+            "weekly": 29,
+            "chase_gate": 6,
+            "fired": 4,
+            "daily": 6,
+            "climax_cooldown": 1
+          },
+          "rejected_by": {
+            "4H": 6,
+            "weekly": 29,
+            "chase_gate": 6,
+            "daily": 6,
+            "climax_cooldown": 1
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3291.39,
+              "sl": 3080.83,
+              "targets": [
+                3607.23,
+                3817.79
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2022-05-09",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2524.38,
+              "sl": 2776.83,
+              "targets": [
+                2145.71,
+                1893.26
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2022-06-13",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 1387.4,
+              "sl": 1574.32,
+              "targets": [
+                1107.02,
+                920.1
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2022-08-08",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1707.51,
+              "sl": 1539.66,
+              "targets": [
+                1959.28,
+                2127.13
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            }
+          ]
+        }
+      },
+      "2023-recovery": {
+        "BTC": {
+          "fired": 4,
+          "correct": 4,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 7.6675153570714665,
+          "stage_counts": {
+            "weekly": 24,
+            "fired": 4,
+            "climax_cooldown": 7,
+            "daily": 8,
+            "chase_gate": 5,
+            "4H": 4
+          },
+          "rejected_by": {
+            "weekly": 24,
+            "climax_cooldown": 7,
+            "daily": 8,
+            "chase_gate": 5,
+            "4H": 4
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 17184.51,
+              "sl": 16819.26,
+              "targets": [
+                18387.95,
+                18753.2
+              ],
+              "outcome": "correct",
+              "pnl_r": 3.49,
+              "squeeze": false
+            },
+            {
+              "week": "2023-03-13",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 22446.02,
+              "sl": 20270.6,
+              "targets": [
+                25709.15,
+                27884.57
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2023-05-08",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 28572.17,
+              "sl": 30349.98,
+              "targets": [
+                26508.14,
+                24127.66
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.14,
+              "squeeze": false
+            },
+            {
+              "week": "2023-12-04",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 40211.29,
+              "sl": 38408.16,
+              "targets": [
+                42915.98,
+                44719.11
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.33,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 2,
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.8732910860102336,
+          "stage_counts": {
+            "weekly": 32,
+            "fired": 2,
+            "climax_cooldown": 4,
+            "daily": 6,
+            "4H": 3,
+            "chase_gate": 5
+          },
+          "rejected_by": {
+            "weekly": 32,
+            "climax_cooldown": 4,
+            "daily": 6,
+            "4H": 3,
+            "chase_gate": 5
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1294.86,
+              "sl": 1250.81,
+              "targets": [
+                1352.72,
+                1404.98
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.55,
+              "squeeze": false
+            },
+            {
+              "week": "2023-10-23",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 1672.99,
+              "sl": 1597.11,
+              "targets": [
+                1751.0,
+                1862.7
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.32,
+              "squeeze": false
+            }
+          ]
+        }
+      },
+      "2024-ETF-approval": {
+        "BTC": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.1999999999999982,
+          "stage_counts": {
+            "weekly": 21,
+            "daily": 1,
+            "climax_cooldown": 1,
+            "chase_gate": 1,
+            "4H": 1,
+            "fired": 1
+          },
+          "rejected_by": {
+            "weekly": 21,
+            "daily": 1,
+            "climax_cooldown": 1,
+            "chase_gate": 1,
+            "4H": 1
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2024-06-24",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 63080.0,
+              "sl": 66186.23,
+              "targets": [
+                58420.65,
+                55314.42
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 19,
+            "4H": 2,
+            "climax_cooldown": 3,
+            "daily": 2
+          },
+          "rejected_by": {
+            "weekly": 19,
+            "4H": 2,
+            "climax_cooldown": 3,
+            "daily": 2
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2024-2025-bull": {
+        "BTC": {
+          "fired": 3,
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": -1.0,
+          "stage_counts": {
+            "daily": 6,
+            "fired": 3,
+            "weekly": 27,
+            "4H": 1,
+            "climax_cooldown": 2,
+            "chase_gate": 1
+          },
+          "rejected_by": {
+            "daily": 6,
+            "weekly": 27,
+            "4H": 1,
+            "climax_cooldown": 2,
+            "chase_gate": 1
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2024-07-08",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 55094.0,
+              "sl": 58710.01,
+              "targets": [
+                49669.99,
+                46053.98
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": false
+            },
+            {
+              "week": "2024-09-02",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "range_breakout",
+              "entry": 57467.24,
+              "sl": 61023.31,
+              "targets": [
+                49000.0,
+                45443.93
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2025-03-10",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 81292.0,
+              "sl": 90444.06,
+              "targets": [
+                67563.91,
+                58411.85
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 2,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 0.0,
+          "stage_counts": {
+            "daily": 4,
+            "weekly": 26,
+            "climax_cooldown": 3,
+            "fired": 2,
+            "chase_gate": 3,
+            "4H": 2
+          },
+          "rejected_by": {
+            "daily": 4,
+            "weekly": 26,
+            "climax_cooldown": 3,
+            "chase_gate": 3,
+            "4H": 2
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2024-11-11",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3193.5,
+              "sl": 2957.52,
+              "targets": [
+                3547.47,
+                3783.44
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2025-03-10",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2036.48,
+              "sl": 2373.63,
+              "targets": [
+                1530.75,
+                1193.59
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            }
+          ]
+        }
+      }
+    },
+    "treatment": {
+      "2017-bull+2018-bear": {
+        "BTC": {
+          "fired": 7,
+          "correct": 4,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 4.800000000000003,
+          "stage_counts": {
+            "chase_gate": 12,
+            "weekly": 36,
+            "4H": 21,
+            "climax_cooldown": 6,
+            "daily": 23,
+            "fired": 7
+          },
+          "rejected_by": {
+            "chase_gate": 12,
+            "weekly": 36,
+            "4H": 21,
+            "climax_cooldown": 6,
+            "daily": 23
+          },
+          "squeeze_fired": 1,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 1,
+          "squeeze_r": -1.0,
+          "trades": [
+            {
+              "week": "2017-10-30",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 6100.83,
+              "sl": 5547.08,
+              "targets": [
+                6931.45,
+                7485.2
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2017-11-20",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 8047.53,
+              "sl": 7023.82,
+              "targets": [
+                9583.09,
+                10606.79
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2017-11-27",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 9499.99,
+              "sl": 8604.72,
+              "targets": [
+                10842.9,
+                11738.17
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            },
+            {
+              "week": "2018-02-05",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "squeeze",
+              "entry": 8229.89,
+              "sl": 10010.28,
+              "targets": [
+                5559.3,
+                3778.9
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            },
+            {
+              "week": "2018-03-26",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 8369.79,
+              "sl": 9417.99,
+              "targets": [
+                6000.01,
+                4951.81
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-06-11",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 6706.14,
+              "sl": 7354.0,
+              "targets": [
+                5734.35,
+                5086.49
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-07-23",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 7469.78,
+              "sl": 6965.77,
+              "targets": [
+                8225.79,
+                8729.8
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 6,
+          "correct": 3,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 4.099999999999998,
+          "stage_counts": {
+            "weekly": 64,
+            "fired": 6,
+            "climax_cooldown": 4,
+            "chase_gate": 11,
+            "daily": 15,
+            "4H": 5
+          },
+          "rejected_by": {
+            "weekly": 64,
+            "climax_cooldown": 4,
+            "chase_gate": 11,
+            "daily": 15,
+            "4H": 5
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2017-11-20",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 354.76,
+              "sl": 319.75,
+              "targets": [
+                407.27,
+                442.28
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2018-01-01",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 727.62,
+              "sl": 561.94,
+              "targets": [
+                976.15,
+                1141.83
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2018-01-08",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1188.98,
+              "sl": 1002.31,
+              "targets": [
+                1468.99,
+                1655.66
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-02-05",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 838.85,
+              "sl": 1056.41,
+              "targets": [
+                504.99,
+                287.43
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2018-04-23",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 628.0,
+              "sl": 564.56,
+              "targets": [
+                723.16,
+                786.6
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2018-06-11",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 515.6,
+              "sl": 580.59,
+              "targets": [
+                418.12,
+                353.12
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            }
+          ]
+        }
+      },
+      "2019-recovery": {
+        "BTC": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "rejected_by": {
+            "weekly": 52
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "rejected_by": {
+            "weekly": 52
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2020-covid-crash": {
+        "BTC": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "rejected_by": {
+            "weekly": 26
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "rejected_by": {
+            "weekly": 26
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2020-recovery+2021-ATH": {
+        "BTC": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 78
+          },
+          "rejected_by": {
+            "weekly": 78
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 78
+          },
+          "rejected_by": {
+            "weekly": 78
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2022-bear": {
+        "BTC": {
+          "fired": 3,
+          "correct": 1,
+          "incorrect": 2,
+          "unresolved": 0,
+          "total_r": -0.5434601750722492,
+          "stage_counts": {
+            "weekly": 23,
+            "chase_gate": 7,
+            "4H": 4,
+            "fired": 3,
+            "daily": 11,
+            "climax_cooldown": 4
+          },
+          "rejected_by": {
+            "weekly": 23,
+            "chase_gate": 7,
+            "4H": 4,
+            "daily": 11,
+            "climax_cooldown": 4
+          },
+          "squeeze_fired": 2,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 2,
+          "squeeze_r": -2.0,
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "squeeze",
+              "entry": 46920.99,
+              "sl": 44421.46,
+              "targets": [
+                50670.28,
+                53169.81
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            },
+            {
+              "week": "2022-05-09",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 34142.51,
+              "sl": 37153.35,
+              "targets": [
+                29626.25,
+                26615.41
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.46,
+              "squeeze": false
+            },
+            {
+              "week": "2022-07-25",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "squeeze",
+              "entry": 22320.27,
+              "sl": 24208.69,
+              "targets": [
+                18910.94,
+                18626.0
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 5,
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 4.600000000000001,
+          "stage_counts": {
+            "4H": 6,
+            "weekly": 17,
+            "chase_gate": 9,
+            "fired": 5,
+            "daily": 14,
+            "climax_cooldown": 1
+          },
+          "rejected_by": {
+            "4H": 6,
+            "weekly": 17,
+            "chase_gate": 9,
+            "daily": 14,
+            "climax_cooldown": 1
+          },
+          "squeeze_fired": 1,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3291.39,
+              "sl": 3080.83,
+              "targets": [
+                3607.23,
+                3817.79
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2022-05-09",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2524.38,
+              "sl": 2776.83,
+              "targets": [
+                2145.71,
+                1893.26
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2022-06-13",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 1387.4,
+              "sl": 1574.32,
+              "targets": [
+                1107.02,
+                920.1
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2022-08-08",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1707.51,
+              "sl": 1539.66,
+              "targets": [
+                1959.28,
+                2127.13
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            },
+            {
+              "week": "2022-08-22",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "squeeze",
+              "entry": 1610.26,
+              "sl": 1794.43,
+              "targets": [
+                1356.17,
+                1006.32
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": true
+            }
+          ]
+        }
+      },
+      "2023-recovery": {
+        "BTC": {
+          "fired": 5,
+          "correct": 4,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 6.6675153570714665,
+          "stage_counts": {
+            "weekly": 19,
+            "fired": 5,
+            "climax_cooldown": 7,
+            "daily": 11,
+            "chase_gate": 6,
+            "4H": 4
+          },
+          "rejected_by": {
+            "weekly": 19,
+            "climax_cooldown": 7,
+            "daily": 11,
+            "chase_gate": 6,
+            "4H": 4
+          },
+          "squeeze_fired": 1,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 1,
+          "squeeze_r": -1.0,
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 17184.51,
+              "sl": 16819.26,
+              "targets": [
+                18387.95,
+                18753.2
+              ],
+              "outcome": "correct",
+              "pnl_r": 3.49,
+              "squeeze": false
+            },
+            {
+              "week": "2023-03-13",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 22446.02,
+              "sl": 20270.6,
+              "targets": [
+                25709.15,
+                27884.57
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.7,
+              "squeeze": false
+            },
+            {
+              "week": "2023-05-08",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 28572.17,
+              "sl": 30349.98,
+              "targets": [
+                26508.14,
+                24127.66
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.14,
+              "squeeze": false
+            },
+            {
+              "week": "2023-09-25",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "squeeze",
+              "entry": 26248.17,
+              "sl": 27182.36,
+              "targets": [
+                25166.0,
+                24901.0
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            },
+            {
+              "week": "2023-12-04",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 40211.29,
+              "sl": 38408.16,
+              "targets": [
+                42915.98,
+                44719.11
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.33,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 4,
+          "correct": 2,
+          "incorrect": 1,
+          "unresolved": 1,
+          "total_r": 1.8732910860102336,
+          "stage_counts": {
+            "weekly": 20,
+            "fired": 4,
+            "climax_cooldown": 4,
+            "daily": 13,
+            "4H": 5,
+            "chase_gate": 6
+          },
+          "rejected_by": {
+            "weekly": 20,
+            "climax_cooldown": 4,
+            "daily": 13,
+            "4H": 5,
+            "chase_gate": 6
+          },
+          "squeeze_fired": 2,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 1,
+          "squeeze_r": -1.0,
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1294.86,
+              "sl": 1250.81,
+              "targets": [
+                1352.72,
+                1404.98
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.55,
+              "squeeze": false
+            },
+            {
+              "week": "2023-09-11",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "squeeze",
+              "entry": 1609.98,
+              "sl": 1681.91,
+              "targets": [
+                1502.08,
+                1430.15
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": true
+            },
+            {
+              "week": "2023-10-02",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "squeeze",
+              "entry": 1724.38,
+              "sl": 1656.03,
+              "targets": [
+                1826.91,
+                1895.26
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            },
+            {
+              "week": "2023-10-23",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 1672.99,
+              "sl": 1597.11,
+              "targets": [
+                1751.0,
+                1862.7
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.32,
+              "squeeze": false
+            }
+          ]
+        }
+      },
+      "2024-ETF-approval": {
+        "BTC": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.1999999999999982,
+          "stage_counts": {
+            "weekly": 21,
+            "daily": 1,
+            "climax_cooldown": 1,
+            "chase_gate": 1,
+            "4H": 1,
+            "fired": 1
+          },
+          "rejected_by": {
+            "weekly": 21,
+            "daily": 1,
+            "climax_cooldown": 1,
+            "chase_gate": 1,
+            "4H": 1
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": [
+            {
+              "week": "2024-06-24",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 63080.0,
+              "sl": 66186.23,
+              "targets": [
+                58420.65,
+                55314.42
+              ],
+              "outcome": "correct",
+              "pnl_r": 1.2,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 19,
+            "4H": 2,
+            "climax_cooldown": 3,
+            "daily": 2
+          },
+          "rejected_by": {
+            "weekly": 19,
+            "4H": 2,
+            "climax_cooldown": 3,
+            "daily": 2
+          },
+          "squeeze_fired": 0,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 0,
+          "squeeze_r": 0.0,
+          "trades": []
+        }
+      },
+      "2024-2025-bull": {
+        "BTC": {
+          "fired": 4,
+          "correct": 0,
+          "incorrect": 2,
+          "unresolved": 2,
+          "total_r": -2.0,
+          "stage_counts": {
+            "daily": 9,
+            "fired": 4,
+            "weekly": 22,
+            "4H": 2,
+            "climax_cooldown": 2,
+            "chase_gate": 1
+          },
+          "rejected_by": {
+            "daily": 9,
+            "weekly": 22,
+            "4H": 2,
+            "climax_cooldown": 2,
+            "chase_gate": 1
+          },
+          "squeeze_fired": 1,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 1,
+          "squeeze_r": -1.0,
+          "trades": [
+            {
+              "week": "2024-07-08",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 55094.0,
+              "sl": 58710.01,
+              "targets": [
+                49669.99,
+                46053.98
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": false
+            },
+            {
+              "week": "2024-09-02",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "range_breakout",
+              "entry": 57467.24,
+              "sl": 61023.31,
+              "targets": [
+                49000.0,
+                45443.93
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2024-10-21",
+              "coin": "BTC",
+              "direction": "long",
+              "bias_source": "squeeze",
+              "entry": 69160.0,
+              "sl": 66146.57,
+              "targets": [
+                73680.15,
+                76693.58
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            },
+            {
+              "week": "2025-03-10",
+              "coin": "BTC",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 81292.0,
+              "sl": 90444.06,
+              "targets": [
+                67563.91,
+                58411.85
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            }
+          ]
+        },
+        "ETH": {
+          "fired": 3,
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": -1.0,
+          "stage_counts": {
+            "daily": 8,
+            "weekly": 20,
+            "climax_cooldown": 3,
+            "fired": 3,
+            "chase_gate": 3,
+            "4H": 3
+          },
+          "rejected_by": {
+            "daily": 8,
+            "weekly": 20,
+            "climax_cooldown": 3,
+            "chase_gate": 3,
+            "4H": 3
+          },
+          "squeeze_fired": 1,
+          "squeeze_correct": 0,
+          "squeeze_incorrect": 1,
+          "squeeze_r": -1.0,
+          "trades": [
+            {
+              "week": "2024-11-11",
+              "coin": "ETH",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3193.5,
+              "sl": 2957.52,
+              "targets": [
+                3547.47,
+                3783.44
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2025-03-10",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2036.48,
+              "sl": 2373.63,
+              "targets": [
+                1530.75,
+                1193.59
+              ],
+              "outcome": null,
+              "pnl_r": 0.0,
+              "squeeze": false
+            },
+            {
+              "week": "2025-03-31",
+              "coin": "ETH",
+              "direction": "short",
+              "bias_source": "squeeze",
+              "entry": 1786.42,
+              "sl": 1918.62,
+              "targets": [
+                1588.12,
+                1455.92
+              ],
+              "outcome": "incorrect",
+              "pnl_r": -1.0,
+              "squeeze": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  "pooled": {
+    "control": {
+      "BTC": {
+        "fired": 15,
+        "correct": 10,
+        "incorrect": 1,
+        "unresolved": 4,
+        "total_r": 15.124055181999221
+      },
+      "ETH": {
+        "fired": 14,
+        "correct": 8,
+        "incorrect": 1,
+        "unresolved": 5,
+        "total_r": 11.573291086010233
+      }
+    },
+    "treatment": {
+      "BTC": {
+        "fired": 20,
+        "correct": 10,
+        "incorrect": 6,
+        "unresolved": 4,
+        "total_r": 10.12405518199922,
+        "squeeze_fired": 5,
+        "squeeze_correct": 0,
+        "squeeze_incorrect": 5,
+        "squeeze_r": -5.0
+      },
+      "ETH": {
+        "fired": 18,
+        "correct": 8,
+        "incorrect": 3,
+        "unresolved": 7,
+        "total_r": 9.573291086010233,
+        "squeeze_fired": 4,
+        "squeeze_correct": 0,
+        "squeeze_incorrect": 2,
+        "squeeze_r": -2.0
+      }
+    }
+  },
+  "squeeze_stats": {
+    "total_fired": 9,
+    "correct": 0,
+    "incorrect": 7,
+    "fp_rate": 1.0,
+    "total_r": -7.0
+  },
+  "acceptance": {
+    "pooled_r": 19.7,
+    "baseline_r": 27.69,
+    "gate_r_pass": false,
+    "wr": 0.6667,
+    "gate_wr_pass": false,
+    "squeeze_fp_rate": 1.0,
+    "gate_fp_pass": false,
+    "rally_captured": false,
+    "verdict": "REJECT"
+  }
+}

@@ -37,12 +37,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import pandas as pd
 
 from trading.crypto.cot.cot_gate import weekly_cot_filter
 from trading.crypto.signals import Direction, Signal, Timeframe
+
+if TYPE_CHECKING:
+    from trading.crypto.analysis.squeeze_detector import SqueezeConfig
 
 CotHistoryFn = Callable[[str, pd.Timestamp], "pd.DataFrame | None"]
 
@@ -505,10 +508,13 @@ class TheoryV2Engine:
         source: str = "theory_v2",
         confidence: float = 0.65,
         cot_history_fn: CotHistoryFn | None = None,
+        squeeze_config: SqueezeConfig | None = None,
     ):
         self.source = source
         self.confidence = confidence
         self.cot_history_fn = cot_history_fn
+        # N5 experiment: None disables the squeeze detector (production default).
+        self.squeeze_config = squeeze_config
 
     def evaluate(
         self,
@@ -528,11 +534,25 @@ class TheoryV2Engine:
             if rb_bias != "neutral":
                 bias = rb_bias
                 bias_source = "range_breakout"
-            else:
+            elif self.squeeze_config is not None:
+                # N5 experiment — volatility squeeze detector for the
+                # compression→explosion blind spot (N5 discovery: extreme
+                # BB compression for 7+ days followed by violent breakout).
+                # Lazy import to avoid the heavy trading.crypto.analysis
+                # package __init__.
+                from trading.crypto.analysis.squeeze_detector import (  # noqa: PLC0415
+                    detect_squeeze,
+                )
+                sq_bias, sq_diag = detect_squeeze(daily, self.squeeze_config)
+                if sq_bias != "neutral":
+                    bias = sq_bias
+                    bias_source = "squeeze"
+                    breakout_diag = sq_diag
+            if bias == "neutral":
                 vel_str = f"{velocity:+.2f}" if velocity is not None else "n/a"
                 return TheoryV2Decision(
                     coin, bias, False, False, "weekly",
-                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout)",
+                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout, no squeeze breakout)",
                 )
 
         if self.cot_history_fn is not None:
