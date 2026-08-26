@@ -1,0 +1,24 @@
+{
+  "BTC": [
+    {
+      "coin": "BTC",
+      "squeeze_start": "2026-08-13",
+      "breakout_date": "2026-08-20",
+      "squeeze_days": 7,
+      "comp_close_mean": 63545.98,
+      "bb_min_pct": 2.22,
+      "bb_mean_pct": 2.4,
+      "atr_pct_mean": 1.29,
+      "breakout_range_pct": 6.16,
+      "breakout_change_pct": 13.3,
+      "breakout_close": 73025.15,
+      "direction": "long",
+      "expansion_up_pct": 27.9,
+      "expansion_down_pct": -8.4,
+      "max_expansion_pct": 27.9,
+      "explosion_happened": "True",
+      "look_fwd_days": 6
+    }
+  ],
+  "ETH": []
+}
