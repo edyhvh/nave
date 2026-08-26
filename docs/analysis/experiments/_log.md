@@ -30,3 +30,4 @@ See `00_baseline.md` for the comparison rules every experiment must beat.
 | N2 | experiment/n2-regime-transition | regime-transition (post-crash recovery) detector as 3rd weekly bias source | +24.11 vs control +28.39 (current data) | −4.28 | ❌ REJECT — WR −18.7pp (86.4→67.7%), 78% FP, misses 2026 OOS window | — |
 | N3 | (probe) | cross-asset momentum-agreement confirmation (relative strength) | agree=100% WR (0/12 losses) vs neutral=66.7% (all 3 losses) | hard-filter would −6.69R | ⚠️ PROBE — real discriminator but not shippable as hard filter; refine as soft confirmation | — |
 | BASELINE | — | **re-captured 2026-08-25** — old +44.14R was STALE; current code = +27.69R | — | — | ⚠️ all Δ vs base must use new baseline | — |
+| N4 | experiment/n2-regime-transition | cross-asset momentum-agreement as **soft confirmation / sizing input** (from N3 probe; NOT a hard filter) | TBD | TBD vs +27.69R | 🔜 NEXT — protocol in `10_n4_protocol.md`; not implemented | — |
