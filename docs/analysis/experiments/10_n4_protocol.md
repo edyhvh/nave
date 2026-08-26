@@ -1,6 +1,6 @@
 # Experiment N4 (planned, NEXT) — Cross-asset agreement as soft confirmation / sizing input
 
-**Status:** 🔜 NEXT — protocol recorded; NOT implemented in this task.
+**Status:** ❌ REJECT — executed 2026-08-26; improvement is mechanical leverage, not alpha. P2 experiments paused (3/3).
 **Baseline to beat:** +27.69R pooled (BTC +16.12 / ETH +11.57), re-captured 2026-08-25 on current code (`00_baseline.md`).
 **Branch:** `experiment/n2-regime-transition`
 **Date recorded:** 2026-08-26
