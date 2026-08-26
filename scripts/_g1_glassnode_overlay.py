@@ -35,12 +35,13 @@ backtest the spike defaulted to.
 Usage:
     python scripts/_g1_glassnode_overlay.py                 # cache-only (default)
     python scripts/_g1_glassnode_overlay.py --json
-    python scripts/_g1_glassnode_overlay.py --gn /path/to/gn --fetch  # needs key
+    python scripts/_g1_glassnode_overlay.py --fetch         # direct REST; needs GLASSNODE_API_KEY (env or nave/.env)
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import Counter
 from datetime import datetime, timezone
@@ -197,6 +198,54 @@ def _load_cache_series(metric_path: str) -> dict[str, float]:
     return out
 
 
+# ------------------------ direct REST fetch (no gn CLI required) ------------------------
+
+def _load_api_key() -> str | None:
+    """GLASSNODE_API_KEY from env, or from nave/.env (KEY=value line)."""
+    key = os.environ.get("GLASSNODE_API_KEY")
+    if key:
+        return key.strip()
+    env_file = PROJECT_ROOT / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("GLASSNODE_API_KEY="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return None
+
+
+def _rest_fetch_series(metric_path: str, since: str, until: str | None, api_key: str) -> dict[str, float]:
+    """Fetch one 24h BTC metric via the Glassnode v1 REST API and cache it.
+
+    Returns the day->value series. Cache file mirrors the REST JSON payload
+    ([{"t": <epoch_s>, "v": <float>}, ...]) so it reuses _load_cache_series.
+    """
+    from urllib.parse import urlencode
+    from urllib.request import Request, urlopen
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    until_s = until or ""
+    cache_path = CACHE_DIR / f"{metric_path.replace('/', '_')}_{since}_{until_s}_24h.json"
+    if cache_path.exists():
+        rows = json.loads(cache_path.read_text(encoding="utf-8"))
+    else:
+        params = {
+            "a": "BTC",
+            "i": "24h",
+            "s": since,
+            "api_key": api_key,
+        }
+        if until:
+            params["u"] = until
+        url = f"https://api.glassnode.com/v1/metrics/{metric_path}?{urlencode(params)}"
+        req = Request(url, headers={"User-Agent": "nave-g1/1.0", "Accept": "application/json"})
+        with urlopen(req, timeout=60) as resp:  # noqa: S310
+            rows = json.loads(resp.read().decode("utf-8"))
+        cache_path.write_text(json.dumps(rows), encoding="utf-8")
+    return _load_cache_series(metric_path)
+
+
+
 def _snapshot_for_day(day: str, series: dict[str, dict[str, float]]) -> dict[str, float | None]:
     return {k: v.get(day) for k, v in series.items()}
 
@@ -320,21 +369,27 @@ def main(argv: list[str] | None = None) -> int:
         pooled["total_r"] += r.get("total_r", 0.0)
         pooled["trades"].extend([dict(t, period=period) for t in r.get("trades", [])])
 
-    # Glassnode data: cache-first; optional live fetch.
+    # Glassnode data: cache-first; optional live fetch (direct REST, no gn CLI).
     series: dict[str, dict[str, float]] = {}
     fetch_errors: list[str] = []
+    api_key = None
     if args.fetch:
-        print("Live fetch requested; requires a provisioned GLASSNODE_API_KEY and the `gn` CLI.",
-              file=sys.stderr)
-        print("Neither is available in this environment — API returns 401. Using cache only.",
-              file=sys.stderr)
+        api_key = _load_api_key()
+        if not api_key:
+            print("Live fetch requested but GLASSNODE_API_KEY is not set "
+                  "(env or nave/.env). Using cache only.", file=sys.stderr)
     for key, path in METRICS.items():
         s = _load_cache_series(path)
+        if not s and api_key:
+            try:
+                s = _rest_fetch_series(path, args.since, args.until, api_key)
+            except Exception as exc:  # noqa: BLE001
+                fetch_errors.append(f"{key}: {exc}")
         series[key] = s
         if s:
-            print(f"  {key}: {len(s)} daily points (cache)")
+            print(f"  {key}: {len(s)} daily points")
         else:
-            fetch_errors.append(f"{key}: no cache and fetch requires key/CLI (401)")
+            fetch_errors.append(f"{key}: no cache and fetch unavailable/unauthorized")
 
     data_available = all(len(series[k]) > 0 for k in ("sopr", "exchange_netflow"))
 
