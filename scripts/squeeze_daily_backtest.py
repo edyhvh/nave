@@ -19,6 +19,7 @@ Output is printed and also written to
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -57,6 +58,31 @@ PERIODS: dict[str, tuple[str, str]] = {
     # changing the acceptance result.
     "2026-OOS": ("2026-01-01", "2026-08-26"),
 }
+
+
+def _input_snapshot(coins: list[str]) -> dict[str, Any]:
+    """Hash every local market/COT input used by the validation rerun."""
+    paths = [
+        PROJECT_ROOT / "data" / "binance_cache" / f"{coin}_{tf}.parquet"
+        for coin in coins
+        for tf in ("1h", "4h", "1d", "1w")
+    ]
+    paths.append(Path.home() / ".cache" / "nave" / "cot" / "history_cot.json")
+    files: list[dict[str, Any]] = []
+    for path in sorted(set(paths), key=str):
+        try:
+            display_path = str(path.relative_to(PROJECT_ROOT))
+        except ValueError:
+            display_path = "~/.cache/nave/cot/history_cot.json"
+        item: dict[str, Any] = {"path": display_path, "exists": path.is_file()}
+        if path.is_file():
+            digest = hashlib.sha256()
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            item.update({"sha256": digest.hexdigest(), "size": path.stat().st_size})
+        files.append(item)
+    return {"algorithm": "sha256", "files": files}
 
 
 # --------------------------------------------------------------------------- #
@@ -324,6 +350,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="N6 squeeze daily A/B backtest")
     parser.add_argument("--coins", nargs="+", default=["BTC", "ETH"])
     args = parser.parse_args()
+    input_snapshot = _input_snapshot(args.coins)
 
     btc_cot_history = load_cached_cot_history("BTC")
 
@@ -490,6 +517,7 @@ def main() -> int:
     out_path = out_dir / f"squeeze_daily_validation_{ts}.json"
     output = {
         "experiment": "N6_squeeze_daily",
+        "input_snapshot": input_snapshot,
         "per_period": results,
         "pooled": {
             "control": pooled_control,

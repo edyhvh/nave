@@ -46,10 +46,13 @@ The weekly path (`evaluate()`) is untouched. Production defaults are unchanged:
 ## Acceptance evidence (pre-registered BTC criteria)
 
 The acceptance gates are BTC-only; ETH is a separately reported diagnostic and
-is not pooled into the gates. The fresh rerun used the committed script at
-`f98c7ac`, with Binance REST klines cached locally during the run, through the
-2026-08-26 OOS boundary. Its raw output is committed as
-`docs/analysis/raw/squeeze_daily_validation_20260827T043748Z.json`.
+is not pooled into the gates. The fresh rerun used the committed script with Binance REST klines cached
+locally during the run, through the 2026-08-26 OOS boundary. Its raw output is
+committed as `docs/analysis/raw/squeeze_daily_validation_20260827T045812Z.json`.
+The artifact contains an `input_snapshot` manifest with SHA-256 and byte-size
+for every BTC/ETH OHLCV cache file and the COT cache used by the run. A rerun
+against different cache contents is therefore a different evidence snapshot,
+not a silently interchangeable reproduction.
 
 That rerun is **REJECT**: BTC treatment is +50.10R, but the BTC squeeze false
 positive rate is 26.1% (6/23 resolved), above the 20% gate. The earlier ACCEPT artifacts
