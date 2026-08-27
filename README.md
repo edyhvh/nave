@@ -88,7 +88,7 @@ wallet audit is documented in [docs/chain_wallet_audit.md](docs/chain_wallet_aud
 ## Quick setup
 
 ```bash
-git clone https://github.com/edyhvh/nave.git
+git clone https://github.com/jhonnyisaacc/nave.git
 cd nave
 python setup.py
 source ~/.zshrc   # or ~/.bashrc — reload after setup

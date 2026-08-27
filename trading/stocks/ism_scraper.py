@@ -102,7 +102,7 @@ class ISMReportFetcher:
         timeout_seconds: float = 15.0,
         use_playwright: bool = False,
         user_agent: str = (
-            "Mozilla/5.0 (compatible; nave-research/0.1; +https://github.com/edyhvh/nave)"
+            "Mozilla/5.0 (compatible; nave-research/0.1; +https://github.com/jhonnyisaacc/nave)"
         ),
     ):
         self.timeout_seconds = timeout_seconds

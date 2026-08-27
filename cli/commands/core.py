@@ -328,7 +328,7 @@ def journal_show(
 
 @journal_app.command("sync-wiki")
 def journal_sync_wiki(
-    owner: str = typer.Option("edyhvh", help="GitHub owner"),
+    owner: str = typer.Option("jhonnyisaacc", help="GitHub owner"),
     repo: str = typer.Option("nave", help="GitHub repository name"),
     token: Optional[str] = typer.Option(None, help="GitHub token; defaults to NAVE_GITHUB_TOKEN"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview unsynced trades only"),
