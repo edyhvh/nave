@@ -46,10 +46,8 @@ The weekly path (`evaluate()`) is untouched. Production defaults are unchanged:
 ## Acceptance evidence (pre-registered BTC criteria)
 
 The acceptance gates are BTC-only; ETH is a separately reported diagnostic and
-is not pooled into the gates. The final-head rerun used the committed script at
-`b63e43e` with Binance REST klines cached locally during the run, through the
-2026-08-26 OOS boundary. Its raw output is committed as
-`docs/analysis/raw/squeeze_daily_validation_20260827T035004Z.json`.
+is not pooled into the gates. The final-head rerun used the committed script at `b45320d` with Binance REST klines cached locally during the run, through the 2026-08-26 OOS boundary. Its raw output is committed as
+`docs/analysis/raw/squeeze_daily_validation_20260827T042927Z.json`.
 
 That rerun is **REJECT**: BTC treatment is +49.10R, but the BTC squeeze false
 positive rate is 29.2% (7/24), above the 20% gate. The earlier ACCEPT artifacts
@@ -61,7 +59,7 @@ the final head and must not be used for merge or enablement.
 | BTC treatment R | ≥ 27.69 | +49.10 | ✅ |
 | BTC WR squeeze trades | ≥ 70% | 70.8% (17/24) | ✅ |
 | BTC FP rate squeeze trades | ≤ 20% | 29.2% (7/24) | ❌ |
-| Rally 63k→78k captured (OOS 2026) | YES | 1 squeeze trade in OOS | ✅ |
+| Rally 63k→78k captured (OOS 2026) | diagnostic only | 1 trade, but it lost −1.00R; existence is not capture evidence | — |
 | No degradation of existing trades | YES | control +24.89 → treatment +49.10 | ✅ |
 
 Per-coin:
@@ -71,6 +69,11 @@ Per-coin:
 
 The focused regression suite contains **43 tests** (not 42):
 `python -m pytest tests/test_theory_v2.py tests/test_n6_squeeze_daily_logic.py tests/test_n6_squeeze_daily_isolated.py -q` → 43 passed.
+
+The OOS rally observation is retained as a diagnostic, not an acceptance gate:
+the presence of a trade does not prove that the strategy captured the move, and
+the observed 2026-01-05 trade resolved incorrectly at −1.00R. The final
+rerun therefore remains **REJECT** regardless of that diagnostic.
 
 ## Merge path (still required before enabling)
 

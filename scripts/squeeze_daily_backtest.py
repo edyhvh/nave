@@ -458,15 +458,20 @@ def main() -> int:
     c3 = sq_fp <= 0.20 if sq_resolved > 0 else False
     criteria.append(("BTC FP rate squeeze trades <= 20%", c3, f"{sq_fp*100:.1f}%"))
 
-    # 4. Rally 63k→78k captured (OOS 2026)
+    # Rally 63k→78k is reported as a diagnostic only.  Trade existence is not
+    # evidence of capture: the OOS trade may still lose or fail to cover the
+    # move.  It must not affect the verdict.
     oos_sq = results.get("2026-OOS", {}).get(coin, {}).get("squeeze", {})
     oos_squeeze_trades = [t for t in oos_sq.get("trades", []) if t.get("bias_source") == "squeeze_daily"]
-    c4 = len(oos_squeeze_trades) > 0
-    criteria.append(("BTC rally 63k→78k captured (OOS 2026)", c4, f"{len(oos_squeeze_trades)} squeeze trade(s) in OOS"))
+    oos_capture_diagnostic = {
+        "trade_count": len(oos_squeeze_trades),
+        "trades": oos_squeeze_trades,
+        "note": "Diagnostic only; trade existence does not establish profitable capture.",
+    }
 
-    # 5. No degradation of existing trades
-    c5 = treat["total_r"] >= ctrl["total_r"]
-    criteria.append(("BTC no degradation of existing trades", c5, f"control={ctrl['total_r']:+.2f} treatment={treat['total_r']:+.2f}"))
+    # 4. No degradation of existing trades
+    c4 = treat["total_r"] >= ctrl["total_r"]
+    criteria.append(("BTC no degradation of existing trades", c4, f"control={ctrl['total_r']:+.2f} treatment={treat['total_r']:+.2f}"))
 
     all_pass = True
     for name, passed, value in criteria:
@@ -495,6 +500,7 @@ def main() -> int:
             {"name": name, "passed": passed, "value": value}
             for name, passed, value in criteria
         ],
+        "oos_capture_diagnostic": oos_capture_diagnostic,
         "verdict": verdict,
     }
     out_path.write_text(json.dumps(output, indent=2, default=str))
