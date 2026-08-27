@@ -88,3 +88,34 @@ def test_squeeze_daily_insufficient_history_neutral():
     state = SqueezeDailyState()
     bias, diag = detect_squeeze_daily(daily, state, SqueezeConfig())
     assert bias == "neutral"
+
+
+def test_breakout_fires_when_breakout_bar_remains_below_squeeze_threshold():
+    """A modest breakout must not be swallowed by the updated range."""
+    n = 160
+    idx = pd.date_range("2020-01-01", periods=n, freq="D")
+    close = np.full(n, 100.0)
+    high = np.full(n, 100.2)
+    low = np.full(n, 99.8)
+    daily = pd.DataFrame({"open": close, "high": high, "low": low, "close": close}, index=idx)
+    state = SqueezeDailyState()
+
+    # Establish a qualifying active squeeze one bar at a time.
+    for i in range(140, n):
+        bias, _ = detect_squeeze_daily(daily.iloc[: i + 1], state, SqueezeConfig())
+        assert bias == "neutral"
+    assert state.active is True
+    old_high = state.squeeze_high
+
+    # The close breaks the prior range, but BB width remains under 3.5%.
+    breakout = daily.copy()
+    breakout.loc[idx[-1], "close"] = 101.5
+    breakout.loc[idx[-1], "open"] = 100.0
+    breakout.loc[idx[-1], "high"] = 101.6
+    breakout.loc[idx[-1], "low"] = 101.4
+    bias, diag = detect_squeeze_daily(breakout, state, SqueezeConfig())
+
+    assert old_high < 101.5
+    assert bias == "long"
+    assert diag is not None
+    assert diag["squeeze_high"] == round(old_high, 2)

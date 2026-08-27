@@ -193,7 +193,44 @@ def detect_squeeze_daily(
     last_close = float(close.iloc[last])
     last_atr = float(atr.iloc[last]) if not pd.isna(atr.iloc[last]) else 0
 
-    # Update state with latest bar
+    # Check the current bar against the *prior* compression range before
+    # updating state.  A breakout can leave BB width below the squeeze
+    # threshold, so updating first would include the breakout bar in the
+    # range and incorrectly keep the squeeze active.
+    if (
+        state.active
+        and state.streak_days >= cfg.min_streak
+        and not state.breakout_fired
+    ):
+        buffer = cfg.breakout_atr_mult * last_atr
+        if last_close > state.squeeze_high + buffer:
+            state.breakout_fired = True
+            return "long", {
+                "squeeze_streak": state.streak_days,
+                "squeeze_high": round(state.squeeze_high, 2),
+                "squeeze_low": round(state.squeeze_low, 2),
+                "bb_width_mean": round(state.bb_width_mean, 2),
+                "breakout_close": round(last_close, 2),
+                "atr_14": round(last_atr, 2),
+                "bars_since_squeeze_end": 0,
+                "direction": "long",
+                "reason": f"squeeze {state.streak_days}d → long breakout (during squeeze)",
+            }
+        if last_close < state.squeeze_low - buffer:
+            state.breakout_fired = True
+            return "short", {
+                "squeeze_streak": state.streak_days,
+                "squeeze_high": round(state.squeeze_high, 2),
+                "squeeze_low": round(state.squeeze_low, 2),
+                "bb_width_mean": round(state.bb_width_mean, 2),
+                "breakout_close": round(last_close, 2),
+                "atr_14": round(last_atr, 2),
+                "bars_since_squeeze_end": 0,
+                "direction": "short",
+                "reason": f"squeeze {state.streak_days}d → short breakout (during squeeze)",
+            }
+
+    # Update state with latest bar after checking the prior range.
     update_squeeze_state(daily, state, cfg)
 
     # Case 1: squeeze is currently active — no breakout yet
