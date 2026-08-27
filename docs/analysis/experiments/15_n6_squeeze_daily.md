@@ -1,6 +1,6 @@
 # N6 — Daily-cadence squeeze entry (bypass weekly bias gates)
 
-**Verdict: ACCEPT** (2026-08-26)
+**Verdict: REJECT pending data reconciliation** (rerun 2026-08-27)
 
 ## Problem
 
@@ -43,20 +43,34 @@ The weekly path (`evaluate()`) is untouched. Production defaults are unchanged:
 - `tests/test_n6_squeeze_daily_isolated.py` — isolation/regression tests
 - `tests/test_n6_squeeze_daily_logic.py` — behavioral breakout tests
 
-## ACCEPT evidence (pre-registered criteria)
+## Acceptance evidence (pre-registered BTC criteria)
+
+The acceptance gates are BTC-only; ETH is a separately reported diagnostic and
+is not pooled into the gates. The final-head rerun used the committed script at
+`b63e43e` with Binance REST klines cached locally during the run, through the
+2026-08-26 OOS boundary. Its raw output is committed as
+`docs/analysis/raw/squeeze_daily_validation_20260827T035004Z.json`.
+
+That rerun is **REJECT**: BTC treatment is +49.10R, but the BTC squeeze false
+positive rate is 29.2% (7/24), above the 20% gate. The earlier ACCEPT artifacts
+(+35.41R, 15.4% FP) are retained as historical evidence but do not describe
+the final head and must not be used for merge or enablement.
 
 | Criterion | Threshold | Result | Pass |
 |---|---|---|---|
-| Pooled R (treatment) | ≥ 27.69 | +35.41 (BTC+ETH) | ✅ |
-| WR squeeze trades | ≥ 70% | 84.6% (11/13) | ✅ |
-| FP rate squeeze trades | ≤ 20% | 15.4% | ✅ |
+| BTC treatment R | ≥ 27.69 | +49.10 | ✅ |
+| BTC WR squeeze trades | ≥ 70% | 70.8% (17/24) | ✅ |
+| BTC FP rate squeeze trades | ≤ 20% | 29.2% (7/24) | ❌ |
 | Rally 63k→78k captured (OOS 2026) | YES | 1 squeeze trade in OOS | ✅ |
-| No degradation of existing trades | YES | control +17.82 → treatment +35.41 | ✅ |
+| No degradation of existing trades | YES | control +24.89 → treatment +49.10 | ✅ |
 
 Per-coin:
 
-- BTC: squeeze adds +17.59R (84.6% WR); control 16 fired/+17.82R → treatment 31 fired/+35.41R
-- ETH: squeeze adds +12.10R (88.9% WR); control 15 fired/+11.57R → treatment 26 fired/+23.67R
+- BTC (final-head rerun): squeeze +24.22R; control 27 fired/+24.89R → treatment 53 fired/+49.10R.
+- ETH (diagnostic only): squeeze +25.33R; control 29 fired/+26.48R → treatment 53 fired/+51.81R.
+
+The focused regression suite contains **43 tests** (not 42):
+`python -m pytest tests/test_theory_v2.py tests/test_n6_squeeze_daily_logic.py tests/test_n6_squeeze_daily_isolated.py -q` → 43 passed.
 
 ## Merge path (still required before enabling)
 

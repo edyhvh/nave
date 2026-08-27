@@ -52,7 +52,10 @@ PERIODS: dict[str, tuple[str, str]] = {
     "2023-recovery": ("2023-01-01", "2023-12-31"),
     "2024-ETF-approval": ("2024-01-01", "2024-06-30"),
     "2024-2025-bull": ("2024-07-01", "2025-03-31"),
-    "2026-OOS": ("2026-01-01", "2026-08-31"),
+    # Frozen at the last bar in the committed validation evidence.  Keeping
+    # this boundary explicit prevents a later Binance refresh from silently
+    # changing the acceptance result.
+    "2026-OOS": ("2026-01-01", "2026-08-26"),
 }
 
 
@@ -431,7 +434,8 @@ def main() -> int:
     print("ACCEPTANCE CRITERIA")
     print("=" * 70)
 
-    # Use BTC as primary coin for criteria
+    # The pre-registered acceptance criteria are BTC-only.  ETH is reported
+    # above as a secondary diagnostic and must not be mixed into these gates.
     coin = "BTC"
     ctrl = pooled_control[coin]
     treat = pooled_treatment[coin]
@@ -440,29 +444,29 @@ def main() -> int:
 
     criteria = []
 
-    # 1. Pooled R (treatment) >= 27.69
+    # 1. BTC treatment R >= 27.69
     c1 = treat["total_r"] >= 27.69
-    criteria.append(("Pooled R (treatment) >= 27.69", c1, f"{treat['total_r']:+.2f}"))
+    criteria.append(("BTC treatment R >= 27.69", c1, f"{treat['total_r']:+.2f}"))
 
     # 2. WR squeeze trades >= 70%
     sq_wr = sq["correct"] / sq_resolved if sq_resolved else 0
     c2 = sq_wr >= 0.70 if sq_resolved > 0 else False
-    criteria.append(("WR squeeze trades >= 70%", c2, f"{sq_wr*100:.1f}% ({sq['correct']}/{sq_resolved})"))
+    criteria.append(("BTC WR squeeze trades >= 70%", c2, f"{sq_wr*100:.1f}% ({sq['correct']}/{sq_resolved})"))
 
     # 3. FP rate squeeze trades <= 20%
     sq_fp = sq["incorrect"] / sq_resolved if sq_resolved else 0
     c3 = sq_fp <= 0.20 if sq_resolved > 0 else False
-    criteria.append(("FP rate squeeze trades <= 20%", c3, f"{sq_fp*100:.1f}%"))
+    criteria.append(("BTC FP rate squeeze trades <= 20%", c3, f"{sq_fp*100:.1f}%"))
 
     # 4. Rally 63k→78k captured (OOS 2026)
     oos_sq = results.get("2026-OOS", {}).get(coin, {}).get("squeeze", {})
     oos_squeeze_trades = [t for t in oos_sq.get("trades", []) if t.get("bias_source") == "squeeze_daily"]
     c4 = len(oos_squeeze_trades) > 0
-    criteria.append(("Rally 63k→78k captured (OOS 2026)", c4, f"{len(oos_squeeze_trades)} squeeze trade(s) in OOS"))
+    criteria.append(("BTC rally 63k→78k captured (OOS 2026)", c4, f"{len(oos_squeeze_trades)} squeeze trade(s) in OOS"))
 
     # 5. No degradation of existing trades
     c5 = treat["total_r"] >= ctrl["total_r"]
-    criteria.append(("No degradation of existing trades", c5, f"control={ctrl['total_r']:+.2f} treatment={treat['total_r']:+.2f}"))
+    criteria.append(("BTC no degradation of existing trades", c5, f"control={ctrl['total_r']:+.2f} treatment={treat['total_r']:+.2f}"))
 
     all_pass = True
     for name, passed, value in criteria:
