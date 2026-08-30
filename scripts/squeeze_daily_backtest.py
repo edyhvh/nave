@@ -350,7 +350,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="N6 squeeze daily A/B backtest")
     parser.add_argument("--coins", nargs="+", default=["BTC", "ETH"])
     args = parser.parse_args()
-    input_snapshot = _input_snapshot(args.coins)
 
     btc_cot_history = load_cached_cot_history("BTC")
 
@@ -455,6 +454,12 @@ def main() -> int:
             print(f"  Squeeze FP rate: {sq_fp*100:.1f}% (threshold: ≤20%)")
         else:
             print(f"  Squeeze FP rate: n/a (no resolved squeeze trades)")
+
+    # Hash after the walkers have loaded/fetched their inputs.  Fetches may
+    # populate the project cache during the run; taking this snapshot before
+    # the walk would record those files as absent and fail to identify the
+    # actual evidence inputs.
+    input_snapshot = _input_snapshot(args.coins)
 
     # Acceptance criteria check
     print("\n" + "=" * 70)

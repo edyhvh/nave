@@ -1,6 +1,6 @@
 # N6 — Daily-cadence squeeze entry (bypass weekly bias gates)
 
-**Verdict: REJECT** (fresh rerun 2026-08-27)
+**Verdict: REJECT** (fresh rerun 2026-08-30)
 
 ## Problem
 
@@ -48,32 +48,32 @@ The weekly path (`evaluate()`) is untouched. Production defaults are unchanged:
 The acceptance gates are BTC-only; ETH is a separately reported diagnostic and
 is not pooled into the gates. The fresh rerun used the committed script with Binance REST klines cached
 locally during the run, through the 2026-08-26 OOS boundary. Its raw output is
-committed as `docs/analysis/raw/squeeze_daily_validation_20260827T045812Z.json`.
+committed as `docs/analysis/raw/squeeze_daily_validation_20260830T001059Z.json`.
 The artifact contains an `input_snapshot` manifest with SHA-256 and byte-size
 for every BTC/ETH OHLCV cache file and the COT cache used by the run. A rerun
 against different cache contents is therefore a different evidence snapshot,
 not a silently interchangeable reproduction.
 
-That rerun is **REJECT**: BTC treatment is +50.10R, but the BTC squeeze false
+That rerun is **REJECT**: BTC treatment is +49.70R, but the BTC squeeze false
 positive rate is 26.1% (6/23 resolved), above the 20% gate. The earlier ACCEPT artifacts
 (+35.41R, 15.4% FP) are retained as historical evidence but do not describe
 the final head and must not be used for merge or enablement.
 
 | Criterion | Threshold | Result | Pass |
 |---|---|---|---|
-| BTC treatment R | ≥ 27.69 | +50.10 | ✅ |
+| BTC treatment R | ≥ 27.69 | +49.70 | ✅ |
 | BTC WR squeeze trades | ≥ 70% | 73.9% (17/23 resolved) | ✅ |
 | BTC FP rate squeeze trades | ≤ 20% | 26.1% (6/23 resolved) | ❌ |
 | Rally 63k→78k captured (OOS 2026) | diagnostic only | 0 trades; no capture evidence | — |
-| No degradation of existing trades | YES | control +24.89 → treatment +50.10 | ✅ |
+| No degradation of existing trades | YES | control +24.49 → treatment +49.70 | ✅ |
 
 Per-coin:
 
-- BTC (fresh rerun): squeeze +25.22R; control 27 fired/+24.89R → treatment 52 fired/+50.10R.
-- ETH (diagnostic only): squeeze +26.33R; control 29 fired/+26.48R → treatment 51 fired/+52.81R.
+- BTC (fresh rerun): squeeze +25.22R; control 29 fired/+24.49R → treatment 54 fired/+49.70R.
+- ETH (diagnostic only): squeeze +26.33R; control 28 fired/+26.10R → treatment 50 fired/+52.43R.
 
-The focused regression suite contains **43 tests** (not 42):
-`python -m pytest tests/test_theory_v2.py tests/test_n6_squeeze_daily_logic.py tests/test_n6_squeeze_daily_isolated.py -q` → 43 passed.
+The focused regression suite contains **44 tests**:
+`python -m pytest tests/test_theory_v2.py tests/test_n6_squeeze_daily_logic.py tests/test_n6_squeeze_daily_isolated.py -q` → 44 passed.
 
 The OOS rally observation is retained as a diagnostic, not an acceptance gate:
 the presence of a trade does not prove that the strategy captured the move, and
