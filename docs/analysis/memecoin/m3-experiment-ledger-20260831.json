@@ -112,5 +112,18 @@
     "participant_pnl": {"wallets": 1666, "tokens": 7, "episodes": 1786, "status": "HISTORICAL_TARGETED_PROOF"},
     "edge_claim": false,
     "reports": ["dune-review-packet-v2-20260831.md", "dune-credit-model-20260831.md", "multichain-memecoin-feasibility-20260831.md"]
+  },
+  "external_research_iteration": {
+    "status": "EXTERNAL RESEARCH LAYER PARTIALLY VALIDATED",
+    "created_at": "2026-09-01T00:00:00Z",
+    "sources_reviewed": 10,
+    "external_rows_merged": false,
+    "dune_new_credits": 0.0,
+    "red_cohort": "PARTIAL_STRUCTURAL_REPLICATION",
+    "participant_signal": "INSUFFICIENT_DATA",
+    "filter_false_negative_audit": "PARTIAL_PRFS_MACHINERY_READY_NO_HISTORICAL_GATE_LOG",
+    "hypotheses": ["H_META_01", "H_META_02", "H_PARTICIPANT_01", "H_CONTAMINATION_01", "H_FILTER_01"],
+    "controls": ["participant_excluded_flow", "activity_matching", "Beta-Binomial shrinkage", "derivability audit", "chronological purge/embargo"],
+    "reports": ["external-research-registry-20260831.md", "m3-external-research-replication-20260831.md"]
   }
 }

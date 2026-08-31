@@ -1,0 +1,27 @@
+{
+  "status": "EXTERNAL RESEARCH LAYER PARTIALLY VALIDATED",
+  "sources": {"reviewed": 10, "registry": "external-research-registry-20260831.json", "merged_into_nave": false},
+  "licenses": {"slinky": "CONFLICT_UNRESOLVED_MIT_CARD_VS_CC_BY_README", "red_pump": "CC-BY-4.0", "red_cohort_data": "CC-BY-4.0_WITH_PATENT_NOTICE", "red_cohort_code": "MIT", "prfs": "MIT", "red_2400_toolkit": "MIT", "red_2400_data": "CC-BY-4.0", "trenches": "PolyForm-Noncommercial-1.0.0", "melt": "CC-BY-NC-4.0", "pumpapi": "UNCONFIRMED", "graduate_oracle": "UNCONFIRMED"},
+  "replications": {
+    "slinky": {"status": "ACTIVE", "result": "no linked completed maintainer papers located; methodology useful with known issues"},
+    "red_cohort": {"status": "PARTIAL", "catalogue_cohorts": 1012, "catalogue_wallets": 2965, "exact_reproduction": false, "reason": "released intra file is co-fire groups, not complete detector input; no temporal overlap with NAVE"},
+    "red_pump": {"status": "METHODOLOGY_ONLY", "result": "launch metadata hypotheses retained; v1.4 true 24h graduation rate unknown"},
+    "red_2400": {"status": "METHODOLOGY_ONLY", "result": "reject-side five-tier PRFS audit design adopted"},
+    "trenches": {"status": "LEAKAGE_REFERENCE", "result": "per-field derivability timestamps adopted conceptually"},
+    "graduate_oracle": {"status": "BASELINE_ONLY", "result": "public methodology reviewed; not a NAVE input"}
+  },
+  "hypotheses": [
+    {"id": "H_META_01", "statement": "launch metadata completeness changes outcomes after initial-state and hour controls", "status": "DESIGNED_NOT_TESTED", "classification": "INSUFFICIENT_DATA"},
+    {"id": "H_META_02", "statement": "launch metadata adds information beyond curve flow", "status": "DESIGNED_NOT_TESTED", "classification": "INSUFFICIENT_DATA"},
+    {"id": "H_PARTICIPANT_01", "statement": "point-in-time participant reputation adds information over token state", "status": "DESIGNED_NOT_TESTED", "classification": "INSUFFICIENT_DATA"},
+    {"id": "H_CONTAMINATION_01", "statement": "participant self-flow materially inflates raw post-entry flow", "status": "MACHINERY_PROOF", "result": "1107 of 2367 targeted first-30m trades were participant self-flow; no causal claim"},
+    {"id": "H_FILTER_01", "statement": "some rejection filters may discard future Burst/Runner candidates", "status": "AUDIT_DESIGNED", "classification": "PARTIAL"}
+  ],
+  "statistical_controls": ["chronological split", "purge/embargo", "activity-matched controls", "participant-excluded flow", "Beta-Binomial shrinkage", "bootstrap confidence intervals", "propensity matching with balance", "placebos", "leave-one-out", "tail dependence", "right censoring"],
+  "new_research_primitives": {"module": "research/memecoin/research_primitives.py", "implemented": ["validate_feature_derivability", "derive_available_at", "participant_excluded_outcomes", "post_rejection_followup_audit", "beta_binomial_reputation", "build_cooccurrence_cohorts", "activity_match_controls"], "tests": "tests/test_memecoin/test_research_primitives.py"},
+  "data_gaps": ["complete multi-day Runner panel", "historical gate decisions and reject outcomes", "economic actor identity", "funding and bundle evidence", "PumpSwap depth/reserves", "failed transactions/exits", "priority fees", "BOOST attribution"],
+  "dune_usage": {"starting_consumed": 1863.570, "ending_consumed": 1863.570, "new_credits": 0.0, "included_remaining": 636.430, "new_query_count": 0, "second_day_status": "DEFERRED_ESTIMATE_ONLY"},
+  "pumpapi_feasibility": {"status": "AUDIT_ONLY", "archive_head_http": 200, "event_agreement_run": false, "promising_fields": ["priorityFee", "postBalances", "tradersInvolved", "bonding_curve_reserves", "pool", "block"]},
+  "helius_decision": {"status": "USEFUL_LATER_NOT_REQUIRED_NOW", "likely_needed_for": ["independent reserve/depth validation", "failed exit validation", "funding chains", "Jito/bundle evidence", "BOOST attribution"]},
+  "next_experiments": [{"priority": 1, "experiment": "compact second calendar-day Pump.fun sample", "budget_cap_credits": 75, "purpose": "temporal sanity check and token-only versus participant-augmented comparison", "not_strategy_optimization": true}]
+}

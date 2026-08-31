@@ -95,5 +95,22 @@
     "pnl_proof": {"wallets": 1666, "tokens": 7, "episodes": 1786, "status": "HISTORICAL_TARGETED_PROOF"},
     "credits": {"used_this_iteration": 326.052, "ending_consumed": 1863.57, "included_remaining": 636.43},
     "edge_claim": false
+  },
+  "external_research_layer": {
+    "status": "EXTERNAL RESEARCH LAYER PARTIALLY VALIDATED",
+    "registry": "docs/analysis/memecoin/external-research-registry-20260831.json",
+    "report": "docs/analysis/memecoin/m3-external-research-replication-20260831.md",
+    "sources_reviewed": 10,
+    "external_rows_merged": false,
+    "downloaded_artifacts": [
+      "RED-COHORT-2026-v1_0_1.zip (8.4 MiB)",
+      "RED-PUMP metadata/code only"
+    ],
+    "new_primitives": "research/memecoin/research_primitives.py",
+    "tests": "tests/test_memecoin/test_research_primitives.py",
+    "local_audit": "data/research/external/external_audit_summary.json",
+    "dune": {"new_credits": 0.0, "included_remaining": 636.43, "second_day": "deferred"},
+    "helius": "useful later, not required now",
+    "edge_claim": false
   }
 }
