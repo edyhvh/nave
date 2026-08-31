@@ -1,0 +1,89 @@
+{
+  "manifest_version": "m3.dual_horizon.v1",
+  "scope": "Hermes/NAVE only; read-only research; no OpenClaw; no execution",
+  "created_at": "2026-08-31T00:00:00Z",
+  "status": "BLOCKED_BY_DATA",
+  "local_data_audit": {
+    "forward_journal": {
+      "path": "var/memecoin_m3/signal_journal.json",
+      "entries": 1885,
+      "passed": 482,
+      "rejected": 1403,
+      "primary_horizon_outcomes": {"5m": 0, "15m": 0, "30m": 0, "60m": 0, "4h": 0},
+      "context_horizon_numeric_outcomes": {"24h": 1130, "48h": 775, "7d": 0},
+      "launch_timestamp_missing": 1885,
+      "entry_pair_missing": 572,
+      "use": "audit context only; not a historical event panel"
+    },
+    "memecoin_cache": {
+      "path": "var/memecoin_cache",
+      "approximate_size": "25M",
+      "json_files": 5315,
+      "use": "current/provider cache; not suitable for same-pool temporal replay"
+    },
+    "historical_replay_archives": {
+      "present": false,
+      "files": 0,
+      "sha256": [],
+      "reason": "No PumpApi .jsonl.zst event archive was present in the workspace"
+    },
+    "public_corpus_parquet": {
+      "present": false,
+      "files": 0,
+      "reason": "The 6.7GB public corpus was not downloaded; no corpus query was run"
+    }
+  },
+  "required_primary_source": {
+    "name": "PumpApi Historical Replay",
+    "url": "https://pumpapi.io/historical-replay",
+    "required_artifact": "contiguous UTC .jsonl.zst files covering launches plus every declared outcome horizon",
+    "discovery_only_public_source": "https://huggingface.co/datasets/Slinky21/Pumpfun_Memecoin_Corpus",
+    "independent_replication_required": true
+  },
+  "frozen_universe_and_splits": {
+    "universe": "all launches in declared replay interval, including rejected, dead, unexitably, and censored records",
+    "deduplication": "one record per mint and pool epoch; preserve event order and pool identity",
+    "split": "chronological 60% development / 20% validation / 20% untouched holdout",
+    "purge": "purge examples whose future outcome horizon overlaps the next split; 72h Runner labels require at least 72h embargo",
+    "holdout_unlocked_at": null,
+    "thresholds_frozen_at": "2026-08-31T00:00:00Z"
+  },
+  "frozen_horizons": {
+    "trajectory_points": ["30s", "1m", "3m", "5m", "10m", "30m", "60m", "2h", "4h", "8h", "12h", "24h", "48h", "72h"],
+    "fast_burst": ["5m", "15m", "30m", "60m"],
+    "runner_raw_outcomes": ["4h", "8h", "12h", "24h", "48h", "72h"],
+    "survival": ["5m", "15m", "30m", "60m", "4h", "8h", "24h", "48h"]
+  },
+  "frozen_execution": {
+    "paper_notional_usd": 100,
+    "max_liquidity_fraction": 0.0025,
+    "fast_burst": {"target_pct": 20, "stop_pct": -15, "time_stop_minutes": 60, "same_event_order": "STOP_FIRST"},
+    "entry_delays_seconds": [0, 2, 5, 15, 30, 60],
+    "runner_exit_families": {"fixed_hours": [4, 8, 24, 48], "trailing_drawdown_pct": [20, 30, 40]},
+    "cost_scenarios": {
+      "optimistic": {"round_trip_fee_pct": 0.5, "spread_slippage_pct": 0.5, "failed_partial_exit_allowance_pct": 0.5},
+      "base": {"round_trip_fee_pct": 1.0, "spread_slippage_pct": 2.0, "failed_partial_exit_allowance_pct": 2.0},
+      "stressed": {"round_trip_fee_pct": 1.5, "spread_slippage_pct": 5.0, "failed_partial_exit_allowance_pct": 5.0}
+    }
+  },
+  "quality_rules": {
+    "mayhem_supply": "use corrected supply or explicit protocol supply; never assume 1B",
+    "suspect_concentration": "exclude top10_pct_suspect; do not impute",
+    "corrupt_sol_rows": "exclude from SOL volume/P&L and retain quality flag",
+    "missing_price_rows": "retain missingness; do not treat as zero",
+    "system_program": "exclude documented System Program address from wallet features",
+    "wallet_stats": "never use activity/volume totals; recompute from trades",
+    "synthetic_pool_addresses": "not a verified pool identity",
+    "regime_breaks": ["holder_count_2026-06-09/10", "mayhem_rollout_2026-06-20/22", "concentration_bug_2026-06-23/24", "silence_rate_2026-06-24/25", "outage_and_curve_shift_2026-07-03/04"],
+    "graduation_leakage": "exclude entry_price_20s_usd, entry_price_30s_usd, entry_price_1m_usd from predictive features",
+    "right_censoring": "target beyond collection end is UNKNOWN/right-censored, never DEAD or NON-RUNNER"
+  },
+  "implementation": {
+    "module": "trading/memecoin/m3_dual_horizon.py",
+    "tests": "tests/test_memecoin/test_m3_dual_horizon.py",
+    "base_commit": "1c9648b",
+    "raw_data_in_git": false,
+    "live_execution": false,
+    "wallet_access": false
+  }
+}
