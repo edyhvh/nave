@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json as _json
 import logging
+from pathlib import Path
 from typing import Optional, cast
 
 import typer
@@ -28,6 +29,7 @@ from trading.stocks import (
     MassiveClient,
     StockJournal,
     build_ism_industry_report,
+    build_ism_equity_pipeline,
     render_ism_report_markdown_v2,
     render_x_summary_markdown_v2,
 )
@@ -712,6 +714,88 @@ def _render_ism_report_sheet(payload: dict[str, object]) -> None:
                 "(none)", "", "", "", "", "", "", "", "", "", "", "", "", "",
             )
         console.print(table)
+
+
+@stocks_app.command("ism-equity-pipeline")
+def ism_equity_pipeline(
+    manufacturing_json: str = typer.Option(
+        "/home/david/quant-portfolio-manager/ism_manufacturing.json",
+        "--manufacturing-json",
+        help="Stored Manufacturing ISM report JSON.",
+    ),
+    services_json: str = typer.Option(
+        "/home/david/quant-portfolio-manager/ism_services.json",
+        "--services-json",
+        help="Stored Services ISM report JSON.",
+    ),
+    research_json: Optional[str] = typer.Option(
+        None,
+        "--research-json",
+        help="Completed per-symbol company research JSON; omit to emit RESEARCHING.",
+    ),
+    additional_json: Optional[str] = typer.Option(
+        None,
+        "--additional-json",
+        help="JSON list of existing holdings/watches with explicit ISM evidence.",
+    ),
+    portfolio_symbols: str = typer.Option("", "--portfolio-symbols"),
+    watch_symbols: str = typer.Option("", "--watch-symbols"),
+    limit: int = typer.Option(6, "--limit", min=1, max=20),
+    output: Optional[str] = typer.Option(
+        "/home/david/quant-portfolio-manager/ism_equity_pipeline.json",
+        "--output",
+        help="Durable pipeline artifact path; use --output='' to disable.",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Run both ISM reports through the bounded equity research funnel."""
+
+    def load_payload(path: str) -> dict[str, object]:
+        raw = Path(path).read_text(encoding="utf-8")
+        # Some repo-local data loaders write a diagnostic line before JSON.
+        start = raw.find("{")
+        if start < 0:
+            raise typer.BadParameter(f"{path} does not contain a JSON object")
+        value = _json.loads(raw[start:])
+        if not isinstance(value, dict):
+            raise typer.BadParameter(f"{path} must contain a JSON object")
+        return value
+
+    research: dict[str, dict[str, object]] = {}
+    if research_json:
+        loaded = load_payload(research_json)
+        research = {
+            str(symbol).upper(): value
+            for symbol, value in loaded.items()
+            if isinstance(value, dict)
+        }
+    additional: list[dict[str, object]] = []
+    if additional_json:
+        loaded_additional = load_payload(additional_json)
+        raw_items = loaded_additional.get("candidates", loaded_additional)
+        if isinstance(raw_items, list):
+            additional = [item for item in raw_items if isinstance(item, dict)]
+    result = build_ism_equity_pipeline(
+        load_payload(manufacturing_json),
+        load_payload(services_json),
+        research_by_symbol=research,
+        portfolio_symbols=[item for item in portfolio_symbols.split(",") if item.strip()],
+        watch_symbols=[item for item in watch_symbols.split(",") if item.strip()],
+        additional_candidates=additional,
+        limit=limit,
+    )
+    if output:
+        output_path = Path(output).expanduser()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(_json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        result["saved_to"] = str(output_path)
+    if json_out:
+        typer.echo(_json.dumps(result, indent=2, default=str))
+    else:
+        typer.echo(
+            f"ISM equity pipeline: {len(result['candidate_pool'])} candidates; "
+            f"{len(result['human_review'])} human-review decisions"
+        )
 
 
 @stocks_app.command("x-analyze")
