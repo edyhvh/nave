@@ -102,7 +102,8 @@
   ],
   "dune_efficient_iteration": {
     "status": "DUNE PIPELINE VALIDATED WITH LIMITATIONS",
-    "commit": "pending",
+    "continuation_branch": "research/dune-efficient-panel",
+    "base_dune_commit": "edd973c6e9bae11acddcb1f1cee63cd166c7bcd4",
     "previous_dune_execution": "01M1CP4YZMQAYD2JAWQZK49SHC",
     "previous_query_rerun": false,
     "credits_used": 326.052,
