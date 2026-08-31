@@ -1,0 +1,14 @@
+-- Purpose: point-in-time early participant episodes for every 2026-08-27 launch.
+-- Bounds: launch date plus 72 hours; output should retain only wallets whose
+-- first valid buy is within 5 minutes of the launch. This is intentionally
+-- stored as an unexecuted reproducible query after the credit hard stop.
+-- Required inputs: the launch CTE from 10_launches/03_launches.sql and the
+-- normalized Pump.fun/PumpSwap event union from 50_windows/01_*.sql.
+
+-- The production version will aggregate by (mint, wallet) with:
+-- first_entry_time, seconds_since_launch, first_buy_amount,
+-- total_buy_amount, first_sell_time, total_sell_amount, number_of_buys,
+-- number_of_sells, and inventory_remaining. It must use `user`/`trader_id`,
+-- not tx_signer, and must preserve tx/index ordering in the source CTE.
+-- No query is intentionally executed here because the preceding full-window
+-- experiment consumed the 500-credit safety budget.

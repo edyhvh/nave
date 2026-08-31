@@ -1,0 +1,109 @@
+{
+  "status": "DUNE PANEL PARTIALLY VALIDATED",
+  "period": {
+    "launch_start_utc": "2026-08-27T00:00:00Z",
+    "launch_end_utc": "2026-08-28T00:00:00Z",
+    "observation_end_utc": "2026-08-30T00:00:00Z",
+    "lookahead_hours": 72
+  },
+  "dune_usage": {
+    "starting_credits": 0.0,
+    "ending_credits_observed": 1537.518,
+    "credits_included": 2500.0,
+    "hard_stop": 500.0,
+    "query_count": 22,
+    "largest_query": "research/dune/50_windows/01_token_windows_and_outcomes.sql",
+    "largest_query_result": "completed server-side; result fetch blocked by HTTP 402 configured credit limit"
+  },
+  "tables": [
+    {"name": "pumpdotfun_solana.pump_evt_createevent", "use": "launches and protocol state", "classification": "DIRECT"},
+    {"name": "pumpdotfun_solana.pump_evt_tradeevent", "use": "Pump.fun trades and reserves", "classification": "DIRECT"},
+    {"name": "pumpdotfun_solana.pump_evt_completeevent", "use": "completion", "classification": "DIRECT"},
+    {"name": "pumpdotfun_solana.pump_call_migrate", "use": "migration and pool", "classification": "DIRECT"},
+    {"name": "dex_solana.trades", "use": "PumpSwap continuation", "classification": "DIRECT/PARTIAL"},
+    {"name": "prices.usd", "use": "historical SOL/USD", "classification": "DIRECT"}
+  ],
+  "coverage": {
+    "launch_count": 53956,
+    "tokens_with_valid_launch_time": 53956,
+    "tokens_with_creator": 53956,
+    "tokens_with_quote_asset": 53956,
+    "tokens_with_supply": 53956,
+    "tokens_with_token_program": 53956,
+    "tokens_with_pumpfun_trades": 48986,
+    "tokens_graduated": 1357,
+    "tokens_with_migration": 261,
+    "graduated_tokens_followed_into_pumpswap": 261,
+    "tokens_with_pumpswap_trades": 1358,
+    "full_cohort_horizon_counts": "NOT MATERIALIZED AFTER CREDIT HARD STOP"
+  },
+  "field_capabilities": {
+    "launch_time_creator_supply_quote": "DIRECT",
+    "pumpfun_trade_side_amounts_wallet_reserves": "DIRECT",
+    "pumpfun_historical_price": "DERIVABLE",
+    "completion_migration_pool": "DIRECT",
+    "pumpswap_trade_wallet_amount_usd": "DIRECT",
+    "pumpswap_reserves_depth": "MISSING_IN_SELECTED_TABLES",
+    "wallet_inventory": "DERIVABLE_FROM_TRADE_EVENTS",
+    "funding_sybil_bundle": "MISSING",
+    "failed_transactions_priority_jito": "MISSING"
+  },
+  "proof": {
+    "mint": "7Ki5LtQqQ5Qj9bXPaSPxd5ixfNGS4XNCBV1PgQXgpump",
+    "rows": 323,
+    "event_type_counts": {"CREATE": 1, "BUY": 156, "SELL": 141, "COMPLETE": 1, "MIGRATE": 1, "PUMPSWAP_BUY": 13, "PUMPSWAP_SELL": 10},
+    "participant_episode_count": 31,
+    "m3_integration": {"eligible_tokens": 1, "complete_60m": 1, "complete_24h": 1, "complete_72h": 1, "five_minute": "RESOLVED", "fifteen_minute": "MISSING"}
+  },
+  "protocol_state": {
+    "Mayhem": "AVAILABLE_DIRECTLY",
+    "cashback": "AVAILABLE_DIRECTLY",
+    "Token-2022": "AVAILABLE_DIRECTLY",
+    "quote_asset": "AVAILABLE_DIRECTLY",
+    "migration_pool": "AVAILABLE_DIRECTLY",
+    "BOOST": "MISSING",
+    "protocol_generated_flow": "MISSING"
+  },
+  "participant_capabilities": {
+    "early_entries": "SUPPORTED_FOR_ONE_TOKEN_PROOF; FULL COHORT NOT MATERIALIZED",
+    "realized_pnl": "PARTIAL_ONE_TOKEN_FIFO_PROOF",
+    "point_in_time_history": "LOCAL TEMPORAL LOGIC IMPLEMENTED AND TESTED; MULTI-TOKEN RUN PENDING",
+    "convergence": "WALLET/TIME/ORDER SUPPORTED; ECONOMIC INDEPENDENCE MISSING"
+  },
+  "execution_capabilities": {
+    "bonding_curve": "DERIVABLE",
+    "pumpswap": "APPROXIMABLE",
+    "fees": "DIRECT/PARTIAL",
+    "historical_depth": "MISSING",
+    "failed_exits_priority_jito": "MISSING"
+  },
+  "previous_blockers_vs_dune": [
+    {"blocker": "missing launch timestamps", "status": "RESOLVED", "evidence": "53956/53956"},
+    {"blocker": "missing event-level outcomes", "status": "PARTIALLY RESOLVED", "evidence": "one-token proof; full query unavailable"},
+    {"blocker": "missing wallet episodes", "status": "PARTIALLY RESOLVED", "evidence": "31 proof episodes"},
+    {"blocker": "missing migration linkage", "status": "RESOLVED_FOR_BOUNDED_COHORT", "evidence": "261 followed mints"},
+    {"blocker": "historical liquidity", "status": "PARTIALLY RESOLVED", "evidence": "Pump.fun reserves direct; PumpSwap depth missing"},
+    {"blocker": "historical execution", "status": "STILL BLOCKED_FOR_REALISTIC_VALIDATION", "evidence": "depth, failures, priority/Jito missing"},
+    {"blocker": "protocol-generated flow", "status": "STILL BLOCKED", "evidence": "BOOST discriminator missing"}
+  ],
+  "helius_decision": {
+    "classification": "HELIUS_USEFUL_BUT_NOT_REQUIRED",
+    "format": "HELIUS DECISION: USEFUL FOR INDEPENDENT VALIDATION, NOT REQUIRED YET",
+    "reason": "Dune supports discovery; Helius would target depth, failures, bundles, funding, and BOOST validation later.",
+    "scope": "Not called or configured in this iteration."
+  },
+  "known_gaps": [
+    "full cohort window result unavailable after credit overrun",
+    "PumpSwap historical reserves/depth not in selected tables",
+    "failed exits, priority fees, and Jito effects not available",
+    "BOOST and protocol-generated flow not separable",
+    "wallet funding/sybil/economic actor clustering unavailable",
+    "full multi-token participant PnL and creator history pending"
+  ],
+  "recommended_next_experiments": [
+    "redesign the window query to avoid launch-by-window cross join",
+    "run a cost-capped 100-1000 mint pipeline proof",
+    "complete multi-token PnL and cutoff-history validation",
+    "targeted independent audit only after Dune discovery panel is affordable"
+  ]
+}
