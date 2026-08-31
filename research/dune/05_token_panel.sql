@@ -1,0 +1,5 @@
+-- Stage F source aggregate template. Render selected_mints and run once per
+-- bounded cohort; local code may then derive additional windows/outcomes.
+-- This stage deliberately keeps Pump.fun data separate from post-migration
+-- PumpSwap data and emits one row per mint.
+-- See research.dune.efficient.token_panel_query.

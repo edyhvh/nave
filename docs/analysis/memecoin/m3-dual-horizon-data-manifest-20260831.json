@@ -85,5 +85,15 @@
     "raw_data_in_git": false,
     "live_execution": false,
     "wallet_access": false
+  },
+  "dune_efficient_panel": {
+    "status": "DUNE PIPELINE VALIDATED WITH LIMITATIONS",
+    "base_dune_commit": "edd973c6e9bae11acddcb1f1cee63cd166c7bcd4",
+    "previous_expensive_execution": {"execution_id": "01M1CP4YZMQAYD2JAWQZK49SHC", "rerun": false, "rows": 701428, "bytes": 253462228},
+    "sample": {"selection": "sha256(seed || ':' || mint)", "eligible_launches": 1000, "first_hour_trade_coverage": 917, "migrated_tokens": 7},
+    "local_artifacts": ["launches.parquet", "token_trajectories.parquet", "migrations.parquet", "pumpfun_first_hour_events.parquet", "pumpswap_postmigration_events.parquet", "participant_early_episodes.parquet", "participant_targeted_history.parquet"],
+    "pnl_proof": {"wallets": 1666, "tokens": 7, "episodes": 1786, "status": "HISTORICAL_TARGETED_PROOF"},
+    "credits": {"used_this_iteration": 326.052, "ending_consumed": 1863.57, "included_remaining": 636.43},
+    "edge_claim": false
   }
 }

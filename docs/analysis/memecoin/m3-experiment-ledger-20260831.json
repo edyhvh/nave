@@ -99,5 +99,17 @@
       "falsification_conditions": "organic residual demand does not improve discrimination over matched post-migration controls",
       "decision": "Defer; no BOOST-derived feature in a signal"
     }
-  ]
+  ],
+  "dune_efficient_iteration": {
+    "status": "DUNE PIPELINE VALIDATED WITH LIMITATIONS",
+    "commit": "pending",
+    "previous_dune_execution": "01M1CP4YZMQAYD2JAWQZK49SHC",
+    "previous_query_rerun": false,
+    "credits_used": 326.052,
+    "credits_remaining": 636.43,
+    "panel": {"eligible_launches": 1000, "first_hour_trade_coverage": 917, "migrated_tokens": 7},
+    "participant_pnl": {"wallets": 1666, "tokens": 7, "episodes": 1786, "status": "HISTORICAL_TARGETED_PROOF"},
+    "edge_claim": false,
+    "reports": ["dune-review-packet-v2-20260831.md", "dune-credit-model-20260831.md", "multichain-memecoin-feasibility-20260831.md"]
+  }
 }

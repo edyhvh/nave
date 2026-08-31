@@ -1,0 +1,24 @@
+{
+  "status": "LOW_COST_DISCOVERY_ONLY",
+  "probe_date": "2026-08-30",
+  "probe_execution_id": "01M1CSEE37CZX1FY7VKCN3D1BP",
+  "probe_counts": {"bnb_four_proxy_transfer": 0, "base_clanker_tokencreated": 7, "base_dex_trades": 1501010, "ton_tonco_pool_init": 0, "ton_dex_trades": 0},
+  "network_comparison": {
+    "SOLANA": {"launch_data":"DIRECT Pump.fun decoded","trade_data":"DIRECT Pump.fun + dex_solana.trades","wallet_identity":"DIRECT user/trader_id","liquidity_depth":"Pump.fun reserves direct; PumpSwap historical depth missing","lifecycle":"DIRECT completion/migration for bounded cohort","historical_coverage":"2026-08-27 full denominator; targeted continuation","expected_cost":"low for compact slices; high for broad raw export","burst":"READY on 1000-token compact sample","runner":"PARTIAL; migration-first continuation only","early_participants":"READY targeted; independence unknown"},
+    "BNB": {"launch_data":"INSUFFICIENT; catalog returned generic four_bnb proxy/BEP-20 tables and community candidates","trade_data":"DEX trades likely available but Four.meme bonding-curve semantics unproven","wallet_identity":"Available in generic transfers/trades, not launch-linked","liquidity_depth":"DEX-derived only until launch/pool identity is proven","lifecycle":"Migration/graduation not identified","historical_coverage":"not established","expected_cost":"unknown; do not build panel","burst":"INSUFFICIENT","runner":"INSUFFICIENT","early_participants":"INSUFFICIENT"},
+    "BASE": {"launch_data":"PARTIAL/DIRECT for Clanker v4 TokenCreated","trade_data":"DEX trades available; 1,501,010 base dex rows in tiny probe","wallet_identity":"trade trader/from fields available","liquidity_depth":"poolId/pairedToken plus DEX trades; reserve reconstruction needs proof","lifecycle":"pool creation/lock fields available; no Pump.fun-style graduation assumed","historical_coverage":"catalog and one-day count probe only","expected_cost":"likely low-to-moderate compact discovery; not measured panel cost","burst":"PARTIAL","runner":"PARTIAL","early_participants":"PARTIAL"},
+    "TON": {"launch_data":"NOT IDENTIFIED; no dominant launchpad/jetton creation table found","trade_data":"not confirmed in dex.trades; tiny probe returned 0","wallet_identity":"TON transaction/trader data may exist, but launch-linked identity unproven","liquidity_depth":"TONCO pool_init/mint/burn tables exist","lifecycle":"TONCO pool lifecycle, not a launchpad graduation","historical_coverage":"not established","expected_cost":"unknown","burst":"INSUFFICIENT","runner":"INSUFFICIENT","early_participants":"INSUFFICIENT"}
+  },
+  "catalog_findings": {
+    "bnb": ["four_bnb.bep20upgradeableproxy_evt_transfer", "four_bnb.bep20upgradeableproxy_call_transfer", "dune.hoidya.result_four_meme_dev_creation_grp"],
+    "base": ["clanker_v4_base.clanker_evt_tokencreated", "clanker_v4_base.clanker_v1_evt_tokencreated", "clanker_v4_base.clanker_v31_evt_tokencreated"],
+    "ton": ["tonco_ton.pool_init", "tonco_ton.pool_mint", "tonco_ton.pool_burn", "dune.gemwallet.result_swaps_ton"],
+    "boost_candidates": ["dune.soliton_so.result_pump_buy_back_all", "dune.knev.result_pump_buy_data"],
+    "depth_candidates": ["dune.limitlessmax.result_pumpfun_pool_balances", "dune.gregoire007.result_get_all_account_litesvm_pumpswap"]
+  },
+  "depth_classification": "HELIUS_LIKELY_NEEDED",
+  "boost_status": "UNKNOWN; community candidates found but no bounded verified discriminator",
+  "canonical_schema": ["Launch", "TradeEvent", "ParticipantEpisode", "LiquidityState", "LifecycleTransition", "VenueMigration", "TrajectoryMark", "Outcome", "ProtocolState"],
+  "conceptual_adapters": {"PumpFunAdapter":"Pump.fun decoded create/trade/complete/migrate + dex_solana.trades","FourMemeAdapter":"not implemented; requires verified BNB launch/trade/migration sources","BaseLaunchAdapter":"Clanker TokenCreated + poolId/pairedToken + dex.trades","TonLaunchAdapter":"not implemented; requires launchpad and trade identity sources"},
+  "future_network_opportunity_index": {"status":"DOCUMENTED_ONLY","metrics":["eligible_launches","Burst Opportunity Density","Runner Opportunity Density","False Runner events","unique traders","median liquidity","DEX volume","Executable Opportunity Density"],"rule":"Do not rank networks until lifecycle semantics and comparable executable data are proven."}
+}
