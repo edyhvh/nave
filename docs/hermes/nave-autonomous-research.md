@@ -46,6 +46,9 @@ checked before treating any report path as available.
 Operators inspect `hermes kanban list --assignee quant --json`, `show`, and
 `runs`. They pause a task with `hermes kanban block <id> --kind needs_input
 "reason"` and resume with `hermes kanban unblock <id> --reason "decision"`.
+For a newly created standalone attention card, issue and verify the explicit
+`needs_input` block immediately; `--initial-status blocked` is not by itself a
+durable hold on the observed Hermes dispatcher build.
 After a crash, the gateway's native claim lease, heartbeat, retry, and stale
 recovery path controls the task; expensive provider operations are recovered
 from their persisted execution metadata before retry. No manual shell loop is

@@ -94,6 +94,11 @@ Pause a ready/running NAVE task at a genuine gate:
 hermes kanban block <task-id> --kind needs_input "<human decision required>"
 ```
 
+For a newly created standalone human-attention card, verify the card with
+`hermes kanban show` and issue the block command immediately; on this Hermes
+build, `--initial-status blocked` alone can be promoted by a dispatcher pass.
+The durable hold is the recorded `needs_input` block event.
+
 Resume it after the gate is resolved:
 
 ```bash
