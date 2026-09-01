@@ -1,0 +1,62 @@
+{
+  "status": "MATERIAL_PROGRESS",
+  "previous_blocker": "BLOCKED BY OUTCOME COVERAGE; 19/24 archive hours and 0 validated multiday rows",
+  "root_cause": "Five remote archives were present and valid, but prior replay/checkpoint failures plus sibling-worktree artifact blindness converted recoverable partial outputs into day-level missingness.",
+  "existing_hours": 24,
+  "missing_hours": [],
+  "hour_status": {
+    "01": {"prior": "FAILED", "remote_http": 200, "zstd_integrity": "PASS", "recovered_rows": 5714},
+    "06": {"prior": "FAILED", "remote_http": 200, "zstd_integrity": "PASS", "recovered_rows": 3235},
+    "11": {"prior": "FAILED", "remote_http": 200, "zstd_integrity": "PASS", "recovered_rows": 3224},
+    "13": {"prior": "FAILED", "remote_http": 200, "zstd_integrity": "PASS", "recovered_rows": 16393},
+    "17": {"prior": "FAILED", "remote_http": 200, "zstd_integrity": "PASS", "recovered_rows": 14606},
+    "other": {"count": 19, "status": "COMPLETE"}
+  },
+  "token_coverage": {
+    "sample_mints": 1000,
+    "recovered_mints": 1000,
+    "parquet_rows": 254522,
+    "internal_gap": {"15m": 0, "30m": 0, "60m": 0},
+    "old_day_mask_discarded": {"15m": 246, "30m": 293, "60m": 389}
+  },
+  "burst_coverage": {
+    "decision_rows_by_time": {"1m": 1000, "3m": 1000, "5m": 1000, "10m": 1000},
+    "full_interval": {"15m": 993, "30m": 981, "60m": 965},
+    "resolved_marks": {"15m": 242, "30m": 196, "60m": 163},
+    "unresolved": {"15m": 751, "30m": 785, "60m": 802},
+    "right_censored": {"15m": 7, "30m": 19, "60m": 35},
+    "paired_60m_decision_rows_max": 652
+  },
+  "runner_coverage": {
+    "sample_migrants": 30,
+    "resolved": {"4h": 19, "8h": 13, "12h": 7},
+    "right_censored": {"24h": 30, "48h": 30, "72h": 30}
+  },
+  "dune_recovery": {
+    "new_queries": 0,
+    "credits": 0,
+    "principal_execution_ids": ["01M1CP4YZMQAYD2JAWQZK49SHC", "01M1D4NBZ9ME2E2MB3N5J5WCVG", "01M1D4RMF5ED93D1CQCVPTA73D"],
+    "local_first_hour_rows": 82804,
+    "local_launch_rows": 48330
+  },
+  "dune_usage": {"credits_used": 2024.104, "credits_included": 2500, "credits_remaining": 475.896},
+  "pumpapi": {
+    "archive_urls_http_200": 5,
+    "zstd_integrity": "PASS_ALL_FIVE",
+    "recovered_parquet": "data/research/pumpapi/day/date=2026-08-28/pumpapi_events_recovered_full.parquet",
+    "sha256": "8dbed19dda1c9d190178e1769c2e3483c9f4de1029fb4a6906413ecea91092b7",
+    "filtered_rows": 254522,
+    "raw_archives_retained": false
+  },
+  "strategy_comparison": {
+    "A_repair_hours": {"information": "restores 24/24 hour coverage", "cost": "free replay bandwidth", "selected": true},
+    "B_token_censoring": {"information": "preserves unaffected short horizons", "cost": "zero provider credits", "selected": true},
+    "C_new_days": {"information": "adds temporal diversity", "cost": "future bounded replay bandwidth", "selected": false, "next": true}
+  },
+  "selected_strategy": "A+B today; C next",
+  "new_data": {"new_pumpapi_archives": 5, "new_filtered_parquet_mb": 36, "new_dune_queries": 0},
+  "models": {"A": "NOT_RUN", "B": "NOT_RUN", "C": "NOT_RUN", "D": "NOT_RUN"},
+  "results": {"classification": "PRELIMINARY_DATA_COVERAGE_RECOVERY", "edge_validated": false},
+  "limitations": ["one usable calendar day", "24h/48h/72h right-censored", "participant history immature", "self-flow contamination remains flagged", "below 5000 paired rows"],
+  "next_experiment": "Acquire the next three clean historical days with token-level masks and a repaired checkpoint/manifest."
+}
