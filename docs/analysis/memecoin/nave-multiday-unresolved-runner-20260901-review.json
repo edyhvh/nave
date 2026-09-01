@@ -1,0 +1,21 @@
+{
+  "schema_version": "nave.skeptical-review.v2",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-multiday-unresolved-runner-20260901.md",
+  "classification": "MULTI-DAY RESEARCH MATERIAL PROGRESS / INSUFFICIENT DATA",
+  "edge_claim": false,
+  "checks": [
+    {"question": "Did adding days increase independent information?", "result": "PARTIAL", "evidence": "An existing 2026-08-27 compact Dune day was recovered, but it lacks event-level decision features; fully comparable event days remain one."},
+    {"question": "Is resolved-mark selection biased?", "result": "YES_RISK", "evidence": "At 60m resolved median first-10m trades were 138 versus 9 for unresolved; buyers 24 versus 3."},
+    {"question": "Did we redefine dead tokens as successful data?", "result": "NO", "evidence": "No permanent death label was assigned; TOKEN_INACTIVE is horizon-specific and separate from mark resolution."},
+    {"question": "Are no-trade tokens distinguishable from provider gaps?", "result": "YES_FOR_DAY_2", "evidence": "24/24 archive-hour mask, zero internal short-horizon gaps, and zero invalid/missing trade prices."},
+    {"question": "Is migration continuation handled correctly?", "result": "PARTIAL", "evidence": "Migration-before-horizon is a separate class; Day 1 has targeted PumpSwap continuation, while Day 2 24h+ is right-censored."},
+    {"question": "Are multiple decision rows treated as clustered?", "result": "PASS_IN_DESIGN", "evidence": "Paired rows are reported with effective token counts; no model was fit."},
+    {"question": "Did A vs C use future information?", "result": "NO_MODEL_RUN", "evidence": "Day 1 aggregate fields were rejected for frozen decision times; Day 2 did not clear temporal gates."},
+    {"question": "Is any effect dominated by one day or token?", "result": "NOT_TESTABLE", "evidence": "No A-vs-C effect was estimated and only one event-level day exists."},
+    {"question": "Were dates frozen before returns?", "result": "PASS", "evidence": "2026-08-29/30/31 were predeclared by the existing continuation before replay; no replacement dates were selected."},
+    {"question": "Were mark tolerances tuned after outcomes?", "result": "EXPLORATORY_RISK", "evidence": "A five-minute nearest-mark sensitivity was computed after coverage inspection; it was not used as primary and requires pre-registration."},
+    {"question": "Does the conclusion exceed the sample?", "result": "NO", "evidence": "Conclusion is limited to unresolved taxonomy and observability bias; no edge or temporal stability claim."}
+  ],
+  "remaining_risks": ["activity-based selection can bias mark-return models", "cross-provider Day 1/Day 2 definitions are not interchangeable", "full-day all-migrant Runner universe is absent", "provider missingness outside recovered Day 2 remains untested", "no causal or executable interpretation"],
+  "recommended_guard": "Use survival/activity as a first-stage outcome, keep mark definitions versioned, cluster by token, and acquire another event-level day before A-vs-C."
+}
