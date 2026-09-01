@@ -189,8 +189,11 @@ calibration, temporal stability, Stage-2 readiness, Runner readiness, and the
 
 ## RESOURCE GUARDS
 
-Current Dune usage is 2,027.345 / 2,500 included credits, leaving 472.655;
-this session made no new Dune query and used 0 new Dune credits. Disk has
+At the notification-fix checkpoint Dune usage was 2,027.345 / 2,500 included
+credits; the current verified snapshot is 2,028.729 / 2,500, leaving 471.271
+after the running quant continuation's bounded research query. The
+notification-fix work itself made no Dune query and used 0 new Dune credits.
+Disk has
 approximately 52 GiB free and memory reports approximately 6.1 GiB
 available, above the existing NAVE disk guard. PumpApi remains the preferred
 historical source; no purchase, upgrade, or new provider was used.
