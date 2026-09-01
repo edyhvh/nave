@@ -1,0 +1,97 @@
+{
+  "status": "MULTI-DAY RESEARCH MATERIAL PROGRESS",
+  "dates": {
+    "complete_event_day": ["2026-08-28"],
+    "partial_compact_day": ["2026-08-27"],
+    "predeclared_pending": ["2026-08-29", "2026-08-30", "2026-08-31"]
+  },
+  "data_acquisition": {
+    "new_days_acquired_this_session": 0,
+    "new_day_status": "0/3 complete; prior bounded attempt reached 2026-08-29 00-05 UTC only and promoted no partial sample",
+    "existing_panel_days_observed": 2,
+    "fully_comparable_event_days": 1,
+    "selection": "outcome-independent deterministic 1000-mint daily samples; pending dates frozen before outcome inspection",
+    "canonical_data_root": "/home/david/nave/data",
+    "manifest": "docs/analysis/memecoin/nave-pumpapi-hour-manifest-20260901.json"
+  },
+  "daily_coverage": {
+    "2026-08-27": {
+      "source": "existing paid Dune compact artifacts",
+      "sample_tokens": 1000,
+      "launch_denominator": 53956,
+      "decision_snapshots": 0,
+      "decision_snapshot_reason": "60m aggregate only; frozen 1m/3m/5m/10m history unavailable",
+      "horizon_15m": {"full": null, "resolved_marks": null},
+      "horizon_30m": {"full": null, "resolved_marks": null},
+      "horizon_60m": {"full": 917, "resolved_marks": 917},
+      "no_trade_60m": 83,
+      "sample_migrants": 7
+    },
+    "2026-08-28": {
+      "source": "recovered PumpApi filtered event Parquet",
+      "sample_tokens": 1000,
+      "launch_denominator": 48330,
+      "decision_snapshots": {"1m": 1000, "3m": 1000, "5m": 1000, "10m": 1000},
+      "horizon_15m": {"full": 993, "resolved_marks": 242},
+      "horizon_30m": {"full": 981, "resolved_marks": 196},
+      "horizon_60m": {"full": 965, "resolved_marks": 163},
+      "sample_migrants": 30,
+      "internal_gaps": 0,
+      "trade_rows": 253492,
+      "trade_rows_with_valid_price": 253492
+    }
+  },
+  "unresolved_taxonomy": {
+    "definition": "primary mark is first valid trade at or after horizon; no mark is not converted to loss",
+    "2026-08-28": {
+      "15m": {"RESOLVED": 242, "NO_FUTURE_TRADE": 621, "TOKEN_INACTIVE": 130, "MIGRATED_BEFORE_HORIZON": 0, "RIGHT_CENSORED": 7, "PROVIDER_EVENT_GAP": 0, "PRICE_INPUT_MISSING": 0, "INVALID_RESERVE_STATE": 0, "TRUE_UNKNOWN": 0},
+      "30m": {"RESOLVED": 196, "NO_FUTURE_TRADE": 655, "TOKEN_INACTIVE": 129, "MIGRATED_BEFORE_HORIZON": 1, "RIGHT_CENSORED": 19, "PROVIDER_EVENT_GAP": 0, "PRICE_INPUT_MISSING": 0, "INVALID_RESERVE_STATE": 0, "TRUE_UNKNOWN": 0},
+      "60m": {"RESOLVED": 163, "NO_FUTURE_TRADE": 672, "TOKEN_INACTIVE": 128, "MIGRATED_BEFORE_HORIZON": 2, "RIGHT_CENSORED": 35, "PROVIDER_EVENT_GAP": 0, "PRICE_INPUT_MISSING": 0, "INVALID_RESERVE_STATE": 0, "TRUE_UNKNOWN": 0}
+    }
+  },
+  "observability": {
+    "comparison_horizon": "60m",
+    "non_right_censored_tokens": 965,
+    "resolved_mark_tokens": 163,
+    "unresolved_tokens": 802,
+    "resolved_median_first_10m_trades": 138,
+    "unresolved_median_first_10m_trades": 9,
+    "resolved_median_first_10m_unique_buyers": 24,
+    "unresolved_median_first_10m_unique_buyers": 3,
+    "resolved_median_first_10m_buy_sol": 11.025131628,
+    "unresolved_median_first_10m_buy_sol": 0.6250197589999998,
+    "selection_bias_status": "STRONG DESCRIPTIVE WARNING",
+    "observability_model": "NOT FIT; one event-level day"
+  },
+  "survival_outcomes": {
+    "2026-08-28_60m_non_right_censored": {"has_trade_through_horizon": 830, "no_activity_through_horizon": 135, "future_trade_after_horizon": 163},
+    "labels": ["HAS_TRADE_THROUGH_HORIZON", "NO_ACTIVITY_THROUGH_HORIZON", "FUTURE_TRADE_AFTER_HORIZON", "TIME_TO_LAST_TRADE", "FUTURE_BUYER_BREADTH"],
+    "permanent_death_inference": false
+  },
+  "burst": {
+    "event_level_days": 1,
+    "decision_snapshots": 4000,
+    "paired_rows": {"15m": 968, "30m": 784, "60m": 652},
+    "nearest_valid_mark_within_5m_exploratory": {"15m": 154, "30m": 87, "60m": 44},
+    "multi_day_matrix": "NOT_READY"
+  },
+  "runner": {
+    "sample_migrants": {"2026-08-27": 7, "2026-08-28": 30},
+    "targeted_day_1_pumpswap_activity": {"4h": 7, "8h": 7, "12h": 7, "24h": 6, "48h": 1, "72h": 0},
+    "targeted_day_1_quoted_marks": {"4h": 7, "24h": 2, "48h": 1, "72h": 0},
+    "day_2_quoted_marks": {"4h": 19, "8h": 13, "12h": 7, "24h": 0, "48h": 0, "72h": 0},
+    "all_day_migrant_universe": "NOT_AVAILABLE"
+  },
+  "migrants": {"available_sample_migrants": 37, "full_denominator_migrants": "UNKNOWN"},
+  "dune_usage": {"credits_used": 2024.104, "credits_included": 2500, "credits_remaining": 475.896, "new_credits": 0, "new_queries": 0},
+  "pumpapi_usage": {"new_compressed_download_gb": 0.0, "prior_recovery_decompressed_stream_gb": 17.665901394, "new_filtered_parquet_gb": 0.0, "existing_recovered_parquet_gb": 0.037737696, "raw_archives_retained": false},
+  "resource_usage": {"disk_free_gb": 44, "memory_available_gb": 6.0, "minimum_disk_guard_gb": 15},
+  "model_A": {"status": "NOT_RUN", "reason": "one event-level day and paired-row/temporal gates unmet"},
+  "model_C": {"status": "NOT_RUN", "reason": "one event-level day and paired-row/temporal gates unmet"},
+  "A_vs_C": {"status": "NOT_RUN", "result": null, "reason": "Day 1 aggregate cannot satisfy point-in-time feature contract"},
+  "temporal_stability": "NOT_ESTIMABLE; one full event day plus one partial compact cross-provider day",
+  "scale_readiness": "READY_WITH_LIMITATIONS",
+  "limitations": ["three predeclared new days incomplete", "Day 1 lacks frozen decision-time features", "resolved-mark selection is activity-biased", "PumpSwap continuation is targeted, not all-migrant", "no liquidity/depth/failed-exit history", "no participant history model"],
+  "next_experiment": "Build clustered survival/observability and migration-aware Runner activity outcomes from existing Day 1 and Day 2, then acquire one additional predeclared event-level day through a compact launch-manifest plan.",
+  "edge_claim": false
+}
