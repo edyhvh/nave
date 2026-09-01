@@ -43,10 +43,11 @@ second state system.
    native `kanban_create` tool exactly once with `assignee: "quant"`,
    `parents: [current_task_id]`, `workspace_kind: "worktree"`,
    `workspace_path: "/home/david/nave"`, and a compact reference to
-   state/report/review. The explicit repository path is required: project
-   stores are per-profile, while this path lets the shared dispatcher resolve
-   a fresh child worktree without sharing the parent's checkout. Pass the
-   project id only when it resolves in the active profile.
+   state/report/review. Also pass a deterministic `idempotency_key` derived
+   from the current task id and experiment slug. The explicit repository path
+   is required: project stores are per-profile, while this path lets the shared
+   dispatcher resolve a fresh child worktree without sharing the parent's
+   checkout. Pass the project id only when it resolves in the active profile.
 8. **HAND OFF** — call `kanban_complete` for the current task with the report
    and review paths in `artifacts`, and the child id in `created_cards` when a
    child was created. Use the native block/attention semantics for real gates;
