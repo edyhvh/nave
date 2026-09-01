@@ -47,9 +47,14 @@ review. Persist or attach both artifacts and update state.json compactly.
 NEXT_TASK_POLICY:
 After the review, create exactly one next NAVE task assigned to quant with
 `kanban_create` only if expected information value remains positive and no
-human gate is present. Make it a child of the current task. Then complete the
-current task with the child id in `created_cards`. Otherwise complete with the
-durable next state or use native human-attention/block semantics.
+human gate is present. Make it a child of the current task. Pass
+`workspace_kind: "worktree"` and the canonical NAVE repository as
+`workspace_path: "/home/david/nave"` so the dispatcher can resolve a fresh
+child worktree; do not rely on implicit workspace or per-profile project
+inheritance. `project: "nave-memecoin"` may also be passed when it resolves in
+the active profile. Then complete the current task with the child id in
+`created_cards`. Otherwise complete with the durable next state or use native
+human-attention/block semantics.
 
 SAFETY:
 No wallet, signing, order, swap, execution, live alert, paid provider,
