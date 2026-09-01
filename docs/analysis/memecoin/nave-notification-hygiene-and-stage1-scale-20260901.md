@@ -10,9 +10,10 @@ not uploaded by default, and only an explicitly marked current RESULT can
 produce a completion notification. The per-subscription durable cursor and
 atomic claim path remain in use for idempotency and reconnect safety.
 
-NAVE is active on the existing quant chain. Aug 30 is complete as the third
-comparable event-level day; exactly one child task, `t_6070cb2f`, is queued for
-the frozen Aug 31 day. No second dispatcher, daemon, gateway, NAVE chain,
+NAVE is active on the existing quant chain. Aug 31 is now complete as the
+fourth comparable event-level day; the parent exceeded its bounded runtime
+after producing the panel, and exactly one current child task, `t_81a4fb08`,
+is ready for the next predeclared day. No second dispatcher, daemon, gateway, NAVE chain,
 trading path, wallet action, purchase, or scanner change was introduced.
 
 ## STALE MESSAGE ROOT CAUSE
@@ -142,12 +143,12 @@ unrelated queue entry was deleted.
 
 ## NAVE CURRENT STATE
 
-The active NAVE task is `t_5432bed0`, currently running its post-Day-4
-finalization. Its isolated worktree is at
+The parent NAVE task is `t_5432bed0`, now blocked only because it exceeded its
+1,800-second bounded runtime after completing Day-5 artifacts. Its isolated worktree is at
 `/home/david/nave/.worktrees/t_5432bed0` on `research/nave-stage1-scale`,
-commit `024a6791b44c6a7eba3b96c69a5b3209be922def`. It records three comparable
-event-level days: Aug 28, Aug 29, and Aug 30. The next child is exactly one
-task, `t_6070cb2f`, for Aug 31.
+commit `48e95f8`. It records four comparable event-level days: Aug 28, Aug 29,
+Aug 30, and Aug 31. The stale duplicate Aug-31 task `t_6070cb2f` was archived;
+the sole current child is `t_81a4fb08` for 2026-09-01.
 
 ## FROZEN EXPERIMENT
 
@@ -161,11 +162,12 @@ zero; no edge or economic claim follows. Participant B/D remain deferred.
 
 ## CANONICAL CONTINUATION TASK
 
-`t_5432bed0` is the sole live NAVE continuation. It already materialized one
-child, `t_6070cb2f`, rather than a backlog. That child is the correct next
-task: acquire and validate predeclared Aug 31 with the same frozen targeted
-replay architecture, then continue one day at a time toward the 5–7 day
-checkpoint if quality and resource gates remain satisfied.
+`t_5432bed0` is the completed-but-time-bounded parent record. Its Day-5
+artifacts were committed at `48e95f8` before the timeout. The stale duplicate
+child `t_6070cb2f` is archived, and `t_81a4fb08` is the sole ready continuation:
+acquire and validate predeclared 2026-09-01 with the same frozen targeted replay
+architecture, then continue one day at a time toward the 5–7 day checkpoint if
+quality and resource gates remain satisfied.
 
 ## AUG 30 STATUS
 
@@ -173,13 +175,14 @@ Aug 30 is complete: 24/24 PumpApi archive hours, 1,000 frozen sample mints,
 294,446 retained normalized event rows, zero provider gaps, maximum three
 replay workers, no raw decompressed archive retained, and approximately
 11.35 GB compressed streamed. The final Parquet is approximately 43 MB. The
-Day-4 report classifies the A/C result as preliminary and keeps the edge flag
-false.
+Day-4 and Day-5 reports classify the A/C results as preliminary/unstable and
+keep the edge flag false. Day 5 contains 555,201 retained rows and zero
+provider gaps.
 
 ## 5–7 DAY PLAN
 
-Continue Aug 31, then use the predeclared/outcome-independent historical date
-rule one validated day at a time. Keep internal chunk/child progress silent.
+Continue 2026-09-01, then use the predeclared/outcome-independent historical
+date rule one validated day at a time. Keep internal chunk/child progress silent.
 At 5–7 comparable days, produce the per-day matrix, clustered uncertainty,
 calibration, temporal stability, Stage-2 readiness, Runner readiness, and the
 10–14 day information-value decision. Do not tune C after a day-level result.
@@ -194,9 +197,10 @@ historical source; no purchase, upgrade, or new provider was used.
 
 ## REMAINING LIMITATIONS
 
-The active task has not yet completed its own finalization, so the latest
-scientific state remains represented by the isolated Day-4 worktree while the
-main checkout still points to the earlier linked state. Runner coverage is
+The parent task timed out after completing Day-5 acquisition and analysis; the
+artifacts are preserved in commit `48e95f8` and the main checkout in
+`0bac49d`. The next task is ready but has not yet spawned because the bounded
+dispatcher pass found no spawn slot. Runner coverage is
 descriptive and not an executable-profit result; all-migrant continuation and
 participant history remain incomplete. Gateway startup still logs unrelated
 optional-tool secret-scope warnings that should not be conflated with Discord
