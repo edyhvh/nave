@@ -1,0 +1,23 @@
+{
+  "schema_version": "nave.stage1-survival-day3-review.v1",
+  "classification": "STAGE-1 SURVIVAL MATERIAL PROGRESS / PRELIMINARY",
+  "questions": [
+    {"question": "Is the survival label tautological?", "result": "PASS_WITH_LIMITATION", "evidence": "Primary label is a fixed post-horizon five-minute window, strictly after the decision; it is not has-any-trade-through-horizon."},
+    {"question": "Does Model A already contain obvious activity state?", "result": "YES", "evidence": "A includes pre-decision trade count, volumes, buyers, reserve state, and return where available; C is not compared to a weak baseline."},
+    {"question": "Does C add true dynamic information?", "result": "NOT_REPLICATED", "evidence": "Day-2 development improvement did not transfer to Day 3; C minus A PR-AUC was -0.0633."},
+    {"question": "Did Day 3 remain untouched until evaluation?", "result": "YES", "evidence": "Date and SHA-256 sample rule were frozen before replay; A was fit on Day 2 and evaluated unchanged on Day 3."},
+    {"question": "Are labels provider-independent?", "result": "PARTIAL", "evidence": "Provider completeness is explicit and gaps are not inactivity, but activity observations still depend on the PumpApi event tape."},
+    {"question": "Did migration create false inactivity?", "result": "NO_FOR_PRIMARY_LABEL", "evidence": "Migration without validated continuation is MIGRATION_UNKNOWN; it is not negative activity."},
+    {"question": "Are token-time rows clustered?", "result": "YES", "evidence": "The primary comparison uses one 10m row per token per day and a token-level bootstrap."},
+    {"question": "Were thresholds tuned after Day 3?", "result": "NO", "evidence": "The five-minute continuation window and decision times were frozen before comparison."},
+    {"question": "Is survival merely trading-frequency persistence?", "result": "LIKELY_PARTLY", "evidence": "The target is explicitly continued observable activity; future work must test whether it relates to economically meaningful conditional trajectories."},
+    {"question": "Does survival correlate with later economic outcomes?", "result": "UNKNOWN", "evidence": "Only descriptive mark/Runner evidence exists; no executable return or liquidity claim was made."},
+    {"question": "Did faster replay compromise integrity?", "result": "NO_EVIDENCE", "evidence": "Each hour has HTTP/zstd/parser status, line counts, retained counts, checksum, and the final Parquet was materialized only after 24/24 completion."},
+    {"question": "Is the optimization reproducible?", "result": "YES_WITH_RETRY_LIMIT", "evidence": "The mint-projection worker and 1–4 worker guard are committed; four reset hours completed on individual retry."},
+    {"question": "Did we redefine missing data away?", "result": "NO", "evidence": "Right censoring, provider gaps, and migration unknown remain explicit; negative labels require complete post-horizon windows."},
+    {"question": "Could selection bias dominate the mark result?", "result": "YES", "evidence": "Day-3 mark-observed medians were 422 early trades/77.5 buyers versus 14/3 for non-observed tokens."},
+    {"question": "Does the conclusion exceed the sample?", "result": "NO", "evidence": "The result is labeled preliminary two-day temporal sanity evidence; no edge is validated and 5–7 days remain the next gate."}
+  ],
+  "remaining_risks": ["only two event-level days", "raw participant flow is not exogenous", "PumpSwap continuation is incomplete", "calendar-day right censoring for late launches", "possible regime variation", "activity target may be a persistence proxy"],
+  "next_review_gate": "Reassess after 5–7 frozen comparable event-level days with per-day metrics and conditional Stage-2 outcomes."
+}
