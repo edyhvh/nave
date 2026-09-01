@@ -1,0 +1,31 @@
+{
+  "status": "STATISTICAL SIGNAL SANITY INCONCLUSIVE",
+  "nave_status": "NO EDGE VALIDATED",
+  "periods": {
+    "day_1": {"date_utc":"2026-08-27","role":"development_exploratory","launches":1000,"first_hour_trade_rows":917,"mark_proxy_rows":887,"migrated":7},
+    "day_2": {"date_utc":"2026-08-28","role":"chronological_sanity_validation","denominator_launches":48330,"sample_mints":1000,"event_panel_rows":0,"status":"EVENT_PANEL_BLOCKED_BY_DUNE_COST"}
+  },
+  "dune_usage": {"start_consumed":1863.570,"after_denominator":1915.196,"ending_consumed":1979.104,"used":115.534,"included_remaining":520.896,"iteration_hard_stop":75.0,"hard_stop_exceeded":true,"further_calls":"STOPPED"},
+  "feature_contract": {"path":"docs/analysis/memecoin/m3-feature-contract-20260831.json","decision_times_seconds":[60,180,300,600],"availability_rule":"available_at <= decision_time"},
+  "experiment_contract": "docs/analysis/memecoin/m3-signal-sanity-contract-20260831.json",
+  "models": {
+    "A_token_only": {"status":"DESCRIPTIVE_ONLY","development_rows":887,"validation_rows":0,"base_rate":null,"pr_auc":null,"brier":null},
+    "B_token_participant": {"status":"NOT_FIT_INSUFFICIENT_FULL_COHORT_REPUTATION","validation_rows":0},
+    "C_token_precursor": {"status":"NOT_FIT_INSUFFICIENT_EVENT_PANEL","validation_rows":0},
+    "D_full": {"status":"NOT_FIT_INSUFFICIENT_EVENT_AND_PARTICIPANT_PANEL","validation_rows":0}
+  },
+  "day_1_descriptive": {"median_mark_return_proxy":0.01986498,"mean_mark_return_proxy":0.47459523,"trimmed_mean_proxy":0.16922214,"threshold_counts":{"100pct":110,"200pct":53,"500pct":19},"top_1_positive_sum_share":0.0318,"top_5_positive_sum_share":0.1251,"executable_return":false},
+  "comparisons": {"B_minus_A":{"status":"INCONCLUSIVE","delta_pr_auc":null,"delta_brier":null,"ci95":null},"C_minus_A":{"status":"INCONCLUSIVE","delta_pr_auc":null,"delta_brier":null,"ci95":null},"D_minus_C":{"status":"INCONCLUSIVE","delta_pr_auc":null,"delta_brier":null,"ci95":null},"D_minus_B":{"status":"INCONCLUSIVE","delta_pr_auc":null,"delta_brier":null,"ci95":null}},
+  "participant_self_flow": {"status":"SELF-FLOW CONTAMINATED","targeted_trade_rows":2367,"self_flow_trade_rows":1107,"self_flow_trade_share":0.4677,"participant_excluded_trade_rows":1260,"model_delta_after_exclusion":null},
+  "matched_controls": {"status":"NOT_RUN_INSUFFICIENT_DAY_2_OUTCOMES","offline_matcher_tested":true,"causal_claim":false},
+  "placebos": {"status":"NOT_RUN_ON_OUTCOMES","identity_permutation_helper_tested":true},
+  "leave_one_out": {"status":"NOT_RUN_NO_MODEL_RESULT","top_wallet_helper_tested":true},
+  "temporal_stability": {"status":"INSUFFICIENT","day_2_outcome_rows":0,"direction":"not_estimable"},
+  "runner_coverage": {"status":"BLOCKED","day_1_migrated_targeted":7,"day_1_marks_resolved":{"4h":7,"24h":2,"48h":1,"72h":0}},
+  "post_rejection": {"status":"BLOCKED","reason":"BLOCKED BY HISTORICAL GATE LOGGING"},
+  "pumpapi_audit": {"status":"NOT TESTED"},
+  "helius_decision": {"status":"USEFUL_LATER_NOT_REQUIRED_NOW","needed_now":false},
+  "hypotheses": {"H_PART_01":"INSUFFICIENT DATA","H_PREC_01":"INSUFFICIENT DATA","H_REDUNDANCY_01":"INSUFFICIENT DATA","H_ABSORB_01":"INSUFFICIENT DATA","H_SELF_FLOW_01":"SELF-FLOW CONTAMINATED","H_REJECT_01":"BLOCKED BY HISTORICAL GATE LOGGING"},
+  "tests": {"targeted_existing_and_new":"46 passed","ruff":"passed after import cleanup"},
+  "next_experiment": "Run one tiny server-side compact Dune aggregate with explicit cost preflight and no raw export; only re-acquire the same Day 2 event panel if measured cost is below 15 credits."
+}
