@@ -22,10 +22,10 @@
   "provider_status": {"dune": "2026.106/2500 included credits observed; 473.894 remaining; about 2.002 new credits for compact Day-3 sample manifest", "pumpapi": "PUMPAPI_VALID; 24/24 Day-3 archives HTTP 200 and zstd PASS after four bounded transport retries", "helius": "USEFUL_LATER_NOT_REQUIRED_NOW"},
   "data_quality": {"day_2": "COMPLETE_ARCHIVE_HOUR_COVERAGE_FOR_FROZEN_1000_MINT_SAMPLE", "day_3": "COMPLETE_ARCHIVE_HOUR_COVERAGE_FOR_FROZEN_1000_MINT_SAMPLE", "day_1": "PARTIAL_COMPACT_DUNE_60M_ONLY", "stage1_contract": "FUTURE_TRADE_AFTER_HORIZON fixed five-minute windows; migration unknown and right censoring explicit", "unresolved_taxonomy": "NO_FUTURE_TRADE / TOKEN_INACTIVE / MIGRATED_BEFORE_HORIZON / RIGHT_CENSORED; zero provider-gap failures in restored event days", "primary_horizon_coverage": "Stage-1 10m decisions: Day2 70/35/20 and Day3 96/52/29 positive at 15m/30m/60m", "historical_gate_logging": "OPEN_PRELIMINARY", "internal_gap_status": "ZERO_FOR_RESTORED_DAYS"},
   "next_experiment": "Extend the frozen Stage-1 panel to predeclared 2026-08-30, validate one day at a time, and continue toward 5-7 comparable event-level days with Runner activity continuation.",
-  "next_task_id": "PENDING_CANONICAL_QUANT_CONTINUATION",
+  "next_task_id": "t_5432bed0",
   "resource_usage": {"dune_included_remaining_observed": 473.894, "dune_task_target": 25, "dune_warning": 50, "dune_hard_stop": 75, "dune_checkpoint_cumulative_cap": 200, "guard": "research/nave/resource_guard.py; explicit fresh-usage preflight, fail-closed", "pumpapi": "mint-first projected streaming; bounded max 4 workers; retain canonical Parquet/manifests and no raw decompressed history", "disk_free_gb_observed": 43, "memory_available_gb_observed": 5.9},
   "continuation_policy": "One bounded quant continuation is justified to extend the frozen Stage-1 panel one predeclared day at a time toward 5-7 days; preserve read-only/research-only, retry, disk, Dune, and no-live-action gates.",
   "attention_task": "t_e8a16517",
   "source_notes": "The prior t_94b561e8 continuation predeclared 2026-08-29/30/31 but blocked after 6/72 archives due bounded runtime; use its report as evidence, not as a new panel. Canonical data is under /home/david/nave/data.",
-  "updated_at": "2026-09-01T20:58:00Z"
+  "updated_at": "2026-09-01T21:22:00Z"
 }
