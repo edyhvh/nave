@@ -263,6 +263,26 @@ def build_ism_equity_pipeline(
         "both_inputs_used": True,
         "bounded_limit": limit,
         "candidate_pool": pool,
+        "reports": {
+            "manufacturing": {
+                "report_month": manufacturing.get("report_month"),
+                "pmi": manufacturing.get("pmi"),
+                "source_url": manufacturing.get("source_url"),
+                "headline": manufacturing.get("headline"),
+                "subindices": manufacturing.get("subindices"),
+                "industry_rankings": manufacturing.get("industry_rankings") or manufacturing.get("hottest_industries"),
+                "comments": manufacturing.get("comments"),
+            },
+            "services": {
+                "report_month": services.get("report_month"),
+                "pmi": services.get("pmi"),
+                "source_url": services.get("source_url"),
+                "headline": services.get("headline"),
+                "subindices": services.get("subindices"),
+                "industry_rankings": services.get("industry_rankings") or services.get("hottest_industries"),
+                "comments": services.get("comments"),
+            },
+        },
         "decisions": decisions,
         "human_review": [
             item for item in decisions if item.get("human_review_needed")
