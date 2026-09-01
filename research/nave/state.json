@@ -20,9 +20,10 @@
   "provider_status": {"dune": "2024.104/2500 included credits observed; 0 new credits this session", "pumpapi": "PUMPAPI_VALID; five official archives HTTP 200 and zstd PASS; 24/24 restored for selected sample", "helius": "USEFUL_LATER_NOT_REQUIRED_NOW"},
   "data_quality": {"day_2": "COMPLETE_ARCHIVE_HOUR_COVERAGE_FOR_FROZEN_1000_MINT_SAMPLE", "primary_horizon_coverage": "PRELIMINARY; 242/196/163 resolved 15m/30m/60m marks", "historical_gate_logging": "BLOCKED", "internal_gap_status": "ZERO_FOR_RESTORED_DAY"},
   "next_experiment": "Acquire the next three predeclared clean historical days with the repaired streaming checkpoint/manifest, then run token-level Burst coverage and A vs C only if temporal and paired-row gates pass.",
+  "next_task_id": "t_94b561e8",
   "resource_usage": {"dune_included_remaining_observed": 475.896, "dune_task_target": 25, "dune_warning": 50, "dune_hard_stop": 75, "dune_checkpoint_cumulative_cap": 200, "guard": "research/nave/resource_guard.py; explicit fresh-usage preflight, fail-closed", "pumpapi": "stream one archive at a time; retain canonical Parquet/manifests and disagreement samples, not raw decompressed history", "disk_free_gb_observed": 49},
   "continuation_policy": "One bounded quant continuation is justified after material recovery; remain read-only/research-only and stop before scale-up if temporal, row-count, or provider-quality gates are unmet.",
   "attention_task": "t_e8a16517",
   "source_notes": "The latest multiday artifacts live on research/m3-multiday-historical-panel@39e9098; the current worktree also contains the 2026-08-31 M3 reassessment. Verify path availability before acting.",
-  "updated_at": "2026-09-01T15:55:00Z"
+  "updated_at": "2026-09-01T16:02:20Z"
 }
