@@ -207,10 +207,10 @@ def _cluster_bootstrap(y: np.ndarray, p_a: np.ndarray, p_c: np.ndarray, *, seed:
     }
 
 
-def model_comparison(frame: pd.DataFrame) -> dict:
+def model_comparison(frame: pd.DataFrame, *, evaluation_day: str = "2026-08-29") -> dict:
     primary = frame.loc[(frame.decision_s == 600) & (frame.horizon_s == 3600) & frame.label.notna()].copy()
     train = primary.loc[primary.day == "2026-08-28"]
-    test = primary.loc[primary.day == "2026-08-29"]
+    test = primary.loc[primary.day == evaluation_day]
     if len(train) < 100 or len(test) < 100 or train.label.nunique() < 2 or test.label.nunique() < 2:
         return {"status": "INSUFFICIENT_DATA", "train_rows": len(train), "test_rows": len(test)}
     outputs = {}
@@ -226,9 +226,10 @@ def model_comparison(frame: pd.DataFrame) -> dict:
         pred_train = 1 / (1 + np.exp(-np.clip(x_train @ beta, -30, 30)))
         pred_test = 1 / (1 + np.exp(-np.clip(x_test @ beta, -30, 30)))
         predictions[name] = pred_test
-        outputs[name] = {"features": columns, "train": _metrics(train.label.to_numpy(float), pred_train), "day3_temporal_sanity": _metrics(test.label.to_numpy(float), pred_test)}
-    outputs["C_minus_A_test_pr_auc"] = outputs["C_survival"]["day3_temporal_sanity"]["pr_auc_average_precision"] - outputs["A_survival"]["day3_temporal_sanity"]["pr_auc_average_precision"]
-    outputs["C_minus_A_test_brier"] = outputs["C_survival"]["day3_temporal_sanity"]["brier"] - outputs["A_survival"]["day3_temporal_sanity"]["brier"]
+        outputs[name] = {"features": columns, "train": _metrics(train.label.to_numpy(float), pred_train), f"{evaluation_day}_temporal_sanity": _metrics(test.label.to_numpy(float), pred_test)}
+    temporal_key = f"{evaluation_day}_temporal_sanity"
+    outputs["C_minus_A_test_pr_auc"] = outputs["C_survival"][temporal_key]["pr_auc_average_precision"] - outputs["A_survival"][temporal_key]["pr_auc_average_precision"]
+    outputs["C_minus_A_test_brier"] = outputs["C_survival"][temporal_key]["brier"] - outputs["A_survival"][temporal_key]["brier"]
     outputs["cluster_bootstrap"] = _cluster_bootstrap(test.label.to_numpy(float), predictions["A_survival"], predictions["C_survival"])
     outputs["status"] = "PRELIMINARY_TEMPORAL_SANITY"
     return outputs
