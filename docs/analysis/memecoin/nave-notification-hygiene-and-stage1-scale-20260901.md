@@ -143,7 +143,7 @@ unrelated queue entry was deleted.
 
 ## NAVE CURRENT STATE
 
-The parent NAVE task is `t_5432bed0`, now blocked only because it exceeded its
+The parent NAVE task is `t_5432bed0`, now archived after exceeding its
 1,800-second bounded runtime after completing Day-5 artifacts. Its isolated worktree is at
 `/home/david/nave/.worktrees/t_5432bed0` on `research/nave-stage1-scale`,
 commit `48e95f8`. It records four comparable event-level days: Aug 28, Aug 29,
@@ -199,8 +199,9 @@ historical source; no purchase, upgrade, or new provider was used.
 
 The parent task timed out after completing Day-5 acquisition and analysis; the
 artifacts are preserved in commit `48e95f8` and the main checkout in
-`0bac49d`. The next task is ready but has not yet spawned because the bounded
-dispatcher pass found no spawn slot. Runner coverage is
+`0bac49d`. The stale duplicate was archived, the parent was archived as a
+completed historical record, and the sole Sep-1 child `t_81a4fb08` was spawned
+by the existing dispatcher. Runner coverage is
 descriptive and not an executable-profit result; all-migrant continuation and
 participant history remain incomplete. Gateway startup still logs unrelated
 optional-tool secret-scope warnings that should not be conflated with Discord
