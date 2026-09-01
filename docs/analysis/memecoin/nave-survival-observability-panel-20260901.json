@@ -1,0 +1,237 @@
+{
+  "classification": "INSUFFICIENT DATA",
+  "clustered_horizons": {
+    "15m": {
+      "activity_counts": {
+        "FUTURE_TRADE_AFTER_HORIZON": 242,
+        "HAS_TRADE_THROUGH_HORIZON": 850,
+        "NO_ACTIVITY_THROUGH_HORIZON": 143,
+        "RIGHT_CENSORED": 7
+      },
+      "cluster_counts": {
+        "HIGH_100_PLUS": 177,
+        "LOW_1_9": 320,
+        "MEDIUM_10_99": 355,
+        "ZERO": 148
+      },
+      "cluster_definition": "first 10m BUY/SELL count: ZERO=0, LOW_1_9=1-9, MEDIUM_10_99=10-99, HIGH_100_PLUS=100+",
+      "example_rows": [
+        {
+          "cluster": "LOW_1_9",
+          "mint": "HGof1AXBGctYbePAinXVw4FbugJco32QLnzXoVf98r5A",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 8
+        },
+        {
+          "cluster": "LOW_1_9",
+          "mint": "Gmv2wWDAmh2k84dRMLWGscNB2GEWJeKmrQEbSPNrpump",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 3
+        },
+        {
+          "cluster": "MEDIUM_10_99",
+          "mint": "HxEbkobWEEJrja7jxLsBSoxYguMcupYve34G8YPKpump",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 10
+        },
+        {
+          "cluster": "MEDIUM_10_99",
+          "mint": "EqPR2QV77L6swEZpG61rKtm78bJ1fmK6Eqsq1ht9pump",
+          "outcome": "OBSERVABLE_FUTURE_TRADE",
+          "pre10_trades": 23
+        }
+      ],
+      "outcome_counts": {
+        "MIGRATED_BEFORE_HORIZON": 23,
+        "NO_FUTURE_TRADE": 621,
+        "OBSERVABLE_FUTURE_TRADE": 219,
+        "RIGHT_CENSORED": 7,
+        "TOKEN_INACTIVE": 130
+      }
+    },
+    "30m": {
+      "activity_counts": {
+        "FUTURE_TRADE_AFTER_HORIZON": 196,
+        "HAS_TRADE_THROUGH_HORIZON": 843,
+        "NO_ACTIVITY_THROUGH_HORIZON": 138,
+        "RIGHT_CENSORED": 19
+      },
+      "cluster_counts": {
+        "HIGH_100_PLUS": 177,
+        "LOW_1_9": 320,
+        "MEDIUM_10_99": 355,
+        "ZERO": 148
+      },
+      "cluster_definition": "first 10m BUY/SELL count: ZERO=0, LOW_1_9=1-9, MEDIUM_10_99=10-99, HIGH_100_PLUS=100+",
+      "example_rows": [
+        {
+          "cluster": "LOW_1_9",
+          "mint": "HGof1AXBGctYbePAinXVw4FbugJco32QLnzXoVf98r5A",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 8
+        },
+        {
+          "cluster": "LOW_1_9",
+          "mint": "Gmv2wWDAmh2k84dRMLWGscNB2GEWJeKmrQEbSPNrpump",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 3
+        },
+        {
+          "cluster": "MEDIUM_10_99",
+          "mint": "HxEbkobWEEJrja7jxLsBSoxYguMcupYve34G8YPKpump",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 10
+        },
+        {
+          "cluster": "MEDIUM_10_99",
+          "mint": "EqPR2QV77L6swEZpG61rKtm78bJ1fmK6Eqsq1ht9pump",
+          "outcome": "OBSERVABLE_FUTURE_TRADE",
+          "pre10_trades": 23
+        }
+      ],
+      "outcome_counts": {
+        "MIGRATED_BEFORE_HORIZON": 27,
+        "NO_FUTURE_TRADE": 655,
+        "OBSERVABLE_FUTURE_TRADE": 170,
+        "RIGHT_CENSORED": 19,
+        "TOKEN_INACTIVE": 129
+      }
+    },
+    "60m": {
+      "activity_counts": {
+        "FUTURE_TRADE_AFTER_HORIZON": 163,
+        "HAS_TRADE_THROUGH_HORIZON": 830,
+        "NO_ACTIVITY_THROUGH_HORIZON": 135,
+        "RIGHT_CENSORED": 35
+      },
+      "cluster_counts": {
+        "HIGH_100_PLUS": 177,
+        "LOW_1_9": 320,
+        "MEDIUM_10_99": 355,
+        "ZERO": 148
+      },
+      "cluster_definition": "first 10m BUY/SELL count: ZERO=0, LOW_1_9=1-9, MEDIUM_10_99=10-99, HIGH_100_PLUS=100+",
+      "example_rows": [
+        {
+          "cluster": "LOW_1_9",
+          "mint": "HGof1AXBGctYbePAinXVw4FbugJco32QLnzXoVf98r5A",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 8
+        },
+        {
+          "cluster": "LOW_1_9",
+          "mint": "Gmv2wWDAmh2k84dRMLWGscNB2GEWJeKmrQEbSPNrpump",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 3
+        },
+        {
+          "cluster": "MEDIUM_10_99",
+          "mint": "HxEbkobWEEJrja7jxLsBSoxYguMcupYve34G8YPKpump",
+          "outcome": "NO_FUTURE_TRADE",
+          "pre10_trades": 10
+        },
+        {
+          "cluster": "MEDIUM_10_99",
+          "mint": "EqPR2QV77L6swEZpG61rKtm78bJ1fmK6Eqsq1ht9pump",
+          "outcome": "OBSERVABLE_FUTURE_TRADE",
+          "pre10_trades": 23
+        }
+      ],
+      "outcome_counts": {
+        "MIGRATED_BEFORE_HORIZON": 27,
+        "NO_FUTURE_TRADE": 672,
+        "OBSERVABLE_FUTURE_TRADE": 138,
+        "RIGHT_CENSORED": 35,
+        "TOKEN_INACTIVE": 128
+      }
+    }
+  },
+  "day_1_compact_dune": {
+    "aggregate_60m_marks": 917,
+    "comparability": "descriptive only; no point-in-time event features",
+    "date": "2026-08-27",
+    "pumpswap_activity": {
+      "12h": 7,
+      "24h": 6,
+      "48h": 1,
+      "4h": 7,
+      "72h": 0,
+      "8h": 7
+    },
+    "quoted_marks": {
+      "24h": 2,
+      "48h": 1,
+      "4h": 7,
+      "72h": 0
+    },
+    "sample_tokens": 1000,
+    "targeted_migrants": 7
+  },
+  "edge_claim": false,
+  "limitations": [
+    "one event-level calendar day",
+    "cluster outcomes are descriptive and token-clustered, not independent rows",
+    "Day-1 compact Dune is not merged into event-level panel",
+    "Runner sample is not all-day migrant universe"
+  ],
+  "missingness_policy": [
+    "NO_FUTURE_TRADE",
+    "TOKEN_INACTIVE",
+    "MIGRATED_BEFORE_HORIZON",
+    "PROVIDER_EVENT_GAP",
+    "RIGHT_CENSORED",
+    "TRUE_UNKNOWN"
+  ],
+  "runner_activity": {
+    "horizons": {
+      "12h": {
+        "activity_true": 8,
+        "eligible_not_censored": 8,
+        "migrants": 30,
+        "right_censored": 22
+      },
+      "24h": {
+        "activity_true": 0,
+        "eligible_not_censored": 0,
+        "migrants": 30,
+        "right_censored": 30
+      },
+      "48h": {
+        "activity_true": 0,
+        "eligible_not_censored": 0,
+        "migrants": 30,
+        "right_censored": 30
+      },
+      "4h": {
+        "activity_true": 22,
+        "eligible_not_censored": 22,
+        "migrants": 30,
+        "right_censored": 8
+      },
+      "72h": {
+        "activity_true": 0,
+        "eligible_not_censored": 0,
+        "migrants": 30,
+        "right_censored": 30
+      },
+      "8h": {
+        "activity_true": 17,
+        "eligible_not_censored": 17,
+        "migrants": 30,
+        "right_censored": 13
+      }
+    },
+    "migration_events": 30,
+    "note": "activity-only continuation; quoted marks and PumpSwap are not inferred from PumpApi",
+    "source": "same recovered PumpApi sample"
+  },
+  "schema_version": "nave.survival-observability-panel.v1",
+  "source": {
+    "collection_end_ms": 1787961595564,
+    "date": "2026-08-28",
+    "mark_outcomes_not_used": true,
+    "parquet": "/home/david/nave/data/research/pumpapi/day/date=2026-08-28/pumpapi_events_recovered_full.parquet",
+    "rows": 254522,
+    "tokens": 1000
+  }
+}
