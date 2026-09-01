@@ -1,0 +1,42 @@
+{
+  "schema_version": "nave.stage1-survival-contract.v1",
+  "frozen_at": "2026-09-01T20:55:00Z",
+  "decision_times_minutes": [1, 3, 5, 10],
+  "primary_outcomes": {
+    "FUTURE_TRADE_AFTER_15M": {
+      "definition": "At least one valid BUY or SELL event in (launch_time + 15m, launch_time + 20m].",
+      "positive_interval_seconds": [900, 1200],
+      "left_open_right_closed": true,
+      "requires_complete_interval": true
+    },
+    "FUTURE_TRADE_AFTER_30M": {
+      "definition": "At least one valid BUY or SELL event in (launch_time + 30m, launch_time + 35m].",
+      "positive_interval_seconds": [1800, 2100],
+      "left_open_right_closed": true,
+      "requires_complete_interval": true
+    },
+    "FUTURE_TRADE_AFTER_60M": {
+      "definition": "At least one valid BUY or SELL event in (launch_time + 60m, launch_time + 65m].",
+      "positive_interval_seconds": [3600, 3900],
+      "left_open_right_closed": true,
+      "requires_complete_interval": true
+    }
+  },
+  "secondary_outcomes": {
+    "NO_ACTIVITY_THROUGH_HORIZON": "No valid trade in (decision_time, launch_time + horizon]. This is descriptive and not used as the primary model label.",
+    "TIME_TO_LAST_TRADE": "Last valid trade timestamp in the observed venue-aware tape; right-censored at collection end."
+  },
+  "eligibility": {
+    "provider_gap": "Never converted to inactivity; interval completeness is required for a binary primary label.",
+    "right_censoring": "If the positive interval extends beyond the observed collection boundary, label RIGHT_CENSORED.",
+    "migration": "Migration is not death; PumpSwap continuation is required for a venue-aware label when migration precedes the interval.",
+    "future_only": "Every primary outcome event is strictly after every allowed decision timestamp.",
+    "mark_outcomes": "Price marks remain secondary and conditional on observability; no tolerance change is introduced here."
+  },
+  "modeling": {
+    "baseline": "A_survival token-state levels at decision time",
+    "incremental": "C_survival preregistered dynamics beyond A",
+    "independence_unit": "mint; cluster decision-time rows by token",
+    "validation": "2026-08-28 development, 2026-08-29 chronological sanity evaluation; preliminary only"
+  }
+}
