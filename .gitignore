@@ -62,6 +62,7 @@ Thumbs.db
 *.xlsx
 *.xls
 *.parquet
+data/research/pumpapi/
 *.feather
 *.pkl
 *.pickle
