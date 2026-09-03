@@ -27,3 +27,7 @@ See `00_baseline.md` for the comparison rules every experiment must beat.
 | 06b | (trail SL to +0.5R after ZC1 hit) | exit policy | +43.42 | -0.72 | ❌ ETH regresses | — |
 | 07 | experiment/add-link | LINK as 4th coin | +67.15 | +23.01 | ✅ ship | #18 |
 | N5ab | experiment/n5-squeez-bias | Volatility squeeze as 4th weekly bias source (A/B test) | +19.70 treatment vs +26.70 control | −7.00 vs baseline | ❌ REJECT — squeeze trades 0% WR (0W/7L), 100% FP, −7.00R; weekly cadence + pullback gates incompatible with event-driven breakouts; timing mismatch is structural | — |
+
+| N7 | experiment/n7-n6-replication | N6 daily-cadence replication + OOS refresh, no strategy change | +59.11 treatment / +29.72 additive | +14.97 vs +44.14 base | ⚠️ INCONCLUSIVE — costs/slippage, synchronized OOS and sensitivity still missing | — |
+
+| N8 | experiment/n8-n6-cost-stress | N6 fee/slippage stress (0.10/0.30/0.50/1.00%), no strategy change | +56.66R base modeled net | not apples-to-apples vs baseline | ⚠️ INCONCLUSIVE — positive modeled costs, but baseline net stops/event-time fills/funding missing | — |

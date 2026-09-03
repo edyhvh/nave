@@ -1,0 +1,201 @@
+{
+  "experiment": "N8_n6_cost_slippage_stress",
+  "source": "/tmp/nave-n8-cost-stress/docs/analysis/raw/squeeze_daily_validation_20260830T183257Z.json",
+  "source_sha256": "3199a1e3af417e9aa0f68b1cf8b302ce3dbfea11e676d05f55a468ab8a5a88d2",
+  "observed_at_utc": "2026-08-31T18:33:11.766471+00:00",
+  "scenarios": {
+    "optimistic_0.10pct": {
+      "control": {
+        "fired": 31,
+        "resolved": 21,
+        "wr_pct": 90.47619047619048,
+        "gross_r": 29.39,
+        "resolved_net_r": 29.080014446229058,
+        "fired_cost_net_r": 28.970899116450333,
+        "avg_stop_pct": 9.738444793180237
+      },
+      "squeeze_additive": {
+        "fired": 26,
+        "resolved": 22,
+        "wr_pct": 86.36363636363636,
+        "gross_r": 29.729999999999993,
+        "resolved_net_r": 29.356469302539022,
+        "fired_cost_net_r": 29.328748547851355,
+        "avg_stop_pct": 7.967066162277077
+      },
+      "treatment": {
+        "fired": 57,
+        "resolved": 43,
+        "wr_pct": 88.37209302325581,
+        "gross_r": 59.120000000000026,
+        "resolved_net_r": 58.43648374876807,
+        "fired_cost_net_r": 58.29964766430172,
+        "avg_stop_pct": 8.93044752294371
+      }
+    },
+    "base_0.30pct": {
+      "control": {
+        "fired": 31,
+        "resolved": 21,
+        "wr_pct": 90.47619047619048,
+        "gross_r": 29.39,
+        "resolved_net_r": 28.460043338687168,
+        "fired_cost_net_r": 28.132697349351,
+        "avg_stop_pct": 9.738444793180237
+      },
+      "squeeze_additive": {
+        "fired": 26,
+        "resolved": 22,
+        "wr_pct": 86.36363636363636,
+        "gross_r": 29.729999999999993,
+        "resolved_net_r": 28.60940790761707,
+        "fired_cost_net_r": 28.526245643554084,
+        "avg_stop_pct": 7.967066162277077
+      },
+      "treatment": {
+        "fired": 57,
+        "resolved": 43,
+        "wr_pct": 88.37209302325581,
+        "gross_r": 59.120000000000026,
+        "resolved_net_r": 57.069451246304226,
+        "fired_cost_net_r": 56.65894299290512,
+        "avg_stop_pct": 8.93044752294371
+      }
+    },
+    "stressed_0.50pct": {
+      "control": {
+        "fired": 31,
+        "resolved": 21,
+        "wr_pct": 90.47619047619048,
+        "gross_r": 29.39,
+        "resolved_net_r": 27.84007223114528,
+        "fired_cost_net_r": 27.294495582251667,
+        "avg_stop_pct": 9.738444793180237
+      },
+      "squeeze_additive": {
+        "fired": 26,
+        "resolved": 22,
+        "wr_pct": 86.36363636363636,
+        "gross_r": 29.729999999999993,
+        "resolved_net_r": 27.862346512695115,
+        "fired_cost_net_r": 27.723742739256807,
+        "avg_stop_pct": 7.967066162277077
+      },
+      "treatment": {
+        "fired": 57,
+        "resolved": 43,
+        "wr_pct": 88.37209302325581,
+        "gross_r": 59.120000000000026,
+        "resolved_net_r": 55.7024187438404,
+        "fired_cost_net_r": 55.018238321508505,
+        "avg_stop_pct": 8.93044752294371
+      }
+    },
+    "severe_1.00pct": {
+      "control": {
+        "fired": 31,
+        "resolved": 21,
+        "wr_pct": 90.47619047619048,
+        "gross_r": 29.39,
+        "resolved_net_r": 26.290144462290556,
+        "fired_cost_net_r": 25.198991164503337,
+        "avg_stop_pct": 9.738444793180237
+      },
+      "squeeze_additive": {
+        "fired": 26,
+        "resolved": 22,
+        "wr_pct": 86.36363636363636,
+        "gross_r": 29.729999999999993,
+        "resolved_net_r": 25.994693025390227,
+        "fired_cost_net_r": 25.717485478513623,
+        "avg_stop_pct": 7.967066162277077
+      },
+      "treatment": {
+        "fired": 57,
+        "resolved": 43,
+        "wr_pct": 88.37209302325581,
+        "gross_r": 59.120000000000026,
+        "resolved_net_r": 52.28483748768079,
+        "fired_cost_net_r": 50.91647664301699,
+        "avg_stop_pct": 8.93044752294371
+      }
+    }
+  },
+  "oos_trades": [
+    {
+      "date": "2026-08-20",
+      "direction": "long",
+      "entry": 69420.0,
+      "sl": 64166.0,
+      "targets": [
+        77301.0,
+        82555.0
+      ],
+      "outcome": "correct",
+      "pnl_r": 1.57,
+      "bias_source": "squeeze_daily",
+      "squeeze_streak": 31,
+      "bb_width_mean": 2.98,
+      "period": "2026-OOS",
+      "coin": "BTC",
+      "lane": "squeeze"
+    },
+    {
+      "date": "2026-05-18",
+      "direction": "short",
+      "entry": 2115.46,
+      "sl": 2228.33,
+      "targets": [
+        1938.82,
+        1825.95
+      ],
+      "outcome": null,
+      "pnl_r": 0.0,
+      "bias_source": "momentum",
+      "period": "2026-OOS",
+      "coin": "ETH",
+      "lane": "control"
+    },
+    {
+      "date": "2026-05-27",
+      "direction": "short",
+      "entry": 2083.36,
+      "sl": 2200.36,
+      "targets": [
+        1907.86,
+        1790.87
+      ],
+      "outcome": "correct",
+      "pnl_r": 1.7,
+      "bias_source": "squeeze_daily",
+      "squeeze_streak": 24,
+      "bb_width_mean": 4.08,
+      "period": "2026-OOS",
+      "coin": "ETH",
+      "lane": "squeeze"
+    },
+    {
+      "date": "2026-08-20",
+      "direction": "long",
+      "entry": 2262.24,
+      "sl": 1906.0,
+      "targets": [
+        2796.6,
+        3152.84
+      ],
+      "outcome": null,
+      "pnl_r": 0.0,
+      "bias_source": "squeeze_daily",
+      "squeeze_streak": 23,
+      "bb_width_mean": 3.6,
+      "period": "2026-OOS",
+      "coin": "ETH",
+      "lane": "squeeze"
+    }
+  ],
+  "assumptions": {
+    "cost_definition": "round-trip fee+spread+slippage as fraction of notional; deducted as cost_pct / stop_distance_pct in R",
+    "unresolved_treatment": "excluded from WR and resolved_net_r; fired_cost_net_r charges costs to all fired observations while unresolved PnL remains 0",
+    "leverage_funding_liquidation": "not modeled"
+  }
+}
