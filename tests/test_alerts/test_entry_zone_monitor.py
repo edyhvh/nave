@@ -85,6 +85,92 @@ def test_build_zone_watch_candidates_requires_tradeable_plan() -> None:
     assert build_zone_watch_candidates(payload) == []
 
 
+def test_build_zone_watch_candidates_allows_high_score_breakdown_watch() -> None:
+    payload = {
+        "summary": {"effective_score_threshold": 75},
+        "results": {
+            "BTCUSDT": {
+                "plans": [
+                    {
+                        "side": "short",
+                        "tradeable": False,
+                        "confidence_score": 96,
+                        "entry_zone": [60245.0, 62396.0],
+                        "invalidation": 63247.0,
+                        "tp1": 57835.0,
+                        "tp2": 55425.0,
+                        "tp3": 52534.0,
+                        "expected_move_pct": 0.12,
+                        "rr_estimated": 3.4,
+                        "setup_status": "invalid",
+                        "diagnostics": {"breakout_status": "breakout"},
+                        "reasoning": {
+                            "human": [
+                                "Breakout=yes and retest=pending around 61901.0."
+                            ]
+                        },
+                    }
+                ]
+            }
+        },
+    }
+
+    candidates = build_zone_watch_candidates(payload)
+
+    assert len(candidates) == 1
+    assert candidates[0].symbol == "BTCUSDT"
+    assert candidates[0].side == "short"
+    assert candidates[0].tradeable is False
+    assert candidates[0].alert_kind == "breakdown_watch"
+
+
+def test_entry_zone_monitor_alerts_breakdown_watch_before_retest_zone(tmp_path) -> None:
+    state = ZoneWatchStateStore(path=tmp_path / "state.json")
+    monitor = EntryZoneMonitor(state)
+    candidates = build_zone_watch_candidates(
+        {
+            "summary": {"effective_score_threshold": 75},
+            "results": {
+                "BTCUSDT": {
+                    "plans": [
+                        {
+                            "side": "short",
+                            "tradeable": False,
+                            "confidence_score": 96,
+                            "entry_zone": [60245.0, 62396.0],
+                            "invalidation": 63247.0,
+                            "tp1": 57835.0,
+                            "tp2": 55425.0,
+                            "tp3": 52534.0,
+                            "expected_move_pct": 0.12,
+                            "rr_estimated": 3.4,
+                            "setup_status": "invalid",
+                            "diagnostics": {"breakout_status": "breakout"},
+                        }
+                    ]
+                }
+            },
+        }
+    )
+
+    first = monitor.evaluate(
+        candidates,
+        price_lookup=lambda symbol: 59789.0,
+        now=datetime(2026, 6, 24, 12, 0, tzinfo=timezone.utc),
+    )
+    second = monitor.evaluate(
+        candidates,
+        price_lookup=lambda symbol: 59800.0,
+        now=datetime(2026, 6, 24, 13, 0, tzinfo=timezone.utc),
+    )
+
+    assert first["alert_count"] == 1
+    assert first["alerts"][0]["alert_kind"] == "breakdown_watch"
+    assert first["alerts"][0]["tradeable"] is False
+    assert first["watch_states"][0]["inside"] is False
+    assert second["alert_count"] == 0
+
+
 def test_entry_zone_monitor_alerts_once_per_zone(tmp_path) -> None:
     state = ZoneWatchStateStore(path=tmp_path / "state.json")
     monitor = EntryZoneMonitor(state)

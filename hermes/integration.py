@@ -851,6 +851,7 @@ class HermesNaveIntegration:
                 "rr_estimated": candidate.rr_estimated,
                 "setup_status": candidate.setup_status,
                 "tradeable": candidate.tradeable,
+                "alert_kind": candidate.alert_kind,
             }
             for candidate in candidates
         ]
@@ -1402,9 +1403,25 @@ class HermesNaveIntegration:
                         "but it requires a flat prior range (≤ 1.5 ATRs). "
                         "Very deep, extended consolidations may still fire "
                         "late. COT filter also still applies to breakouts — "
-                        "extreme positioning blocks them too."
+                        "extreme positioning blocks them too. "
+                        "Post-mortem N1 (2026-08-25): confirmed on the "
+                        "BTC 63k→78k rally (Mar–Apr 2026). The 7-week "
+                        "gradual recovery from a liquidation crash had a "
+                        "3+ ATR wide range — too wide for the gate. "
+                        "Velocity oscillated near zero throughout. "
+                        "The range-breakout gate fired only at the peak "
+                        "($78,658 on Apr 20). No parameter modification "
+                        "produced a profitable earlier signal without "
+                        "degrading the baseline. Requires a new "
+                        "regime-transition detector (post-crash recovery "
+                        "classification) — not a parameter tune. "
+                        "N2 (2026-08-25, REJECTED): a structural post-crash "
+                        "recovery classifier as a 3rd weekly bias source "
+                        "degraded the baseline (−4.28R, WR −18.7pp, 78% FP) "
+                        "and did NOT catch the 2026 window (0/26 BTC arming). "
+                        "Blind spot remains OPEN."
                     ),
-                    "iter_ref": "iter_18",
+                    "iter_ref": "iter_18, N1_post_mortem",
                 },
             ],
             "iter_history_path": "docs/analysis/iterations/",

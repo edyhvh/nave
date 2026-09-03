@@ -82,6 +82,7 @@ def run_monitor(args: argparse.Namespace) -> dict:
             "rr_estimated": candidate.rr_estimated,
             "setup_status": candidate.setup_status,
             "tradeable": candidate.tradeable,
+            "alert_kind": candidate.alert_kind,
         }
         for candidate in candidates
     ]

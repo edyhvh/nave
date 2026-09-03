@@ -222,3 +222,26 @@ def test_render_entry_zone_alert_markdown() -> None:
     assert "score" in message
     assert "TP1/TP2/TP3" in message
     assert "move esp" in message
+
+
+def test_render_breakdown_watch_alert_markdown() -> None:
+    message = render_entry_zone_alert_markdown_v2(
+        {
+            "symbol": "BTCUSDT",
+            "side": "short",
+            "price": 59789.0,
+            "entry_zone": [60245.0, 62396.0],
+            "invalidation": 63247.0,
+            "tp1": 57835.0,
+            "tp2": 55425.0,
+            "tp3": 52534.0,
+            "expected_move_pct": 0.12,
+            "rr_estimated": 3.4,
+            "confidence_score": 96,
+            "alert_kind": "breakdown_watch",
+        }
+    )
+
+    assert "BREAKDOWN WATCH" in message
+    assert "retest/trigger 1H pendiente" in message
+    assert "no perseguir market" in message

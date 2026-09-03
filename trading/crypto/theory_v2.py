@@ -45,6 +45,7 @@ from trading.crypto.cot.cot_gate import weekly_cot_filter
 from trading.crypto.signals import Direction, Signal, Timeframe
 
 if TYPE_CHECKING:
+    from trading.crypto.analysis.recovery_detector import RecoveryTransitionConfig
     from trading.crypto.analysis.squeeze_daily import SqueezeDailyState, SqueezeConfig
 
 CotHistoryFn = Callable[[str, pd.Timestamp], "pd.DataFrame | None"]
@@ -509,12 +510,15 @@ class TheoryV2Engine:
         confidence: float = 0.65,
         cot_history_fn: CotHistoryFn | None = None,
         squeeze_config: SqueezeConfig | None = None,
+        recovery_config: RecoveryTransitionConfig | None = None,
     ):
         self.source = source
         self.confidence = confidence
         self.cot_history_fn = cot_history_fn
         # N5 experiment: None disables the squeeze detector (production default).
         self.squeeze_config = squeeze_config
+        # N2 experiment: None disables the detector (production default).
+        self.recovery_config = recovery_config
 
     def evaluate(
         self,
@@ -534,12 +538,24 @@ class TheoryV2Engine:
             if rb_bias != "neutral":
                 bias = rb_bias
                 bias_source = "range_breakout"
-            elif self.squeeze_config is not None:
+            elif self.recovery_config is not None:
+                # N2 experiment — regime-transition detector for the
+                # post-crash-recovery blind spot (N1: gradual recoveries have
+                # near-zero velocity AND a 3+ ATR wide range, so both the
+                # momentum and range-breakout gates miss them). Lazy import to
+                # avoid the heavy trading.crypto.analysis package __init__.
+                from trading.crypto.analysis.recovery_detector import (  # noqa: PLC0415
+                    detect_recovery_transition,
+                )
+                rec_bias, rec_diag = detect_recovery_transition(daily, self.recovery_config)
+                if rec_bias != "neutral":
+                    bias = rec_bias
+                    bias_source = "recovery_transition"
+                    breakout_diag = rec_diag
+            if bias == "neutral" and self.squeeze_config is not None:
                 # N5 experiment — volatility squeeze detector for the
-                # compression→explosion blind spot (N5 discovery: extreme
-                # BB compression for 7+ days followed by violent breakout).
-                # Lazy import to avoid the heavy trading.crypto.analysis
-                # package __init__.
+                # compression→explosion blind spot. This remains opt-in;
+                # the daily cadence path is kept separate below.
                 from trading.crypto.analysis.squeeze_detector import (  # noqa: PLC0415
                     detect_squeeze,
                 )
@@ -552,7 +568,7 @@ class TheoryV2Engine:
                 vel_str = f"{velocity:+.2f}" if velocity is not None else "n/a"
                 return TheoryV2Decision(
                     coin, bias, False, False, "weekly",
-                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout, no squeeze breakout)",
+                    f"no weekly bias (momentum velocity={vel_str} ATRs, no range breakout, no recovery transition, no squeeze breakout)",
                 )
 
         if self.cot_history_fn is not None:

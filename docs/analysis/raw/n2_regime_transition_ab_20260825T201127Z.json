@@ -1,0 +1,1348 @@
+{
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "periods": {
+    "2017-bull+2018-bear": {
+      "BTC": {
+        "control": {
+          "fired": 7,
+          "correct": 5,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 7.500000000000001,
+          "stage_counts": {
+            "weekly": 80,
+            "fired": 7,
+            "4H": 5,
+            "daily": 3,
+            "climax_cooldown": 4,
+            "chase_gate": 6
+          },
+          "bias_sources": {
+            "momentum": 7
+          },
+          "trades": [
+            {
+              "week": "2017-10-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 4610.0,
+              "sl": 4261.32,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-10-30",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 6100.83,
+              "sl": 5547.08,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 8047.53,
+              "sl": 7023.82,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 9499.99,
+              "sl": 8604.72,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2018-03-26",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 8369.79,
+              "sl": 9417.99,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 6706.14,
+              "sl": 7354.0,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-07-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 7469.78,
+              "sl": 6965.77,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 7,
+          "correct": 5,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 7.500000000000001,
+          "stage_counts": {
+            "weekly": 75,
+            "fired": 7,
+            "4H": 8,
+            "daily": 4,
+            "climax_cooldown": 4,
+            "chase_gate": 7
+          },
+          "bias_sources": {
+            "momentum": 7
+          },
+          "trades": [
+            {
+              "week": "2017-10-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 4610.0,
+              "sl": 4261.32,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-10-30",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 6100.83,
+              "sl": 5547.08,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 8047.53,
+              "sl": 7023.82,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 9499.99,
+              "sl": 8604.72,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2018-03-26",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 8369.79,
+              "sl": 9417.99,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 6706.14,
+              "sl": 7354.0,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-07-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 7469.78,
+              "sl": 6965.77,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 6,
+          "correct": 3,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 4.099999999999998,
+          "stage_counts": {
+            "weekly": 76,
+            "fired": 6,
+            "climax_cooldown": 4,
+            "chase_gate": 10,
+            "daily": 5,
+            "4H": 4
+          },
+          "bias_sources": {
+            "momentum": 6
+          },
+          "trades": [
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 354.76,
+              "sl": 319.75,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 727.62,
+              "sl": 561.94,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1188.98,
+              "sl": 1002.31,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2018-02-05",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 838.85,
+              "sl": 1056.41,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-04-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 628.0,
+              "sl": 564.56,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 515.6,
+              "sl": 580.59,
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 7,
+          "correct": 4,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 5.616236391912905,
+          "stage_counts": {
+            "weekly": 75,
+            "fired": 7,
+            "climax_cooldown": 4,
+            "chase_gate": 10,
+            "daily": 5,
+            "4H": 4
+          },
+          "bias_sources": {
+            "recovery_transition": 1,
+            "momentum": 6
+          },
+          "trades": [
+            {
+              "week": "2017-11-13",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 313.16,
+              "sl": 281.01,
+              "outcome": "correct",
+              "pnl_r": 1.5162
+            },
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 354.76,
+              "sl": 319.75,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 727.62,
+              "sl": 561.94,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1188.98,
+              "sl": 1002.31,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2018-02-05",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 838.85,
+              "sl": 1056.41,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-04-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 628.0,
+              "sl": 564.56,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 515.6,
+              "sl": 580.59,
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    },
+    "2019-recovery": {
+      "BTC": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "bias_sources": {},
+          "trades": []
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 52
+          },
+          "bias_sources": {},
+          "trades": []
+        }
+      }
+    },
+    "2020-covid-crash": {
+      "BTC": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "bias_sources": {},
+          "trades": []
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 26
+          },
+          "bias_sources": {},
+          "trades": []
+        }
+      }
+    },
+    "2020-recovery+2021-ATH": {
+      "BTC": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 74,
+            "daily": 3,
+            "chase_gate": 1
+          },
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 74,
+            "daily": 3,
+            "chase_gate": 1
+          },
+          "bias_sources": {},
+          "trades": []
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 1,
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": -1.0,
+          "stage_counts": {
+            "weekly": 74,
+            "chase_gate": 1,
+            "fired": 1,
+            "daily": 2
+          },
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2021-11-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 4688.29,
+              "sl": 4337.36,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 1,
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": -1.0,
+          "stage_counts": {
+            "weekly": 74,
+            "chase_gate": 1,
+            "fired": 1,
+            "daily": 2
+          },
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2021-11-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 4688.29,
+              "sl": 4337.36,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        }
+      }
+    },
+    "2022-bear": {
+      "BTC": {
+        "control": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.4565398249277508,
+          "stage_counts": {
+            "weekly": 37,
+            "chase_gate": 4,
+            "4H": 3,
+            "daily": 5,
+            "fired": 1,
+            "climax_cooldown": 2
+          },
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 34142.51,
+              "sl": 37153.35,
+              "outcome": "correct",
+              "pnl_r": 1.4565
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 0.4565398249277508,
+          "stage_counts": {
+            "weekly": 34,
+            "chase_gate": 4,
+            "4H": 4,
+            "fired": 2,
+            "daily": 6,
+            "climax_cooldown": 2
+          },
+          "bias_sources": {
+            "recovery_transition": 1,
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 46920.99,
+              "sl": 44421.46,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 34142.51,
+              "sl": 37153.35,
+              "outcome": "correct",
+              "pnl_r": 1.4565
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 4,
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 4.600000000000001,
+          "stage_counts": {
+            "4H": 6,
+            "weekly": 29,
+            "chase_gate": 6,
+            "fired": 4,
+            "daily": 6,
+            "climax_cooldown": 1
+          },
+          "bias_sources": {
+            "momentum": 4
+          },
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3291.39,
+              "sl": 3080.83,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2524.38,
+              "sl": 2776.83,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-06-13",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 1387.4,
+              "sl": 1574.32,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-08-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1707.51,
+              "sl": 1539.66,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 4,
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 4.600000000000001,
+          "stage_counts": {
+            "4H": 7,
+            "weekly": 27,
+            "chase_gate": 6,
+            "fired": 4,
+            "daily": 7,
+            "climax_cooldown": 1
+          },
+          "bias_sources": {
+            "momentum": 4
+          },
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3291.39,
+              "sl": 3080.83,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2524.38,
+              "sl": 2776.83,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-06-13",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 1387.4,
+              "sl": 1574.32,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-08-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1707.51,
+              "sl": 1539.66,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        }
+      }
+    },
+    "2023-recovery": {
+      "BTC": {
+        "control": {
+          "fired": 4,
+          "correct": 4,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 7.6675153570714665,
+          "stage_counts": {
+            "weekly": 24,
+            "fired": 4,
+            "climax_cooldown": 7,
+            "daily": 8,
+            "chase_gate": 5,
+            "4H": 4
+          },
+          "bias_sources": {
+            "momentum": 3,
+            "range_breakout": 1
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 17184.51,
+              "sl": 16819.26,
+              "outcome": "correct",
+              "pnl_r": 3.4949
+            },
+            {
+              "week": "2023-03-13",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 22446.02,
+              "sl": 20270.6,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2023-05-08",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 28572.17,
+              "sl": 30349.98,
+              "outcome": "correct",
+              "pnl_r": 1.1444
+            },
+            {
+              "week": "2023-12-04",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 40211.29,
+              "sl": 38408.16,
+              "outcome": "correct",
+              "pnl_r": 1.3283
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 6,
+          "correct": 5,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 7.867515357071467,
+          "stage_counts": {
+            "weekly": 21,
+            "fired": 6,
+            "climax_cooldown": 7,
+            "daily": 9,
+            "chase_gate": 5,
+            "4H": 4
+          },
+          "bias_sources": {
+            "momentum": 3,
+            "range_breakout": 1,
+            "recovery_transition": 2
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 17184.51,
+              "sl": 16819.26,
+              "outcome": "correct",
+              "pnl_r": 3.4949
+            },
+            {
+              "week": "2023-03-13",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 22446.02,
+              "sl": 20270.6,
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2023-04-10",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 28381.25,
+              "sl": 27020.84,
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2023-05-08",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 28572.17,
+              "sl": 30349.98,
+              "outcome": "correct",
+              "pnl_r": 1.1444
+            },
+            {
+              "week": "2023-10-02",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 27932.05,
+              "sl": 26978.87,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2023-12-04",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 40211.29,
+              "sl": 38408.16,
+              "outcome": "correct",
+              "pnl_r": 1.3283
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 2,
+          "correct": 2,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.8732910860102336,
+          "stage_counts": {
+            "weekly": 32,
+            "fired": 2,
+            "climax_cooldown": 4,
+            "daily": 6,
+            "4H": 3,
+            "chase_gate": 5
+          },
+          "bias_sources": {
+            "momentum": 1,
+            "range_breakout": 1
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1294.86,
+              "sl": 1250.81,
+              "outcome": "correct",
+              "pnl_r": 1.5509
+            },
+            {
+              "week": "2023-10-23",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 1672.99,
+              "sl": 1597.11,
+              "outcome": "correct",
+              "pnl_r": 1.3224
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 4,
+          "correct": 2,
+          "incorrect": 2,
+          "unresolved": 0,
+          "total_r": 0.8732910860102336,
+          "stage_counts": {
+            "weekly": 26,
+            "fired": 4,
+            "climax_cooldown": 4,
+            "daily": 7,
+            "4H": 5,
+            "chase_gate": 6
+          },
+          "bias_sources": {
+            "momentum": 1,
+            "recovery_transition": 2,
+            "range_breakout": 1
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 1294.86,
+              "sl": 1250.81,
+              "outcome": "correct",
+              "pnl_r": 1.5509
+            },
+            {
+              "week": "2023-07-03",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 1934.88,
+              "sl": 1830.88,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2023-10-02",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 1724.38,
+              "sl": 1656.03,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2023-10-23",
+              "direction": "long",
+              "bias_source": "range_breakout",
+              "entry": 1672.99,
+              "sl": 1597.11,
+              "outcome": "correct",
+              "pnl_r": 1.3224
+            }
+          ]
+        }
+      }
+    },
+    "2024-ETF-approval": {
+      "BTC": {
+        "control": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.195246100868644,
+          "stage_counts": {
+            "weekly": 21,
+            "daily": 1,
+            "4H": 2,
+            "chase_gate": 1,
+            "fired": 1
+          },
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2024-06-24",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 63080.0,
+              "sl": 66186.23,
+              "outcome": "correct",
+              "pnl_r": 2.1952
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 2.195246100868644,
+          "stage_counts": {
+            "weekly": 17,
+            "chase_gate": 4,
+            "4H": 3,
+            "daily": 1,
+            "fired": 1
+          },
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2024-06-24",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 63080.0,
+              "sl": 66186.23,
+              "outcome": "correct",
+              "pnl_r": 2.1952
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 19,
+            "daily": 4,
+            "4H": 1,
+            "climax_cooldown": 2
+          },
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "stage_counts": {
+            "weekly": 19,
+            "daily": 4,
+            "4H": 1,
+            "climax_cooldown": 2
+          },
+          "bias_sources": {},
+          "trades": []
+        }
+      }
+    },
+    "2024-2025-bull": {
+      "BTC": {
+        "control": {
+          "fired": 3,
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": -1.0,
+          "stage_counts": {
+            "daily": 6,
+            "fired": 3,
+            "weekly": 27,
+            "4H": 1,
+            "climax_cooldown": 2,
+            "chase_gate": 1
+          },
+          "bias_sources": {
+            "momentum": 2,
+            "range_breakout": 1
+          },
+          "trades": [
+            {
+              "week": "2024-07-08",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 55094.0,
+              "sl": 58710.01,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2024-09-02",
+              "direction": "short",
+              "bias_source": "range_breakout",
+              "entry": 57467.24,
+              "sl": 61023.31,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 81292.0,
+              "sl": 90444.06,
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 5,
+          "correct": 0,
+          "incorrect": 3,
+          "unresolved": 2,
+          "total_r": -3.0,
+          "stage_counts": {
+            "daily": 7,
+            "fired": 5,
+            "weekly": 22,
+            "4H": 2,
+            "chase_gate": 2,
+            "climax_cooldown": 2
+          },
+          "bias_sources": {
+            "momentum": 2,
+            "range_breakout": 1,
+            "recovery_transition": 2
+          },
+          "trades": [
+            {
+              "week": "2024-07-08",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 55094.0,
+              "sl": 58710.01,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2024-09-02",
+              "direction": "short",
+              "bias_source": "range_breakout",
+              "entry": 57467.24,
+              "sl": 61023.31,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2024-09-23",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 63577.88,
+              "sl": 60574.2,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2024-10-21",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 69160.0,
+              "sl": 66146.57,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 81292.0,
+              "sl": 90444.06,
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 2,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 0.0,
+          "stage_counts": {
+            "daily": 4,
+            "weekly": 26,
+            "climax_cooldown": 3,
+            "fired": 2,
+            "chase_gate": 3,
+            "4H": 2
+          },
+          "bias_sources": {
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2024-11-11",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3193.5,
+              "sl": 2957.52,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2036.48,
+              "sl": 2373.63,
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 3,
+          "correct": 0,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": -1.0,
+          "stage_counts": {
+            "daily": 5,
+            "weekly": 23,
+            "climax_cooldown": 3,
+            "chase_gate": 4,
+            "fired": 3,
+            "4H": 2
+          },
+          "bias_sources": {
+            "recovery_transition": 1,
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2024-10-21",
+              "direction": "long",
+              "bias_source": "recovery_transition",
+              "entry": 2746.25,
+              "sl": 2605.24,
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2024-11-11",
+              "direction": "long",
+              "bias_source": "momentum",
+              "entry": 3193.5,
+              "sl": 2957.52,
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "entry": 2036.48,
+              "sl": 2373.63,
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "oos": {
+    "BTC": {
+      "control": {
+        "fired": 1,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 0.0,
+        "stage_counts": {
+          "weekly": 26,
+          "fired": 1,
+          "daily": 2,
+          "4H": 3,
+          "weekly_cot": 2
+        },
+        "bias_sources": {
+          "range_breakout": 1
+        },
+        "trades": [
+          {
+            "week": "2026-05-18",
+            "direction": "short",
+            "bias_source": "range_breakout",
+            "entry": 77209.95,
+            "sl": 80268.1,
+            "outcome": null,
+            "pnl_r": 0.0
+          }
+        ]
+      },
+      "treatment": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "stage_counts": {
+          "weekly": 26,
+          "4H": 4,
+          "daily": 2,
+          "weekly_cot": 2
+        },
+        "bias_sources": {},
+        "trades": []
+      }
+    },
+    "ETH": {
+      "control": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "stage_counts": {
+          "weekly": 29,
+          "daily": 2,
+          "weekly_cot": 3
+        },
+        "bias_sources": {},
+        "trades": []
+      },
+      "treatment": {
+        "fired": 0,
+        "correct": 0,
+        "incorrect": 0,
+        "unresolved": 0,
+        "total_r": 0.0,
+        "stage_counts": {
+          "weekly": 23,
+          "weekly_cot": 9,
+          "daily": 2
+        },
+        "bias_sources": {},
+        "trades": []
+      }
+    }
+  },
+  "pooled": {
+    "control": {
+      "fired": 31,
+      "correct": 19,
+      "incorrect": 3,
+      "unresolved": 9,
+      "total_r": 28.392592368878095
+    },
+    "treatment": {
+      "fired": 40,
+      "correct": 21,
+      "incorrect": 10,
+      "unresolved": 9,
+      "total_r": 24.108828760791006
+    }
+  }
+}
