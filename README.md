@@ -91,10 +91,11 @@ PYTHONPATH=. .venv/bin/python cli/main.py --help
 
 ## Tests
 
-Run the practical local suite from the repository root:
+Run the practical local suite from the repository root (excluding tests marked
+`integration`, which may require live providers or testnet credentials):
 
 ```bash
-PYTHONPATH=. .venv/bin/pytest -q
+PYTHONPATH=. .venv/bin/pytest -q -m 'not integration'
 ```
 
 Tests should use deterministic fixtures unless an integration test explicitly
@@ -124,6 +125,7 @@ requires explicit human control.
 ## Research documentation
 
 - [Canonical research state](research/nave/state.json)
+- [José Luis Cava daily video research contract](docs/analysis/jose_luis_cava_daily_research.md)
 - [Memecoin research plan](docs/analysis/memecoin/plan.md)
 - [Stage-1 survival report](docs/analysis/memecoin/nave-stage1-survival-day5-20260901.md)
 - [Independent notification/state audit](docs/analysis/memecoin/nave-notification-stage1-independent-audit-20260902.md)

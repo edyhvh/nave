@@ -43,6 +43,9 @@ No reviewed branch contains required current code that is absent from `main`.
   their conclusions preserved rather than promoted.
 - Provider-quality evidence, missing-hour handling, unresolved outcome
   taxonomy, and regression tests.
+- The Abi/Hermes José Luis Cava daily research contract, including the
+  verified YouTube source, seven-video bootstrap history, transcript failure
+  handling, point-in-time evidence rules, and read-only human-gated boundary.
 - Workspace hygiene for nested `.worktrees/` and this consolidation report.
 
 ## 4. M3 Malformed Pair Fix
@@ -72,20 +75,20 @@ future research milestones; the repository does not claim full PIT safety.
 ## 6. README Changes
 
 `README.md` was rewritten to a concise current description of NAVE’s research
-role, evidence philosophy, active focus, repository structure, setup, tests,
-read-only entrypoints, action boundary, and documentation links. Stale
-autonomous-trading and unsupported edge claims were removed.
+role, evidence philosophy, active focus, repository structure, setup, safe
+tests, read-only entrypoints, action boundary, and documentation links. Stale
+autonomous-trading and unsupported edge claims were removed. The José Luis
+Cava contract is linked from the research documentation section.
 
 ## 7. Tests
 
-- Focused consolidated areas: `PYTHONPATH=. .venv/bin/pytest -q` with M3,
-  PumpApi, discovery-policy, ISM, OpenBB, squeeze, Stage-1, taxonomy, and
-  outcome-coverage tests: **55 passed**.
-- Full practical suite from `main`: `PYTHONPATH=. .venv/bin/pytest -q`:
-  **698 passed, 1 skipped**.
-- The skipped test is the existing wallet testnet integration test. Existing
-  warnings were a websockets deprecation and an unregistered `integration`
-  marker.
+- Full practical suite from `main`: `PYTHONPATH=. .venv/bin/pytest -q -m
+  'not integration'`: **698 passed, 1 deselected**.
+- The deselected test is the existing wallet testnet integration test. The
+  safe suite also emitted existing websockets and integration-marker warnings.
+- The Cava task was continued in read-only mode on 2026-09-03; the new copper
+  video had no available transcript, so the report correctly returned `NO
+  ACTION / INSUFFICIENT EVIDENCE` and did not advance the cursor.
 - CLI/import and JSON/link checks were run without provider acquisition or
   external financial actions.
 - Repository-wide Ruff was also inspected; it reports existing style findings
