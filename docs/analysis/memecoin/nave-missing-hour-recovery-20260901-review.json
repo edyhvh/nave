@@ -1,0 +1,48 @@
+{
+  "schema_version": "nave.skeptical-review.v1",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-missing-hour-recovery-20260901.md",
+  "reviewed_at": "2026-09-01T12:05:18Z",
+  "classification": "BLOCKED BY OUTCOME COVERAGE",
+  "decision": "NEXT_BOUNDED_EXPERIMENT",
+  "edge_claim": false,
+  "evidence_source": "Recovered repository artifact at commit 39e909809f85d998c7d6cbd06ff1bef93c18bc31; local resource preflight; no external provider call",
+  "falsification_attempt": [
+    {"test":"Treat recovered Day-2 data as complete", "result":"FAIL", "reason":"Only 19/24 hours verified; five integrity failures remain missing."},
+    {"test":"Treat overlap agreement as predictive validation", "result":"REJECTED", "reason":"Agreement tests source semantics only; no same-pool outcome panel or cost-adjusted model comparison exists."},
+    {"test":"Treat local recovery as blocker reduction sufficient for scale-up", "result":"FAIL", "reason":"Validated multiday outcome rows remain zero; no third-day manifest or continuation outcomes are available."},
+    {"test":"Exclude failed hours, DEAD, UNEXITABLE, PROVIDER_UNAVAILABLE, or UNKNOWN histories", "result":"REJECTED", "reason":"Missingness is preserved and cannot be converted into favorable exclusions or success."},
+    {"test":"Use participant evidence as exogenous", "result":"FAIL", "reason":"Existing targeted evidence remains SELF-FLOW CONTAMINATED and mature Day-2 histories remain zero."},
+    {"test":"Claim a trading edge or operationalize a rule", "result":"REJECTED", "reason":"No BUY, SELL, profitable, validated-edge, scanner, watch, alert, or execution claim is permitted."}
+  ],
+  "quality_checks": {
+    "leakage": "NOT_ESTABLISHED; overlap/recovery evidence is not an outcome test",
+    "selection": "PARTIAL; deterministic 1000-mint sample, no survivor filter reported",
+    "self_flow": "SELF-FLOW CONTAMINATED",
+    "temporal_diversity": "INSUFFICIENT DATA",
+    "missingness_correlation": "UNKNOWN",
+    "definition_drift": "LIMITED; four side discrepancies and CREATE representation difference remain flagged",
+    "uncertainty": "NOT_ESTIMABLE for predictive outcomes",
+    "controls": "NOT_RUN",
+    "claim_strength": "DESCRIPTIVE RECOVERY ONLY"
+  },
+  "verified_facts": {
+    "overlap_rows": 6641,
+    "signature_matches": 6641,
+    "mint_matches": 6641,
+    "verified_replay_hours": 19,
+    "attempted_replay_hours": 24,
+    "retained_events": 211350,
+    "new_dune_credits": 0,
+    "resource_preflight_allowed": true
+  },
+  "unknowns": [
+    "Whether any failed hours can be recovered locally",
+    "Complete outcome coverage at 5m/15m/30m/60m/4h",
+    "Third-day denominator and frozen sample manifest",
+    "Point-in-time mature participant histories",
+    "Runner continuation at 24h and 72h",
+    "Robustness across days, venues, regimes, and concentration controls"
+  ],
+  "next_step": "Create one bounded quant follow-up for a PumpApi-vs-Dune overlap/quality proof using retained/local evidence first; no paid call or scale-up without fresh preflight and quality gate.",
+  "external_actions": "none"
+}

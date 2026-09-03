@@ -1,0 +1,538 @@
+{
+  "verdict": "AUDIT FAIL — AUTONOMY SHOULD REMAIN PAUSED.",
+  "autonomy_go_no_go": "NO-GO",
+  "implementation_commit": {
+    "report_commit": "64da019b0ddf38b458a42271fab95b49256e9319",
+    "parent": "fcf10f8d4e94105642c644b0394e0f30f0674790",
+    "branch": "fix/m3-malformed-pair-resolution",
+    "claimed_hermes_fix_commit": "821a00845... absent from Hermes object database",
+    "served_hermes_commit": "180291162ff4df0d42b5dc4fecd08005cf7cebf9"
+  },
+  "gateway": {
+    "status": "active",
+    "pid": 1896193,
+    "served_profiles": [
+      "default",
+      "dev",
+      "emunah",
+      "quant",
+      "sofia",
+      "work"
+    ],
+    "single_gateway": true,
+    "embedded_dispatcher": true,
+    "separate_dispatcher_unit": false
+  },
+  "dispatcher": {
+    "status": "embedded in gateway",
+    "configured": true,
+    "separate_daemon": false,
+    "interval_seconds": 60,
+    "max_in_progress": 4,
+    "per_profile_max_in_progress": 2
+  },
+  "discord": {
+    "current_state": "connected",
+    "last_recorded_connected": "2026-09-02T02:44:14Z",
+    "recent_disconnect": "2026-09-02T02:40:10Z",
+    "recent_issues": [
+      "WebSocket health/reconnect events",
+      "slash-command sync timeouts",
+      "cron delivery warnings",
+      "profile-specific and normal-final-send duplicate-risk warnings"
+    ],
+    "quant_route_channel": "1514695031901126727",
+    "quant_profile_config_discord_disabled": true
+  },
+  "notification_path": {
+    "kanban_path": "worker/transition -> task_events -> kanban_notify_subs cursor claim -> embedded watcher -> profile-aware adapter -> Discord",
+    "completed_path": "completed event -> routine text formatter -> adapter.send -> artifact delivery",
+    "other_user_facing_producers": [
+      "agent final/stream sends",
+      "generic send_message media",
+      "cron obligations",
+      "slash-command responses",
+      "wake/self-post paths"
+    ],
+    "classification": "DUPLICATE_RISK",
+    "one_global_authoritative_producer": false
+  },
+  "stale_replay": {
+    "exact_event": "t_db6c87dd",
+    "stale_message_currently_replayed": false,
+    "routine_done_sent_at_completion": true,
+    "completion_time_utc": "2026-09-01T19:50:58Z",
+    "delivery_time_utc": "2026-09-01T19:51:04.508Z",
+    "reconnect_preceding_delivery": false,
+    "semantic_old_vs_new_event_check": false,
+    "replay_if_cursor_behind_or_subscription_recreated": true
+  },
+  "idempotency": {
+    "classification": "PARTIAL",
+    "persistent_cursor": true,
+    "durable_delivery_ledger": false,
+    "survives_gateway_restart_for_same_subscription": true,
+    "survives_subscription_recreation_semantically": false,
+    "cross_producer_dedupe": false,
+    "same_event_delivery_race_protection": "cursor claim is atomic; failed sends may rewind cursor"
+  },
+  "attachments": {
+    "auto_json": "still possible",
+    "auto_md": "still possible",
+    "auto_csv": "still possible",
+    "auto_parquet": "still possible",
+    "current_source_behavior": "completed-event artifact scanner sends valid local artifacts without extension suppression",
+    "exact_event_observed": {
+      "markdown": true,
+      "json": true,
+      "csv": false,
+      "files": [
+        "t_db6c87dd report markdown",
+        "t_db6c87dd JSON artifacts"
+      ]
+    },
+    "central_policy_enforced": false
+  },
+  "action_required": {
+    "intended_persistence": true,
+    "current_quant_soul_policy": "meaningful unresolved ACTION_REQUIRED only",
+    "implementation_consumes_notify_user_or_notify_attachments_flags": false,
+    "unresolved_gate_offline_behavior": "not independently proven",
+    "resolved_gate_replay_suppression": "not semantically guaranteed",
+    "classification": "PARTIAL"
+  },
+  "pending_queue": {
+    "canonical_kanban_db": "<hermes-kanban-db>",
+    "pending_messages_directory_count": 0,
+    "non_delivered_delivery_obligations": 0,
+    "total_delivery_obligations_observed": 182,
+    "nave_subscription_cursors": {
+      "t_81a4fb08": 2668,
+      "t_db6c87dd": 2549,
+      "t_e8a16517": 2499
+    },
+    "current_pending_stale_nave_messages": 0,
+    "stale_messages_could_fire_if_cursor_behind_or_producer_replays": true
+  },
+  "kanban": {
+    "current_nave_nonterminal_title_matching_tasks": 5,
+    "tasks": [
+      {
+        "id": "t_b0fdb800",
+        "status": "blocked",
+        "block_kind": "needs_input",
+        "description": "old proof hold"
+      },
+      {
+        "id": "t_89fda005",
+        "status": "blocked",
+        "block_kind": "needs_input",
+        "description": "old proof v2"
+      },
+      {
+        "id": "t_177b76c5",
+        "status": "blocked",
+        "block_kind": "needs_input",
+        "description": "old proof v3 hold"
+      },
+      {
+        "id": "t_94b561e8",
+        "status": "blocked",
+        "block_kind": "transient",
+        "description": "next three clean days"
+      },
+      {
+        "id": "t_81a4fb08",
+        "status": "blocked",
+        "block_kind": "transient",
+        "description": "current Sep-1 continuation"
+      }
+    ],
+    "current_chain_task": "t_81a4fb08",
+    "duplicate_chain_risk": "possible",
+    "simultaneous_active_nave_workers_observed": false,
+    "old_proof_task_eligible_for_claim": false
+  },
+  "nave_state": {
+    "canonical_path": "<repo-root>/research/nave/state.json",
+    "main_state_phase": "NEXT_BOUNDED_EXPERIMENT",
+    "main_state_next_task": "t_81a4fb08",
+    "main_state_claimed_sole_running_continuation": true,
+    "live_db_status_of_next_task": "blocked",
+    "isolated_task_state": "BLOCKED_BY_PROVIDER_UNAVAILABLE",
+    "day6_hours_observed": 21,
+    "day6_hours_expected": 24,
+    "missing_hours": [
+      21,
+      22,
+      23
+    ],
+    "outcomes_computed": false,
+    "canonical_state_consistency": "conflicting",
+    "dirty_continuation_worktree_artifacts": true
+  },
+  "stage1_contract": {
+    "path": "docs/analysis/memecoin/nave-stage1-survival-contract-20260901.json",
+    "schema": "nave.stage1-survival-contract.v1",
+    "frozen_at": "2026-09-01T20:55:00Z",
+    "primary_label": "valid BUY/SELL in (decision time, decision time + 5m]",
+    "right_censoring": true,
+    "provider_gaps_not_inactivity": true,
+    "migration_unknown": true,
+    "future_only_features": true,
+    "implementation_boundary_tests_pass": true,
+    "limitation": "scripts/nave_stage1_audit.py hardcodes provider_complete=true and does not call decision_time_eligible"
+  },
+  "model_a": {
+    "status": "frozen",
+    "features": [
+      "age_seconds",
+      "log_return_to_decision",
+      "curve_progress",
+      "buy_volume_sol_raw",
+      "sell_volume_sol_raw",
+      "trade_count_raw",
+      "unique_buyers_raw",
+      "migration_state"
+    ],
+    "future_leakage_found_in_realized_selected_tape_check": false
+  },
+  "model_c": {
+    "status": "frozen",
+    "additional_features": [
+      "new_buyer_acceleration",
+      "buy_volume_acceleration",
+      "sell_pressure",
+      "trade_size_concentration"
+    ],
+    "formulas_modified_after_aug29": false,
+    "future_leakage_found_in_realized_selected_tape_check": false
+  },
+  "experiment_drift": {
+    "classification": "DOCUMENTED_VERSION_CHANGE",
+    "silent_drift_found": false,
+    "changes_observed": [
+      "Stage1 implementation added evaluation_day parameter and dynamic report key"
+    ],
+    "decision_time_drift": false,
+    "outcome_window_drift": false,
+    "feature_set_drift": false,
+    "sample_rule_drift": false,
+    "metric_definition_drift": false,
+    "bootstrap_drift": false,
+    "hyperparameter_drift": false
+  },
+  "data_checks": {
+    "data_root": "<repo-root>/data",
+    "linked_worktree_resolution": "common canonical root via research/nave/data_root.py",
+    "aug28": {
+      "status": "verified",
+      "rows": 254522,
+      "sha256": "8dbed19dda1c9d190178e1769c2e3483c9f4de1029fb4a6906413ecea91092b7",
+      "sample_launch_count": "not independently verified from canonical launch manifest"
+    },
+    "aug29": {
+      "status": "verified",
+      "rows": 353030,
+      "sha256": "15933e1da206ebde9a842b0d0f72e79ff06cb8ca4e21ca67dd9b2619ceb0a0c4",
+      "sample_launch_count": 1000,
+      "provider_hours": "24/24",
+      "denominator": 39415,
+      "frozen_before_replay": true,
+      "selection_seed": "nave-2026-08-29-v1"
+    },
+    "aug30": {
+      "status": "verified",
+      "rows": 294446,
+      "sha256": "9767abcd975f608ad969c4eda5ea25d00fb1148c231825e979520b97f22ff5ee",
+      "sample_launch_count": 1000,
+      "frozen_before_replay": true,
+      "selection_hash_manifest": "not present; sample_rank present"
+    },
+    "aug31": {
+      "status": "verified",
+      "rows": 555201,
+      "sha256": "e7233b7ead392ed90bf51d9e3ed471d2d70b0377b5cc33b755d310935a6c6847",
+      "sample_launch_count": 1000,
+      "provider_hours": "24/24",
+      "denominator": 37540,
+      "frozen_before_replay": true,
+      "selection_seed": "nave-2026-08-31-v1"
+    },
+    "sample_independence": "Aug29/Aug31 deterministic denominator selection manifests support outcome-independent freezing; Aug28 canonical launch manifest not found"
+  },
+  "reproduction": {
+    "status": "NOT_RUN_INDEPENDENTLY",
+    "reason": "fresh fitting/reproduction was not run because audit scope forbids fitting and persisted artifacts were inspected instead",
+    "persisted_day3": {
+      "model_a_pr_auc": 0.321988,
+      "model_c_pr_auc": 0.258693,
+      "c_minus_a": -0.063295
+    },
+    "persisted_day5": {
+      "model_a_pr_auc": 0.246411,
+      "model_c_pr_auc": 0.222027,
+      "c_minus_a": -0.024385
+    },
+    "token_level_independence": "one 10m row per token with token-cluster bootstrap in persisted Day5 result"
+  },
+  "aug30": {
+    "status": "COMPLETE",
+    "evidence": "1000-sample manifest and 294446-row local Parquet"
+  },
+  "aug31": {
+    "status": "COMPLETE",
+    "evidence": "1000-sample 24/24 manifest and 555201-row local Parquet",
+    "continuation_status": "Sep-1 continuation partial/not admitted due missing PumpApi hours"
+  },
+  "safety": {
+    "p0_findings": 0,
+    "live_behavior_mutation_found": false,
+    "scanner_alert_portfolio_wallet_execution_changes_found": false,
+    "trading_inference_overclaim_found": false,
+    "provider_calls_made_by_audit": false,
+    "acquisitions_started_by_audit": false,
+    "resource_state": {
+      "dune_cached_remaining": 471.271,
+      "dune_cached_total": 2500,
+      "disk_guard_target_gb": 25,
+      "disk_guard_warning_gb": 50,
+      "disk_guard_hard_stop_gb": 75,
+      "disk_floor_gb": 15,
+      "note": "cached local state only; no real-time provider balance verification"
+    }
+  },
+  "findings": [
+    {
+      "id": "P1-001",
+      "severity": "P1",
+      "title": "Claimed Hermes notification fix is absent from served source",
+      "summary": "The report names 821a00845... but live Hermes serves 180291162... and the claimed commit is absent; completed events still send routine done notifications and artifacts."
+    },
+    {
+      "id": "P1-002",
+      "severity": "P1",
+      "title": "Historical replay protection lacks semantic freshness",
+      "summary": "Persistent cursors prevent same-subscription replay after advancement, but no durable delivery ledger or old-versus-new event rule prevents replay after cursor rollback, reset, or subscription recreation."
+    },
+    {
+      "id": "P1-003",
+      "severity": "P1",
+      "title": "NAVE canonical state conflicts with live Kanban state",
+      "summary": "Canonical state says sole running continuation while t_81a4fb08 is blocked with missing hours and no computed outcome; multiple blocked NAVE chains remain."
+    },
+    {
+      "id": "P1-004",
+      "severity": "P1",
+      "title": "Action-required behavior is not proven in production wiring",
+      "summary": "SOUL describes notify_user flags, but live completed-event code does not consume them; unresolved-versus-resolved gate semantics are not protected by the served notifier."
+    },
+    {
+      "id": "P2-001",
+      "severity": "P2",
+      "title": "Automatic artifact attachment suppression is absent",
+      "summary": "JSON and Markdown were sent for t_db6c87dd and current artifact scanning has no extension policy; CSV/Parquet remain possible."
+    },
+    {
+      "id": "P2-002",
+      "severity": "P2",
+      "title": "No single global notification producer or cross-producer ledger",
+      "summary": "Kanban watcher is authoritative only for Kanban subscriptions; direct, cron, wake, slash, and final-send paths remain separate."
+    },
+    {
+      "id": "P2-003",
+      "severity": "P2",
+      "title": "Test suite does not prove the claimed policy",
+      "summary": "47 Hermes and 25 NAVE tests pass, but current Hermes tests exercise artifact delivery and do not cover notify_user/notify_attachments, semantic reconnect freshness, or production ACTION_REQUIRED persistence."
+    },
+    {
+      "id": "P2-004",
+      "severity": "P2",
+      "title": "Canonical data evidence has a minor Aug28 manifest gap",
+      "summary": "Aug28 row count/hash is verified, but an equivalent canonical launch-selection manifest was not found."
+    }
+  ],
+  "claim_matrix": [
+    {
+      "claim": "stale NAVE Discord notifications no longer replay",
+      "source": "report notification hygiene",
+      "expected_evidence": "persistent cursor plus restart/reconnect stale-event test",
+      "observed_evidence": "same-subscription cursor is persistent, but no semantic freshness check; exact t_db6 delivery was immediate at completion",
+      "verdict": "FAIL",
+      "severity": "P1",
+      "notes": "Current pending stale count is zero, not proof of future replay safety."
+    },
+    {
+      "claim": "routine Kanban done does not spam Discord",
+      "source": "report notification hygiene",
+      "expected_evidence": "served completed-event path suppresses routine done",
+      "observed_evidence": "live watcher unconditionally formats and sends completed event",
+      "verdict": "FAIL",
+      "severity": "P1",
+      "notes": "t_db6 routine done was delivered."
+    },
+    {
+      "claim": "RESULT/ACTION_REQUIRED behavior correctly scoped",
+      "source": "report notification hygiene",
+      "expected_evidence": "served policy branches and persistence tests",
+      "observed_evidence": "SOUL has policy text; served watcher does not consume flags",
+      "verdict": "PARTIAL",
+      "severity": "P1",
+      "notes": "Meaningful result and unresolved gate distinction not proven."
+    },
+    {
+      "claim": "JSON/MD/CSV artifacts not automatically attached",
+      "source": "report attachment hygiene",
+      "expected_evidence": "central extension deny policy in production path",
+      "observed_evidence": "artifact scanner sends local files; MD and JSON delivered",
+      "verdict": "FAIL",
+      "severity": "P2",
+      "notes": "Confirmed bypass."
+    },
+    {
+      "claim": "notification idempotency works",
+      "source": "report notification hygiene",
+      "expected_evidence": "persistent cross-restart delivery identity",
+      "observed_evidence": "persistent high-water cursor, no delivery ledger or cross-producer key",
+      "verdict": "PARTIAL",
+      "severity": "P1",
+      "notes": "Reset/recreated subscription and multiple producers remain risks."
+    },
+    {
+      "claim": "reconnect does not resurrect historical messages",
+      "source": "report notification hygiene",
+      "expected_evidence": "startup/reconnect freshness semantics",
+      "observed_evidence": "cursor only; old events above cursor remain eligible",
+      "verdict": "FAIL",
+      "severity": "P1",
+      "notes": "No semantic stale-event exclusion."
+    },
+    {
+      "claim": "[default] @quant routing is correct",
+      "source": "report routing explanation",
+      "expected_evidence": "board/profile/transport mapping",
+      "observed_evidence": "default board tag plus quant assignee; actual quant route channel correct",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "Confusing display, not a routing bug."
+    },
+    {
+      "claim": "exactly one authoritative notification producer/path",
+      "source": "report architecture",
+      "expected_evidence": "single producer or shared dedupe ledger",
+      "observed_evidence": "Kanban watcher plus direct/cron/wake/slash/final-send paths",
+      "verdict": "FAIL",
+      "severity": "P2",
+      "notes": "Single Kanban watcher only."
+    },
+    {
+      "claim": "current pending queues contain no stale NAVE messages",
+      "source": "report queue hygiene",
+      "expected_evidence": "read-only queue and obligation state",
+      "observed_evidence": "pending_messages empty; 182 obligations delivered; no newer terminal NAVE events per subscription",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "Snapshot passes; future replay risk remains."
+    },
+    {
+      "claim": "NAVE autonomous chain canonical/non-duplicated",
+      "source": "report autonomy",
+      "expected_evidence": "one live graph and consistent DB/state",
+      "observed_evidence": "five blocked title-matching tasks and state says sole running while next task blocked",
+      "verdict": "FAIL",
+      "severity": "P1",
+      "notes": "No simultaneous active workers observed, but graph is not canonical."
+    },
+    {
+      "claim": "Stage1 A/C definitions frozen",
+      "source": "report scientific contract",
+      "expected_evidence": "contract/code/report comparison",
+      "observed_evidence": "frozen contract, exact A/C features, no post-Aug29 feature drift",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "Audit script has provider_complete/eligibility limitation."
+    },
+    {
+      "claim": "scientific/acquisition state supported by artifacts",
+      "source": "report data status",
+      "expected_evidence": "manifests, Parquet metadata, state, task evidence",
+      "observed_evidence": "Aug29-31 manifests/row counts verified; Sep1 continuation only 21/24 and no outcome",
+      "verdict": "PARTIAL",
+      "severity": "P1",
+      "notes": "Canonical state conflicts with blocked continuation."
+    },
+    {
+      "claim": "A versus C result reproducible",
+      "source": "report Stage1 results",
+      "expected_evidence": "fresh local reproduction under frozen code/contract",
+      "observed_evidence": "persisted results match approximate values; fresh fitting not run",
+      "verdict": "NOT_VERIFIABLE",
+      "severity": "P2",
+      "notes": "No tuning or fitting performed per audit scope."
+    },
+    {
+      "claim": "no token-time pseudoreplication",
+      "source": "report statistics",
+      "expected_evidence": "one 10m row/token or clustered evaluation",
+      "observed_evidence": "persisted Day5 result records one 10m row/token and token-cluster bootstrap",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "Fresh reproduction not run."
+    },
+    {
+      "claim": "no edge overclaim",
+      "source": "report safety boundary",
+      "expected_evidence": "latest reports/SOUL/tasks avoid trading claims",
+      "observed_evidence": "Stage1 persisted edge false; research-only/human-gated wording",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "No operational trading inference found."
+    },
+    {
+      "claim": "no unrelated Hermes behavior broken",
+      "source": "report scope",
+      "expected_evidence": "implementation diff and live source review",
+      "observed_evidence": "report commit has no Hermes changes; shared live paths have duplicate-risk warnings",
+      "verdict": "PARTIAL",
+      "severity": "P2",
+      "notes": "No causal regression established, but global policy impact is possible."
+    },
+    {
+      "claim": "stable data root prevents sibling-worktree blindness",
+      "source": "report data hygiene",
+      "expected_evidence": "resolver and tests",
+      "observed_evidence": "canonical <repo-root>/data resolver and tests pass",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "No path escape found."
+    },
+    {
+      "claim": "Aug30/Aug31 statuses are complete",
+      "source": "report acquisition state",
+      "expected_evidence": "local manifests/Parquet/Kanban/logs",
+      "observed_evidence": "both have 1000-sample local datasets; Sep1 continuation partial",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "Separate from Aug30/31 completion."
+    },
+    {
+      "claim": "autonomous continuation can proceed without routine spam",
+      "source": "report autonomy",
+      "expected_evidence": "live current code and task child notification policy",
+      "observed_evidence": "current watcher still sends routine done and artifacts; next task blocked",
+      "verdict": "FAIL",
+      "severity": "P1",
+      "notes": "NO-GO."
+    },
+    {
+      "claim": "three-no-progress guard remains",
+      "source": "report autonomy",
+      "expected_evidence": "current SOUL/guard code and tests",
+      "observed_evidence": "quant SOUL and resource/stop logic retain three-iteration stop language",
+      "verdict": "PASS",
+      "severity": "INFO",
+      "notes": "Not weakened by report commit; continuation state still conflicting."
+    }
+  ],
+  "recommended_next_action": "Keep autonomous NAVE continuation paused. In a separate repair session, deploy and verify the notification policy in the served Hermes checkout, add semantic replay/durable idempotency and ACTION_REQUIRED integration tests, suppress automatic artifact uploads centrally, then reconcile Kanban and canonical NAVE state before resuming."
+}

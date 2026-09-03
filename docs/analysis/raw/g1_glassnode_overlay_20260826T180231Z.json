@@ -1,0 +1,86 @@
+{
+  "experiment": "G1_glassnode_overlay",
+  "status": "pre-registered bounded experiment",
+  "generated_at": "2026-08-26T18:02:31.249515+00:00",
+  "baseline": {
+    "note": "current-code BTC baseline regenerated via TheoryV2Engine walk (N3 harness semantics)",
+    "fired": 16,
+    "correct": 11,
+    "incorrect": 1,
+    "unresolved": 4,
+    "total_r": 17.8193
+  },
+  "data_available": false,
+  "glassnode_cache_path": "<repo-root>/var/glassnode_cache",
+  "cache_present": false,
+  "fetch_errors": [
+    "sopr: no cache and fetch unavailable/unauthorized",
+    "exchange_netflow: no cache and fetch unavailable/unauthorized",
+    "price: no cache and fetch unavailable/unauthorized"
+  ],
+  "metrics": {
+    "sopr": "indicators/sopr",
+    "exchange_netflow": "transactions/transfers_volume_to_exchanges_sum",
+    "price": "market/price_usd_close"
+  },
+  "overlays": [
+    {
+      "rule": "profit_taking_longs",
+      "baseline": {
+        "count": 16,
+        "resolved": 12,
+        "win_rate": 0.9167,
+        "avg_r": 1.1137,
+        "sum_r": 17.8193
+      },
+      "kept": {
+        "count": 16,
+        "resolved": 12,
+        "win_rate": 0.9167,
+        "avg_r": 1.1137,
+        "sum_r": 17.8193
+      },
+      "blocked": {
+        "count": 0,
+        "resolved": 0,
+        "win_rate": null,
+        "avg_r": null,
+        "sum_r": 0.0
+      },
+      "missing_snapshots": 16,
+      "false_positives_blocked_winners": 0,
+      "blocked_breakdown": {}
+    },
+    {
+      "rule": "capitulation_shorts",
+      "baseline": {
+        "count": 16,
+        "resolved": 12,
+        "win_rate": 0.9167,
+        "avg_r": 1.1137,
+        "sum_r": 17.8193
+      },
+      "kept": {
+        "count": 16,
+        "resolved": 12,
+        "win_rate": 0.9167,
+        "avg_r": 1.1137,
+        "sum_r": 17.8193
+      },
+      "blocked": {
+        "count": 0,
+        "resolved": 0,
+        "win_rate": null,
+        "avg_r": null,
+        "sum_r": 0.0
+      },
+      "missing_snapshots": 16,
+      "false_positives_blocked_winners": 0,
+      "blocked_breakdown": {}
+    }
+  ],
+  "verdict": {
+    "verdict": "REJECT",
+    "reason": "DATA_UNAVAILABLE: no Glassnode API key is provisioned in this environment, no `gn` CLI is installed, and var/glassnode_cache is empty (fetch returns 401). The free/Standard tier requires an account+key that is not provisioned; a paid tier would be required to make SOPR/netflow actionable and is human-gated (no purchase). The overlay cannot be evaluated, so it cannot be adopted. Flag for human decision on Glassnode access."
+  }
+}

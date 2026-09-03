@@ -1,0 +1,1825 @@
+{
+  "generated_at": "2026-09-02T22:02:33.517060+00:00",
+  "universe": "sp500_top_10",
+  "months": 3,
+  "hold_days": 30,
+  "periods": [
+    {
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01"
+    },
+    {
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31"
+    },
+    {
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31"
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "trade_candidates": 18,
+    "no_trade": 12,
+    "errors": 0,
+    "wins": 0,
+    "losses": 18,
+    "win_rate": 0.0,
+    "avg_pnl_dollars": -364.5612752800032,
+    "total_pnl_dollars": -6562.102955040057,
+    "by_strategy": {
+      "bull_put_credit_spread": {
+        "count": 13,
+        "wins": 0,
+        "losses": 13
+      },
+      "bear_call_credit_spread": {
+        "count": 5,
+        "wins": 0,
+        "losses": 5
+      }
+    },
+    "by_status": {
+      "trade_candidate": 18
+    },
+    "filters": {
+      "min_pop": 60.0,
+      "max_touch": 72.0,
+      "min_return_pct": 40.0
+    },
+    "high_odds": {
+      "trades": 16,
+      "wins": 0,
+      "losses": 16,
+      "win_rate": 0.0,
+      "avg_pnl_dollars": -402.2884123254038
+    },
+    "high_odds_high_return": {
+      "count": 0,
+      "examples": []
+    },
+    "by_month": {
+      "2026-06": {
+        "trades": 4,
+        "wins": 0,
+        "pnl": -2587.0746632200876
+      },
+      "2026-07": {
+        "trades": 6,
+        "wins": 0,
+        "pnl": -2247.4285702443804
+      },
+      "2026-08": {
+        "trades": 6,
+        "wins": 0,
+        "pnl": -1602.111363741993
+      }
+    },
+    "ticker_leaderboard": [
+      {
+        "ticker": "GOOGL",
+        "trades": 3,
+        "win_rate": 0.0,
+        "avg_pop": 73.01957577813288,
+        "total_pnl": -431.5822028718203
+      },
+      {
+        "ticker": "GOOG",
+        "trades": 3,
+        "win_rate": 0.0,
+        "avg_pop": 99.97794639349706,
+        "total_pnl": -1138.3324838286385
+      },
+      {
+        "ticker": "TSLA",
+        "trades": 3,
+        "win_rate": 0.0,
+        "avg_pop": 77.58177695971567,
+        "total_pnl": -1151.8774919187967
+      },
+      {
+        "ticker": "AVGO",
+        "trades": 2,
+        "win_rate": 0.0,
+        "avg_pop": 71.67542726120872,
+        "total_pnl": -1930.9277251494977
+      }
+    ]
+  },
+  "rows": [
+    {
+      "ticker": "AAPL",
+      "status": "no_trade",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 306.0460510253906,
+      "exit_spot": 294.1263427734375,
+      "spot_return_pct": -3.894743360359265,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "MSFT",
+      "status": "no_trade",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 459.6546936035156,
+      "exit_spot": 383.5579528808594,
+      "spot_return_pct": -16.555197147251366,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "NVDA",
+      "status": "no_trade",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 224.09881591796875,
+      "exit_spot": 197.5800018310547,
+      "spot_return_pct": -11.833536013247503,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "AMZN",
+      "status": "no_trade",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 261.260009765625,
+      "exit_spot": 241.6999969482422,
+      "spot_return_pct": -7.486799389975529,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "META",
+      "status": "trade_candidate",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 599.9139404296875,
+      "exit_spot": 612.9099731445312,
+      "spot_return_pct": 2.1663161728722846,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [
+            "probability_of_touch_above_income_comfort"
+          ],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "standard",
+        "open_recommended": false
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 570; buy 1 put 560",
+        "metrics": {
+          "composite_score": 30.094160907084323,
+          "pop": 60.42557401995005,
+          "expected_value": 19.973367721048334,
+          "probability_of_touch": 84.94580153586047,
+          "theta_per_day": 0.007340802285417919,
+          "vega_exposure": -0.04385131894300909,
+          "risk_reward": 0.7021276595744671,
+          "max_loss": 587.5000000000003
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 570; buy 1 put 560",
+      "entry_metrics": {
+        "composite_score": 30.094160907084323,
+        "pop": 60.42557401995005,
+        "expected_value": 19.973367721048334,
+        "probability_of_touch": 84.94580153586047,
+        "theta_per_day": 0.007340802285417919,
+        "vega_exposure": -0.04385131894300909,
+        "risk_reward": 0.7021276595744671,
+        "max_loss": 587.5000000000003
+      },
+      "entry_quality": "standard",
+      "mark": {
+        "pnl_dollars": -5.782334237173018,
+        "pnl_pct_of_max_loss": -0.9842271041996621,
+        "pnl_pct_of_max_profit": -1.4017779968904296,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -0.9842271041996621
+    },
+    {
+      "ticker": "GOOGL",
+      "status": "trade_candidate",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 376.14532470703125,
+      "exit_spot": 361.2099914550781,
+      "spot_return_pct": -3.970628443563884,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 340; buy 1 put 330",
+        "metrics": {
+          "composite_score": 55.20451237231715,
+          "pop": 76.25052381321775,
+          "expected_value": 259.44925426064555,
+          "probability_of_touch": 53.46938683542732,
+          "theta_per_day": 0.009805995899702019,
+          "vega_exposure": -0.07485458703990844,
+          "risk_reward": 0.9900497512437816,
+          "max_loss": 502.4999999999999
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 340; buy 1 put 330",
+      "entry_metrics": {
+        "composite_score": 55.20451237231715,
+        "pop": 76.25052381321775,
+        "expected_value": 259.44925426064555,
+        "probability_of_touch": 53.46938683542732,
+        "theta_per_day": 0.009805995899702019,
+        "vega_exposure": -0.07485458703990844,
+        "risk_reward": 0.9900497512437816,
+        "max_loss": 502.4999999999999
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -199.78526433414834,
+        "pnl_pct_of_max_loss": -39.7582615590345,
+        "pnl_pct_of_max_profit": -40.15784207721574,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -39.7582615590345
+    },
+    {
+      "ticker": "GOOG",
+      "status": "trade_candidate",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 372.35589599609375,
+      "exit_spot": 357.8900146484375,
+      "spot_return_pct": -3.884961001881926,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-04",
+      "entry_dte": 95,
+      "exit_dte": 65,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 345; buy 1 put 332",
+        "metrics": {
+          "composite_score": 71.02797302183374,
+          "pop": 100.0,
+          "expected_value": 929.994863360013,
+          "probability_of_touch": 1.1756748886216193e-05,
+          "theta_per_day": 0.001712806272724457,
+          "vega_exposure": -9.683963842595078e-05,
+          "risk_reward": 2.906250000000001,
+          "max_loss": 319.99999999999994
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 345; buy 1 put 332",
+      "entry_metrics": {
+        "composite_score": 71.02797302183374,
+        "pop": 100.0,
+        "expected_value": 929.994863360013,
+        "probability_of_touch": 1.1756748886216193e-05,
+        "theta_per_day": 0.001712806272724457,
+        "vega_exposure": -9.683963842595078e-05,
+        "risk_reward": 2.906250000000001,
+        "max_loss": 319.99999999999994
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -519.4658495296951,
+        "pnl_pct_of_max_loss": -162.33307797802973,
+        "pnl_pct_of_max_profit": -55.85654296018227,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -162.33307797802973
+    },
+    {
+      "ticker": "BRK-B",
+      "status": "no_trade",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 470.2900085449219,
+      "exit_spot": 499.739990234375,
+      "spot_return_pct": 6.262089594582587,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-04",
+      "entry_dte": 95,
+      "exit_dte": 65,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "AVGO",
+      "status": "trade_candidate",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 459.2431640625,
+      "exit_spot": 369.3399963378906,
+      "spot_return_pct": -19.576375820016377,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 420; buy 1 put 380",
+        "metrics": {
+          "composite_score": 58.71064758860373,
+          "pop": 76.59685877296081,
+          "expected_value": 1700.2503602593556,
+          "probability_of_touch": 51.13768163257362,
+          "theta_per_day": 0.06174172288152259,
+          "vega_exposure": -0.25260150866303893,
+          "risk_reward": 2.2064128256513023,
+          "max_loss": 1247.5000000000002
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 420; buy 1 put 380",
+      "entry_metrics": {
+        "composite_score": 58.71064758860373,
+        "pop": 76.59685877296081,
+        "expected_value": 1700.2503602593556,
+        "probability_of_touch": 51.13768163257362,
+        "theta_per_day": 0.06174172288152259,
+        "vega_exposure": -0.25260150866303893,
+        "risk_reward": 2.2064128256513023,
+        "max_loss": 1247.5000000000002
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -1701.8515942326183,
+        "pnl_pct_of_max_loss": -136.42096947756457,
+        "pnl_pct_of_max_profit": -61.82930405931402,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -136.42096947756457
+    },
+    {
+      "ticker": "TSLA",
+      "status": "trade_candidate",
+      "entry_date": "2026-06-01",
+      "exit_date": "2026-07-01",
+      "entry_spot": 415.8800048828125,
+      "exit_spot": 425.29998779296875,
+      "spot_return_pct": 2.265072328449791,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 93,
+      "exit_dte": 63,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 360; buy 1 put 350",
+        "metrics": {
+          "composite_score": 55.16520115200346,
+          "pop": 75.19484010669865,
+          "expected_value": 261.2274496720171,
+          "probability_of_touch": 54.111795527367576,
+          "theta_per_day": 0.01481856523657811,
+          "vega_exposure": -0.0650259009882238,
+          "risk_reward": 1.0408163265306127,
+          "max_loss": 489.9999999999999
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 360; buy 1 put 350",
+      "entry_metrics": {
+        "composite_score": 55.16520115200346,
+        "pop": 75.19484010669865,
+        "expected_value": 261.2274496720171,
+        "probability_of_touch": 54.111795527367576,
+        "theta_per_day": 0.01481856523657811,
+        "vega_exposure": -0.0650259009882238,
+        "risk_reward": 1.0408163265306127,
+        "max_loss": 489.9999999999999
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -165.97195512362578,
+        "pnl_pct_of_max_loss": -33.87182757625017,
+        "pnl_pct_of_max_profit": -32.54352061247563,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -33.87182757625017
+    },
+    {
+      "ticker": "AAPL",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 294.1263427734375,
+      "exit_spot": 308.6438293457031,
+      "spot_return_pct": 4.935799505537086,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bear_call_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bear_call_credit_spread",
+        "bias": "bearish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 call 305; buy 1 call 315",
+        "metrics": {
+          "composite_score": 55.76570463374331,
+          "pop": 65.10399907472772,
+          "expected_value": 276.68225296060467,
+          "probability_of_touch": 60.903548305261964,
+          "theta_per_day": 0.010995879391406976,
+          "vega_exposure": -0.028576934964541723,
+          "risk_reward": 1.7586206896551697,
+          "max_loss": 362.50000000000034
+        }
+      },
+      "strategy_name": "bear_call_credit_spread",
+      "setup_summary": "sell 1 call 305; buy 1 call 315",
+      "entry_metrics": {
+        "composite_score": 55.76570463374331,
+        "pop": 65.10399907472772,
+        "expected_value": 276.68225296060467,
+        "probability_of_touch": 60.903548305261964,
+        "theta_per_day": 0.010995879391406976,
+        "vega_exposure": -0.028576934964541723,
+        "risk_reward": 1.7586206896551697,
+        "max_loss": 362.50000000000034
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -301.24310864570793,
+        "pnl_pct_of_max_loss": -83.101547212609,
+        "pnl_pct_of_max_profit": -47.25382096403264,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -83.101547212609
+    },
+    {
+      "ticker": "MSFT",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 383.5579528808594,
+      "exit_spot": 463.8468017578125,
+      "spot_return_pct": 20.932651317464,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bear_call_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "standard",
+        "open_recommended": false
+      },
+      "executable_setup": {
+        "strategy_name": "bear_call_credit_spread",
+        "bias": "bearish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 call 470; buy 1 call 480",
+        "metrics": {
+          "composite_score": 67.19555352749734,
+          "pop": 100.0,
+          "expected_value": 1047.5000000000002,
+          "probability_of_touch": 0.0,
+          "theta_per_day": 0.0,
+          "vega_exposure": 0.0,
+          "risk_reward": 1.0,
+          "max_loss": 0.0
+        }
+      },
+      "strategy_name": "bear_call_credit_spread",
+      "setup_summary": "sell 1 call 470; buy 1 call 480",
+      "entry_metrics": {
+        "composite_score": 67.19555352749734,
+        "pop": 100.0,
+        "expected_value": 1047.5000000000002,
+        "probability_of_touch": 0.0,
+        "theta_per_day": 0.0,
+        "vega_exposure": 0.0,
+        "risk_reward": 1.0,
+        "max_loss": 0.0
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -919.032983069304,
+        "pnl_pct_of_max_loss": null,
+        "pnl_pct_of_max_profit": -87.73584563907436,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": null
+    },
+    {
+      "ticker": "NVDA",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 197.5800018310547,
+      "exit_spot": 200.75,
+      "spot_return_pct": 1.604412460556559,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bear_call_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bear_call_credit_spread",
+        "bias": "bearish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 call 205; buy 1 call 215",
+        "metrics": {
+          "composite_score": 55.17459145147041,
+          "pop": 64.68684598607346,
+          "expected_value": 265.4470106199337,
+          "probability_of_touch": 64.71204142590383,
+          "theta_per_day": 0.009704330036838418,
+          "vega_exposure": -0.015886579678827062,
+          "risk_reward": 1.7210884353741491,
+          "max_loss": 367.50000000000006
+        }
+      },
+      "strategy_name": "bear_call_credit_spread",
+      "setup_summary": "sell 1 call 205; buy 1 call 215",
+      "entry_metrics": {
+        "composite_score": 55.17459145147041,
+        "pop": 64.68684598607346,
+        "expected_value": 265.4470106199337,
+        "probability_of_touch": 64.71204142590383,
+        "theta_per_day": 0.009704330036838418,
+        "vega_exposure": -0.015886579678827062,
+        "risk_reward": 1.7210884353741491,
+        "max_loss": 367.50000000000006
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -282.92582988648405,
+        "pnl_pct_of_max_loss": -76.98662037727456,
+        "pnl_pct_of_max_profit": -44.73135650379195,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -76.98662037727456
+    },
+    {
+      "ticker": "AMZN",
+      "status": "no_trade",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 241.6999969482422,
+      "exit_spot": 271.5799865722656,
+      "spot_return_pct": 12.362428631069422,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "META",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 612.9099731445312,
+      "exit_spot": 556.7100219726562,
+      "spot_return_pct": -9.169364773678168,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [
+            "probability_of_touch_above_income_comfort"
+          ],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "standard",
+        "open_recommended": false
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 585; buy 1 put 570",
+        "metrics": {
+          "composite_score": 38.62136153796008,
+          "pop": 60.42557401995005,
+          "expected_value": 102.4133756736871,
+          "probability_of_touch": 84.90628631611541,
+          "theta_per_day": 0.010867671835624426,
+          "vega_exposure": -0.0659399350044183,
+          "risk_reward": 0.8575851393188849,
+          "max_loss": 807.5000000000002
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 585; buy 1 put 570",
+      "entry_metrics": {
+        "composite_score": 38.62136153796008,
+        "pop": 60.42557401995005,
+        "expected_value": 102.4133756736871,
+        "probability_of_touch": 84.90628631611541,
+        "theta_per_day": 0.010867671835624426,
+        "vega_exposure": -0.0659399350044183,
+        "risk_reward": 0.8575851393188849,
+        "max_loss": 807.5000000000002
+      },
+      "entry_quality": "standard",
+      "mark": {
+        "pnl_dollars": -119.70602359642317,
+        "pnl_pct_of_max_loss": -14.824275367978096,
+        "pnl_pct_of_max_profit": -17.286068389375192,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -14.824275367978096
+    },
+    {
+      "ticker": "GOOGL",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 361.2099914550781,
+      "exit_spot": 356.1300048828125,
+      "spot_return_pct": -1.406380413731545,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 340; buy 1 put 330",
+        "metrics": {
+          "composite_score": 50.67014776770864,
+          "pop": 67.97074136207314,
+          "expected_value": 177.18643860883583,
+          "probability_of_touch": 70.78340244417423,
+          "theta_per_day": 0.006843861761090711,
+          "vega_exposure": -0.0660415065738269,
+          "risk_reward": 0.9900497512437816,
+          "max_loss": 502.4999999999999
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 340; buy 1 put 330",
+      "entry_metrics": {
+        "composite_score": 50.67014776770864,
+        "pop": 67.97074136207314,
+        "expected_value": 177.18643860883583,
+        "probability_of_touch": 70.78340244417423,
+        "theta_per_day": 0.006843861761090711,
+        "vega_exposure": -0.0660415065738269,
+        "risk_reward": 0.9900497512437816,
+        "max_loss": 502.4999999999999
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -159.2331822704857,
+        "pnl_pct_of_max_loss": -31.68819547671358,
+        "pnl_pct_of_max_profit": -32.0066698031127,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -31.68819547671358
+    },
+    {
+      "ticker": "GOOG",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 357.8900146484375,
+      "exit_spot": 356.6499938964844,
+      "spot_return_pct": -0.3464809581712469,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-04",
+      "entry_dte": 65,
+      "exit_dte": 35,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 342; buy 1 put 330",
+        "metrics": {
+          "composite_score": 68.83421609651127,
+          "pop": 99.9743700220458,
+          "expected_value": 793.7780213157944,
+          "probability_of_touch": 0.05687390449701994,
+          "theta_per_day": 0.0969392579995864,
+          "vega_exposure": -0.005886439394552498,
+          "risk_reward": 1.7563395810363838,
+          "max_loss": 453.5
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 342; buy 1 put 330",
+      "entry_metrics": {
+        "composite_score": 68.83421609651127,
+        "pop": 99.9743700220458,
+        "expected_value": 793.7780213157944,
+        "probability_of_touch": 0.05687390449701994,
+        "theta_per_day": 0.0969392579995864,
+        "vega_exposure": -0.005886439394552498,
+        "risk_reward": 1.7563395810363838,
+        "max_loss": 453.5
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -343.4779225513307,
+        "pnl_pct_of_max_loss": -75.7393434512306,
+        "pnl_pct_of_max_profit": -43.12340521673958,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -75.7393434512306
+    },
+    {
+      "ticker": "BRK-B",
+      "status": "no_trade",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 499.739990234375,
+      "exit_spot": 511.5400085449219,
+      "spot_return_pct": 2.3612315486324587,
+      "directional_bias": "bullish",
+      "expiration": "2026-09-04",
+      "entry_dte": 65,
+      "exit_dte": 35,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "AVGO",
+      "status": "no_trade",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 369.3399963378906,
+      "exit_spot": 389.2799987792969,
+      "spot_return_pct": 5.398820230442669,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "TSLA",
+      "status": "trade_candidate",
+      "entry_date": "2026-07-01",
+      "exit_date": "2026-07-31",
+      "entry_spot": 425.29998779296875,
+      "exit_spot": 311.2099914550781,
+      "spot_return_pct": -26.825769953567068,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 63,
+      "exit_dte": 33,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 360; buy 1 put 350",
+        "metrics": {
+          "composite_score": 56.577698595566524,
+          "pop": 78.28590640950377,
+          "expected_value": 292.35700642272667,
+          "probability_of_touch": 47.58577893905812,
+          "theta_per_day": 0.015331895765538173,
+          "vega_exposure": -0.06596269365506818,
+          "risk_reward": 1.0408163265306127,
+          "max_loss": 489.9999999999999
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 360; buy 1 put 350",
+      "entry_metrics": {
+        "composite_score": 56.577698595566524,
+        "pop": 78.28590640950377,
+        "expected_value": 292.35700642272667,
+        "probability_of_touch": 47.58577893905812,
+        "theta_per_day": 0.015331895765538173,
+        "vega_exposure": -0.06596269365506818,
+        "risk_reward": 1.0408163265306127,
+        "max_loss": 489.9999999999999
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -241.51554382106815,
+        "pnl_pct_of_max_loss": -49.28888649409555,
+        "pnl_pct_of_max_profit": -47.35598898452316,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -49.28888649409555
+    },
+    {
+      "ticker": "AAPL",
+      "status": "no_trade",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 308.6438293457031,
+      "exit_spot": 316.8500061035156,
+      "spot_return_pct": 2.658785297995059,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "MSFT",
+      "status": "no_trade",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 463.8468017578125,
+      "exit_spot": 507.2900085449219,
+      "spot_return_pct": 9.36585239403942,
+      "directional_bias": "bullish",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "NVDA",
+      "status": "no_trade",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 200.75,
+      "exit_spot": 220.77999877929688,
+      "spot_return_pct": 9.977583451704541,
+      "directional_bias": "bullish",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "AMZN",
+      "status": "no_trade",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 271.5799865722656,
+      "exit_spot": 259.7699890136719,
+      "spot_return_pct": -4.348625871756273,
+      "directional_bias": "bullish",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "no_trade",
+        "strategy_name": null,
+        "reason": "Top-ranked output is only a relative ranking; no setup currently meets executable quality standards.",
+        "quality_gate": {
+          "actionable": false,
+          "blockers": [
+            "no_ranked_strategy_passed_quality_gate"
+          ],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 35.0,
+            "min_expected_value": 0.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": null,
+        "open_recommended": false
+      },
+      "executable_setup": null
+    },
+    {
+      "ticker": "META",
+      "status": "trade_candidate",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 556.7100219726562,
+      "exit_spot": 572.3400268554688,
+      "spot_return_pct": 2.807566644377779,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bear_call_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bear_call_credit_spread",
+        "bias": "bearish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 call 580; buy 1 call 590",
+        "metrics": {
+          "composite_score": 54.30032965887533,
+          "pop": 68.37214932478004,
+          "expected_value": 233.5649029312317,
+          "probability_of_touch": 59.26655719797902,
+          "theta_per_day": 0.029979890916345342,
+          "vega_exposure": -0.037571762958328536,
+          "risk_reward": 1.234636871508381,
+          "max_loss": 447.4999999999998
+        }
+      },
+      "strategy_name": "bear_call_credit_spread",
+      "setup_summary": "sell 1 call 580; buy 1 call 590",
+      "entry_metrics": {
+        "composite_score": 54.30032965887533,
+        "pop": 68.37214932478004,
+        "expected_value": 233.5649029312317,
+        "probability_of_touch": 59.26655719797902,
+        "theta_per_day": 0.029979890916345342,
+        "vega_exposure": -0.037571762958328536,
+        "risk_reward": 1.234636871508381,
+        "max_loss": 447.4999999999998
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -220.93561469074166,
+        "pnl_pct_of_max_loss": -49.37108708173,
+        "pnl_pct_of_max_profit": -39.98834655036047,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -49.37108708173
+    },
+    {
+      "ticker": "GOOGL",
+      "status": "trade_candidate",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 356.1300048828125,
+      "exit_spot": 339.3500061035156,
+      "spot_return_pct": -4.711762151245436,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 340; buy 1 put 335",
+        "metrics": {
+          "composite_score": 54.064248575186454,
+          "pop": 74.83746215910769,
+          "expected_value": 114.91437704837585,
+          "probability_of_touch": 54.7252294751964,
+          "theta_per_day": 0.010592637225873433,
+          "vega_exposure": -0.03860302944158156,
+          "risk_reward": 0.9230769230769248,
+          "max_loss": 259.9999999999998
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 340; buy 1 put 335",
+      "entry_metrics": {
+        "composite_score": 54.064248575186454,
+        "pop": 74.83746215910769,
+        "expected_value": 114.91437704837585,
+        "probability_of_touch": 54.7252294751964,
+        "theta_per_day": 0.010592637225873433,
+        "vega_exposure": -0.03860302944158156,
+        "risk_reward": 0.9230769230769248,
+        "max_loss": 259.9999999999998
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -72.56375626718625,
+        "pnl_pct_of_max_loss": -27.90913702584089,
+        "pnl_pct_of_max_profit": -30.234898444660907,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -27.90913702584089
+    },
+    {
+      "ticker": "GOOG",
+      "status": "trade_candidate",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 356.6499938964844,
+      "exit_spot": 335.4100036621094,
+      "spot_return_pct": -5.9554158412630676,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-04",
+      "entry_dte": 34,
+      "exit_dte": 4,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 340; buy 1 put 330",
+        "metrics": {
+          "composite_score": 67.36812721599088,
+          "pop": 99.95946915844536,
+          "expected_value": 580.0034506298122,
+          "probability_of_touch": 0.08938594682750499,
+          "theta_per_day": 0.008990401149165045,
+          "vega_exposure": -0.0006810090850580536,
+          "risk_reward": 1.3894862604540021,
+          "max_loss": 418.50000000000006
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 340; buy 1 put 330",
+      "entry_metrics": {
+        "composite_score": 67.36812721599088,
+        "pop": 99.95946915844536,
+        "expected_value": 580.0034506298122,
+        "probability_of_touch": 0.08938594682750499,
+        "theta_per_day": 0.008990401149165045,
+        "vega_exposure": -0.0006810090850580536,
+        "risk_reward": 1.3894862604540021,
+        "max_loss": 418.50000000000006
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -275.3887117476128,
+        "pnl_pct_of_max_loss": -65.80375430050483,
+        "pnl_pct_of_max_profit": -47.35833392048371,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -65.80375430050483
+    },
+    {
+      "ticker": "BRK-B",
+      "status": "trade_candidate",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 511.5400085449219,
+      "exit_spot": 504.0299987792969,
+      "spot_return_pct": -1.4681177699056747,
+      "directional_bias": "neutral",
+      "expiration": "2026-09-04",
+      "entry_dte": 34,
+      "exit_dte": 4,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 500; buy 1 put 480",
+        "metrics": {
+          "composite_score": 34.547770452284944,
+          "pop": 76.94037801141958,
+          "expected_value": 74.48736753973857,
+          "probability_of_touch": 56.66079271459217,
+          "theta_per_day": 0.026695524103139898,
+          "vega_exposure": -0.28499033554703007,
+          "risk_reward": 0.2690355329949238,
+          "max_loss": 1576.0000000000002
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 500; buy 1 put 480",
+      "entry_metrics": {
+        "composite_score": 34.547770452284944,
+        "pop": 76.94037801141958,
+        "expected_value": 74.48736753973857,
+        "probability_of_touch": 56.66079271459217,
+        "theta_per_day": 0.026695524103139898,
+        "vega_exposure": -0.28499033554703007,
+        "risk_reward": 0.2690355329949238,
+        "max_loss": 1576.0000000000002
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -59.757157145469876,
+        "pnl_pct_of_max_loss": -3.7916977884181384,
+        "pnl_pct_of_max_profit": -14.093669138082522,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -3.7916977884181384
+    },
+    {
+      "ticker": "AVGO",
+      "status": "trade_candidate",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 389.2799987792969,
+      "exit_spot": 370.3399963378906,
+      "spot_return_pct": -4.865393161939546,
+      "directional_bias": "bullish",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bull_put_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bull_put_credit_spread",
+        "bias": "bullish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 put 370; buy 1 put 360",
+        "metrics": {
+          "composite_score": 52.18656094883591,
+          "pop": 66.75399574945664,
+          "expected_value": 196.28854590057878,
+          "probability_of_touch": 69.72982655183195,
+          "theta_per_day": 0.03524662495964187,
+          "vega_exposure": -0.04272604051804818,
+          "risk_reward": 1.1390374331550799,
+          "max_loss": 467.50000000000006
+        }
+      },
+      "strategy_name": "bull_put_credit_spread",
+      "setup_summary": "sell 1 put 370; buy 1 put 360",
+      "entry_metrics": {
+        "composite_score": 52.18656094883591,
+        "pop": 66.75399574945664,
+        "expected_value": 196.28854590057878,
+        "probability_of_touch": 69.72982655183195,
+        "theta_per_day": 0.03524662495964187,
+        "vega_exposure": -0.04272604051804818,
+        "risk_reward": 1.1390374331550799,
+        "max_loss": 467.50000000000006
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -229.0761309168796,
+        "pnl_pct_of_max_loss": -49.00024190735392,
+        "pnl_pct_of_max_profit": -43.01899172147975,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -49.00024190735392
+    },
+    {
+      "ticker": "TSLA",
+      "status": "trade_candidate",
+      "entry_date": "2026-08-01",
+      "exit_date": "2026-08-31",
+      "entry_spot": 311.2099914550781,
+      "exit_spot": 367.95001220703125,
+      "spot_return_pct": 18.232069120487516,
+      "directional_bias": "bearish",
+      "expiration": "2026-09-02",
+      "entry_dte": 32,
+      "exit_dte": 2,
+      "trade_decision": {
+        "status": "trade_candidate",
+        "strategy_name": "bear_call_credit_spread",
+        "reason": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "quality_gate": {
+          "actionable": true,
+          "blockers": [],
+          "warnings": [],
+          "thresholds": {
+            "min_composite_score": 30.0,
+            "min_expected_value": -50.0,
+            "max_touch_for_actionable": 85.0,
+            "income_touch_comfort": 75.0,
+            "max_loss": 2500.0
+          }
+        },
+        "override": false,
+        "entry_quality": "high_odds",
+        "open_recommended": true
+      },
+      "executable_setup": {
+        "strategy_name": "bear_call_credit_spread",
+        "bias": "bearish",
+        "thesis": "Highest-ranked setup that passed the actionable quality gate.",
+        "rationale": "Simple defined-risk setup passed conservative filters (income first; long-vol only when IV is rich).",
+        "setup_summary": "sell 1 call 330; buy 1 call 350",
+        "metrics": {
+          "composite_score": 61.3987480837825,
+          "pop": 79.26458436294456,
+          "expected_value": 854.7016954789548,
+          "probability_of_touch": 38.85957226202914,
+          "theta_per_day": 0.08608317003815338,
+          "vega_exposure": -0.08980041563135163,
+          "risk_reward": 1.9411764705882333,
+          "max_loss": 680.0000000000005
+        }
+      },
+      "strategy_name": "bear_call_credit_spread",
+      "setup_summary": "sell 1 call 330; buy 1 call 350",
+      "entry_metrics": {
+        "composite_score": 61.3987480837825,
+        "pop": 79.26458436294456,
+        "expected_value": 854.7016954789548,
+        "probability_of_touch": 38.85957226202914,
+        "theta_per_day": 0.08608317003815338,
+        "vega_exposure": -0.08980041563135163,
+        "risk_reward": 1.9411764705882333,
+        "max_loss": 680.0000000000005
+      },
+      "entry_quality": "high_odds",
+      "mark": {
+        "pnl_dollars": -744.3899929741028,
+        "pnl_pct_of_max_loss": -109.46911661383858,
+        "pnl_pct_of_max_profit": -56.3931812859169,
+        "missing_exit_legs": 0.0
+      },
+      "profitable": false,
+      "return_pct": -109.46911661383858
+    }
+  ]
+}
