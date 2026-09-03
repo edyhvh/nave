@@ -1,0 +1,34 @@
+{
+  "schema_version": "nave.skeptical-review.v3",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-survival-observability-panel-20260901.md",
+  "classification": "INSUFFICIENT DATA",
+  "edge_claim": false,
+  "review_scope": "local-only survival/observability and migration continuation panel",
+  "checks": [
+    {"question": "Are token clusters independent observations?", "result": "PASS_WITH_LIMITATION", "evidence": "One row/unit per mint; repeated event rows are not counted as independent assets, but calendar-day dependence remains."},
+    {"question": "Were cluster definitions outcome-tuned?", "result": "PASS_DESCRIPTIVE", "evidence": "Fixed first-10m trade-count bins; no return or mark outcome was used."},
+    {"question": "Are sparse activity and provider missingness separated?", "result": "PASS_FOR_RESTORED_DAY", "evidence": "NO_FUTURE_TRADE and TOKEN_INACTIVE are retained; PROVIDER_EVENT_GAP and TRUE_UNKNOWN remain valid states and are zero only in this restored sample."},
+    {"question": "Could collection boundary create false Runner failures?", "result": "YES_AND_PRESERVED", "evidence": "All 30 Day-2 migrants are right-censored at 24h/48h/72h; zeros are not interpreted as outcomes."},
+    {"question": "Was Day-1 compact Dune silently pooled with Day-2 events?", "result": "NO", "evidence": "Day-1 is a separate descriptive block because point-in-time event features are unavailable."},
+    {"question": "Does the panel establish predictive edge?", "result": "NO", "evidence": "One event-level day, no model fit, no return comparison, no temporal holdout."},
+    {"question": "Does migration activity equal an executable exit or Runner success?", "result": "NO", "evidence": "Continuation is activity-only; quoted marks, liquidity, slippage, and PumpSwap venue continuity are not inferred."},
+    {"question": "Can 24h/48h/72h activity be compared across days?", "result": "NO", "evidence": "Day-2 is right-censored and Day-1 is a targeted PumpSwap sample with different provider/venue semantics."},
+    {"question": "Were external resources or permissions used?", "result": "NO", "evidence": "No provider calls, purchases, credentials, wallets, alerts, scanner changes, or execution actions."}
+  ],
+  "adversarial_failure_modes": [
+    "A high first-10m cluster may proxy for survivorship/visibility rather than predictive quality.",
+    "The recovered sample may not represent all launches or all migrations.",
+    "Event timestamps and collection boundary can hide late continuation.",
+    "Migration-before-horizon is a lifecycle label and may overlap with venue transition; it is not a return outcome.",
+    "Zero PROVIDER_EVENT_GAP in one restored day cannot validate provider completeness globally."
+  ],
+  "required_before_modeling": [
+    "Several predeclared event-level calendar days",
+    "Frozen point-in-time feature and mark contracts",
+    "Explicit right-censoring and provider-gap masks",
+    "All-migrant or clearly weighted migration denominator",
+    "Liquidity/depth and executable exit evidence",
+    "Cluster-robust temporal holdout"
+  ],
+  "decision": "BLOCKED BY OUTCOME COVERAGE; retain panel as descriptive evidence and acquire one additional predeclared event-level day only after fresh resource preflight"
+}

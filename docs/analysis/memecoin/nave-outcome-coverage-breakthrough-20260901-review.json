@@ -1,0 +1,25 @@
+{
+  "schema_version": "nave.skeptical-review.v1",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-outcome-coverage-breakthrough-20260901.md",
+  "classification": "PRELIMINARY DATA COVERAGE RECOVERY / INSUFFICIENT DATA",
+  "edge_claim": false,
+  "external_actions": "none",
+  "did_blocker_reduce": true,
+  "tests": [
+    {"question": "Did we really reduce the blocker?", "result": "PASS", "evidence": "24/24 restored; 238027 to 254522 rows; 957 to 1000 observed mints; internal gaps zero."},
+    {"question": "Did we merely redefine missing data away?", "result": "FAIL_SAFE", "evidence": "Recovery passed remote HTTP and zstd integrity; missing, unresolved, and right-censored states remain separate."},
+    {"question": "Is token-level censoring valid?", "result": "PARTIAL", "evidence": "Valid for interval-local provider gaps, but selection and one-day dependence limit inference."},
+    {"question": "Are usable rows selected in a biased way?", "result": "RISK_REMAINS", "evidence": "Mint sample is outcome-independent, but activity/observability among resolved marks is not guaranteed independent."},
+    {"question": "Are missing hours correlated with market activity?", "result": "UNKNOWN", "evidence": "Old failures were parser/pipeline state failures; the recovered sample removes the current missing-hour selection, but no historical correlation test was preregistered."},
+    {"question": "Did missingness preferentially remove winners?", "result": "NOT_TESTED", "evidence": "No outcome comparison was made from the invalid old subset; no favorable exclusion was used."},
+    {"question": "Did we use future events?", "result": "PASS_FOR_COVERAGE", "evidence": "Decision eligibility requires available_at <= decision_time; outcome marks are only after the frozen horizon."},
+    {"question": "Did we choose dates after looking at outcomes?", "result": "RISK_REMAINS", "evidence": "The date/sample were inherited from prior frozen manifests; the next three days must be declared before outcome inspection."},
+    {"question": "Did we overfit after failed attempts?", "result": "PASS_FOR_MODELING", "evidence": "No A/B/C/D model was fit and no scanner or strategy was changed."}
+  ],
+  "selection": {"mint_selection": "deterministic outcome-independent 1000-mint sample", "resolved_mark_selection": "observability-dependent; preliminary only", "calendar_days": 1},
+  "coverage": {"hours": "24/24 restored", "internal_gap": 0, "right_censoring": "explicit for horizons beyond 2026-08-28 collection end"},
+  "provider_validation": {"pumpapi_remote_http": "200 for all five", "zstd_integrity": "PASS for all five", "dune_new_calls": 0},
+  "leakage_controls": ["available_at <= decision_time", "no future participant history", "no interpolation", "no 24h feature at 5m", "participant-excluded flow preserved"],
+  "remaining_blockers": ["one calendar day", "163 conservative 60m outcome tokens", "no 24h/72h Runner outcomes", "participant history immature", "temporal missingness and winner-selection sensitivity not yet quantified"],
+  "next_step": "Acquire three predeclared clean days, run coverage masks before looking at returns, then assess A vs C only if paired-row and temporal gates pass."
+}

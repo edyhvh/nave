@@ -1,0 +1,21 @@
+{
+  "schema_version":"nave.stage1-survival-day5-review.v1",
+  "classification":"WEAK / UNSTABLE SIGNAL / INSUFFICIENT DATA",
+  "questions":[
+    {"question":"Was the Day-5 sample fixed before replay?","result":"PASS","evidence":"1,000 mints selected by predeclared sha256 nave-2026-08-31-v1 ordering from denominator 37,540."},
+    {"question":"Were all event hours complete?","result":"PASS","evidence":"24/24 PumpApi hours completed under bounded three-worker replay and materialized to Parquet."},
+    {"question":"Does the survival label remain frozen and post-horizon?","result":"PASS","evidence":"Unchanged strict (horizon,horizon+5m] activity window at one 10m row per token."},
+    {"question":"Could missingness be hidden as inactivity?","result":"NO_EVIDENCE","evidence":"Provider gaps are zero; migration unknown and right censoring remain separate statuses."},
+    {"question":"Is exact-mark observability activity-selected?","result":"YES","evidence":"49 resolved tokens had median 229 early trades and 62 buyers versus 9 and 3 for 951 unresolved."},
+    {"question":"Did C outperform A on Day 5?","result":"NO","evidence":"C minus A PR-AUC -0.0244 and Brier delta +0.00085 on unchanged transfer."},
+    {"question":"Is the Day-5 difference statistically decisive?","result":"NO","evidence":"Bootstrap PR-AUC interval [-0.1282,+0.0511] and Brier interval [-0.00054,+0.00279] cross zero."},
+    {"question":"Does this establish profitability or execution quality?","result":"NO","evidence":"Target is observable activity, not return, executable liquidity, or PnL."},
+    {"question":"Are participant models ready?","result":"NO","evidence":"Point-in-time participant history is immature and raw flow is SELF-FLOW CONTAMINATED."},
+    {"question":"Does four-day coverage establish temporal stability?","result":"NO","evidence":"C direction changes across frozen transfers and only four comparable days exist."},
+    {"question":"Could late-launch censoring bias outcomes?","result":"YES","evidence":"Day-5 right censoring is 21/31/63 at 15m/30m/60m and remains explicit."},
+    {"question":"Does the result justify operationalization?","result":"NO","evidence":"No live filter, scanner, alert, watch, trade, or capital behavior changed; EDGE_VALIDATED remains false."}
+  ],
+  "remaining_risks":["only four comparable event-level days","22 positive 60m labels on Day 5","activity target may proxy trading persistence","exact marks are activity-selected","raw participant flow is not exogenous","PumpSwap continuation remains incomplete","right censoring","calendar-day/regime variation"],
+  "falsifiers":["larger frozen evaluation reverses the observed A/C pattern","C repeatedly loses after preregistered continuation","economic conditional outcomes fail after observability conditioning","provider or migration audit reveals hidden missingness"],
+  "next_review_gate":"Reassess after at least five and preferably 5-7 frozen comparable event-level days with clustered uncertainty and outcome coverage review."
+}
