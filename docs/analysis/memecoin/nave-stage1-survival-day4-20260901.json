@@ -1,0 +1,56 @@
+{
+  "schema_version": "nave.stage1-survival-day4.v1",
+  "status": "STAGE-1 SURVIVAL MATERIAL PROGRESS",
+  "classification": "PROMISING EXPLORATORY SIGNAL / INSUFFICIENT DATA",
+  "day4": {
+    "date": "2026-08-30",
+    "denominator": 36161,
+    "sample_tokens": 1000,
+    "selection_seed": "nave-2026-08-30-v1",
+    "selection_frozen_before_replay": true,
+    "event_rows": 294446,
+    "observed_mints_in_filter_union": 1014,
+    "archive_hours": "24/24",
+    "provider_gaps": 0,
+    "combined_sha256": "9767abcd975f608ad969c4eda5ea25d00fb1148c231825e979520b97f22ff5ee"
+  },
+  "acquisition": {
+    "execution_id": "01M1F6WVV7889ZWQAWS9Z1PSCC",
+    "filter_union_mints": 1022,
+    "parallel_workers_max": 3,
+    "transport_reset_hours_retried": ["09", "22"],
+    "raw_decompressed_retained": false,
+    "manifest": "docs/analysis/memecoin/nave-stage1-day4-acquisition-manifest-20260901.json"
+  },
+  "coverage": {
+    "2026-08-28": {"event_rows": 254522, "sample_tokens": 1000, "provider_gaps": 0},
+    "2026-08-29": {"event_rows": 353030, "sample_tokens": 1000, "provider_gaps": 0},
+    "2026-08-30": {"event_rows": 294446, "sample_tokens": 1000, "provider_gaps": 0}
+  },
+  "base_rates": {
+    "decision_seconds": 600,
+    "2026-08-30": {
+      "15m": {"positive": 60, "negative": 894, "right_censored": 17, "migration_unknown": 29, "provider_gap": 0, "rate": 0.0628930818},
+      "30m": {"positive": 42, "negative": 896, "right_censored": 32, "migration_unknown": 30, "provider_gap": 0, "rate": 0.0447761194},
+      "60m": {"positive": 16, "negative": 902, "right_censored": 51, "migration_unknown": 31, "provider_gap": 0, "rate": 0.0174291939}
+    }
+  },
+  "observability": {"day4_mark_resolved": 47, "day4_mark_unresolved": 953, "resolved_median_early_trades": 339, "unresolved_median_early_trades": 9, "resolved_median_early_buyers": 87, "unresolved_median_early_buyers": 3},
+  "model_comparison": {
+    "train_day": "2026-08-28",
+    "evaluation_day": "2026-08-30",
+    "horizon": "60m",
+    "train_rows": 931,
+    "evaluation_rows": 918,
+    "A_survival": {"pr_auc": 0.2423448577, "precision_lift_top20pct": 2.8217213115, "brier": 0.0162882659, "log_loss": 0.0727938322},
+    "C_survival": {"pr_auc": 0.2823713668, "precision_lift_top20pct": 3.1352459016, "brier": 0.0153591799, "log_loss": 0.0708494861},
+    "C_minus_A_pr_auc": 0.0400265091,
+    "C_minus_A_brier": -0.0009290860,
+    "cluster_bootstrap": {"iterations": 1000, "unit": "token; one 10m decision row per token", "pr_auc_delta_mean": 0.0321564870, "pr_auc_delta_ci95": [-0.0211765947, 0.1078322359], "brier_delta_mean": -0.0009229163, "brier_delta_ci95": [-0.0022607565, 0.0001011174]},
+    "status": "PRELIMINARY_TEMPORAL_SANITY; CI CROSSES ZERO"
+  },
+  "missingness": {"provider_gaps_preserved": true, "migration_unknown_preserved": true, "right_censoring_preserved": true, "participant_models": "DEFERRED", "self_flow_status": "SELF-FLOW CONTAMINATED"},
+  "edge_validated": false,
+  "next_state": "NEXT_BOUNDED_EXPERIMENT",
+  "next_experiment": "Acquire and validate predeclared 2026-08-31 one day at a time; reassess after 5-7 comparable event-level days."
+}
