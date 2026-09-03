@@ -31,3 +31,4 @@ See `00_baseline.md` for the comparison rules every experiment must beat.
 | N7 | experiment/n7-n6-replication | N6 daily-cadence replication + OOS refresh, no strategy change | +59.11 treatment / +29.72 additive | +14.97 vs +44.14 base | ⚠️ INCONCLUSIVE — costs/slippage, synchronized OOS and sensitivity still missing | — |
 
 | N8 | experiment/n8-n6-cost-stress | N6 fee/slippage stress (0.10/0.30/0.50/1.00%), no strategy change | +56.66R base modeled net | not apples-to-apples vs baseline | ⚠️ INCONCLUSIVE — positive modeled costs, but baseline net stops/event-time fills/funding missing | — |
+| 15 | experiment/n6-squeeze-daily | daily-cadence squeeze breakout path (off by default) | +35.41 | +17.59 (additive) | ✅ ACCEPT (Draft PR, not merged) | — |
