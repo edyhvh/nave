@@ -1,0 +1,30 @@
+{
+  "model_version": "nave.dune.credit-model.v2",
+  "as_of": "2026-08-31",
+  "baseline": {"credits_used_before_iteration": 1537.518, "credits_used_after_iteration": 1863.57, "credits_used_this_iteration": 326.052, "credits_included": 2500, "credits_remaining": 636.43, "hard_stop_budget_at_iteration_start": 481.241, "hard_stop_budget_remaining_estimate": 155.189},
+  "observed_benchmarks": [
+    {"name":"100_mint_first_hour_count","mints":100,"credits":0.584,"rows":1,"event_rows":6676,"mints_with_events":97},
+    {"name":"1000_mint_first_hour_count","mints":1000,"credits":0.472,"rows":1,"event_rows":62875,"mints_with_events":917},
+    {"name":"1000_mint_first_hour_aggregate","mints":1000,"credits":0.259,"rows":917,"result_bytes":162464},
+    {"name":"1000_mint_token_panel","mints":1000,"credits":0.147,"rows":1000,"result_bytes":182981},
+    {"name":"1000_mint_migration_map","mints":1000,"credits":0.215,"rows":7,"result_bytes":1240},
+    {"name":"7_migrated_pumpswap_events","mints":7,"credits":3.601,"rows":6227,"result_bytes":1888556},
+    {"name":"7_migrated_pumpfun_first_hour_events","mints":7,"credits":1.653,"rows":2367,"result_bytes":791051},
+    {"name":"catalog_and_multichain_count_probe","credits":0.121,"rows":5,"result_bytes":146}
+  ],
+  "recovery": {"sunk_execution_credits":1537.518,"retrieval_credits":319.0,"result_rows":701428,"result_bytes":253462228,"full_export":"rejected"},
+  "estimates": {
+    "launch_denominator_credits":[2,10],
+    "pumpfun_first_hour_credits":[5,25],
+    "migration_completion_credits":[1,8],
+    "pumpswap_migrated_token_credits":[40,160],
+    "early_participant_credits":[10,60],
+    "participant_pnl_credits":[5,40],
+    "result_export_credits":[10,80],
+    "incremental_daily_update_credits":[0.5,3]
+  },
+  "panel_cost_estimates": {"optimized_1000_mint_source_panel_credits":[0.15,1.0],"optimized_1000_mint_package_credits":[5.616,8.0],"one_complete_day_credits":[60,180],"seven_complete_days_credits":[420,1260],"fourteen_complete_days_credits":[840,2520],"thirty_complete_days_credits":[1800,5400],"daily_forward_refresh_one_month_credits":[30,150]},
+  "monthly_scenarios": {"RESEARCH_LIGHT":{"credits":[150,350]},"RESEARCH_NORMAL":{"credits":[900,2400]},"RESEARCH_HEAVY":{"credits":[3500,7500]}},
+  "pricing_verified_official_docs": {"free":{"monthly_price_usd":0,"included_credits":2500,"extra_per_100_usd":5.0},"analyst":{"monthly_price_usd":75,"included_credits":4000,"extra_per_100_usd":1.875},"plus":{"monthly_price_usd":399,"included_credits":25000,"extra_per_100_usd":1.596},"sources":["https://docs.dune.com/resources/credits-billing/how-credits-work","https://docs.dune.com/api-reference/overview/billing"]},
+  "recommendation": {"dune_plan":"STAY_FREE","projected_monthly_nave_credits":[900,2400],"credit_purchase":"DO NOT PURCHASE UNTIL MORE COST DATA EXISTS","reason":"Normal research remains within Free allowance; occasional overage is cheaper than Analyst until sustained usage approaches 4000 credits/month. Plus is not justified."}
+}

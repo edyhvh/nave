@@ -1,0 +1,32 @@
+{
+  "contract_version": "m3.signal_sanity.v1",
+  "status": "FROZEN_BEFORE_DAY_2_EVALUATION",
+  "scope": "NAVE read-only, research-only, human-gated; no live trading, notifications, wallet signing, or OpenClaw changes",
+  "periods": {
+    "day_1": {"date_utc": "2026-08-27", "role": "development_exploratory"},
+    "day_2": {"date_utc": "2026-08-28", "role": "chronological_sanity_validation"},
+    "day_2_selection": "same complete one-day launch denominator, SHA-256 ordering with seed nave-2026-08-27-v2, first 1000 mints, independent of outcomes"
+  },
+  "decision_times_seconds": [60, 180, 300, 600],
+  "feature_contract": "m3-feature-contract-20260831.json",
+  "feature_sets": {
+    "A": ["age_seconds","log_return_to_decision","curve_progress","buy_volume_sol_raw","sell_volume_sol_exogenous","trade_count_exogenous","unique_buyers_exogenous","migration_state"],
+    "B": ["age_seconds","log_return_to_decision","curve_progress","buy_volume_sol_raw","sell_volume_sol_exogenous","trade_count_exogenous","unique_buyers_exogenous","migration_state","participant_matured_count","participant_best_posterior","participant_posterior_strength","participant_convergence_count"],
+    "C": ["age_seconds","log_return_to_decision","curve_progress","buy_volume_sol_raw","sell_volume_sol_exogenous","trade_count_exogenous","unique_buyers_exogenous","migration_state","new_buyer_acceleration_exogenous","buy_volume_acceleration_exogenous","sell_pressure_exogenous","trade_size_concentration"],
+    "D": ["age_seconds","log_return_to_decision","curve_progress","buy_volume_sol_raw","sell_volume_sol_exogenous","trade_count_exogenous","unique_buyers_exogenous","migration_state","new_buyer_acceleration_exogenous","buy_volume_acceleration_exogenous","sell_pressure_exogenous","trade_size_concentration","participant_matured_count","participant_best_posterior","participant_posterior_strength","participant_convergence_count"]
+  },
+  "outcomes": {
+    "fast_burst_descriptive": ["max_mark_return_15m","max_mark_return_30m","max_mark_return_60m","crossed_100pct","crossed_200pct","maximum_adverse_move","survival_60m"],
+    "runner_descriptive": ["migration","post_migration_survival","mark_4h","mark_8h","mark_24h","mark_48h","mark_72h"],
+    "rule": "raw mark proxies are not executable returns; no single binary winner label is optimized"
+  },
+  "temporal_split": {"primary_validation": "day_2", "random_k_fold": false, "preprocessing": "freeze on Day 1 where feasible", "holdout_status": "not_final_holdout"},
+  "metrics": ["base_rate","precision","recall","pr_auc","precision_lift","brier","calibration","log_loss","ranking_quality"],
+  "uncertainty": {"method": "paired bootstrap where sample permits", "iterations": 2000, "seed": 20260901, "classification": "overlapping intervals are INCONCLUSIVE"},
+  "matching": {"primary": ["token_age","curve_state","prior_return","prior_volume","unique_buyers","buy_sell_imbalance","launch_hour","protocol_state","market_regime"], "participant_activity": ["activity_count","launch_exposure","time_of_day_activity","prior_eligible_entries"], "causal_claim": false},
+  "placebos": ["permuted_participant_identities","time_shifted_arrivals","activity_matched_random_wallets"],
+  "leave_one_out": ["top_wallet","top_5_wallets","top_winner_token","largest_cohort","identity_free_archetypes"],
+  "exclusion_rules": ["available_at_after_decision_is_LEAKED_FEATURE","missing_is_UNKNOWN_not_failure","participant_self_flow_reported_separately","future_outcome_is_not_a_feature","right_censored_is_not_dead","creator_bundle_sybil_like_activity_not_bullish_skill","no_random_mixing_of_days"],
+  "comparisons": {"B_minus_A":"participant addition","C_minus_A":"precursor addition","D_minus_C":"participant incremental value after precursor","D_minus_B":"precursor incremental value after participant"},
+  "decision_rule": "classify results only as PROMISING EXPLORATORY SIGNAL, WEAK / UNSTABLE SIGNAL, NO INCREMENTAL INFORMATION, SELF-FLOW CONTAMINATED, CONFOUNDED, TEMPORALLY UNSTABLE, INSUFFICIENT DATA, or BLOCKED BY OUTCOME COVERAGE"
+}
