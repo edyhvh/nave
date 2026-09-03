@@ -154,6 +154,7 @@ conda/
 # Tools and utilities
 .mise/
 .direnv/
+.worktrees/
 
 # Web dependencies/build artifacts
 node_modules/
