@@ -1,0 +1,15 @@
+{
+  "video_id": "27njCgsjpO8",
+  "reviewed_at": "2026-09-03T14:06:05-03:00",
+  "classification": "BLOCKED BY OUTCOME COVERAGE",
+  "attempt_to_invalidate": [
+    "Title-only evidence cannot establish instrument, horizon, catalyst, activation, or invalidation.",
+    "A bullish copper narrative could be wrong, late, regime-dependent, or expressed through a different vehicle.",
+    "Current price and technical confirmation were intentionally not used because no instrument was identified."
+  ],
+  "facts": ["RSS entry exists", "Transcript retrieval unavailable from this environment"],
+  "unknowns": ["transcript", "author levels", "instrument", "time horizon", "catalyst", "invalidation", "costs/liquidity"],
+  "decision": "NO ACTION / INSUFFICIENT EVIDENCE",
+  "cursor_policy": "preserve prior cursor K8JEHgT89gg until transcript is recovered",
+  "next_bounded_check": "Recover native Supadata transcript; do not alter operational watches or scanners."
+}
