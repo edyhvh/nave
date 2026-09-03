@@ -20,6 +20,9 @@ REPORT = os.path.join(REPO, "var", "memecoin_m3", "metrics_report.md")
 METRICS_JSON = os.path.join(REPO, "var", "memecoin_m3", "metrics.json")
 
 HORIZONS = ["24h", "48h", "7d"]
+TERMINAL_STATUSES = ("RESOLVED", "DEAD", "UNEXITABLE")
+UNAVAILABLE_STATUSES = ("DATA_UNAVAILABLE", "PROVIDER_UNAVAILABLE",
+                        "TEMPORARY_FAILURE", "INVALID_RESPONSE", "LEGACY_UNKNOWN")
 THRESHOLDS = [0, 5, 10, 20]
 GATE_MIN_CANDIDATES_7D = 200
 RISK_MOMENTUM_1H_PCT = 25.0
@@ -60,7 +63,8 @@ def main() -> int:
     lines.append("")
 
     for h in HORIZONS:
-        hres = {"n_passed": 0, "n_all": 0, "precision": {}, "rug_dead_pct": None,
+        hres = {"n_passed": 0, "n_all": 0, "n_data_unavailable": 0,
+                "n_unresolved": 0, "precision": {}, "rug_dead_pct": None,
                 "risk_filter": {}, "n_7d_gate": 0}
         # DATA_UNAVAILABLE / INVALID_RESPONSE records are retained for audit,
         # but are not scientific outcomes and must not enter precision, recall,
@@ -68,13 +72,22 @@ def main() -> int:
         passed_resolved = [
             e for e in passed
             if isinstance(e["outcomes"].get(h), dict)
-            and e["outcomes"][h].get("resolution_status", "RESOLVED") == "RESOLVED"
+            and e["outcomes"][h].get("resolution_status", "RESOLVED")
+            in TERMINAL_STATUSES
         ]
         all_resolved = [
             e for e in entries
             if isinstance(e["outcomes"].get(h), dict)
-            and e["outcomes"][h].get("resolution_status", "RESOLVED") == "RESOLVED"
+            and e["outcomes"][h].get("resolution_status", "RESOLVED")
+            in TERMINAL_STATUSES
         ]
+        hres["n_data_unavailable"] = sum(
+            1 for e in entries
+            if isinstance(e["outcomes"].get(h), dict)
+            and e["outcomes"][h].get("resolution_status")
+            in UNAVAILABLE_STATUSES
+        )
+        hres["n_unresolved"] = len(entries) - len(all_resolved) - hres["n_data_unavailable"]
         hres["n_passed"] = len(passed_resolved)
         hres["n_all"] = len(all_resolved)
 
@@ -92,14 +105,16 @@ def main() -> int:
             hres.setdefault("recall", {})[f"ret>{thr}%"] = round(rec, 4) if rec is not None else None
 
         # Loss / death rate among passed.
-        loss = [e for e in passed_resolved if e["outcomes"][h].get("cls") in ("RUG", "DEAD")]
+        loss = [e for e in passed_resolved
+                if e["outcomes"][h].get("cls") in ("RUG", "DEAD", "UNEXITABLE")]
         hres["rug_dead_pct"] = round(len(loss) / len(passed_resolved) * 100, 1) if passed_resolved else None
 
         # Momentum/age hypothesis: does the risk filter predict more rugs?
         risk_yes = [e for e in passed_resolved if e.get("risk_flags", {}).get("matches_risk_filter")]
         risk_no = [e for e in passed_resolved if not e.get("risk_flags", {}).get("matches_risk_filter")]
         for grp_name, grp in (("filter_matched", risk_yes), ("filter_not_matched", risk_no)):
-            gl = [e for e in grp if e["outcomes"][h].get("cls") in ("RUG", "DEAD")]
+            gl = [e for e in grp
+                  if e["outcomes"][h].get("cls") in ("RUG", "DEAD", "UNEXITABLE")]
             hres["risk_filter"][grp_name] = {
                 "n": len(grp),
                 "rug_dead": len(gl),
@@ -113,7 +128,9 @@ def main() -> int:
 
         lines.append(f"## Horizon {h}")
         lines.append("")
-        lines.append(f"Resolved: {len(passed_resolved)} passed / {len(all_resolved)} all")
+        lines.append(f"Resolved: {len(passed_resolved)} passed / {len(all_resolved)} all; "
+                     f"provider/data unavailable: {hres['n_data_unavailable']}; "
+                     f"unresolved: {hres['n_unresolved']}")
         lines.append("")
         lines.append("| Threshold | Precision (passed) | Recall (passed/pumped) |")
         lines.append("|---|---|---|")

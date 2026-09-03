@@ -27,13 +27,17 @@ import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-REPO = "/home/david/nave"
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, REPO)
 from trading.memecoin.m3_resolution import (  # noqa: E402
+    DEAD,
     DATA_UNAVAILABLE,
     INVALID_RESPONSE,
+    LEGACY_UNKNOWN,
+    PROVIDER_UNAVAILABLE,
     RESOLVED,
     TEMPORARY_FAILURE,
+    UNEXITABLE,
     UNRESOLVED,
 )
 from trading.memecoin.m3_resolution import best_solana_pair as _governed_best_solana_pair  # noqa: E402
@@ -86,12 +90,24 @@ def best_solana_pair(pairs) -> tuple | None:
     return _governed_best_solana_pair(pairs)
 
 
+def pair_for_resolution(pairs, expected_pair_address=None):
+    valid = [p for p in (pairs or []) if isinstance(p, dict)]
+    from trading.memecoin.m3_resolution import pair_for_resolution as select
+    return select(valid, expected_pair_address)
+
+
 def classify(scan_liq, now_price, now_liq, has_pair) -> str:
     if not has_pair or now_liq is None or now_liq < RUG_LIQ_NOW:
         if scan_liq and scan_liq > RUG_LIQ_AT_SCAN:
             return "RUG"
         return "DEAD"
     return "ALIVE"
+
+
+def _terminal_outcome(oc) -> bool:
+    return isinstance(oc, dict) and oc.get("resolution_status") in (
+        RESOLVED, DEAD, UNEXITABLE, LEGACY_UNKNOWN, INVALID_RESPONSE,
+    )
 
 
 def main() -> int:
@@ -112,9 +128,11 @@ def main() -> int:
         scan_market = entry.get("market") or {}
         scan_price = scan_market.get("price_usd")
         scan_liq = scan_market.get("liquidity_usd")
+        expected_pair = (scan_market.get("pair_address") or
+                         scan_market.get("pairAddress"))
         for hname, hsecs in HORIZONS.items():
             oc = entry["outcomes"].get(hname)
-            if isinstance(oc, dict):
+            if _terminal_outcome(oc):
                 continue  # already resolved
             horizon_dt = scanned_at + timedelta(seconds=hsecs)
             if now < horizon_dt:
@@ -129,6 +147,14 @@ def main() -> int:
                 kind = str(pairs.get("error_kind"))
                 if kind == TEMPORARY_FAILURE:
                     errors += 1
+                    entry["outcomes"][hname] = {
+                        "resolved_at": _iso(now),
+                        "elapsed_h": round((now - scanned_at).total_seconds() / 3600.0, 1),
+                        "resolution_status": PROVIDER_UNAVAILABLE,
+                        "resolution_reason": str(pairs.get("error") or "provider unavailable"),
+                        "price_usd": None, "liquidity_usd": None,
+                        "ret_pct": None, "cls": None, "pairs": 0,
+                    }
                     print(f"  {mint[:10]} {hname}: {kind} {pairs.get('error', '')}", file=sys.stderr)
                     continue
                 entry["outcomes"][hname] = {
@@ -147,13 +173,21 @@ def main() -> int:
             if not isinstance(pairs, list):
                 errors += 1
                 continue
-            best = best_solana_pair(pairs)
-            has_pair = best is not None
-            if best:
-                p, pliq = best
+            selected = pair_for_resolution(pairs, expected_pair)
+            has_pair = selected is not None
+            has_solana_pair = any(
+                isinstance(pair, dict) and pair.get("chainId") == "solana"
+                for pair in pairs
+            )
+            if selected:
+                p = selected
+                try:
+                    pliq = float((p.get("liquidity") or {}).get("usd"))
+                except (TypeError, ValueError):
+                    pliq = None
                 try:
                     now_price = float(p.get("priceUsd"))
-                    now_liq = float(pliq)
+                    now_liq = pliq
                 except (TypeError, ValueError):
                     now_price = None
                     now_liq = None
@@ -161,10 +195,17 @@ def main() -> int:
                 now_price = None
                 now_liq = None
             if not has_pair:
-                resolution_status = DATA_UNAVAILABLE
-                resolution_reason = "no valid Solana pair in provider response"
-                cls = None
-                ret = None
+                if expected_pair:
+                    resolution_status = UNEXITABLE
+                    resolution_reason = "entry pair is no longer present in provider response"
+                elif has_solana_pair:
+                    resolution_status = LEGACY_UNKNOWN
+                    resolution_reason = "legacy entry has no recorded pair_address; current pair not used"
+                else:
+                    resolution_status = DEAD
+                    resolution_reason = "no valid Solana pair in provider response"
+                cls = resolution_status
+                ret = -100.0 if resolution_status in (DEAD, UNEXITABLE) else None
             elif now_price is None or now_liq is None:
                 resolution_status = INVALID_RESPONSE
                 resolution_reason = "best Solana pair lacks numeric price/liquidity"

@@ -6,7 +6,11 @@ silently lose the malformed-provider-response fix.
 """
 
 RESOLVED = "RESOLVED"
+DEAD = "DEAD"
+UNEXITABLE = "UNEXITABLE"
 DATA_UNAVAILABLE = "DATA_UNAVAILABLE"
+PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+LEGACY_UNKNOWN = "LEGACY_UNKNOWN"
 TEMPORARY_FAILURE = "TEMPORARY_FAILURE"
 INVALID_RESPONSE = "INVALID_RESPONSE"
 UNRESOLVED = "UNRESOLVED"
@@ -30,3 +34,21 @@ def best_solana_pair(pairs):
         if best is None or amount > best[1]:
             best = (pair, amount)
     return best
+
+
+def pair_for_resolution(pairs, expected_pair_address=None):
+    """Select the entry pool, never silently replacing it with a new venue.
+
+    A missing expected address is an unexitable outcome, while an absent/invalid
+    provider payload remains the caller's data-availability concern.
+    """
+    valid = [
+        pair for pair in (pairs or [])
+        if isinstance(pair, dict) and pair.get("chainId") == "solana"
+    ]
+    if not expected_pair_address:
+        return None
+    return next(
+        (pair for pair in valid if pair.get("pairAddress") == expected_pair_address),
+        None,
+    )
