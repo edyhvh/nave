@@ -1,0 +1,19 @@
+{
+  "schema_version": "nave.skeptical-review.v1",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-three-day-acquisition-20260901.md",
+  "classification": "BLOCKED BY OUTCOME COVERAGE / INSUFFICIENT DATA",
+  "edge_claim": false,
+  "external_actions": "six free PumpApi archive reads only; no Dune calls or operational actions",
+  "predeclared_dates": ["2026-08-29", "2026-08-30", "2026-08-31"],
+  "checks": [
+    {"question": "Were dates selected after outcomes?", "result": "PASS", "evidence": "Dates and deterministic mint-selection rule were fixed before replay."},
+    {"question": "Was the three-day acquisition completed?", "result": "FAIL_SAFE", "evidence": "Only 2026-08-29 hours 00-05 were streamed; 0/3 days complete."},
+    {"question": "Could partial discovery bias the sample?", "result": "RISK_AVOIDED", "evidence": "No partial mint set was promoted to an outcome panel or analyzed."},
+    {"question": "Were missing outcomes converted into exclusions?", "result": "PASS", "evidence": "No new outcome rows were materialized; no labels or missingness states were rewritten."},
+    {"question": "Was provider availability established for all dates?", "result": "UNKNOWN", "evidence": "Only six archives were attempted; remaining archives were not tested in this bounded run."},
+    {"question": "Were A/B/C/D models fit?", "result": "PASS", "evidence": "No models, thresholds, scanner, watch, or strategy were changed."},
+    {"question": "Did the result reduce the temporal blocker?", "result": "NO", "evidence": "Usable calendar days remain 1; new-day masks and paired rows are unavailable."}
+  ],
+  "resource_and_runtime_gate": "STOPPED_BEFORE_PARTIAL_PANEL",
+  "next_step": "Resume the same predeclared dates only with a bounded sequential replay window or a verified retained launch manifest; do not substitute outcome-selected dates."
+}

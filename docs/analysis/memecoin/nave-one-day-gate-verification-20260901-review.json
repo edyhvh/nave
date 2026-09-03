@@ -1,0 +1,51 @@
+{
+  "schema_version": "nave.skeptical-review.v1",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-one-day-gate-verification-20260901.md",
+  "reviewed_at": "2026-09-01T02:55:35Z",
+  "classification": "INSUFFICIENT DATA",
+  "decision": "BLOCKED_OPERATOR_HOLD",
+  "edge_claim": false,
+  "evidence_checks": {
+    "one_day_complete": false,
+    "verified_hours": 19,
+    "attempted_hours": 24,
+    "failed_hours": ["01", "06", "11", "13", "17"],
+    "minimum_usable_days": 8,
+    "observed_usable_days": 1,
+    "minimum_decision_rows": 5000,
+    "observed_decision_rows": 0,
+    "missingness_preserved": true,
+    "same_pool_outcomes_verified": false,
+    "cost_adjusted_returns_verified": false
+  },
+  "falsification_attempt": [
+    {
+      "test": "Treat the 19 verified hours as a complete one-day panel",
+      "result": "REJECTED",
+      "reason": "Five replay hours failed integrity; retained rows are not a complete-day denominator."
+    },
+    {
+      "test": "Use retained mints/wallets as the outcome denominator",
+      "result": "REJECTED",
+      "reason": "The retained dataset is explicitly partial and cannot repair missing intervals or censoring."
+    },
+    {
+      "test": "Treat failed hours or missing exits as favorable outcomes",
+      "result": "REJECTED",
+      "reason": "DEAD, UNEXITABLE, provider failures, and unknowns must remain distinct missingness states."
+    },
+    {
+      "test": "Release the three-day experiment from this verification",
+      "result": "REJECTED",
+      "reason": "The operator hold requires inspection; no child or external action is authorized."
+    }
+  ],
+  "unknowns": [
+    "Complete one-day horizon outcomes across the five failed hours",
+    "Same-pool exitability and 24h/72h continuation coverage",
+    "Point-in-time participant history maturity",
+    "Temporal robustness and cost-adjusted returns"
+  ],
+  "next_step": "Operator inspection/release is required before any fresh bounded acquisition; retain the three-day panel as a candidate only.",
+  "external_actions": "none"
+}

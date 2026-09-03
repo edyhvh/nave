@@ -1,0 +1,39 @@
+{
+  "checks": [
+    {
+      "evidence": "1,000 rows; denominator 29,434; predeclared SHA-256 seed.",
+      "question": "Was the sample frozen before replay?",
+      "result": "PASS"
+    },
+    {
+      "evidence": "21/24 complete; hours 21-23 HTTP 404 at 2026-09-01T21:15Z.",
+      "question": "Are all event hours complete?",
+      "result": "FAIL"
+    },
+    {
+      "evidence": "Incomplete provider coverage is preserved as missingness, not inactivity.",
+      "question": "Can partial tape support survival labels?",
+      "result": "NO"
+    },
+    {
+      "evidence": "Fail-closed before day admission; no tuning or partial comparison.",
+      "question": "Was A/C evaluated?",
+      "result": "NO"
+    },
+    {
+      "evidence": "EDGE_VALIDATED remains false; no operational behavior changed.",
+      "question": "Does this establish an edge?",
+      "result": "NO"
+    }
+  ],
+  "classification": "PROVIDER_UNAVAILABLE / BLOCKED BY OUTCOME COVERAGE",
+  "next_review_gate": "Complete the same frozen day only after all 24 provider archives are available.",
+  "remaining_risks": [
+    "provider availability for hours 21-23",
+    "partial-day selection bias",
+    "right censoring",
+    "migration unknown",
+    "participant self-flow contamination"
+  ],
+  "schema_version": "nave.stage1-survival-day6-review.v1"
+}

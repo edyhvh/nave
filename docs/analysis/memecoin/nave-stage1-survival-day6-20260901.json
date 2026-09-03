@@ -1,0 +1,36 @@
+{
+  "acquisition": {
+    "complete_hours": 21,
+    "filter_union_mints": 1025,
+    "manifest": "docs/analysis/memecoin/nave-stage1-day6-acquisition-manifest-20260901.json",
+    "raw_decompressed_retained": false,
+    "total_hours": 24,
+    "workers_max": 3
+  },
+  "date": "2026-09-01",
+  "edge_validated": false,
+  "missingness": {
+    "migration_unknown_preserved": true,
+    "provider_gap_preserved": true,
+    "provider_unavailable_hours": [
+      "21",
+      "22",
+      "23"
+    ],
+    "right_censoring_preserved": true
+  },
+  "next_experiment": "Retry the same predeclared 2026-09-01 hours when available; no alternate date or tuning.",
+  "next_state": "BLOCKED_BY_PROVIDER_UNAVAILABLE",
+  "outcomes": {
+    "computed": false,
+    "reason": "incomplete provider coverage; preserve missingness"
+  },
+  "sample": {
+    "denominator": 29434,
+    "sample_tokens": 1000,
+    "selection_frozen_before_replay": true,
+    "selection_seed": "nave-2026-09-01-v1"
+  },
+  "schema_version": "nave.stage1-survival-day6.v1",
+  "status": "BLOCKED_BY_PROVIDER_UNAVAILABLE"
+}

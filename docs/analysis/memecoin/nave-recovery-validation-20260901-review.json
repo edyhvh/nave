@@ -1,0 +1,47 @@
+{
+  "schema_version": "nave.skeptical-review.v1",
+  "reviewed_artifact": "docs/analysis/memecoin/nave-recovery-validation-20260901.md",
+  "reviewed_at": "2026-09-01T02:57:31Z",
+  "classification": "INSUFFICIENT DATA",
+  "decision": "HOLD_RESEARCH_ONLY",
+  "edge_claim": false,
+  "evidence_source": "Recovered repository artifact at commit 39e909809f85d998c7d6cbd06ff1bef93c18bc31; no external provider call",
+  "falsification_attempt": [
+    {"test":"Treat recovered Day-2 rows as a complete chronological panel", "result":"FAIL", "reason":"Only 19/24 replay hours verified; five hours remain missing and continuation outcomes are unavailable."},
+    {"test":"Treat Dune/PumpApi agreement as validation of the predictive thesis", "result":"REJECTED", "reason":"Agreement tests source semantics only; no same-pool cost-adjusted outcomes or model comparison exists."},
+    {"test":"Treat missing hours, missing exits, or unknown participant history as favorable exclusions", "result":"REJECTED", "reason":"Missingness must remain explicit; DEAD, UNEXITABLE, PROVIDER_UNAVAILABLE, and UNKNOWN cannot be recoded as success or removed from denominators."},
+    {"test":"Claim temporal diversity from two dated artifacts", "result":"FAIL", "reason":"One usable day is recorded and no frozen multi-day decision-time matrix is available."},
+    {"test":"Use participant results without self-flow controls or mature point-in-time history", "result":"FAIL", "reason":"Prior targeted evidence is SELF-FLOW CONTAMINATED and mature Day-2 histories are zero."},
+    {"test":"Operationalize the result as BUY, SELL, watch, alert, or execution", "result":"REJECTED", "reason":"NAVE is permanently read-only, research-only, and human-gated."}
+  ],
+  "quality_checks": {
+    "leakage": "NOT_ESTABLISHED; outcome-independent sample claimed, full panel unavailable",
+    "selection": "PARTIAL; deterministic 1000-mint sample recovered, no survivor filter reported",
+    "self_flow": "SELF-FLOW CONTAMINATED",
+    "temporal_diversity": "INSUFFICIENT DATA",
+    "token_wallet_day_dominance": "NOT_ESTIMABLE",
+    "missingness_correlation": "UNKNOWN",
+    "definition_drift": "LIMITED; four side discrepancies and CREATE representation difference remain flagged",
+    "uncertainty": "NOT_ESTIMABLE for predictive outcomes",
+    "controls": "NOT_RUN",
+    "claim_strength": "DESCRIPTIVE RECOVERY ONLY"
+  },
+  "verified_facts": {
+    "overlap_rows": 6641,
+    "signature_matches": 6641,
+    "mint_matches": 6641,
+    "verified_replay_hours": 19,
+    "attempted_replay_hours": 24,
+    "retained_events": 211350,
+    "new_dune_credits": 0
+  },
+  "unknowns": [
+    "Complete outcome coverage at 5m/15m/30m/60m/4h",
+    "Third-day denominator and frozen sample manifest",
+    "Point-in-time mature participant histories",
+    "Runner continuation at 24h and 72h",
+    "Robustness across days, venues, regimes, and concentration controls"
+  ],
+  "next_step": "No child created: continuation has three consecutive no-progress proof iterations. Future work requires the smallest missing-hour/data-quality recovery or frozen third-day manifest after fresh preflight.",
+  "external_actions": "none"
+}
