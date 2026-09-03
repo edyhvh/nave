@@ -1,17 +1,15 @@
 from datetime import datetime, timezone
 from typing import Any
 from collections.abc import Hashable, Mapping
-import logging
 
 import pandas as pd
 
 from app.domain.openbb_indicators import OPENBB_INDICATORS
-
-logger = logging.getLogger(__name__)
-
+from core.env import load_repo_dotenv
 
 def _get_obb():
     """Lazy load OpenBB to avoid slow startup."""
+    load_repo_dotenv()
     try:
         from openbb import obb
         return obb
@@ -45,7 +43,7 @@ def _to_records(data: Any) -> list[dict[str, Any]]:
 def fetch_fred_series(series_id: str) -> dict[str, Any]:
     obb = _get_obb()
     result = obb.economy.fred_series(  # type: ignore[attr-defined]
-        series_id=series_id)
+        symbol=series_id)
     return {
         "series_id": series_id,
         "records": _to_records(result),
@@ -55,7 +53,36 @@ def fetch_fred_series(series_id: str) -> dict[str, Any]:
 
 def fetch_fixedincome_rate(symbol: str) -> dict[str, Any]:
     obb = _get_obb()
-    result = obb.fixedincome.rate(symbol=symbol)  # type: ignore[attr-defined]
+    result = obb.economy.fred_series(symbol=symbol)  # type: ignore[attr-defined]
+    return {
+        "symbol": symbol,
+        "records": _to_records(result),
+        "as_of": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def fetch_equity_history(symbol: str, start_date: str | None = None,
+                         end_date: str | None = None) -> dict[str, Any]:
+    """Fetch real historical equity/ETF observations through OpenBB."""
+    obb = _get_obb()
+    kwargs: dict[str, Any] = {"symbol": symbol}
+    if start_date:
+        kwargs["start_date"] = start_date
+    if end_date:
+        kwargs["end_date"] = end_date
+    kwargs["provider"] = "yfinance"
+    result = obb.equity.price.historical(**kwargs)  # type: ignore[attr-defined]
+    return {
+        "symbol": symbol,
+        "records": _to_records(result),
+        "as_of": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def fetch_crypto_price(symbol: str) -> dict[str, Any]:
+    """Fetch a current crypto quote through OpenBB without fabricating data."""
+    obb = _get_obb()
+    result = obb.crypto.price(symbol=symbol)  # type: ignore[attr-defined]
     return {
         "symbol": symbol,
         "records": _to_records(result),
@@ -67,58 +94,36 @@ def fetch_openbb_indicator(slug: str) -> dict[str, Any]:
     if slug not in OPENBB_INDICATORS:
         raise KeyError(f"Unknown OpenBB indicator: {slug}")
 
-    # TEMPORARY: Return mock data for testing frontend integration.
-    # TODO: Restore actual OpenBB calls when library and API keys are configured.
-    logger.warning(
-        "fetch_openbb_indicator('%s') is returning MOCK data. "
-        "Configure OpenBB API keys to enable real data.",
-        slug,
-    )
-    import random
-    from datetime import timedelta
-
     indicator = OPENBB_INDICATORS[slug]
     indicator_type = indicator["type"]
-
-    # Generate mock data based on indicator type
     if indicator_type == "fred_series":
-        # Mock FRED series data
-        value = random.uniform(
-            0, 1000) if "TGA" in indicator["series_id"] or "RRP" in indicator["series_id"] else random.uniform(0, 10)
-        return {
-            "series_id": indicator["series_id"],
-            "value": round(value, 2),
-            "date": (datetime.now(timezone.utc) - timedelta(days=random.randint(0, 7))).date().isoformat(),
-            "unit": "Billions of USD" if "TGA" in indicator["series_id"] or "RRP" in indicator["series_id"] else "Percent",
-            "as_of": datetime.now(timezone.utc).isoformat(),
-        }
+        return fetch_fred_series(indicator["series_id"])
 
     if indicator_type == "fixedincome_rate":
-        # Mock fixed income rate
-        value = random.uniform(3.0, 6.0)
-        return {
-            "symbol": indicator["symbol"],
-            "value": round(value, 2),
-            "date": (datetime.now(timezone.utc) - timedelta(days=random.randint(0, 1))).date().isoformat(),
-            "unit": "Percent",
-            "as_of": datetime.now(timezone.utc).isoformat(),
-        }
+        return fetch_fixedincome_rate(indicator["symbol"])
 
     if indicator_type == "yield_curve_spread":
-        # Mock yield curve spread
-        long_value = random.uniform(4.0, 5.5)
-        short_value = random.uniform(4.0, 5.0)
-        spread = long_value - short_value
+        long_data = fetch_fixedincome_rate(indicator["long_symbol"])
+        short_data = fetch_fixedincome_rate(indicator["short_symbol"])
+        long_value = _latest_numeric(long_data["records"])
+        short_value = _latest_numeric(short_data["records"])
         return {
             "long_symbol": indicator["long_symbol"],
             "short_symbol": indicator["short_symbol"],
-            "long_value": round(long_value, 2),
-            "short_value": round(short_value, 2),
-            "spread": round(spread, 2),
-            "date": (datetime.now(timezone.utc) - timedelta(days=random.randint(0, 1))).date().isoformat(),
-            "unit": "Percentage Points",
+            "long": long_data,
+            "short": short_data,
+            "long_value": long_value,
+            "short_value": short_value,
+            "spread": long_value - short_value if long_value is not None and short_value is not None else None,
+            "unit": "percentage points",
             "as_of": datetime.now(timezone.utc).isoformat(),
         }
+
+    if indicator_type == "equity_history":
+        return fetch_equity_history(indicator["symbol"])
+
+    if indicator_type == "crypto_price":
+        return fetch_crypto_price(indicator["symbol"])
 
     raise ValueError(f"Unsupported indicator type: {indicator_type}")
 
@@ -132,3 +137,13 @@ def _extract_latest_value(records: list[dict[str, Any]]) -> Any:
         if key in latest:
             return latest[key]
     return latest
+
+
+def _latest_numeric(records: list[dict[str, Any]]) -> float | None:
+    """Extract the latest numeric observation from a provider-shaped record."""
+    if not records:
+        return None
+    for value in reversed(list(records[-1].values())):
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+    return None

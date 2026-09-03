@@ -3,7 +3,7 @@
   "project": "NAVE",
   "owner_profile": "quant",
   "mode": "READ_ONLY_RESEARCH_ONLY_HUMAN_GATED",
-  "status": "NEXT_BOUNDED_EXPERIMENT",
+  "status": "PAUSED_NOTIFICATION_AND_STATE_RECONCILIATION",
   "current_phase": "Stage-1 survival/observability and bounded 5-7 day event-panel expansion",
   "current_blocker": "Only four comparable event-level days exist; participant-excluded history, all-migrant Runner continuation, and stable multi-day Stage-1 evidence remain incomplete.",
   "latest_result": "NO EDGE VALIDATED; Day-5 frozen A/C temporal check favored A on PR-AUC and Brier, while token-cluster bootstrap intervals crossed zero. Activity labels preserve right censoring and migration unknowns.",
@@ -26,7 +26,8 @@
   "resource_usage": {"dune_included_remaining_observed": 471.271, "dune_credits_used_observed": 2028.729, "dune_task_target": 25, "dune_warning": 50, "dune_hard_stop": 75, "dune_checkpoint_cumulative_cap": 200, "guard": "research/nave/resource_guard.py; explicit fresh-usage preflight, fail-closed", "pumpapi": "mint-first projected streaming; bounded max 3 workers; retain canonical Parquet/manifests and no raw decompressed history", "disk_free_gb_observed": 52, "memory_available_gb_observed": 6.1},
   "continuation_policy": "One bounded quant continuation is justified to extend the frozen Stage-1 panel one predeclared day at a time toward 5-7 days; preserve read-only/research-only, retry, disk, Dune, and no-live-action gates.",
   "attention_task": "t_e8a16517",
-  "source_notes": "Day-5 execution completed 24/24 archives and produced a frozen panel before the parent task exceeded its bounded runtime; canonical data is under /home/david/nave/data. The stale duplicate Aug-31 child t_6070cb2f and completed parent t_5432bed0 were archived; t_81a4fb08 is the sole running continuation for 2026-09-01.",
-  "notification_hygiene": {"status": "FIXED_CENTRALLY", "routine_done": "SILENT", "result": "EXPLICIT_NOTIFY_USER", "attachments": "EXPLICIT_NOTIFY_ATTACHMENTS", "historical_replay": "SUPPRESSED_FOR_ROUTINE_EVENTS", "hermes_commit": "821a00845c108dfaf7208c4f3f03e0f5b1420b6e", "audit_report": "docs/analysis/memecoin/nave-notification-hygiene-and-stage1-scale-20260901.md"},
-  "updated_at": "2026-09-01T20:11:00Z"
+  "source_notes": "Day-5 execution completed 24/24 archives and produced a frozen panel before the parent task exceeded its bounded runtime; canonical data is under /home/david/nave/data. The stale duplicate Aug-31 child t_6070cb2f and completed parent t_5432bed0 were archived. t_81a4fb08 remains the single designated future continuation for 2026-09-01, but its live Kanban record is BLOCKED with no current run or worker; no continuation is running.",
+  "notification_hygiene": {"status": "DEPLOYED_AND_TESTED_IN_SERVED_CHECKOUT", "routine_done": "SILENT", "result": "EXPLICIT_NOTIFY_USER", "attachments": "EXPLICIT_NOTIFY_ATTACHMENTS", "historical_replay": "SUPPRESSED_FOR_ROUTINE_EVENTS", "hermes_commit": "1fcf9c4b1e596e93fc69626d6897d43883fe00b3", "audit_report": "docs/analysis/memecoin/nave-notification-stage1-independent-audit-20260902.md"},
+  "continuation_gate": "PAUSED_UNTIL_NOTIFICATION_RELIABILITY_AND_NAVE_STATE_RECONCILIATION_PASS",
+  "updated_at": "2026-09-02T09:55:00Z"
 }
