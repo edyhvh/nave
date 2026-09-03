@@ -21,6 +21,7 @@ v1 is read-only: the architecture leaves room for a v2 burner-wallet
 swap layer (separate from the existing EVM Hyperliquid vault).
 """
 
+from trading.memecoin.archive import MintHistory, mint_history, persist_scan_snapshot
 from trading.memecoin.data_provider import (
     DexScreenerClient,
     HeliusClient,
@@ -31,7 +32,20 @@ from trading.memecoin.data_provider import (
     TokenMarket,
     TokenMetadata,
 )
-from trading.memecoin.archive import MintHistory, mint_history, persist_scan_snapshot
+from trading.memecoin.discovery_policy import (
+    REQUIRED_GATES,
+    CandidateDecision,
+    CandidateEvidence,
+    Chain,
+    DiscoveryRunSummary,
+    GateEvidence,
+    GateStatus,
+    Recommendation,
+    RiskPlan,
+    RunOutcome,
+    evaluate_candidate,
+    summarize_run,
+)
 from trading.memecoin.recommend import (
     BASE_RISK_PCT,
     MEMECOIN_CLASS_CAP_PCT,
@@ -40,12 +54,16 @@ from trading.memecoin.recommend import (
     memecoin_recommend_payload,
 )
 from trading.memecoin.safety_check import (
-    HOLDER_TOP10_MAX,
-    HOLDER_TOP1_FLAG_MIN,
     HOLDER_TOP1_FLAG_MAX,
+    HOLDER_TOP1_FLAG_MIN,
+    HOLDER_TOP10_MAX,
     SafetyReport,
     SafetyVerdict,
     check_safety,
+)
+from trading.memecoin.scanner import (
+    MemecoinCandidate,
+    MemecoinScanner,
 )
 from trading.memecoin.scoring import (
     LIQUIDITY_FLOOR_USD,
@@ -53,32 +71,38 @@ from trading.memecoin.scoring import (
     ScoreBreakdown,
     score_candidate,
 )
-from trading.memecoin.scanner import (
-    MemecoinCandidate,
-    MemecoinScanner,
-)
 from trading.memecoin.timing import EntryTiming, classify_entry_timing
 
 __all__ = [
-    "DexScreenerClient",
-    "HOLDER_TOP10_MAX",
+    "BASE_RISK_PCT",
     "HOLDER_TOP1_FLAG_MAX",
     "HOLDER_TOP1_FLAG_MIN",
+    "HOLDER_TOP10_MAX",
+    "LIQUIDITY_FLOOR_USD",
+    "MEMECOIN_CLASS_CAP_PCT",
+    "REQUIRED_GATES",
+    "TRADE_R_MULTIPLIER",
+    "CandidateDecision",
+    "CandidateEvidence",
+    "Chain",
+    "DexScreenerClient",
+    "DiscoveryRunSummary",
+    "EntryTiming",
+    "GateEvidence",
+    "GateStatus",
     "HeliusClient",
     "JupiterClient",
     "Label",
-    "EntryTiming",
-    "LIQUIDITY_FLOOR_USD",
-    "MintHistory",
-    "BASE_RISK_PCT",
-    "MEMECOIN_CLASS_CAP_PCT",
-    "TRADE_R_MULTIPLIER",
-    "MemecoinRecommendation",
     "MemecoinCandidate",
     "MemecoinDataProvider",
+    "MemecoinRecommendation",
     "MemecoinScanner",
+    "MintHistory",
     "PumpFunClient",
     "PumpFunLaunch",
+    "Recommendation",
+    "RiskPlan",
+    "RunOutcome",
     "SafetyReport",
     "SafetyVerdict",
     "ScoreBreakdown",
@@ -86,8 +110,10 @@ __all__ = [
     "TokenMetadata",
     "check_safety",
     "classify_entry_timing",
+    "evaluate_candidate",
     "memecoin_recommend_payload",
     "mint_history",
     "persist_scan_snapshot",
     "score_candidate",
+    "summarize_run",
 ]
