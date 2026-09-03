@@ -12,7 +12,6 @@ from trading.stocks.ism_scraper import (
     _strip_html,
 )
 
-
 FIXTURE_MANUFACTURING = """
 <html><body>
 <h1>March 2026 Manufacturing ISM&reg; Report On Business&reg;</h1>
@@ -169,6 +168,26 @@ def test_parse_generic_month_fallback_keeps_year():
                             source_url="fixture://roundup-services")
 
     assert report.report_month == "May 2026"
+
+
+def test_parse_prefers_prnewswire_slug_over_historical_body_month():
+    html = """
+        <html><body>
+        <p>Historical comparison: February 2022.</p>
+        <p>The Services PMI registered 54.1 percent.</p>
+        </body></html>
+        """
+    fetcher = ISMReportFetcher()
+    report = fetcher._parse(
+        html,
+        kind="services",
+        source_url=(
+            "https://www.prnewswire.com/news-releases/"
+            "services-pmi-at-54-1-july-2026-ism-services-pmi-report-302840900.html"
+        ),
+    )
+
+    assert report.report_month == "July 2026"
 
 
 def test_by_sector_deduplicates_preserving_order():

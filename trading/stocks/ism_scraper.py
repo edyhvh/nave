@@ -25,9 +25,10 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from html import unescape
-from typing import Iterable, Literal
+from typing import Literal
 
 import httpx
 
@@ -101,7 +102,7 @@ class ISMReportFetcher:
         timeout_seconds: float = 15.0,
         use_playwright: bool = False,
         user_agent: str = (
-            "Mozilla/5.0 (compatible; nave-research/0.1; +https://github.com/edyhvh/nave)"
+            "Mozilla/5.0 (compatible; nave-research/0.1; +https://github.com/jhonnyisaacc/nave)"
         ),
     ):
         self.timeout_seconds = timeout_seconds
@@ -122,7 +123,7 @@ class ISMReportFetcher:
         try:
             target = self._resolve_latest_release(kind)
             html = self._fetch_html(target)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - provider fallback
             logger.debug(
                 "ISM live fetch failed (%s); falling back to fixture landing URL", exc
             )
@@ -210,7 +211,7 @@ class ISMReportFetcher:
                 resp = c.get(ISM_SITEMAP_URL, follow_redirects=True)
                 resp.raise_for_status()
                 sitemap = resp.text
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - optional sitemap fallback
             logger.debug("ISM sitemap fetch failed: %s", exc)
             return None
 
@@ -223,12 +224,12 @@ class ISMReportFetcher:
         ]
         if not roundup_urls:
             return None
-        return sorted(roundup_urls)[-1]
+        return max(roundup_urls)
 
     def _extract_prnewswire_url(self, roundup_url: str, *, kind: ReportKind) -> str | None:
         try:
             html = self._fetch_html(roundup_url)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - optional release fallback
             logger.debug("Failed to fetch ISM roundup page %s: %s",
                          roundup_url, exc)
             return None
@@ -244,7 +245,12 @@ class ISMReportFetcher:
         """Extract PMI + expanding/contracting industry ordering from the HTML."""
         text = _strip_html(html)
 
-        month = _extract_report_month(html, text=text, kind=kind)
+        month = _extract_report_month(
+            html,
+            text=text,
+            kind=kind,
+            source_url=source_url,
+        )
         pmi = _extract_pmi(text, kind, source_url=source_url)
         expanding = _parse_industry_list(text, trend="expanding")
         contracting = _parse_industry_list(text, trend="contracting")
@@ -292,8 +298,16 @@ def _strip_html(html: str) -> str:
             tag.decompose()
         text = soup.get_text(separator=" ")
     except ImportError:
-        text = _TAG_RE.sub(" ", html)
-    return _WHITESPACE_RE.sub(" ", text).strip()
+        # Keep the no-BeautifulSoup path semantically equivalent for tests and
+        # minimal deployments: script/style contents are not report text.
+        without_code = re.sub(
+            r"<\s*(script|style|noscript)\b[^>]*>.*?<\s*/\s*\1\s*>",
+            " ",
+            html,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        text = _TAG_RE.sub(" ", without_code)
+    return _WHITESPACE_RE.sub(" ", unescape(text)).strip()
 
 
 def _looks_like_ism_captcha(html: str, *, url: str) -> bool:
@@ -303,8 +317,26 @@ def _looks_like_ism_captcha(html: str, *, url: str) -> bool:
     return "captcha_form" in lowered and "google.com/recaptcha/api.js" in lowered
 
 
-def _extract_report_month(html: str, *, text: str, kind: ReportKind) -> str:
+def _extract_report_month(
+    html: str,
+    *,
+    text: str,
+    kind: ReportKind,
+    source_url: str = "",
+) -> str:
     kind_label = "Manufacturing" if kind == "manufacturing" else "Services"
+
+    # PR Newswire release slugs contain the report month and year.  Prefer this
+    # over generic body text: roundup pages often include historical references
+    # (for example, "February 2022") before the current report content.
+    if "prnewswire.com" in source_url.lower():
+        slug_match = re.search(
+            rf"(?P<month>{_MONTH_PATTERN})[-_](?P<year>\d{{4}})",
+            source_url,
+            re.IGNORECASE,
+        )
+        if slug_match:
+            return f"{slug_match.group('month').capitalize()} {slug_match.group('year')}"
 
     for heading in _extract_heading_texts(html):
         month = _extract_kind_aligned_month(heading, kind_label)

@@ -11,6 +11,15 @@ from rich.table import Table
 
 from cli.professional_typer import ProfessionalTyper
 from core.config import HyperliquidSettings
+from trading.crypto.chain_audit import (
+    DEFAULT_EVM_RPC_URLS,
+    DEFAULT_SOLANA_RPC_URL,
+    EvmRpcClient,
+    SolanaRpcClient,
+    build_evm_snapshot,
+    build_solana_snapshot,
+    write_snapshot,
+)
 from trading.crypto.vault import SECRETS_POLICY_MESSAGE
 from trading.crypto.wallet_service import (
     DEFAULT_TEST_COIN,
@@ -35,6 +44,43 @@ console = Console()
 
 def _hl_settings() -> HyperliquidSettings:
     return HyperliquidSettings.from_env()
+
+
+@wallet_app.command("audit")
+def wallet_audit(
+    address: str = typer.Argument(..., help="Public wallet address to inspect."),
+    chain: str = typer.Option("ethereum", "--chain", help="ethereum, bsc, or solana."),
+    rpc_url: Optional[str] = typer.Option(None, "--rpc-url", help="Override the public RPC URL."),
+    snapshot_path: Optional[str] = typer.Option(
+        None,
+        "--snapshot-path",
+        help="Explicit local path for a JSON snapshot; no file is written by default.",
+    ),
+) -> None:
+    """Inspect a public wallet with free RPCs; never signs or submits transactions."""
+    normalized_chain = chain.strip().lower()
+    try:
+        if normalized_chain == "solana":
+            client = SolanaRpcClient(rpc_url or DEFAULT_SOLANA_RPC_URL)
+            snapshot = build_solana_snapshot(client, address)
+        elif normalized_chain in DEFAULT_EVM_RPC_URLS:
+            client = EvmRpcClient(
+                rpc_url or DEFAULT_EVM_RPC_URLS[normalized_chain],
+                chain=normalized_chain,
+            )
+            if not client.is_connected():
+                raise ConnectionError(f"RPC unavailable for {normalized_chain}")
+            snapshot = build_evm_snapshot(client, address)
+        else:
+            raise ValueError("chain must be ethereum, bsc, or solana")
+    except (ConnectionError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    if snapshot_path:
+        destination = write_snapshot(snapshot, snapshot_path)
+        snapshot["snapshot_path"] = str(destination)
+
+    typer.echo(json.dumps(snapshot, indent=2))
 
 
 @wallet_app.command("create")

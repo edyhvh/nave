@@ -31,7 +31,6 @@ from trading.stocks import (
     render_ism_report_markdown_v2,
     render_x_summary_markdown_v2,
 )
-from trading.stocks.short_backtest import ISMShortBacktester
 from trading.stocks.ism_calendar import (
     CalendarKind,
     ISMCalendarError,
@@ -39,6 +38,14 @@ from trading.stocks.ism_calendar import (
     load_calendar,
     next_release,
 )
+from trading.stocks.portfolio_manager import (
+    Candidate,
+    Evidence,
+    PortfolioPolicy,
+    allocate_monthly_budget,
+    rank_candidates,
+)
+from trading.stocks.short_backtest import ISMShortBacktester
 from trading.stocks.social_analyzer import (
     analyze_tickers,
     render_sheet as render_x_sheet,
@@ -57,6 +64,70 @@ ism_calendar_app = ProfessionalTyper(
     help="Internal ISM release calendar (sourced from FMP)."
 )
 stocks_app.add_typer(ism_calendar_app, name="ism-calendar")
+
+
+@stocks_app.command("portfolio-review")
+def portfolio_review(
+    candidates_json: str = typer.Option(
+        ...,
+        "--candidates-json",
+        help="JSON array of normalised candidates and evidence from upstream adapters.",
+    ),
+    monthly_budget: float = typer.Option(300.0, "--monthly-budget", min=0.0),
+    open_tickers: Optional[str] = typer.Option(
+        None,
+        "--open-tickers",
+        help="JSON array of tickers already held; used to enforce max_positions.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Build a human-gated monthly portfolio review; never places orders."""
+    try:
+        raw_candidates = _json.loads(candidates_json)
+        if not isinstance(raw_candidates, list):
+            raise TypeError("candidates JSON must be an array")
+        candidates = [
+            Candidate(
+                ticker=str(item["ticker"]),
+                evidence=Evidence(**dict(item.get("evidence", {}))),
+                price=item.get("price"),
+                entry_zone=tuple(item["entry_zone"]) if item.get("entry_zone") else None,
+                invalidation=item.get("invalidation"),
+                direct_defense=bool(item.get("direct_defense", False)),
+            )
+            for item in raw_candidates
+        ]
+        held: list[str] = []
+        if open_tickers:
+            parsed_open = _json.loads(open_tickers)
+            if not isinstance(parsed_open, list):
+                raise TypeError("open tickers JSON must be an array")
+            held = [str(ticker) for ticker in parsed_open]
+    except (KeyError, TypeError, ValueError, _json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"invalid portfolio-review input: {exc}") from exc
+
+    policy = PortfolioPolicy(monthly_budget=monthly_budget)
+    ranked = rank_candidates(candidates, policy=policy)
+    allocations = allocate_monthly_budget(ranked, policy=policy, open_tickers=held)
+    payload = {
+        "mode": "human_gated_dry_run",
+        "policy": {"monthly_budget": policy.monthly_budget,
+                   "reserve_cash_weight": policy.reserve_cash_weight},
+        "ranked": [decision.as_dict() for decision in ranked],
+        "allocations": [decision.as_dict() for decision in allocations],
+    }
+    if json_out:
+        typer.echo(_json.dumps(payload, indent=2))
+        return
+    typer.echo("NAVE PORTFOLIO REVIEW — human-gated dry-run")
+    allocated = {decision.ticker: decision.allocation_usd for decision in allocations}
+    for decision in ranked:
+        amount = allocated.get(decision.ticker)
+        allocation = f" → ${amount:.2f}" if amount else ""
+        typer.echo(f"{decision.action.value.upper():7} {decision.ticker:6} "
+                   f"score={decision.score:.2f}{allocation} "
+                   f"[{', '.join(decision.reason_codes) or 'no flags'}]")
+    typer.echo("No orders were placed.")
 
 
 def _resolve_universe(universe_json: Optional[str]) -> dict[str, list[str]]:
@@ -965,6 +1036,57 @@ def ism_calendar_next(
         f"Next ISM {release.kind} release: {release.release_at_utc} "
         f"(covers {release.covers_month or '?'}) — {release.event}"
     )
+
+
+@stocks_app.command("events-list")
+def events_list(
+    status: str | None = typer.Option(None, "--status"),
+    ticker: str | None = typer.Option(None, "--ticker"),
+    due_only: bool = typer.Option(False, "--due-only"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """List material events that still need review."""
+    from trading.stocks.event_journal import list_events
+
+    events = list_events(status=status, ticker=ticker, due_only=due_only)
+    if json_out:
+        typer.echo(_json.dumps(events, indent=2, default=str))
+        return
+    if not events:
+        typer.echo("No portfolio events require review.")
+        return
+    for event in events:
+        typer.echo(
+            f"{event.get('event_id')} | {event.get('status')} | "
+            f"{event.get('importance')} | {event.get('ticker')} | "
+            f"{event.get('event_type')} | next={event.get('next_review_date') or '?'}"
+        )
+
+
+@stocks_app.command("events-mark")
+def events_mark(
+    event_id: str = typer.Argument(...),
+    status: str = typer.Option(..., "--status", help="new|watching|reviewed|closed"),
+    note: str | None = typer.Option(None, "--note"),
+    next_review_date: str | None = typer.Option(None, "--next-review-date"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Mark a material event after human review; never executes an order."""
+    from trading.stocks.event_journal import mark_event
+
+    try:
+        event = mark_event(
+            event_id,
+            status=status,
+            note=note,
+            next_review_date=next_review_date,
+        )
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if json_out:
+        typer.echo(_json.dumps(event, indent=2, default=str))
+    else:
+        typer.echo(f"Marked {event_id}: {event['status']}")
 
 
 @stocks_app.command("journal-stats")
