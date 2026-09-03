@@ -60,6 +60,14 @@ insufficient coverage and missing verbatim evidence quotes. The recurring job
 must continue only as read-only research and should treat those checks as
 quality gates for future reports.
 
+The 2026-09-03 continuation detected the new copper video through the verified
+RSS feed, but the native transcript was unavailable from the VPS. It therefore
+returned `NO ACTION / INSUFFICIENT EVIDENCE`, preserved the prior cursor, and
+left the next bounded check as transcript recovery. The local/manual execution
+recorded a Discord delivery failure; the multiplexed gateway remains the
+intended scheduled delivery path, and notification delivery still requires a
+successful scheduled-tick verification.
+
 ## Action boundary
 
 NAVE and Abi may collect evidence, test hypotheses, and publish human-gated

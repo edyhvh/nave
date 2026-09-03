@@ -89,6 +89,12 @@ Cava contract is linked from the research documentation section.
 - The Cava task was continued in read-only mode on 2026-09-03; the new copper
   video had no available transcript, so the report correctly returned `NO
   ACTION / INSUFFICIENT EVIDENCE` and did not advance the cursor.
+- The recurring Cava task remains enabled for its next scheduled tick. Its
+  local/manual delivery status is still `delivery_failed` because the
+  standalone runner has no live Discord transport; the primary multiplexed
+  gateway is active, but a successful scheduled notification has not yet been
+  verified. The secondary Quant Discord adapter was not enabled because it
+  would duplicate the primary credential.
 - CLI/import and JSON/link checks were run without provider acquisition or
   external financial actions.
 - Repository-wide Ruff was also inspected; it reports existing style findings
