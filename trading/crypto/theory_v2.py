@@ -511,6 +511,8 @@ class TheoryV2Engine:
         cot_history_fn: CotHistoryFn | None = None,
         squeeze_config: SqueezeConfig | None = None,
         recovery_config: RecoveryTransitionConfig | None = None,
+        cross_asset_fn: Callable[[str, pd.Timestamp], str] | None = None,
+        cross_confirm_min_velocity: float = 0.5,
     ):
         self.source = source
         self.confidence = confidence
@@ -519,6 +521,11 @@ class TheoryV2Engine:
         self.squeeze_config = squeeze_config
         # N2 experiment: None disables the detector (production default).
         self.recovery_config = recovery_config
+        # N3 experiment: None disables cross-asset confirmation (production default).
+        # When set, a sub-threshold directional weekly velocity is accepted as bias
+        # if the other coin's weekly momentum bias agrees in direction.
+        self.cross_asset_fn = cross_asset_fn
+        self.cross_confirm_min_velocity = cross_confirm_min_velocity
 
     def evaluate(
         self,
@@ -532,6 +539,21 @@ class TheoryV2Engine:
         bias, velocity = momentum_bias(weekly)
         bias_source = "momentum"
         breakout_diag: dict | None = None
+        if bias == "neutral" and self.cross_asset_fn is not None and velocity is not None:
+            # N3 experiment — cross-asset soft confirmation: accept a
+            # sub-threshold but directional weekly velocity when the other
+            # coin's weekly momentum bias agrees in direction. This targets the
+            # N1 blind spot (gradual recoveries oscillate below min_velocity)
+            # without reusing the rejected recovery-detector approach.
+            if abs(velocity) >= self.cross_confirm_min_velocity:
+                direction = "long" if velocity > 0 else "short"
+                try:
+                    other_bias = self.cross_asset_fn(coin, as_of or pd.Timestamp.now(tz="UTC"))
+                except Exception:  # pragma: no cover - provider failure is neutral
+                    other_bias = "neutral"
+                if other_bias == direction:
+                    bias = direction
+                    bias_source = "cross_asset_confirm"
         if bias == "neutral":
             # iter 18 fallback — range-breakout for iter 16 blind spot.
             rb_bias, breakout_diag = range_breakout_bias(weekly)

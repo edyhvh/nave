@@ -1,0 +1,1348 @@
+{
+  "coins": [
+    "BTC",
+    "ETH"
+  ],
+  "cross_confirm_min_velocity": 0.5,
+  "periods": {
+    "2017-bull+2018-bear": {
+      "BTC": {
+        "control": {
+          "fired": 7,
+          "correct": 5,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 7.500000000000001,
+          "bias_sources": {
+            "momentum": 7
+          },
+          "trades": [
+            {
+              "week": "2017-10-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-10-30",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2018-03-26",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-07-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 8,
+          "correct": 5,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 6.500000000000001,
+          "bias_sources": {
+            "momentum": 7,
+            "cross_asset_confirm": 1
+          },
+          "trades": [
+            {
+              "week": "2017-10-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-10-30",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2017-11-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2018-02-05",
+              "direction": "short",
+              "bias_source": "cross_asset_confirm",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2018-03-26",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-07-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 6,
+          "correct": 3,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 4.099999999999998,
+          "bias_sources": {
+            "momentum": 6
+          },
+          "trades": [
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2018-02-05",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-04-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 7,
+          "correct": 4,
+          "incorrect": 1,
+          "unresolved": 2,
+          "total_r": 5.6162363919129055,
+          "bias_sources": {
+            "cross_asset_confirm": 1,
+            "momentum": 6
+          },
+          "trades": [
+            {
+              "week": "2017-11-13",
+              "direction": "long",
+              "bias_source": "cross_asset_confirm",
+              "outcome": "correct",
+              "pnl_r": 1.5162
+            },
+            {
+              "week": "2017-11-20",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-01-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2018-02-05",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2018-04-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2018-06-11",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    },
+    "2019-recovery": {
+      "BTC": {
+        "control": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 0.7000000000000031,
+          "bias_sources": {
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2019-06-17",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2019-11-25",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 0.7000000000000031,
+          "bias_sources": {
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2019-06-17",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2019-11-25",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 4.201660440016599,
+          "bias_sources": {
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2019-04-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 4.2017
+            },
+            {
+              "week": "2019-07-15",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 4.201660440016599,
+          "bias_sources": {
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2019-04-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 4.2017
+            },
+            {
+              "week": "2019-07-15",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    },
+    "2020-covid-crash": {
+      "BTC": {
+        "control": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 3.1674317247402985,
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2020-04-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 3.1674
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 3.1674317247402985,
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2020-04-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 3.1674
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 3,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 1.7,
+          "bias_sources": {
+            "momentum": 3
+          },
+          "trades": [
+            {
+              "week": "2020-02-03",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2020-04-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2020-06-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 3,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 1.7,
+          "bias_sources": {
+            "momentum": 3
+          },
+          "trades": [
+            {
+              "week": "2020-02-03",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2020-04-27",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2020-06-01",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    },
+    "2020-recovery+2021-ATH": {
+      "BTC": {
+        "control": {
+          "fired": 6,
+          "correct": 2,
+          "incorrect": 2,
+          "unresolved": 2,
+          "total_r": 1.4,
+          "bias_sources": {
+            "momentum": 6
+          },
+          "trades": [
+            {
+              "week": "2020-11-30",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2020-12-21",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2020-12-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-01-04",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2021-10-11",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-10-18",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 6,
+          "correct": 2,
+          "incorrect": 2,
+          "unresolved": 2,
+          "total_r": 1.4,
+          "bias_sources": {
+            "momentum": 6
+          },
+          "trades": [
+            {
+              "week": "2020-11-30",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2020-12-21",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2020-12-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-01-04",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2021-10-11",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-10-18",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 8,
+          "correct": 5,
+          "incorrect": 3,
+          "unresolved": 0,
+          "total_r": 5.5000000000000036,
+          "bias_sources": {
+            "momentum": 8
+          },
+          "trades": [
+            {
+              "week": "2020-11-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2020-11-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2020-12-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-04-26",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-05-03",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-05-10",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2021-08-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-11-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 9,
+          "correct": 6,
+          "incorrect": 3,
+          "unresolved": 0,
+          "total_r": 6.700000000000005,
+          "bias_sources": {
+            "momentum": 8,
+            "cross_asset_confirm": 1
+          },
+          "trades": [
+            {
+              "week": "2020-11-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2020-11-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2020-12-14",
+              "direction": "long",
+              "bias_source": "cross_asset_confirm",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2020-12-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-04-26",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-05-03",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-05-10",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2021-08-23",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2021-11-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        }
+      }
+    },
+    "2022-bear": {
+      "BTC": {
+        "control": {
+          "fired": 3,
+          "correct": 2,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 2.051143444982931,
+          "bias_sources": {
+            "range_breakout": 1,
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2022-01-03",
+              "direction": "short",
+              "bias_source": "range_breakout",
+              "outcome": "correct",
+              "pnl_r": 1.5946
+            },
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.4565
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 3,
+          "correct": 2,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 2.051143444982931,
+          "bias_sources": {
+            "cross_asset_confirm": 1,
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2022-01-03",
+              "direction": "short",
+              "bias_source": "cross_asset_confirm",
+              "outcome": "correct",
+              "pnl_r": 1.5946
+            },
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.4565
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 4,
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 4.600000000000001,
+          "bias_sources": {
+            "momentum": 4
+          },
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-06-13",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-08-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 6,
+          "correct": 3,
+          "incorrect": 0,
+          "unresolved": 3,
+          "total_r": 4.600000000000001,
+          "bias_sources": {
+            "momentum": 4,
+            "cross_asset_confirm": 2
+          },
+          "trades": [
+            {
+              "week": "2022-03-28",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2022-04-18",
+              "direction": "short",
+              "bias_source": "cross_asset_confirm",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2022-05-09",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-06-13",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2022-08-08",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2022-08-22",
+              "direction": "short",
+              "bias_source": "cross_asset_confirm",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    },
+    "2023-recovery": {
+      "BTC": {
+        "control": {
+          "fired": 4,
+          "correct": 4,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 7.6675153570714665,
+          "bias_sources": {
+            "momentum": 4
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 3.4949
+            },
+            {
+              "week": "2023-03-13",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2023-05-08",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.1444
+            },
+            {
+              "week": "2023-12-04",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.3283
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 5,
+          "correct": 5,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 8.867515357071467,
+          "bias_sources": {
+            "momentum": 4,
+            "cross_asset_confirm": 1
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 3.4949
+            },
+            {
+              "week": "2023-03-13",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2023-04-10",
+              "direction": "long",
+              "bias_source": "cross_asset_confirm",
+              "outcome": "correct",
+              "pnl_r": 1.2
+            },
+            {
+              "week": "2023-05-08",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.1444
+            },
+            {
+              "week": "2023-12-04",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.3283
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 1,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 1.5508655428798441,
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.5509
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 1,
+          "unresolved": 0,
+          "total_r": 0.5508655428798441,
+          "bias_sources": {
+            "momentum": 1,
+            "cross_asset_confirm": 1
+          },
+          "trades": [
+            {
+              "week": "2023-01-09",
+              "direction": "long",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.5509
+            },
+            {
+              "week": "2023-07-03",
+              "direction": "long",
+              "bias_source": "cross_asset_confirm",
+              "outcome": "incorrect",
+              "pnl_r": -1.0
+            }
+          ]
+        }
+      }
+    },
+    "2024-ETF-approval": {
+      "BTC": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "bias_sources": {},
+          "trades": []
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "bias_sources": {},
+          "trades": []
+        },
+        "treatment": {
+          "fired": 0,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 0,
+          "total_r": 0.0,
+          "bias_sources": {},
+          "trades": []
+        }
+      }
+    },
+    "2024-2025-bull": {
+      "BTC": {
+        "control": {
+          "fired": 1,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 0.0,
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 1,
+          "correct": 0,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 0.0,
+          "bias_sources": {
+            "momentum": 1
+          },
+          "trades": [
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      },
+      "ETH": {
+        "control": {
+          "fired": 2,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 1,
+          "total_r": 1.7,
+          "bias_sources": {
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2025-01-27",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        },
+        "treatment": {
+          "fired": 3,
+          "correct": 1,
+          "incorrect": 0,
+          "unresolved": 2,
+          "total_r": 1.7,
+          "bias_sources": {
+            "cross_asset_confirm": 1,
+            "momentum": 2
+          },
+          "trades": [
+            {
+              "week": "2024-11-11",
+              "direction": "long",
+              "bias_source": "cross_asset_confirm",
+              "outcome": null,
+              "pnl_r": 0.0
+            },
+            {
+              "week": "2025-01-27",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": "correct",
+              "pnl_r": 1.7
+            },
+            {
+              "week": "2025-03-10",
+              "direction": "short",
+              "bias_source": "momentum",
+              "outcome": null,
+              "pnl_r": 0.0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "oos": {
+    "BTC": {
+      "control": {
+        "fired": 3,
+        "correct": 2,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": 2.399999999999997,
+        "bias_sources": {
+          "momentum": 3
+        },
+        "trades": [
+          {
+            "week": "2026-01-26",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2026-02-02",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2026-02-23",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "incorrect",
+            "pnl_r": -1.0
+          }
+        ]
+      },
+      "treatment": {
+        "fired": 3,
+        "correct": 2,
+        "incorrect": 1,
+        "unresolved": 0,
+        "total_r": 2.399999999999997,
+        "bias_sources": {
+          "momentum": 3
+        },
+        "trades": [
+          {
+            "week": "2026-01-26",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2026-02-02",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2026-02-23",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "incorrect",
+            "pnl_r": -1.0
+          }
+        ]
+      }
+    },
+    "ETH": {
+      "control": {
+        "fired": 3,
+        "correct": 2,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 3.1250239914300373,
+        "bias_sources": {
+          "momentum": 3
+        },
+        "trades": [
+          {
+            "week": "2026-01-26",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2026-02-02",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.425
+          },
+          {
+            "week": "2026-05-18",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": null,
+            "pnl_r": 0.0
+          }
+        ]
+      },
+      "treatment": {
+        "fired": 3,
+        "correct": 2,
+        "incorrect": 0,
+        "unresolved": 1,
+        "total_r": 3.1250239914300373,
+        "bias_sources": {
+          "momentum": 3
+        },
+        "trades": [
+          {
+            "week": "2026-01-26",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.7
+          },
+          {
+            "week": "2026-02-02",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": "correct",
+            "pnl_r": 1.425
+          },
+          {
+            "week": "2026-05-18",
+            "direction": "short",
+            "bias_source": "momentum",
+            "outcome": null,
+            "pnl_r": 0.0
+          }
+        ]
+      }
+    }
+  },
+  "pooled": {
+    "control": {
+      "fired": 50.0,
+      "correct": 30.0,
+      "incorrect": 8.0,
+      "unresolved": 12.0,
+      "total_r": 45.83861650969115
+    },
+    "treatment": {
+      "fired": 58.0,
+      "correct": 33.0,
+      "incorrect": 10.0,
+      "unresolved": 15.0,
+      "total_r": 47.75485290160407
+    }
+  }
+}
