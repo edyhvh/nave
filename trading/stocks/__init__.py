@@ -19,6 +19,11 @@ full Alpaca/Ondo integration is wired up.
 """
 
 from trading.stocks.data_provider import MassiveClient, MassiveRateLimitError
+from trading.stocks.ism_equity_pipeline import (
+    build_ism_equity_pipeline,
+    discover_candidate_pool,
+    evaluate_candidate,
+)
 from trading.stocks.formatters import (
     render_ism_report_markdown_v2,
     render_x_summary_markdown_v2,
@@ -88,6 +93,9 @@ __all__ = [
     "analyze_tickers",
     "analyze_tickers_async",
     "build_ism_industry_report",
+    "build_ism_equity_pipeline",
+    "discover_candidate_pool",
+    "evaluate_candidate",
     "monthly_review_date",
     "rank_candidates",
     "render_ism_report_markdown_v2",
