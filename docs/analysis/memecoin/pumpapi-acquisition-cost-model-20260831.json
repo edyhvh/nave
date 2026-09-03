@@ -1,0 +1,22 @@
+{
+  "schema_version": "m3-pumpapi-cost-v1",
+  "representative_hour": {
+    "date": "2026-08-28",
+    "hour_utc": 21,
+    "compressed_bytes": 608173816,
+    "decompressed_bytes": 3949203772,
+    "input_events": 3042273,
+    "retained_events": 12032,
+    "optimized_elapsed_seconds": 97.54,
+    "peak_rss_kb": 19584,
+    "retained_jsonl_bytes": 14186449
+  },
+  "estimates": {
+    "one_day": {"compressed_gb": 13.488, "decompressed_gb": 94.78, "retained_gb": 0.34, "cpu_hours": 0.65},
+    "three_days": {"compressed_gb": 40.464, "decompressed_gb": 284.34, "retained_gb": 1.02, "cpu_hours": 1.95},
+    "fourteen_days": {"compressed_gb": 188.832, "decompressed_gb": 1326.92, "retained_gb": 4.75, "cpu_hours": 9.5}
+  },
+  "method": "linear planning estimate from one measured archive; raw decompression is streamed and discarded",
+  "dune_credits_for_pumpapi": 0,
+  "status": "ONE_HOUR_MEASURED_DAY_SCALE_PENDING"
+}

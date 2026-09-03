@@ -1,0 +1,59 @@
+{
+  "datasets": [
+    {
+      "compressed_bytes": 31379934,
+      "created_at": "2026-09-01T01:52:40.337645Z",
+      "dataset_name": "pumpapi_day2_selected_events",
+      "date_end": "2026-08-28",
+      "date_start": "2026-08-28",
+      "known_gaps": [],
+      "path": "data/research/pumpapi/day/date=2026-08-28/pumpapi_events_verified.parquet",
+      "provider": "pumpapi",
+      "rows": 211350,
+      "schema_version": "pumpapi-canonical-event-v1",
+      "sha256": "caee8e6993b5c63755f8a64536349d3c57f81a151a9376a9e1b901cd1dad739d",
+      "source_completeness": "PARTIAL_IF_FAILED_HOURS",
+      "unique_mints": 855,
+      "unique_wallets": 29540
+    },
+    {
+      "compressed_bytes": 438494,
+      "created_at": "2026-09-01T01:52:40.356291Z",
+      "dataset_name": "dune_day1_pumpfun_first_hour_events",
+      "date_end": "2026-08-27",
+      "date_start": "2026-08-27",
+      "known_gaps": [],
+      "path": "/home/david/nave/.worktrees/dune-efficient-panel/data/research/dune/pumpfun_first_hour_events.parquet",
+      "provider": "dune",
+      "rows": 2367,
+      "schema_version": "existing-nave-artifact",
+      "sha256": "9a9a6027abc3e1c508d990f10d4d756bdbfa77c6d51b3abeaa4d0c0227cb678c",
+      "source_completeness": "COMPLETE_FOR_RETAINED_FIRST_HOUR_ARTIFACT",
+      "unique_mints": 7,
+      "unique_wallets": 617
+    },
+    {
+      "compressed_bytes": null,
+      "created_at": "2026-09-01T01:52:40.359439Z",
+      "dataset_name": "pumpapi_day2_hourly_replay",
+      "date_end": "2026-08-28",
+      "date_start": "2026-08-28",
+      "known_gaps": [
+        "FAILED_HOUR_01",
+        "FAILED_HOUR_06",
+        "FAILED_HOUR_11",
+        "FAILED_HOUR_13",
+        "FAILED_HOUR_17"
+      ],
+      "path": "data/research/pumpapi/day/date=2026-08-28",
+      "provider": "pumpapi",
+      "rows": null,
+      "schema_version": "pumpapi-canonical-event-v1",
+      "sha256": null,
+      "source_completeness": "PARTIAL",
+      "unique_mints": null,
+      "unique_wallets": null
+    }
+  ],
+  "schema_version": "m3-multiday-data-manifest-v1"
+}
