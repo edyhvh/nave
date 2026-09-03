@@ -31,6 +31,12 @@ and options experiments. The canonical research state is currently paused
 while notification reliability and state reconciliation are verified; recent
 research has not validated a robust edge.
 
+Large memecoin research artifacts are stored separately in the public
+[NAVE memecoins dataset on Hugging Face](https://huggingface.co/datasets/jhonnyisaacc/memecoins).
+The Git repository contains the code, contracts, tests, reports, and compact
+evidence needed to understand and reproduce the research; the dataset contains
+the larger PumpApi event archives and local memecoin research artifacts.
+
 ## How it works
 
 ```text
