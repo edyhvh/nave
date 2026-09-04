@@ -7,7 +7,7 @@ separate.  A result is a research artifact, never an execution instruction.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Mapping
@@ -223,9 +223,8 @@ class ResearchResult:
             raise ValueError("status must be a ResearchStatus")
         if not isinstance(self.payload, Mapping):
             raise ValueError("payload must be a mapping")
-        self.metadata.decision_time.tzinfo or (_ for _ in ()).throw(
-            ValueError("decision_time must include a timezone")
-        )
+        if self.metadata.decision_time.tzinfo is None:
+            raise ValueError("decision_time must include a timezone")
         if self.status is ResearchStatus.SETUP_FOUND and not self.evidence:
             raise ValueError("SETUP_FOUND requires at least one evidence reference")
         if self.status is ResearchStatus.ERROR and not self.warnings:
