@@ -19,6 +19,7 @@ from cli.commands.intel import intel_app
 from cli.commands.memecoin import memecoin_app
 from cli.commands.options import options_app
 from cli.commands.portfolio import portfolio_app
+from cli.commands.strategy import strategy_app
 from cli.commands.research import research_app
 from cli.commands.stocks import stocks_app
 from cli.commands.wallet import wallet_app
@@ -45,6 +46,7 @@ app.add_typer(stocks_app, name="stocks")
 app.add_typer(memecoin_app, name="memecoin")
 app.add_typer(options_app, name="options")
 app.add_typer(portfolio_app, name="portfolio")
+app.add_typer(strategy_app, name="strategy")
 app.add_typer(research_app, name="research")
 app.add_typer(wallet_app, name="wallet")
 
