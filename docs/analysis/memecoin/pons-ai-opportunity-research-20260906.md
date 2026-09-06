@@ -4,6 +4,12 @@ Research date: 2026-09-06 Europe/Berlin (retrieval on 2026-09-05 UTC).
 Mode: `READ_ONLY_RESEARCH_ONLY_HUMAN_GATED`.
 Verdict: **research specification ready for review; NO EDGE VALIDATED**.
 
+Continuation: [the cached-cohort verification](stage1-frozen-cohort-verification-20260906.md)
+recovered the completed 24-hour replay locally but found that the launch
+sample was frozen before its UTC day ended. It remains descriptive, not a
+fifth comparable day. The unchanged A/C comparison shows no stable added
+benefit; no new Dune query or paid acquisition was needed.
+
 This addition connects the supplied Miles Deutscher video to NAVE's existing
 research contracts. It proposes an evidence-producing scanner experiment, not
 a production scanner or a PONS recommendation. No strategy thresholds, jobs,
