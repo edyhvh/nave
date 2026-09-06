@@ -261,7 +261,7 @@ class PortfolioContextProvider:
                 fundamental_source = "unavailable"
             sector = fundamentals_payload.get("sector") or _sector_for(ticker)
             output[ticker] = {
-                "macro_regime": "neutral" if macro_validated else "unknown",
+                "macro_regime": "unknown",
                 "macro_context_status": "VALIDATED" if macro_validated else "UNKNOWN",
                 "company_information": fundamentals_payload,
                 "sector_context": {"sector": sector, "source": fundamental_source},

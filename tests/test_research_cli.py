@@ -3,6 +3,7 @@ import json
 from typer.testing import CliRunner
 
 from cli.main import app
+from research.core.contracts import ResearchResult
 from cli.commands.portfolio import _load_watches
 from research.portfolio import PortfolioState
 

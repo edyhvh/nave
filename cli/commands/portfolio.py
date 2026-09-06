@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import fcntl
 from dataclasses import replace
 from pathlib import Path
 
@@ -46,7 +47,7 @@ def _load_watch_input(
 ) -> tuple[list[dict], dict[str, object]]:
     if path is not None:
         raw = json.loads(path.read_text(encoding="utf-8"))
-        watches = raw.get("watches", raw.get("stocks", raw)) if isinstance(raw, dict) else raw
+        watches = raw.get("watches", []) if isinstance(raw, dict) else raw
         if not isinstance(watches, list):
             raise typer.BadParameter(f"{path} must contain a watch list")
         return [dict(item) for item in watches if isinstance(item, dict)], {
@@ -174,40 +175,44 @@ def watch(
 ) -> None:
     """Run a cheap deterministic price threshold check on explicit/user-local state."""
     store = ResearchStore(state_dir)
-    state = load_portfolio_state(portfolio_file)
-    watches, watch_metadata = _load_watch_input(watch_file, state, state_source=portfolio_file)
-    previous = store.load_context("portfolio_watch_prices") or {}
-    if prices_file:
-        raw_prices = _load_json(prices_file)
-        prices = raw_prices.get("prices", raw_prices)
-        price_timestamps = raw_prices.get("observed_at", {})
-    else:
-        context = PortfolioContextProvider().build_review_context(
-            [str(item.get("ticker") or "") for item in watches],
-            macro_context=store.load_context("cava"),
+    store.root.mkdir(parents=True, exist_ok=True)
+    with (store.root / "portfolio_watch.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = load_portfolio_state(portfolio_file)
+        watches, watch_metadata = _load_watch_input(watch_file, state, state_source=portfolio_file)
+        last_result = store.load_result("portfolio.watch")
+        previous = (last_result.payload.get("observation_state", {}) if last_result else
+                    store.load_context("portfolio_watch_prices") or {})
+        if prices_file:
+            raw_prices = _load_json(prices_file)
+            prices = raw_prices.get("prices", raw_prices)
+            price_timestamps = raw_prices.get("observed_at", {})
+        else:
+            context = PortfolioContextProvider().build_review_context(
+                [str(item.get("ticker") or "") for item in watches],
+                macro_context=store.load_context("cava"),
+            )
+            prices = {
+                ticker: value.get("market_state", {}).get("current_price")
+                for ticker, value in context.items()
+                if value.get("market_state", {}).get("current_price") is not None
+            }
+            price_timestamps = {ticker: value.get("market_state", {}).get("as_of") for ticker, value in context.items()}
+        result = check_watch(watches, prices, previous_prices=previous, price_timestamps=price_timestamps)
+        result_payload = dict(result.payload)
+        result_payload["observation_state"] = {**previous, **{ticker: price for ticker, price in result.payload["prices"].items() if price is not None}}
+        result_payload["watchlist_source"] = str(watch_metadata["source"])
+        result_payload["watchlist_source_kind"] = str(watch_metadata["source_kind"])
+        result_payload["unparsed_responsibilities"] = watch_metadata.get("unparsed_responsibilities", [])
+        result_warnings = tuple(result.warnings) + tuple(str(item) for item in watch_metadata["warnings"])
+        result = result.__class__(
+            workflow=result.workflow,
+            status=result.status,
+            metadata=result.metadata,
+            payload=result_payload,
+            evidence=result.evidence,
+            warnings=result_warnings,
+            generated_at=result.generated_at,
+            safety_boundary=result.safety_boundary,
         )
-        prices = {
-            ticker: value.get("market_state", {}).get("current_price")
-            for ticker, value in context.items()
-            if value.get("market_state", {}).get("current_price") is not None
-        }
-        price_timestamps = {ticker: value.get("market_state", {}).get("as_of") for ticker, value in context.items()}
-    result = check_watch(watches, prices, previous_prices=previous, price_timestamps=price_timestamps)
-    result_payload = dict(result.payload)
-    result_payload["watchlist_source"] = str(watch_metadata["source"])
-    result_payload["watchlist_source_kind"] = str(watch_metadata["source_kind"])
-    result_payload["unparsed_responsibilities"] = watch_metadata.get("unparsed_responsibilities", [])
-    result_warnings = tuple(result.warnings) + tuple(str(item) for item in watch_metadata["warnings"])
-    result = result.__class__(
-        workflow=result.workflow,
-        status=result.status,
-        metadata=result.metadata,
-        payload=result_payload,
-        evidence=result.evidence,
-        warnings=result_warnings,
-        generated_at=result.generated_at,
-        safety_boundary=result.safety_boundary,
-    )
-    _emit(PortfolioWorkflow(store=store).save(result), json_out=json_out, markdown=markdown)
-    # Persist only accepted observations, after the result is durably recorded.
-    store.save_context("portfolio_watch_prices", {**previous, **{ticker: price for ticker, price in result.payload["prices"].items() if price is not None}})
+        _emit(PortfolioWorkflow(store=store).save(result), json_out=json_out, markdown=markdown)

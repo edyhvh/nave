@@ -70,3 +70,23 @@ def test_quant_watch_adapter_preserves_numeric_watches_and_unparsed_responsibili
     assert state.deterministic_watches[-1]["zone"] == [767.0, 799.0]
     assert [row["id"] for row in state.unparsed_responsibilities] == ["A1-portfolio-alerts"]
     assert "A1-portfolio-alerts" in state.warnings[0]
+
+
+def test_canonical_nonprice_responsibilities_stay_distinct(tmp_path):
+    # Conditions recovered from canonical Quant watches on 2026-09-06.
+    rows = [
+        {'id': 'A1-portfolio-alerts', 'state': 'active', 'kind': 'condition',
+         'subject': 'ONDO tokenized-equity positions vs thesis levels',
+         'conditions': ['price materially approaches/breaches a thesis level recorded in B1.2 fundamental theses', 'thesis invalidation condition of any position triggers']},
+        {'id': 'A2-ism-release-monitor', 'state': 'active', 'kind': 'event',
+         'subject': 'ISM Manufacturing (1st biz day) / Services (3rd biz day), 10:00 ET',
+         'conditions': ['release published on an ISM release day']},
+        {'id': 'A4-nave-setup-alerts', 'state': 'active', 'kind': 'event',
+         'subject': 'BTC/ETH/SOL NAVE setups meeting quality bar (R:R>=2, MTF alignment)',
+         'conditions': ['weekly scan produces a TRADE-quality setup']},
+    ]
+    path = tmp_path / 'watches.json'
+    path.write_text(json.dumps({'watches': rows}))
+    result = load_quant_watch_state(path)
+    assert result.deterministic_watches == ()
+    assert list(result.unparsed_responsibilities) == rows

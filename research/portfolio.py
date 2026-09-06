@@ -377,6 +377,7 @@ def check_watch(
     unavailable: list[str] = []
     invalid_watches: list[str] = []
     valid_watch_count = 0
+    missing_previous: list[str] = []
     previous_prices = previous_prices or {}
     decision_time = now or datetime.now(UTC)
     for watch in watches:
@@ -420,6 +421,9 @@ def check_watch(
                 invalid_watches.append(ticker)
                 continue
             valid_watch_count += 1
+            if condition in {"CROSS_ABOVE", "CROSS_BELOW"} and not positive_number(previous_prices.get(ticker)):
+                missing_previous.append(ticker)
+                continue
             if condition == "ABOVE":
                 reached = current >= float(threshold)
             elif condition == "BELOW":
@@ -467,9 +471,18 @@ def check_watch(
             if lower is not None or upper is not None:
                 item["zone"] = {"lower": lower, "upper": upper}
             events.append(item)
+    grouped: dict[str, dict[str, Any]] = {}
+    for event in events:
+        ticker = event["ticker"]
+        if ticker not in grouped:
+            grouped[ticker] = {**event, "matched_rules": []}
+        grouped[ticker]["matched_rules"].append(event)
+    events = list(grouped.values())
     status = (
         ResearchStatus.ACTION_REQUIRED
         if events
+        else ResearchStatus.INSUFFICIENT_EVIDENCE
+        if missing_previous
         else ResearchStatus.NO_SETUP
         if valid_watch_count and not unavailable and not invalid_watches
         else ResearchStatus.DATA_UNAVAILABLE
@@ -482,6 +495,7 @@ def check_watch(
             "checked": len(watches),
             "valid_watch_count": valid_watch_count,
             "invalid_watches": sorted(set(invalid_watches)),
+            "missing_previous": sorted(set(missing_previous)),
             "prices": checked_prices,
             "unavailable_prices": unavailable,
             "model_escalation": False,
@@ -490,6 +504,7 @@ def check_watch(
         warnings=[
             *(["no actionable user-local watch conditions were supplied; no-setup was not inferred"] if not valid_watch_count else []),
             *([f"watch conditions are incomplete or invalid for: {', '.join(sorted(set(invalid_watches)))}"] if invalid_watches else []),
+            *(["previous observation unavailable for: " + ", ".join(missing_previous)] if missing_previous else []),
             *(["watch events notify a human; they never execute"] if events else []),
             *([f"current price unavailable for: {', '.join(unavailable)}"] if unavailable else []),
         ],
