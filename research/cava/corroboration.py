@@ -9,6 +9,7 @@ to complete the workflow.
 from __future__ import annotations
 
 import re
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
@@ -86,7 +87,8 @@ def _number(value: Any) -> float | None:
     try:
         if value is None or isinstance(value, bool):
             return None
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else None
     except (TypeError, ValueError):
         return None
 
@@ -186,14 +188,22 @@ class CavaCorroborator:
                 records = raw.get("records") if isinstance(raw, Mapping) else None
                 records = records if isinstance(records, list) else []
                 observations = [
-                    (_record_date(item), _record_value(item))
+                    (datetime.fromisoformat(str(_record_date(item)).replace("Z", "+00:00")).date(), _record_value(item))
                     for item in records
-                    if isinstance(item, Mapping) and _record_value(item) is not None
+                    if isinstance(item, Mapping) and _record_value(item) is not None and _record_date(item)
                 ]
+                observations = sorted((date, value) for date, value in observations if date <= decision_time.date())
                 if not observations:
                     raise RuntimeError("series returned no numeric observations")
                 latest_date, latest = observations[-1]
                 prior = observations[-2][1] if len(observations) > 1 else None
+                stale_days = {"inflation": 62, "copper": 62, "liquidity": 14}.get(topic, 7)
+                if (decision_time.date() - latest_date).days > stale_days:
+                    raise RuntimeError("latest source observation is stale")
+                retrieved_raw = raw.get("retrieved_at") or raw.get("as_of")
+                retrieved = datetime.fromisoformat(str(retrieved_raw).replace("Z", "+00:00")) if retrieved_raw else None
+                if retrieved is None or retrieved.tzinfo is None:
+                    raise RuntimeError("source retrieval timestamp is unavailable")
                 source_name = "FRED via OpenBB" if provider_path == "openbb" else "FRED"
                 citation = f"https://fred.stlouisfed.org/series/{series_id}"
                 source_label = f"{source_name}:{series_id}"
@@ -207,17 +217,18 @@ class CavaCorroborator:
                             + (f" (prior {prior})" if prior is not None else "")
                         ),
                         kind=EvidenceKind.FACT,
-                        confidence=0.86 if provider_path == "openbb" else 0.82,
                         point_in_time=PointInTime(
-                            event_time=None,
-                            available_at=decision_time,
+                            event_time=datetime.combine(latest_date, datetime.min.time(), tzinfo=UTC),
+                            available_at=retrieved,
                             decision_time=decision_time,
                         ),
                         citation=citation,
                         metadata={
                             "topic": topic,
                             "series_id": series_id,
-                            "observation_date": latest_date,
+                            "observation_date": latest_date.isoformat(),
+                            "retrieved_at": retrieved.isoformat(),
+                            "latest_observation_at": raw.get("latest_observation_at"),
                             "provider_path": provider_path,
                             "transcript_claim_id": transcript_claim.reference_id,
                             "relationship": "context",
@@ -229,7 +240,7 @@ class CavaCorroborator:
                     "series_id": series_id,
                     "latest": latest,
                     "prior": prior,
-                    "observation_date": latest_date,
+                    "observation_date": latest_date.isoformat(),
                     "source": source_label,
                     "classification": "FACT",
                 }

@@ -6,8 +6,8 @@ import re
 import uuid
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from research.cava.transcript import Transcript, TranscriptProvider, TranscriptUnavailable
@@ -145,9 +145,16 @@ class CavaWorkflow:
     def __init__(self, *, store: ResearchStore | None = None):
         self.store = store or ResearchStore()
 
+    def _invalidate_context(self, reason: str) -> None:
+        previous = self.store.load_context("cava")
+        if previous:
+            self.store.save_context("cava", {**previous, "validated": False,
+                                            "warnings": [reason]})
+
     def unavailable(self, message: str, *, now: datetime | None = None) -> ResearchResult:
         """Record an RSS/provider outage without turning a scheduled run into a crash."""
         started_at = now or datetime.now(UTC)
+        self._invalidate_context(message)
         result = self._result(
             status=ResearchStatus.DATA_UNAVAILABLE,
             started_at=started_at,
@@ -215,6 +222,7 @@ class CavaWorkflow:
         try:
             videos = parse_rss(rss_xml)
         except ValueError as exc:
+            self._invalidate_context(str(exc))
             result = self._result(
                 status=ResearchStatus.DATA_UNAVAILABLE,
                 started_at=started_at,
@@ -249,6 +257,7 @@ class CavaWorkflow:
                     "new_videos": 0,
                     "cursor_advanced": False,
                     "message": "No new Cava video requires processing",
+                    "silent": True,
                 },
                 evidence=rss_evidence,
                 input_available_at=started_at,
@@ -260,8 +269,9 @@ class CavaWorkflow:
         try:
             transcript = transcript_provider.fetch(video.video_id)
         except TranscriptUnavailable as exc:
+            self._invalidate_context("new transcript unavailable")
             result = self._result(
-                status=ResearchStatus.INSUFFICIENT_EVIDENCE,
+                status=ResearchStatus.DATA_UNAVAILABLE,
                 started_at=started_at,
                 decision_time=decision_time,
                 payload={
@@ -287,28 +297,25 @@ class CavaWorkflow:
         corroboration = _normalize_corroboration(
             (corroborate or CavaCorroborator())(video, claims, decision_time)
         )
+        decision_time = now or datetime.now(UTC)
         indicators, implications = _indicators_and_implications(claims)
-        evidence = [*rss_evidence, *claims, *corroboration.evidence]
+        evidence = [replace(item, point_in_time=replace(item.point_in_time, decision_time=decision_time))
+                    for item in [*rss_evidence, *claims, *corroboration.evidence]]
         warnings: list[str] = list(corroboration.warnings)
         if not corroboration.evidence:
             warnings.append("no eligible authoritative corroboration was found; transcript claims remain speaker-attributed")
-        context_validated = bool(
-            claims
-            and corroboration.evidence
-            and (
-                corroboration.legacy_callback
-                or any(
-                    item.point_in_time.availability == "ELIGIBLE"
-                    and item.kind is EvidenceKind.FACT
-                    for item in corroboration.evidence
-                )
-            )
-        )
+        covered_topics = {item.metadata.get("topic") for item in corroboration.evidence
+                          if item.kind is EvidenceKind.FACT and item.point_in_time.available_at is not None
+                          and item.point_in_time.available_at <= decision_time}
+        context_validated = bool(claims and indicators and set(indicators) <= covered_topics
+                                 and not warnings and not corroboration.contradictions
+                                 and video.published_at <= transcript.available_at <= decision_time
+                                 and decision_time - video.published_at < timedelta(days=3))
         corroboration_status = (
             "VALIDATED"
             if context_validated and not corroboration.warnings and not corroboration.contradictions
             else "PARTIAL"
-            if context_validated
+            if corroboration.evidence
             else "UNAVAILABLE"
         )
         all_indicators = [*({"topic": item} for item in indicators), *corroboration.indicators]
@@ -332,7 +339,7 @@ class CavaWorkflow:
                 "shorts": "REVIEW sector/technical confirmation before any candidate",
             },
             "evidence_quality": "VALIDATED" if context_validated else "TRANSCRIPT_ONLY",
-            "confidence": 0.7 if context_validated else 0.35,
+            "confidence": None,
             "cursor_advanced": context_validated,
         }
         result = self._result(
@@ -342,12 +349,11 @@ class CavaWorkflow:
             payload=payload,
             evidence=evidence,
             warnings=warnings,
-            input_available_at=min(started_at, transcript.available_at),
+            input_available_at=max(started_at, transcript.available_at),
         )
         self.store.save_result(result)
         if context_validated:
             processed = seen | {video.video_id}
-            self._save_cursor(processed, last_processed=video)
             self.store.save_context(
                 "cava",
                 {
@@ -356,6 +362,9 @@ class CavaWorkflow:
                     "title": video.title,
                     "published_at": video.published_at.isoformat(),
                     "validated_at": decision_time.isoformat(),
+                    "expires_at": (video.published_at + timedelta(days=3)).isoformat(),
+                    "corroboration_status": "VALIDATED",
+                    "warnings": [],
                     "evidence_quality": payload["evidence_quality"],
                     "claims": payload["claims"],
                     "corroboration": payload["corroboration"],
@@ -366,4 +375,7 @@ class CavaWorkflow:
                     "confidence": payload["confidence"],
                 },
             )
+            self._save_cursor(processed, last_processed=video)
+        else:
+            self._invalidate_context("new context is partial, stale or contradicted")
         return result

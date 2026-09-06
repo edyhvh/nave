@@ -5,12 +5,12 @@ import httpx
 from research.cava.corroboration import CavaCorroborator
 from research.cava.pipeline import CavaWorkflow, _transcript_claims, parse_rss
 from research.cava.transcript import SupadataTranscriptProvider, Transcript, TranscriptUnavailable
-from research.core.contracts import EvidenceKind, EvidenceReference, ResearchStatus
+from research.core.contracts import EvidenceKind, EvidenceReference, ResearchStatus, PointInTime
 from research.core.store import ResearchStore
 
 
 NOW = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
-RSS = f"""<?xml version="1.0"?>
+RSS = """<?xml version="1.0"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
     <id>yt:video:new-video</id><title>Nuevo análisis macro</title>
@@ -51,7 +51,7 @@ def test_transcript_unavailable_does_not_advance_cursor(tmp_path):
     provider = FixtureTranscriptProvider(error="quota temporarily unavailable")
     result = CavaWorkflow(store=store).run(rss_xml=RSS, transcript_provider=provider, now=NOW)
 
-    assert result.status is ResearchStatus.INSUFFICIENT_EVIDENCE
+    assert result.status is ResearchStatus.DATA_UNAVAILABLE
     assert result.payload["cursor_advanced"] is False
     assert store.load_context("cava_cursor") is None
     assert provider.calls == ["new-video"]
@@ -70,13 +70,16 @@ def test_validated_context_is_persisted_and_cursor_advances(tmp_path):
     def corroborate(video, claims, decision_time):
         return [
             EvidenceReference(
-                reference_id="macro-source",
+                reference_id=f"macro-source-{topic}",
                 source="official.example",
                 claim="Official macro series is available",
                 kind=EvidenceKind.FACT,
                 confidence=0.95,
                 citation="https://official.example/macro",
+                point_in_time=PointInTime(available_at=NOW, decision_time=NOW),
+                metadata={"topic": topic},
             )
+            for topic in ("inflation", "liquidity")
         ]
 
     result = CavaWorkflow(store=store).run(
@@ -152,10 +155,9 @@ def test_default_corroborator_uses_authoritative_series_and_marks_fact():
 
     def series(series_id: str):
         calls.append(series_id)
-        return {"records": [{"date": "2026-09-03", "value": 100}, {"date": "2026-09-04", "value": 101}]}
+        return {"retrieved_at": NOW.isoformat(), "records": [{"date": "2026-09-03", "value": 100}, {"date": "2026-09-04", "value": 101}]}
 
     transcript = Transcript("La inflación sube y las tasas bajan.", "es", "supadata", NOW)
-    provider = FixtureTranscriptProvider(transcript=transcript)
     # Exercise the production callback directly so the test never depends on a live endpoint.
     video = parse_rss(RSS)[0]
     claims = _transcript_claims(video, transcript, NOW)
@@ -169,7 +171,7 @@ def test_default_corroborator_uses_authoritative_series_and_marks_fact():
 
 def test_corroborator_records_contradiction_without_inventing_support():
     def series(_series_id: str):
-        return {"records": [{"date": "2026-09-03", "value": 101}, {"date": "2026-09-04", "value": 100}]}
+        return {"retrieved_at": NOW.isoformat(), "records": [{"date": "2026-09-03", "value": 101}, {"date": "2026-09-04", "value": 100}]}
 
     transcript = Transcript("La inflación sube.", "es", "supadata", NOW)
     video = parse_rss(RSS)[0]
@@ -181,11 +183,11 @@ def test_corroborator_records_contradiction_without_inventing_support():
     assert corroboration.evidence[0].metadata["relationship"] == "contradicts"
 
 
-def test_cava_partial_source_failure_still_persists_qualified_context(tmp_path):
+def test_cava_partial_source_failure_never_persists_qualified_context(tmp_path):
     def series(series_id: str):
         if series_id == "DFF":
             raise RuntimeError("temporary source outage")
-        return {"records": [{"date": "2026-09-03", "value": 100}, {"date": "2026-09-04", "value": 101}]}
+        return {"retrieved_at": NOW.isoformat(), "records": [{"date": "2026-09-03", "value": 100}, {"date": "2026-09-04", "value": 101}]}
 
     transcript = Transcript("La inflación sube y las tasas suben.", "es", "supadata", NOW)
     result = CavaWorkflow(store=ResearchStore(tmp_path)).run(
@@ -195,8 +197,8 @@ def test_cava_partial_source_failure_still_persists_qualified_context(tmp_path):
         now=NOW,
     )
 
-    assert result.status is ResearchStatus.SETUP_FOUND
+    assert result.status is ResearchStatus.INSUFFICIENT_EVIDENCE
     assert result.payload["corroboration_status"] == "PARTIAL"
     assert result.payload["contradictions"] == []
-    assert result.payload["cursor_advanced"] is True
+    assert result.payload["cursor_advanced"] is False
     assert "rates" in " ".join(result.warnings)
