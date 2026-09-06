@@ -284,6 +284,9 @@ class ProspectiveCollector:
         # One serialized persistence worker owns this connection after startup.
         db = sqlite3.connect(self.data_root / "collector.sqlite3", check_same_thread=False)
         db.execute("PRAGMA journal_mode=WAL")
+        # The live dedupe index outgrows SQLite's default ~2 MiB page cache.
+        # Bound the writer cache at 128 MiB; retain FULL durability and schema.
+        db.execute("PRAGMA cache_size=-131072")
         db.execute(
             """CREATE TABLE IF NOT EXISTS events (
                 event_key TEXT PRIMARY KEY,
@@ -965,6 +968,7 @@ class ProspectiveCollector:
         elif received_at > provider_event_time:
             self._counters["delayed_event_rows"] += 1
 
+        segment = self._segment_path(partition, event_day, received_at)
         inserted = self._db.execute(
             "INSERT OR IGNORE INTO events(event_key,event_time,available_at,mint,pool_address,action,output_path) VALUES(?,?,?,?,?,?,?)",
             (
@@ -974,7 +978,7 @@ class ProspectiveCollector:
                 raw.get("mint") or raw.get("tokenMint") or raw.get("token_mint"),
                 raw.get("poolId"),
                 action,
-                "",
+                str(segment),
             ),
         )
         if inserted.rowcount != 1:
@@ -984,7 +988,6 @@ class ProspectiveCollector:
             self._commit()
             return
 
-        segment = self._segment_path(partition, event_day, received_at)
         mint = raw.get("mint") or raw.get("tokenMint") or raw.get("token_mint")
         previous = self._db.execute(
             "SELECT launch_time FROM launches WHERE mint=?", (str(mint),)
@@ -1008,9 +1011,6 @@ class ProspectiveCollector:
             event_key=event_key,
             received_at=received_at,
             retrieved_at=retrieved_at,
-        )
-        self._db.execute(
-            "UPDATE events SET output_path=? WHERE event_key=?", (str(segment), event_key)
         )
         checkpoint["event_rows"] += 1
         self._counters["event_rows"] += 1

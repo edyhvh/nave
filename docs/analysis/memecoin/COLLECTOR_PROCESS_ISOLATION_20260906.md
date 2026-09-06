@@ -40,6 +40,28 @@ PID/CPU/RSS metrics distinguish receiver and writer resource consumption.
 
 ## Verification
 
+The first process-isolated startup (`edab5de`, PID 2447893) still overflowed
+at approximately 11:36 UTC; no stability gate was launched for it. Its final
+snapshot is archived as `PROCESS_ISOLATION_STARTUP_FAILED.json`. This falsified
+the claim that GIL separation alone supplied enough capacity.
+
+A bounded live-worker cProfile (2216 warmup frames, 3.705 seconds profiled)
+located 1.433 seconds in SQLite statement execution, versus 0.215 commit,
+0.187 fsync, 0.566 normalization and 0.146 participant expansion. The live
+dedupe database was 709251072 bytes. A separate temporary-database sample
+processed 2000 frames in 1.492 seconds, with only 0.069 seconds SQLite execute.
+This isolates production-scale database access as the main remaining cost;
+it does not establish provider failure or SQLite lock contention.
+
+The additional scoped repair removes the redundant `UPDATE events` by inserting
+the final output path directly with the original dedupe insert. The writer's
+SQLite page cache is explicitly bounded at 128 MiB instead of the ~2 MiB
+default to reduce index-page churn. Available host memory exceeded 5 GiB.
+Schema, keys, transaction ordering, FULL synchronization and fsync are unchanged.
+Tests assert bounded cache configuration and persisted output-path equivalence.
+The temporary profiler emits function timings only and is removed from the
+collector launch command before stability acceptance.
+
 18 focused collector/runtime/health tests passed, including real child-process
 drain/dedupe, separate worker PID, and abrupt worker exit failing closed.
 Ruff and git diff --check passed. Synthetic test fixtures are not production

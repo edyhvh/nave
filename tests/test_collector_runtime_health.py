@@ -30,6 +30,9 @@ def test_batch_committed_dedupe_and_participant_fields_survive_restart(tmp_path)
     c.process_batch(frames)
     c.flush()
     assert c._db.execute('PRAGMA synchronous').fetchone()[0] == 2  # FULL unchanged
+    assert c._db.execute('PRAGMA cache_size').fetchone()[0] == -131072
+    assert all(row[0].endswith('/events.jsonl') for row in
+               c._db.execute('SELECT output_path FROM events'))
     c._close_all_segments()
     c._db.close()
     second = collector(tmp_path)
