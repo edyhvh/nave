@@ -35,6 +35,7 @@ class EvidenceKind(StrEnum):
 class ProvenanceCategory(StrEnum):
     """Origin class for evidence and state-affecting inputs."""
 
+    UNKNOWN = "UNKNOWN"
     USER_STATE = "USER_STATE"
     DOMAIN_RULE = "DOMAIN_RULE"
     PROVIDER_RESULT = "PROVIDER_RESULT"
@@ -48,6 +49,7 @@ class ProvenanceCategory(StrEnum):
 class StateOwner(StrEnum):
     """Owner class for data that may influence a research result."""
 
+    UNKNOWN = "UNKNOWN"
     USER_RUNTIME = "USER_RUNTIME"
     NAVE_RESEARCH = "NAVE_RESEARCH"
     ABI_ORCHESTRATION = "ABI_ORCHESTRATION"
@@ -97,7 +99,11 @@ class PointInTime:
 
     @property
     def availability(self) -> str:
-        if self.available_at is None or self.decision_time is None:
+        if self.decision_time is not None and self.event_time is not None and self.event_time > self.decision_time:
+            return "LATE"
+        if self.available_at is not None and self.decision_time is not None and self.available_at > self.decision_time:
+            return "LATE"
+        if self.event_time is None or self.available_at is None or self.decision_time is None:
             return "UNKNOWN"
         return "ELIGIBLE" if self.available_at <= self.decision_time else "LATE"
 
@@ -136,14 +142,14 @@ class EvidenceReference:
     reference_id: str
     source: str
     claim: str
-    kind: EvidenceKind = EvidenceKind.FACT
+    kind: EvidenceKind = EvidenceKind.UNKNOWN
     confidence: float | None = None
     point_in_time: PointInTime = field(default_factory=PointInTime)
     citation: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
-    provenance_category: str = ProvenanceCategory.PROVIDER_RESULT.value
-    state_owner: str = StateOwner.NAVE_RESEARCH.value
-    lifecycle: str = "OBSERVED"
+    provenance_category: str = ProvenanceCategory.UNKNOWN.value
+    state_owner: str = StateOwner.UNKNOWN.value
+    lifecycle: str = "UNKNOWN"
 
     def __post_init__(self) -> None:
         if not self.reference_id.strip():
@@ -183,16 +189,16 @@ class EvidenceReference:
             reference_id=str(value.get("reference_id") or ""),
             source=str(value.get("source") or ""),
             claim=str(value.get("claim") or ""),
-            kind=EvidenceKind(str(value.get("kind") or EvidenceKind.FACT.value)),
+            kind=EvidenceKind(str(value.get("kind") or EvidenceKind.UNKNOWN.value)),
             confidence=value.get("confidence"),
             point_in_time=PointInTime.from_dict(value.get("point_in_time")),
             citation=value.get("citation"),
             metadata=value.get("metadata") or {},
             provenance_category=str(
-                value.get("provenance_category") or ProvenanceCategory.PROVIDER_RESULT.value
+                value.get("provenance_category") or ProvenanceCategory.UNKNOWN.value
             ),
-            state_owner=str(value.get("state_owner") or StateOwner.NAVE_RESEARCH.value),
-            lifecycle=str(value.get("lifecycle") or "OBSERVED"),
+            state_owner=str(value.get("state_owner") or StateOwner.UNKNOWN.value),
+            lifecycle=str(value.get("lifecycle") or "UNKNOWN"),
         )
 
 
@@ -266,11 +272,19 @@ class ResearchResult:
             raise ValueError("payload must be a mapping")
         if self.metadata.decision_time.tzinfo is None:
             raise ValueError("decision_time must include a timezone")
-        if self.status is ResearchStatus.SETUP_FOUND and not self.evidence:
-            raise ValueError("SETUP_FOUND requires at least one evidence reference")
+        if self.status is ResearchStatus.SETUP_FOUND and not any(
+            ref.point_in_time.availability == "ELIGIBLE"
+            and ref.point_in_time.decision_time == self.metadata.decision_time
+            for ref in self.evidence
+        ):
+            raise ValueError("SETUP_FOUND requires at least one evidence reference eligible at result decision_time")
         if self.status is ResearchStatus.ERROR and not self.warnings:
             raise ValueError("ERROR requires a visible warning")
+        if self.generated_at is None or self.generated_at.tzinfo is None:
+            raise ValueError("generated_at requires a timezone-aware timestamp")
+        json.dumps(dict(self.payload), allow_nan=False)
         for reference in self.evidence:
+            json.dumps(dict(reference.metadata), allow_nan=False)
             reference.point_in_time.validate()
 
     def to_dict(self) -> dict[str, Any]:
@@ -289,12 +303,14 @@ class ResearchResult:
         }
 
     def to_json(self, *, indent: int = 2) -> str:
-        return json.dumps(self.to_dict(), indent=indent, sort_keys=False, default=str)
+        return json.dumps(self.to_dict(), indent=indent, sort_keys=False, allow_nan=False)
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "ResearchResult":
         metadata = RunMetadata.from_dict(value.get("metadata") or {})
-        generated_at = _parse_datetime(value.get("generated_at")) or datetime.now(UTC)
+        generated_at = _parse_datetime(value.get("generated_at"))
+        if generated_at is None:
+            raise ValueError("generated_at is required")
         result = cls(
             workflow=str(value.get("workflow") or ""),
             status=ResearchStatus(str(value.get("status") or "")),

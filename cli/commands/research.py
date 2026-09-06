@@ -24,14 +24,15 @@ def status(
     if workflow:
         result = store.load_result(workflow)
         payload = result.to_dict() if result else {
+            "envelope_type": "research_result_index",
             "workflow": workflow,
             "status": "DATA_UNAVAILABLE",
             "results": [],
         }
     else:
-        payload = {"results": store.list_results()}
+        payload = {"envelope_type": "research_result_index", "results": store.list_results()}
     if json_out:
-        typer.echo(json.dumps(payload, indent=2, default=str))
+        typer.echo(json.dumps(payload, indent=2, allow_nan=False))
         return
     if workflow and payload.get("status"):
         typer.echo(f"{payload.get('workflow')}: {payload.get('status')}")

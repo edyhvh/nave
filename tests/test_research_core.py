@@ -86,9 +86,9 @@ def test_point_in_time_does_not_fake_missing_availability():
 
 def test_evidence_requires_nonempty_provenance_owner_and_lifecycle():
     reference = evidence()
-    assert reference.provenance_category == ProvenanceCategory.PROVIDER_RESULT.value
-    assert reference.state_owner == "NAVE_RESEARCH"
-    assert reference.lifecycle == "OBSERVED"
+    assert reference.provenance_category == ProvenanceCategory.UNKNOWN.value
+    assert reference.state_owner == "UNKNOWN"
+    assert reference.lifecycle == "UNKNOWN"
     with pytest.raises(ValueError, match="provenance_category"):
         EvidenceReference(reference_id="x", source="fixture", claim="claim", provenance_category="")
 
@@ -137,3 +137,47 @@ def test_strategy_phases_are_optional():
     assert run_phase(strategy, "scan", 2) == 3
     with pytest.raises(UnsupportedPhase):
         run_phase(strategy, "evaluate")
+
+
+def test_missing_identity_remains_unknown():
+    row = EvidenceReference.from_dict({'reference_id': 'x', 'source': 's', 'claim': 'c'})
+    assert row.kind is EvidenceKind.UNKNOWN
+    assert (row.provenance_category, row.state_owner, row.lifecycle) == ('UNKNOWN',) * 3
+
+
+@pytest.mark.parametrize('available,event', [(NOW, NOW + timedelta(seconds=1)), (None, NOW), (NOW + timedelta(seconds=1), NOW)])
+def test_ineligible_evidence_cannot_license_setup(available, event):
+    ref = EvidenceReference(reference_id='x', source='s', claim='c',
+                            point_in_time=PointInTime(event, available, NOW))
+    assert ref.point_in_time.availability != 'ELIGIBLE'
+    with pytest.raises(ValueError, match='eligible'):
+        ResearchResult('fixture', ResearchStatus.SETUP_FOUND, metadata(), evidence=(ref,)).to_json()
+
+
+def test_generation_time_is_not_invented_on_reload():
+    row = ResearchResult('fixture', ResearchStatus.NO_SETUP, metadata()).to_dict()
+    del row['generated_at']
+    with pytest.raises(ValueError, match='generated_at'):
+        ResearchResult.from_dict(row)
+
+
+@pytest.mark.parametrize('value', [float('nan'), float('inf'), -float('inf')])
+def test_machine_result_rejects_nonfinite_nested_payload(value):
+    with pytest.raises(ValueError):
+        ResearchResult('fixture', ResearchStatus.NO_SETUP, metadata(), payload={'nested': [value]}).to_json()
+
+
+def test_store_rejects_colliding_names(tmp_path):
+    with pytest.raises(ValueError, match='canonical'):
+        ResearchStore(tmp_path).save_context('a/b', {})
+
+
+def test_shared_context_filters_invalid_macro_but_preserves_private_state(tmp_path):
+    from research.core.context import FileResearchContext
+    context = FileResearchContext(tmp_path)
+    context.store.save_context('cava', {'validated': False})
+    context.store.save_context('macro', {'validated': True})
+    context.store.save_context('portfolio', {'holdings': []})
+    assert context.latest_macro_context() is None
+    assert context.latest_cava_context() is None
+    assert context.portfolio_state() == {'holdings': []}

@@ -44,3 +44,14 @@ def test_research_report_renders_json_and_markdown(tmp_path):
     )
     assert markdown_result.exit_code == 0
     assert "# fixture.scan" in markdown_result.stdout
+
+
+def test_missing_status_is_explicit_index_envelope(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.setenv('NAVE_RESEARCH_STATE_DIR', str(tmp_path))
+    result = CliRunner().invoke(app, ['research', 'status', '--workflow', 'absent', '--json'])
+    assert result.exit_code == 0
+    value = json.loads(result.stdout)
+    assert value['envelope_type'] == 'research_result_index'
+    with pytest.raises(ValueError):
+        ResearchResult.from_dict(value)

@@ -22,6 +22,8 @@ def _safe_name(value: str) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9_.-]+", "_", value.strip())
     if not cleaned:
         raise ValueError("state name must contain at least one safe character")
+    if cleaned != value or cleaned in {".", ".."}:
+        raise ValueError("state name must already be canonical")
     return cleaned
 
 
@@ -39,7 +41,7 @@ class ResearchStore:
         fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(payload, handle, indent=2, ensure_ascii=False, default=str)
+                json.dump(payload, handle, indent=2, ensure_ascii=False, allow_nan=False)
                 handle.write("\n")
                 handle.flush()
                 os.fsync(handle.fileno())
@@ -68,7 +70,7 @@ class ResearchStore:
         if not self.results_root.exists():
             return []
         return [
-            json.loads(path.read_text(encoding="utf-8"))
+            ResearchResult.from_dict(json.loads(path.read_text(encoding="utf-8"))).to_dict()
             for path in sorted(self.results_root.glob("*.json"))
         ]
 

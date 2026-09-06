@@ -54,10 +54,12 @@ class FileResearchContext:
         self.store = ResearchStore(root)
 
     def latest_macro_context(self) -> Mapping[str, Any] | None:
-        return self.store.load_context("macro")
+        value = self.store.load_context("macro")
+        return value if context_is_usable(value) else None
 
     def latest_cava_context(self) -> Mapping[str, Any] | None:
-        return self.store.load_context("cava")
+        value = self.store.load_context("cava")
+        return value if context_is_usable(value) else None
 
     def portfolio_state(self) -> Mapping[str, Any] | None:
         return self.store.load_context("portfolio")

@@ -44,7 +44,7 @@ def _latest_observation_at(records: list[dict[str, Any]]) -> str | None:
     """Return the provider observation date separately from retrieval time."""
     values: list[pd.Timestamp] = []
     for record in records:
-        raw = record.get("date") or record.get("Date") or record.get("timestamp")
+        raw = record.get("observation_date") or record.get("date") or record.get("Date") or record.get("timestamp")
         if raw in (None, ""):
             continue
         try:
@@ -68,7 +68,7 @@ def fetch_fred_series(series_id: str) -> dict[str, Any]:
     return {
         "series_id": series_id,
         "records": records,
-        "as_of": retrieved_at,
+        "as_of": _latest_observation_at(records),
         "retrieved_at": retrieved_at,
         "latest_observation_at": _latest_observation_at(records),
     }
@@ -82,7 +82,7 @@ def fetch_fixedincome_rate(symbol: str) -> dict[str, Any]:
     return {
         "symbol": symbol,
         "records": records,
-        "as_of": retrieved_at,
+        "as_of": _latest_observation_at(records),
         "retrieved_at": retrieved_at,
         "latest_observation_at": _latest_observation_at(records),
     }
@@ -104,7 +104,7 @@ def fetch_equity_history(symbol: str, start_date: str | None = None,
     return {
         "symbol": symbol,
         "records": records,
-        "as_of": retrieved_at,
+        "as_of": _latest_observation_at(records),
         "retrieved_at": retrieved_at,
         "latest_observation_at": _latest_observation_at(records),
     }
@@ -119,7 +119,7 @@ def fetch_crypto_price(symbol: str) -> dict[str, Any]:
     return {
         "symbol": symbol,
         "records": records,
-        "as_of": retrieved_at,
+        "as_of": _latest_observation_at(records),
         "retrieved_at": retrieved_at,
         "latest_observation_at": _latest_observation_at(records),
     }
@@ -151,7 +151,9 @@ def fetch_openbb_indicator(slug: str) -> dict[str, Any]:
             "short_value": short_value,
             "spread": long_value - short_value if long_value is not None and short_value is not None else None,
             "unit": "percentage points",
-            "as_of": datetime.now(timezone.utc).isoformat(),
+            "as_of": (long_data.get("latest_observation_at") if long_data.get("latest_observation_at") == short_data.get("latest_observation_at") else None),
+            "latest_observation_at": (long_data.get("latest_observation_at") if long_data.get("latest_observation_at") == short_data.get("latest_observation_at") else None),
+            "retrieved_at": datetime.now(timezone.utc).isoformat(),
         }
 
     if indicator_type == "equity_history":
