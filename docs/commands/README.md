@@ -337,67 +337,6 @@ Direct uvicorn:
 ```bash
 uvicorn --app-dir=backend app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-
-Docs/health endpoints once running:
-
-```text
-http://127.0.0.1:8000/docs
-http://127.0.0.1:8000/redoc
-http://127.0.0.1:8000/health
-```
-
-## 8) Testing Commands
-
-All tests:
-
-```bash
-pytest
-```
-
-Targeted tests:
-
-```bash
-pytest tests/backtest/ -v --tb=short
-pytest tests/test_journal/ -v
-pytest tests/backtest/test_strategy.py::TestCotWeeklyStrategy::test_full_strategy_backtest -v -s
-```
-
-Coverage and diagnostics:
-
-```bash
-pytest --cov=trading --cov-report=html
-pytest --pdb tests/backtest/test_strategy.py
-pytest --durations=10
-```
-
-## 9) Script Runner Shortcut (`run.sh`)
-
-Wrapper around `python scripts/<name>.py`:
-
-```bash
-./run.sh weekly_cot_analysis --capital 2000 --paper
-./run.sh setup_wallets
-./run.sh openbb_tools
-./run.sh clean_backtest_files --delete
-```
-
-## 10) Web Frontend Commands (Bun)
-
-Run these in `web/`:
-
-```bash
-cd web
-bun install
-bun run dev
-bun run build
-```
-
-## 11) Practical Day-to-Day Command Sets
-
-Daily manual COT workflow:
-
-```bash
-source .venv/bin/activate
 nave cot report
 ```
 
