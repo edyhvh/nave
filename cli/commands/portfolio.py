@@ -105,7 +105,7 @@ def review(
 
         ledger_path = portfolio_file or default_portfolio_state_path()
         try:
-            refresh(state_path=ledger_path, audit_path=ledger_path.with_name("ledger_audit.json"))
+            refresh(state_path=ledger_path, audit_path=ledger_path.with_name("ondo_solana_audit.json"))
         except Exception as exc:
             raise typer.BadParameter("ledger refresh failed; review was not produced") from exc
     state = load_portfolio_state(portfolio_file)

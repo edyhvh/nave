@@ -55,6 +55,7 @@ class PositionState:
 @dataclass(frozen=True)
 class PortfolioState:
     updated_at: str | None = None
+    ledger_history_complete: bool | None = None
     positions: tuple[PositionState, ...] = ()
     watchlist: tuple[Mapping[str, Any], ...] = ()
     portfolio_review_universe: tuple[Mapping[str, Any], ...] = ()
@@ -85,6 +86,7 @@ class PortfolioState:
         )
         return cls(
             updated_at=payload.get("updated_at"),
+            ledger_history_complete=payload.get("ledger_history_complete"),
             positions=positions,
             watchlist=cls._records(payload, "watchlist"),
             portfolio_review_universe=cls._records(payload, "portfolio_review_universe"),
@@ -97,6 +99,7 @@ class PortfolioState:
     def to_dict(self) -> dict[str, Any]:
         return {
             "updated_at": self.updated_at,
+            "ledger_history_complete": self.ledger_history_complete,
             "positions": [position.to_dict() for position in self.positions],
             "watchlist": [dict(item) for item in self.watchlist],
             "portfolio_review_universe": [dict(item) for item in self.portfolio_review_universe],
@@ -191,9 +194,15 @@ def review_positions(
         missing = []
         if not fresh_timestamp(state.updated_at, decision_time):
             missing.append("portfolio_state_stale_or_undated")
+        if state.ledger_history_complete is False:
+            missing.append("ledger_history_incomplete")
         if not positive_number(market.get("current_price")) or not fresh_timestamp(market.get("as_of"), decision_time):
             missing.append("price_missing_stale_or_invalid")
-        if not company or company.get("unavailable_reason") or company.get("source") == "unavailable":
+        meaningful_company = any(
+            isinstance(company.get(key), (int, float)) and not isinstance(company.get(key), bool) and math.isfinite(company[key])
+            for key in ("revenue", "pe_ratio", "forward_pe", "eps_growth_next_year", "revenue_growth_long_term")
+        )
+        if not meaningful_company or company.get("unavailable_reason") or company.get("source") == "unavailable":
             missing.append("company_information_missing")
         if observed.get("technical_condition") not in {"healthy", "weak", "breakdown"}:
             missing.append("technical_evidence_missing")
