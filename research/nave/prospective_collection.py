@@ -1100,7 +1100,7 @@ class ProspectiveCollector:
                             # persistence so websocket heartbeat and signal
                             # tasks are never starved by the synchronous tape
                             # writer.
-                            await asyncio.sleep(0.001)
+                            await asyncio.sleep(0)
                             if time.monotonic() - self._last_heartbeat >= self.heartbeat_seconds:
                                 self._last_heartbeat = time.monotonic()
                                 self._write_manifest()
