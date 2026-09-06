@@ -8,6 +8,7 @@ from pathlib import Path
 
 import httpx
 import typer
+from click import ClickException
 
 from cli.professional_typer import ProfessionalTyper
 from research.cava.pipeline import CAVA_RSS_URL, CavaWorkflow
@@ -27,7 +28,7 @@ def _fetch_rss() -> str:
         response.raise_for_status()
         return response.text
     except httpx.HTTPError as exc:
-        raise typer.ClickException(f"Cava RSS unavailable: {exc}") from exc
+        raise ClickException(f"Cava RSS unavailable: {exc}") from exc
 
 
 @cava_app.command("daily")
@@ -45,9 +46,8 @@ def cava_daily(
         result = workflow.run(
             rss_xml=rss_xml,
             transcript_provider=SupadataTranscriptProvider(),
-            now=datetime.now(UTC),
         )
-    except (OSError, typer.ClickException) as exc:
+    except (OSError, ClickException) as exc:
         result = workflow.unavailable(str(exc), now=datetime.now(UTC))
     if markdown:
         typer.echo(result.to_markdown())

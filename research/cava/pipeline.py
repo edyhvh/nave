@@ -301,6 +301,8 @@ class CavaWorkflow:
         indicators, implications = _indicators_and_implications(claims)
         evidence = [replace(item, point_in_time=replace(item.point_in_time, decision_time=decision_time))
                     for item in [*rss_evidence, *claims, *corroboration.evidence]]
+        by_id = {item.reference_id: item for item in evidence}
+        claims = [by_id[item.reference_id] for item in claims]
         warnings: list[str] = list(corroboration.warnings)
         if not corroboration.evidence:
             warnings.append("no eligible authoritative corroboration was found; transcript claims remain speaker-attributed")
@@ -324,7 +326,7 @@ class CavaWorkflow:
             "published_at": video.published_at.isoformat(),
             "transcript": {"source": transcript.source, "language": transcript.language, "characters": len(transcript.text)},
             "claims": [claim.to_dict() for claim in claims],
-            "corroboration": [item.to_dict() for item in corroboration.evidence],
+            "corroboration": [by_id[item.reference_id].to_dict() for item in corroboration.evidence],
             "relevant_indicators": indicators,
             "corroboration_indicators": all_indicators,
             "contradictions": list(corroboration.contradictions),
@@ -349,7 +351,7 @@ class CavaWorkflow:
             payload=payload,
             evidence=evidence,
             warnings=warnings,
-            input_available_at=max(started_at, transcript.available_at),
+            input_available_at=max([started_at, transcript.available_at, *[item.point_in_time.available_at for item in evidence if item.point_in_time.available_at is not None]]),
         )
         self.store.save_result(result)
         if context_validated:
