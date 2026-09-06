@@ -77,6 +77,8 @@ def materialize_dune(
     limit: int = typer.Option(10_000, "--limit", min=1, max=100_000),
     force: bool = typer.Option(False, "--force/--no-force", help="Re-run even when the matching cache exists."),
     max_age_seconds: int = typer.Option(86400, "--max-age-seconds", min=1),
+    query_file: Path = typer.Option(..., "--query-file", exists=True, readable=True),
+    budget_file: Path | None = typer.Option(None, "--budget-file", exists=True, readable=True),
 ) -> None:
     """Run one bounded Dune query and cache it for later local discovery."""
     payload = DuneMaterializer().materialize(
@@ -85,6 +87,8 @@ def materialize_dune(
         limit=limit,
         force=force,
         max_age_seconds=max_age_seconds,
+        query_text=query_file.read_text(encoding="utf-8"),
+        budget=_json.loads(budget_file.read_text()) if budget_file else None,
     )
     typer.echo(_json.dumps({key: value for key, value in payload.items() if key != "rows"}, indent=2, default=str))
 

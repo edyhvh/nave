@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from research.core.store import ResearchStore
+from research.nave import resource_guard
 
 
 def _find_number(value: Any, names: tuple[str, ...]) -> float | None:
@@ -57,7 +58,9 @@ class DuneMaterializer:
 
     @staticmethod
     def query_identity(query_id: str, query_text: str | None = None, *, limit: int = 10_000) -> str:
-        digest = hashlib.sha256((query_text or "").encode("utf-8")).hexdigest()[:16] if query_text else ""
+        if not query_text or not query_text.strip():
+            raise ValueError("frozen query_text is required for meaningful cache identity")
+        digest = hashlib.sha256(query_text.encode("utf-8")).hexdigest()
         return f"{query_id}:{digest}:limit={limit}"
 
     def materialize(
@@ -69,6 +72,7 @@ class DuneMaterializer:
         force: bool = False,
         query_text: str | None = None,
         max_age_seconds: float = 86400,
+        budget: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not query_id.strip():
             raise ValueError("query_id is required")
@@ -84,11 +88,11 @@ class DuneMaterializer:
             fcntl.flock(lock, fcntl.LOCK_EX)
             return self._materialize_locked(query_id=query_id, output=output, limit=limit,
                                             force=force, query_text=query_text,
-                                            max_age_seconds=max_age_seconds)
+                                            max_age_seconds=max_age_seconds, budget=budget)
 
     def _materialize_locked(self, *, query_id: str, output: Path, limit: int,
                             force: bool, query_text: str | None,
-                            max_age_seconds: float) -> dict[str, Any]:
+                            max_age_seconds: float, budget: Mapping[str, Any] | None) -> dict[str, Any]:
         identity = self.query_identity(query_id, query_text, limit=limit)
         if output.exists() and not force:
             cached = json.loads(output.read_text(encoding="utf-8"))
@@ -97,14 +101,28 @@ class DuneMaterializer:
                 age = (datetime.now(UTC) - fetched).total_seconds()
             except (AttributeError, TypeError, ValueError):
                 age = -1
-            if (isinstance(cached, Mapping) and cached.get("query_identity") == identity
+            if (isinstance(cached, Mapping) and cached.get("provider") == "dune" and cached.get("query_identity") == identity
                     and isinstance(cached.get("rows"), list)
                     and cached.get("row_count") == len(cached["rows"])
                     and 0 <= age <= max_age_seconds):
                 return {**dict(cached), "cache_hit": True, "query_executed": False}
             raise ValueError("cache is stale, incompatible or incomplete; inspect it and use --force to refresh")
 
-        command = [self.executable, "query", "run", query_id, "--limit", str(limit), "-o", "json"]
+        # Execute the exact frozen SQL whose hash identifies this cache, so a
+        # mutable saved-query ID cannot silently change the operation.
+        command = [self.executable, "query", "run-sql", "--sql", query_text, "--limit", str(limit), "-o", "json"]
+        if not budget or budget.get("approved") is not True or budget.get("query_identity") != identity:
+            raise ValueError("explicit query-scoped budget approval is required")
+        try:
+            observed = datetime.fromisoformat(str(budget["observed_at"]).replace("Z", "+00:00"))
+            if observed.tzinfo is None or not 0 <= (datetime.now(UTC) - observed).total_seconds() <= 300:
+                raise ValueError("budget snapshot must be fresh")
+            guard = resource_guard.check(**{key: float(budget[key]) for key in
+                ("credits_used", "credits_included", "checkpoint_used", "estimate", "free_disk_gb")})
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("missing or invalid budget snapshot") from exc
+        if not guard.allowed or guard.level == "HARD_STOP":
+            raise ValueError("Dune budget HARD_STOP: " + "; ".join(guard.reasons))
         completed = subprocess.run(
             command,
             capture_output=True,
@@ -125,6 +143,7 @@ class DuneMaterializer:
             "mode": "remote_materialized",
             "query_id": query_id,
             "query_identity": identity,
+            "query_sha256": hashlib.sha256(query_text.encode("utf-8")).hexdigest(),
             "execution_id": raw.get("execution_id") if isinstance(raw, Mapping) else None,
             "fetched_at": datetime.now(UTC).isoformat(),
             "requested_limit": limit,

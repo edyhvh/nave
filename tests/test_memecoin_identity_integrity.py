@@ -51,6 +51,10 @@ def test_same_symbol_contracts_and_decisions_never_share_outcomes(tmp_path):
                   "risk_status": "PASS", "holder_structure": "observed", "wallet_activity": "observed"}},
 ])
 def test_unknown_identity_or_evidence_is_not_a_valid_empty_scan(tmp_path, change):
+    if "decision_time" in change:
+        with pytest.raises(ValueError, match="snapshot decision_time"):
+            MemecoinResearchWorkflow(store=ResearchStore(tmp_path)).discover([snapshot(**change)])
+        return
     result = MemecoinResearchWorkflow(store=ResearchStore(tmp_path)).discover([snapshot(**change)])
     assert result.status is ResearchStatus.INSUFFICIENT_EVIDENCE
     assert not result.payload["selected"]

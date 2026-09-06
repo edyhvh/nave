@@ -18,7 +18,7 @@ from research.memecoin.research_primitives import validate_feature_derivability
 
 STRATEGY_NAME = "memecoin-point-in-time-discovery"
 STRATEGY_VERSION = "1.1.0"
-FEATURES = ("volume_acceleration", "liquidity", "holder_structure", "wallet_activity", "narrative")
+FEATURES = ("volume_acceleration", "liquidity_usd", "risk_status", "holder_structure_presence", "wallet_activity_presence")
 
 
 def _strict_time(value: Any) -> datetime | None:
@@ -159,7 +159,7 @@ def discover_rows(
         if passed:
             selected.append({
                 **snapshot,
-                "thesis": "volume acceleration + liquidity + holder structure + wallet activity + narrative",
+                "thesis": "volume acceleration and liquidity thresholds; risk PASS; holder/wallet presence only",
                 "research_only": True,
                 "edge_validated": False,
                 "major_risks": ["contract risk and manipulation", "liquidity can disappear", "social/narrative signals are noisy"],
@@ -223,12 +223,25 @@ def missed_moves(scan_payload: Mapping[str, Any], outcomes: list[Mapping[str, An
     return output
 
 
+def _json_snapshot(value: Any) -> Any:
+    """Keep unavailable numeric values null and serialize known timestamps."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, Mapping):
+        return {key: _json_snapshot(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_json_snapshot(item) for item in value]
+    return value
+
+
 class MemecoinResearchWorkflow:
     def __init__(self, *, store: ResearchStore | None = None):
         self.store = store or ResearchStore()
 
-    def _result(self, workflow: str, status: ResearchStatus, payload: Mapping[str, Any], *, warnings: list[str] | None = None) -> ResearchResult:
-        now = datetime.now(UTC)
+    def _result(self, workflow: str, status: ResearchStatus, payload: Mapping[str, Any], *, warnings: list[str] | None = None, now: datetime | None = None) -> ResearchResult:
+        now = now or datetime.now(UTC)
         return ResearchResult(
             workflow=workflow,
             status=status,
@@ -241,13 +254,13 @@ class MemecoinResearchWorkflow:
                 completed_at=now,
                 input_available_at=now,
             ),
-            payload=payload,
+            payload=_json_snapshot(payload),
             evidence=(EvidenceReference(
                 reference_id=f"memecoin-{workflow}",
                 source="nave.memecoin.research",
                 claim="Memecoin research was calculated from decision-time snapshots",
                 kind=EvidenceKind.INFERENCE,
-                point_in_time=PointInTime(available_at=now, decision_time=now),
+                point_in_time=PointInTime(event_time=now, available_at=now, decision_time=now),
             ),),
             warnings=tuple(warnings or []),
         )
@@ -263,11 +276,13 @@ class MemecoinResearchWorkflow:
         payload_rows = rows
         if dune_cache:
             raw = json.loads(dune_cache.read_text(encoding="utf-8"))
-            if isinstance(raw, Mapping) and raw.get("provider") == "dune":
+            if not isinstance(raw, Mapping) or raw.get("provider") != "dune":
+                raise ValueError("Dune cache is stale or untrusted: materialized envelope required")
+            if raw.get("provider") == "dune":
                 fetched = _strict_time(raw.get("fetched_at"))
-                ttl = float(raw.get("max_age_seconds", 86400))
+                ttl = float(raw.get("max_age_seconds") or 0)
                 age = (datetime.now(UTC) - fetched).total_seconds() if fetched else -1
-                if not math.isfinite(ttl) or ttl <= 0 or not 0 <= age <= ttl or raw.get("row_count") != len(raw.get("rows") or []):
+                if not math.isfinite(ttl) or ttl <= 0 or not 0 <= age <= min(ttl, 86400) or raw.get("row_count") != len(raw.get("rows") or []) or not raw.get("query_id") or not raw.get("query_sha256") or raw.get("query_identity") != f"{raw.get('query_id')}:{raw.get('query_sha256')}:limit={raw.get('requested_limit')}" or not isinstance(raw.get("requested_limit"), int):
                     raise ValueError("Dune cache is stale or incomplete; explicit refresh required")
             payload_rows = raw.get("rows", raw) if isinstance(raw, Mapping) else raw
             if isinstance(raw, Mapping):
@@ -281,6 +296,11 @@ class MemecoinResearchWorkflow:
                         "mode": "materialized_cache" if raw.get("provider") == "dune" else "cached",
                     }
                 )
+        clocks = {_strict_time(row.get("decision_time")) for row in payload_rows}
+        known_clocks = clocks - {None}
+        if not known_clocks:
+            raise ValueError("discovery requires a known snapshot decision_time")
+        decision_time = max(known_clocks)
         result_payload = discover_rows(payload_rows)
         result_payload["dune_usage"] = dune_usage
         cases = [{"asset": _asset(row), "canonical_identity": canonical_identity(row),
@@ -293,12 +313,14 @@ class MemecoinResearchWorkflow:
         evidence_gaps = any(any(reason not in {"volume_acceleration", "liquidity", "safety_or_contract_risk"}
                                 for reason in row["rejection_filters"])
                             for row in result_payload["rejected"])
-        if evidence_gaps or not payload_rows:
+        result_payload["partial_universe"] = evidence_gaps
+        if (evidence_gaps or not payload_rows) and not result_payload["selected"]:
             status = ResearchStatus.INSUFFICIENT_EVIDENCE
         result = self._result(
             "memecoin.discover",
             status,
             result_payload,
+            now=decision_time,
             warnings=["discovery is research-only; no automatic portfolio action"] if result_payload["selected"] else [],
         )
         self.store.save_result(result)
@@ -330,6 +352,7 @@ class MemecoinResearchWorkflow:
             "strategy_version": scan_result.metadata.strategy_version,
             "evaluated": evaluated,
             "excluded_outcomes": excluded,
+            "cost_basis": "GROSS_UNCOSTED",
             "metrics": {
                 "selected_count": len(selected),
                 "evaluated_count": len(evaluated),
@@ -352,7 +375,7 @@ class MemecoinResearchWorkflow:
         rows = missed_moves(scan_result.payload, outcomes, move_threshold=move_threshold)
         result = self._result(
             "memecoin.missed_moves",
-            ResearchStatus.ACTION_REQUIRED if rows else ResearchStatus.NO_SETUP,
+            ResearchStatus.NO_SETUP,
             {"strategy": STRATEGY_NAME, "strategy_version": scan_result.metadata.strategy_version, "move_threshold": move_threshold, "missed_moves": rows, "source_scan_run_id": scan_result.metadata.run_id},
             warnings=["future outcomes are audit-only and are not used to alter the decision-time snapshot"],
         )

@@ -44,9 +44,9 @@ def test_discovery_output_and_case_study_do_not_overfit_meme(tmp_path):
 
 def test_cached_dune_path_does_not_claim_unmeasured_remote_usage(tmp_path):
     cache = tmp_path / "dune.json"
-    cache.write_text(__import__("json").dumps({"rows": [row()]}), encoding="utf-8")
+    cache.write_text(__import__("json").dumps({"provider": "dune", "query_id": "123", "query_sha256": "abc", "query_identity": "123:abc:limit=10", "requested_limit": 10, "max_age_seconds": 86400, "row_count": 1, "fetched_at": datetime.now(UTC).isoformat(), "rows": [row()]}), encoding="utf-8")
     result = MemecoinResearchWorkflow(store=ResearchStore(tmp_path / "state")).discover([], dune_cache=cache)
-    assert result.payload["dune_usage"]["mode"] == "cached"
+    assert result.payload["dune_usage"]["mode"] == "materialized_cache"
     assert result.payload["dune_usage"]["query_executed"] is False
     assert result.payload["dune_usage"]["actual_credits"] is None
 
@@ -66,7 +66,7 @@ def test_evaluation_and_missed_move_have_no_hindsight_leak(tmp_path):
             "possible_missing_feature": "wallet_cluster_velocity",
         }],
     )
-    assert missed.status is ResearchStatus.ACTION_REQUIRED
+    assert missed.status is ResearchStatus.NO_SETUP
     assert missed.payload["missed_moves"][0]["information_existed_before_move"] == "AFTER_DECISION"
     assert missed.payload["missed_moves"][0]["possible_missing_feature"] == "wallet_cluster_velocity"
 
@@ -101,9 +101,22 @@ def test_dune_materializer_runs_once_then_reuses_matching_cache(tmp_path):
     executable.chmod(0o755)
     output = tmp_path / "materialized.json"
     materializer = DuneMaterializer(executable=str(executable))
-    first = materializer.materialize(query_id="123", output=output)
-    second = materializer.materialize(query_id="123", output=output)
+    first = materializer.materialize(query_id="123", query_text="SELECT 1", budget=budget(), output=output)
+    second = materializer.materialize(query_id="123", query_text="SELECT 1", budget=budget(), output=output)
     assert first["query_executed"] is True
     assert first["credit_usage"]["actual"] == 1.5
     assert second["cache_hit"] is True
     assert second["query_executed"] is False
+
+
+def budget(limit=10000):
+    return {"approved": True, "query_identity": DuneMaterializer.query_identity("123", "SELECT 1", limit=limit),
+            "observed_at": datetime.now(UTC).isoformat(), "credits_used": 0, "credits_included": 2500,
+            "checkpoint_used": 0, "estimate": 1, "free_disk_gb": 20}
+
+
+def test_discovery_clock_matches_snapshot(tmp_path):
+    result = MemecoinResearchWorkflow(store=ResearchStore(tmp_path)).discover([row()])
+    assert result.metadata.decision_time == NOW
+    assert result.metadata.input_available_at == NOW
+    assert 'narrative' not in result.payload['feature_set']
