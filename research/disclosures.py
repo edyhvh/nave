@@ -175,10 +175,6 @@ class DisclosureWorkflow:
         seen = {str(item) for item in seen_context.get("unique_ids", [])}
         new_records = [record for record in unique.values() if record.unique_id not in seen]
         next_seen = seen | set(unique)
-        self.store.save_context(
-            "disclosures_seen",
-            {"unique_ids": sorted(next_seen), "updated_at": decision_time.isoformat()},
-        )
         evidence = [
             EvidenceReference(
                 reference_id=f"disclosure-{record.unique_id}",
@@ -210,7 +206,7 @@ class DisclosureWorkflow:
                 decision_time=decision_time,
                 started_at=decision_time,
                 completed_at=decision_time,
-                input_available_at=decision_time,
+                input_available_at=None,
             ),
             payload={
                 "records": [record.to_dict() for record in new_records],
@@ -229,6 +225,10 @@ class DisclosureWorkflow:
             warnings=[*warnings, *(["disclosures are delayed context and require independent portfolio evidence"] if new_records else [])],
         )
         self.store.save_result(result)
+        self.store.save_context(
+            "disclosures_seen",
+            {"unique_ids": sorted(next_seen), "updated_at": decision_time.isoformat()},
+        )
         return result
 
     def sync_files(
