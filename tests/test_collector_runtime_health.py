@@ -1,6 +1,7 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 import json
+import os
 from pathlib import Path
 import time
 
@@ -95,6 +96,57 @@ def test_status_never_opens_outcome_files(tmp_path, monkeypatch):
         return original(path, *args, **kwargs)
     monkeypatch.setattr(Path, 'open', guarded)
     assert operational_status(c.data_root)['validation_holdout_analysis'] == 'HOLDOUT_LOCKED'
+    c._db.close()
+
+
+def test_process_worker_drains_ordered_frames_and_preserves_dedupe(tmp_path, monkeypatch):
+    from research.nave import prospective_runtime as module
+    c = collector(tmp_path)
+    class Feed:
+        count = 0
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def recv(self):
+            self.count += 1
+            if self.count == 300:
+                c.request_stop()
+            return frame(self.count)
+    monkeypatch.setattr(module.websockets, 'connect', lambda *a, **k: Feed())
+    assert asyncio.run(module.run_pipeline(c, T0+timedelta(hours=1), 0)) == 0
+    health = json.loads((c.data_root / 'runtime-health.json').read_text())
+    assert health['worker_pid'] != os.getpid()
+    assert health['frames_received'] == health['frames_durable'] == 300
+    assert health['queue_depth'] == health['queue_bytes'] == 0
+    assert health['state'] == 'STOPPED'
+    assert c._db.execute('SELECT count(*) FROM events').fetchone()[0] == 300
+    assert json.loads((c.data_root / 'runtime-session.json').read_text())['status'] == 'STOPPED'
+    c._db.close()
+
+
+def test_dead_worker_stops_receiver_and_cannot_claim_clean_shutdown(tmp_path, monkeypatch):
+    from research.nave import prospective_runtime as module
+    c = collector(tmp_path)
+    class Feed:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def recv(self):
+            await asyncio.sleep(.01)
+            return frame()
+    def fail(*args):
+        os._exit(7)
+    monkeypatch.setattr(c, 'process_batch', fail)
+    monkeypatch.setattr(module.websockets, 'connect', lambda *a, **k: Feed())
+    async def run():
+        return await asyncio.wait_for(module.run_pipeline(c, T0+timedelta(hours=1), 0), 10)
+    assert asyncio.run(run()) == 1
+    health = json.loads((c.data_root / 'runtime-health.json').read_text())
+    assert health['state'] == 'FAILED'
+    assert health['fatal_error'] == 'WORKER_EXIT_7'
+    assert json.loads((c.data_root / 'runtime-session.json').read_text())['status'] == 'ACTIVE'
     c._db.close()
 
 
