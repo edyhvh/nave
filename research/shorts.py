@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from research.core.contracts import (
@@ -127,8 +127,11 @@ class StockShortResearchWorkflow:
             if name not in {"macro_regime", "valuation_support"}
         )
         total = non_macro + int(macro in {"bearish", "risk_off", "contraction"})
+        missing = [name for name in row.get("required_factors", []) if row.get(name) is None]
         passed = [name for name in _FACTORS if factors[name]]
-        if factors["valuation_support"]:
+        if missing:
+            reason, selected = "insufficient_evidence", False
+        elif factors["valuation_support"]:
             reason = "valuation_support"
             selected = False
         elif total < 3:
@@ -145,6 +148,10 @@ class StockShortResearchWorkflow:
             "direction": "short",
             "thesis": str(row.get("thesis") or "Multi-factor downside research candidate"),
             "factors": factors,
+            "factor_states": {name: "UNKNOWN" if row.get(name) is None else "OBSERVED" for name in (*_FACTORS, "company_fundamentals")},
+            "missing_required_factors": missing,
+            "factor_evidence": row.get("factor_evidence", {}),
+            "company_information": row.get("company_information", {}),
             "filters_passed": passed,
             "factor_count": total,
             "entry_research_zone": row.get("entry_research_zone"),
@@ -180,6 +187,10 @@ class StockShortResearchWorkflow:
                 if available_at > decided:
                     rejected.append({"asset": ticker, "reason": "available_after_decision_time"})
                     continue
+                observed = _timestamp(row.get("event_time"), field="event_time") or available_at
+                if observed > decided or decided - observed > timedelta(days=5):
+                    rejected.append({"asset": ticker, "reason": "stale_or_future_observation"})
+                    continue
                 candidate = self._candidate(row)
                 evidence.append(_evidence(row, index, decided))
             except ValueError as exc:
@@ -192,6 +203,8 @@ class StockShortResearchWorkflow:
 
         if candidates:
             status = ResearchStatus.SETUP_FOUND
+        elif any(row.get("reason") == "insufficient_evidence" for row in rejected):
+            status = ResearchStatus.INSUFFICIENT_EVIDENCE
         elif rows and evidence:
             status = ResearchStatus.NO_SETUP
         else:
@@ -209,6 +222,10 @@ class StockShortResearchWorkflow:
             metadata=_metadata("scan", decided, len(rows)),
             payload={
                 "universe_scanned": len(rows),
+                "runtime_health": ("HEALTHY" if all(r.get("provider_health") == "HEALTHY" for r in rows)
+                                   else "PARTIAL" if any(r.get("provider_health") == "HEALTHY" for r in rows)
+                                   else "DATA_UNAVAILABLE") if any(r.get("acquisition_mode") == "LIVE" for r in rows) else "REPLAY",
+                "acquisition_mode": "LIVE" if any(r.get("acquisition_mode") == "LIVE" for r in rows) else "REPLAY",
                 "final_candidates": candidates,
                 "rejected_candidates": rejected,
                 "factor_definition": list(_FACTORS),

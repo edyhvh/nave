@@ -110,7 +110,11 @@ def test_fmp_dataclass_field_names_are_normalized():
     assert record.amount_range == "$15,001 - $50,000"
 
 
-def test_congress_and_executive_provider_failures_are_isolated(tmp_path):
+def test_congress_and_executive_provider_failures_are_isolated(tmp_path, monkeypatch):
+    from trading.stocks.politicians.provider import FMPPoliticianTradesProvider
+    def offline(self):
+        raise RuntimeError("secondary offline")
+    monkeypatch.setattr(FMPPoliticianTradesProvider, "fetch_all", offline)
     class Failing:
         def fetch(self):
             raise RuntimeError("source offline")

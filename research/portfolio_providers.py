@@ -120,41 +120,51 @@ def load_current_ism_inputs(
     *,
     report_fetcher: ISMReportFetcher | None = None,
     fred_fetcher: Callable[[str], Mapping[str, Any]] | None = None,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
-    """Fetch current Manufacturing and Services inputs with provenance."""
+    """Acquire independently validated headline and industry evidence."""
+    from trading.stocks.ism_identity import expected_reference, release_identity
+
+    current_time = now or datetime.now(UTC)
     report_fetcher = report_fetcher or ISMReportFetcher()
     fred_fetcher = fred_fetcher or _openbb_fred
-    series_ids = {"manufacturing": "NAPM", "services": "NMFBAI"}
-    outputs: dict[str, Any] = {"provider": "OpenBB/FRED + official ISM release", "warnings": []}
-    for kind, series_id in series_ids.items():
-        report = report_fetcher.fetch_report(kind=kind)  # type: ignore[arg-type]
-        pmi = report.pmi
-        pmi_source = "official ISM release"
-        pmi_as_of = report.report_month
-        pmi_observation_at = report.report_month
-        pmi_retrieved_at = None
+    # NMFBAI is Services Business Activity, NOT the Services composite PMI.
+    # Never substitute it for that headline. Official release remains the
+    # composite source when no semantically matching structured series exists.
+    outputs: dict[str, Any] = {"provider": "OpenBB/FRED + ISM publisher release", "warnings": []}
+    for kind in ("manufacturing", "services"):
+        expected = expected_reference(kind, current_time).strftime("%Y-%m")
         try:
-            fred = fred_fetcher(series_id)
-            records = fred.get("records") if isinstance(fred, Mapping) else None
-            if isinstance(records, list):
-                normalized_records = [item for item in records if isinstance(item, Mapping)]
-                current = _latest_number(normalized_records)
-                if current is not None:
-                    pmi = current
-                    pmi_source = f"{series_id} via OpenBB/FRED"
-                    pmi_as_of = fred.get("as_of")
-                    pmi_observation_at = fred.get("latest_observation_at") or _latest_record_timestamp(normalized_records)
-                    pmi_retrieved_at = fred.get("retrieved_at") or fred.get("as_of")
-        except Exception as exc:  # noqa: BLE001
-            outputs["warnings"].append(f"{kind} headline PMI OpenBB unavailable: {exc}")
-        outputs[kind] = _report_payload(
-            report,
-            pmi=pmi,
-            pmi_source=pmi_source,
-            pmi_as_of=pmi_as_of,
-            pmi_observation_at=pmi_observation_at,
-            pmi_retrieved_at=pmi_retrieved_at,
-        )
+            report = report_fetcher.fetch_report(kind=kind)
+            identity = release_identity(report, current_time)
+            if identity["release_status"] != "CURRENT":
+                raise ValueError("report reference month does not match current published release")
+        except Exception as exc:
+            outputs["warnings"].append(f"{kind} release unavailable: {type(exc).__name__}")
+            report = ISMReport(kind, expected_reference(kind, current_time).strftime("%B %Y"), None)
+            identity = release_identity(report, current_time)
+            identity["release_status"] = "UNAVAILABLE"
+        pmi, source = report.pmi, "ISM publisher release"
+        observation, retrieved = expected + "-01", current_time.isoformat()
+        if kind == "manufacturing":
+            try:
+                fred = fred_fetcher("NAPM")
+                records = [r for r in fred.get("records", []) if isinstance(r, Mapping)]
+                matching = [r for r in records if str(r.get("date") or r.get("timestamp") or "")[:7] == expected]
+                value = _latest_number(matching)
+                if value is not None and 0 < value < 100:
+                    pmi, source = value, "NAPM via OpenBB/FRED"
+                    retrieved = fred.get("retrieved_at") or current_time.isoformat()
+            except Exception as exc:
+                outputs["warnings"].append(f"{kind} structured headline unavailable: {type(exc).__name__}")
+        headline_valid = pmi is not None and 0 < pmi < 100
+        rankings_valid = bool(report.expanding or report.contracting)
+        payload = _report_payload(report, pmi=pmi, pmi_source=source, pmi_as_of=observation,
+                                  pmi_observation_at=observation, pmi_retrieved_at=retrieved)
+        payload.update(identity=identity, headline_status="HEADLINE_VALID" if headline_valid else "UNAVAILABLE",
+                       industry_rankings_status="INDUSTRY_RANKINGS_VALID" if rankings_valid else "UNAVAILABLE",
+                       status="VALID" if headline_valid and rankings_valid else "PARTIAL" if headline_valid or rankings_valid else "UNAVAILABLE")
+        outputs[kind] = payload
     return outputs
 
 

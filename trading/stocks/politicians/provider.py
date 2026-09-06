@@ -71,6 +71,9 @@ class FMPPoliticianTradesProvider:
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         http: httpx.Client | None = None,
     ):
+        from core.env import load_repo_dotenv
+
+        load_repo_dotenv()
         self.api_key = api_key or os.getenv("FMP_API_KEY")
         if not self.api_key:
             raise PoliticianTradesError(

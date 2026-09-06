@@ -14,7 +14,7 @@ class ReportFetcher:
     def fetch_report(self, *, kind):
         return ISMReport(
             kind=kind,
-            report_month="September 2026",
+            report_month="August 2026",
             pmi=51.0,
             expanding=[ISMIndustryRanking("Software", "expanding", 1, "Information Technology")],
             contracting=[],
@@ -24,6 +24,7 @@ class ReportFetcher:
 
 def test_ism_inputs_prefer_openbb_fred_for_headline_and_keep_official_ranking():
     result = load_current_ism_inputs(
+        now=NOW,
         report_fetcher=ReportFetcher(),
         fred_fetcher=lambda series: {
             "records": [
@@ -31,12 +32,14 @@ def test_ism_inputs_prefer_openbb_fred_for_headline_and_keep_official_ranking():
                 {"date": "2026-08-01", "value": 50.0},
             ],
             "as_of": "2026-09-04",
+            "retrieved_at": "2026-09-04",
         },
     )
-    assert result["manufacturing"]["pmi"] == 53.2
+    assert result["manufacturing"]["pmi"] == 50.0
     assert result["manufacturing"]["pmi_source"] == "NAPM via OpenBB/FRED"
-    assert result["manufacturing"]["pmi_observation_at"] == "2026-09-03T00:00:00+00:00"
+    assert result["manufacturing"]["pmi_observation_at"] == "2026-08-01T00:00:00+00:00"
     assert result["manufacturing"]["pmi_retrieved_at"] == "2026-09-04T00:00:00+00:00"
+    assert result["services"]["pmi"] == 51.0
     assert result["manufacturing"]["hottest_industries"][0]["industry"] == "Software"
 
 

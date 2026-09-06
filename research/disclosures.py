@@ -39,6 +39,9 @@ class NormalizedDisclosure:
     filing_id: str | None = None
     transaction_id: str | None = None
     supersedes_filing_id: str | None = None
+    provider: str | None = None
+    index_added_at: str | None = None
+    retrieved_at: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self) | {
@@ -137,6 +140,9 @@ def _normalize(
         filing_id=_clean(record.get("filing_id")) or source,
         transaction_id=_clean(record.get("transaction_id")) or (_stable_id(record, fields) if _date(transaction_date) else None),
         supersedes_filing_id=_clean(record.get("supersedes_filing_id")),
+        provider=_clean(record.get("provider")),
+        index_added_at=_clean(record.get("index_added_at")),
+        retrieved_at=_clean(record.get("retrieved_at")),
     )
 
 
@@ -203,9 +209,15 @@ class DisclosureWorkflow:
             )
             for record in new_records
         ]
+        health = dict(provider_status or {})
+        for family, info in health.items():
+            if info.get("status") != "UNAVAILABLE":
+                info["research_result"] = "NEW_RECORDS" if any(r.source_family.value == family for r in new_records) else "NO_NEW_RECORDS"
+        failed = sum(v.get("status") == "UNAVAILABLE" for v in health.values())
+        runtime_health = "DATA_UNAVAILABLE" if health and failed == len(health) else "PARTIAL" if failed else "HEALTHY"
         result = ResearchResult(
             workflow="disclosures.sync",
-            status=ResearchStatus.INSUFFICIENT_EVIDENCE if new_records else ResearchStatus.NO_SETUP,
+            status=ResearchStatus.DATA_UNAVAILABLE if runtime_health == "DATA_UNAVAILABLE" else ResearchStatus.INSUFFICIENT_EVIDENCE if new_records else ResearchStatus.NO_SETUP,
             metadata=RunMetadata(
                 strategy_name="political-disclosures-normalization",
                 strategy_version="1.0.0",
@@ -223,7 +235,9 @@ class DisclosureWorkflow:
                 "source_families": [family.value for family in SourceFamily],
                 "portfolio_candidate_consumed": False,
                 "disclosure_is_not_a_buy_signal": True,
-                "provider_status": dict(provider_status or {}),
+                "provider_status": health,
+                "runtime_health": runtime_health,
+                "research_result": "NEW_RECORDS" if new_records else "NO_NEW_RECORDS" if runtime_health == "HEALTHY" else runtime_health,
                 "partial": bool(provider_status and any(
                     isinstance(value, Mapping) and value.get("status") == "UNAVAILABLE"
                     for value in provider_status.values()
@@ -271,7 +285,7 @@ class DisclosureWorkflow:
                     congress_provider = OfficialHouseDisclosureProvider()
                 congress_records = list(congress_provider.fetch())
                 provider_status[SourceFamily.CONGRESS.value] = {
-                    "status": "OK" if congress_records else "NO_RECORDS",
+                    "status": "OK" if congress_records else "NO_NEW_RECORDS",
                     "source": "official House disclosure data",
                 }
             except Exception as exc:  # provider/configuration failures remain explicit state
@@ -281,9 +295,9 @@ class DisclosureWorkflow:
                 try:
                     from trading.stocks.politicians.provider import FMPPoliticianTradesProvider
 
-                    congress_records = [asdict(item) for item in FMPPoliticianTradesProvider().fetch_all()]
+                    congress_records = [{**asdict(item), "provider": "FMP_SECONDARY"} for item in FMPPoliticianTradesProvider().fetch_all()]
                     provider_status[SourceFamily.CONGRESS.value] = {
-                        "status": "SECONDARY_FALLBACK" if congress_records else "NO_RECORDS",
+                        "status": "SECONDARY_FALLBACK" if congress_records else "NO_NEW_RECORDS",
                         "source": "FMP secondary convenience provider",
                     }
                 except Exception as fallback_exc:  # noqa: BLE001
@@ -303,8 +317,9 @@ class DisclosureWorkflow:
                     executive_provider = OfficialOGEExecutiveDisclosureProvider()
                 executive_records = list(executive_provider.fetch())
                 provider_status[SourceFamily.EXECUTIVE.value] = {
-                    "status": "OK" if executive_records else "NO_RECORDS",
+                    "status": "OK" if executive_records else "NO_NEW_RECORDS",
                     "source": "official OGE executive disclosure data",
+                    "health": getattr(executive_provider, "health", {}),
                 }
             except Exception as exc:  # noqa: BLE001
                 warnings.append(f"executive provider unavailable: {exc}")

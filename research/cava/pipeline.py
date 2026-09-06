@@ -329,6 +329,7 @@ class CavaWorkflow:
         payload = {
             "video": {"id": video.video_id, "title": video.title, "url": video.url},
             "published_at": video.published_at.isoformat(),
+            "runtime_health": "HEALTHY",
             "transcript": {"source": transcript.source, "language": transcript.language, "characters": len(transcript.text)},
             "claims": [claim.to_dict() for claim in claims],
             "corroboration": [by_id[item.reference_id].to_dict() for item in corroboration.evidence],

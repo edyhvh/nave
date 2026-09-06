@@ -353,6 +353,13 @@ def ism_rank(
     result = portfolio_candidates(manufacturing, services, state=state, now=now)
     payload = dict(result.payload)
     payload["mapping"] = "ISM industries → sectors → companies through the repo-native mapping/funnel"
+    reports = {"manufacturing": dict(manufacturing), "services": dict(services)}
+    payload["reports"] = reports
+    live = [r for r in reports.values() if "headline_status" in r]
+    payload["runtime_health"] = ("HEALTHY" if all(r.get("headline_status") == "HEADLINE_VALID" for r in live)
+                                 else "PARTIAL" if any(r.get("headline_status") == "HEADLINE_VALID" for r in live)
+                                 else "DATA_UNAVAILABLE") if live else "REPLAY"
+
     return ResearchResult(
         workflow="portfolio.ism",
         status=result.status,

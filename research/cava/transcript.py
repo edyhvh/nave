@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Callable, Protocol
@@ -63,7 +64,15 @@ class SupadataTranscriptProvider:
         clock: Callable[[], datetime] | None = None,
         sleeper: Callable[[float], Any] | None = None,
     ):
-        self.api_key = api_key or os.getenv("SUPADATA_API_KEY") or os.getenv("SUPADATA_API_TOKEN")
+        # Cron children inherit the routed HERMES_HOME, not profile secrets.
+        profile = os.getenv("HERMES_HOME")
+        if profile and api_key is None:
+            from dotenv import dotenv_values
+
+            values = dotenv_values(Path(profile) / ".env")
+            self.api_key = values.get("SUPADATA_API_KEY") or values.get("SUPADATA_API_TOKEN")
+        else:
+            self.api_key = api_key or os.getenv("SUPADATA_API_KEY") or os.getenv("SUPADATA_API_TOKEN")
         self.base_url = base_url.rstrip("/")
         self.language = language
         self.timeout_seconds = timeout_seconds

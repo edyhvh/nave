@@ -166,7 +166,7 @@ class ISMReportFetcher:
 
     def _fetch_with_curl(self, url: str) -> str:
         proc = subprocess.run(
-            ["curl", "-sL", url],
+            ["curl", "-fsSL", "--max-time", str(self.timeout_seconds), url],
             capture_output=True,
             text=True,
             check=False,
@@ -234,8 +234,14 @@ class ISMReportFetcher:
             r'https://www\.prnewswire\.com/news-releases/[^"\'\s<]+', html)
         if not links:
             return None
+        # A roundup can cite old releases. Select its own reference month,
+        # never the first link or an unrelated report type.
+        identity = re.search(r"roundup-([a-z]+)-(\d{4})-" + kind, roundup_url)
         preferred = [u for u in links if f"{kind}-pmi" in u]
-        return unescape(preferred[0] if preferred else links[0])
+        if identity:
+            marker = f"{identity[1]}-{identity[2]}"
+            preferred = [u for u in preferred if marker in u.lower()]
+        return unescape(preferred[0]) if len(set(preferred)) == 1 else None
 
     # ── Parse layer --------------------------------------------------
     def _parse(self, html: str, *, kind: ReportKind, source_url: str) -> ISMReport:
@@ -248,9 +254,22 @@ class ISMReportFetcher:
             kind=kind,
             source_url=source_url,
         )
+        headings = _extract_heading_texts(html)
+        if headings:
+            title = headings[0]
+            other = "Services" if kind == "manufacturing" else "Manufacturing"
+            label = "Manufacturing" if kind == "manufacturing" else "Services"
+            if other.lower() in title.lower() and label.lower() not in title.lower():
+                raise ValueError("ISM report type disagrees with release heading")
+            heading_month = _extract_kind_aligned_month(title, label)
+            if heading_month and heading_month.lower() != month.lower():
+                raise ValueError("ISM URL and release heading disagree on reference month")
         pmi = _extract_pmi(text, kind, source_url=source_url)
-        expanding = _parse_industry_list(text, trend="expanding")
-        contracting = _parse_industry_list(text, trend="contracting")
+        # Subsequent sections rank employment/new orders separately. Only the
+        # headline industry-performance section may populate composite rankings.
+        headline = re.split(r"WHAT RESPONDENTS ARE SAYING", text, flags=re.I)[0]
+        expanding = _parse_industry_list(headline, trend="expanding")
+        contracting = _parse_industry_list(headline, trend="contracting")
 
         _attach_sectors(expanding)
         _attach_sectors(contracting)
@@ -334,6 +353,12 @@ def _extract_report_month(
         )
         if slug_match:
             return f"{slug_match.group('month').capitalize()} {slug_match.group('year')}"
+
+    roundup = re.search(r"roundup-([a-z]+)-(\d{4})-" + kind, source_url, re.I)
+    if roundup:
+        for heading in _extract_heading_texts(html):
+            if re.search(r"\b" + roundup[1] + r"\s+" + kind + r"\b", heading, re.I):
+                return f"{roundup[1].capitalize()} {roundup[2]}"
 
     for heading in _extract_heading_texts(html):
         month = _extract_kind_aligned_month(heading, kind_label)
@@ -442,11 +467,11 @@ def _extract_pmi(
 # industries in order: "The 10 industries reporting growth ... in order are:
 # X; Y; Z. The four industries reporting contraction ... are: A; B;"
 _EXPANDING_RE = re.compile(
-    r"industries\s+reporting\s+(?:growth|an increase in new orders)[^:]*:\s*(?P<body>[^.]+)\.",
+    r"industries\s+reporting\s+growth[^:]*:\s*(?P<body>[^.]+)\.",
     re.IGNORECASE,
 )
 _CONTRACTING_RE = re.compile(
-    r"industries\s+reporting\s+(?:a\s+decrease\s+in|contraction)[^:]*:\s*(?P<body>[^.]+)\.",
+    r"industries\s+reporting\s+(?:a\s+)?contraction[^:]*:\s*(?P<body>[^.]+)\.",
     re.IGNORECASE,
 )
 

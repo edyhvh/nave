@@ -105,8 +105,11 @@ def short_research_scan(
     persist: bool = typer.Option(True, "--persist/--no-persist", help="Persist the research result under NAVE state."),
 ) -> None:
     """Scan stock-short factors; this command never places or sizes a trade."""
+    from research.short_providers import acquire_short_snapshot
+
+    rows = _load_short_research_rows(input_file) if input_file else acquire_short_snapshot()
     result = StockShortResearchWorkflow(store=ResearchStore(state_dir)).scan(
-        _load_short_research_rows(input_file),
+        rows,
         decision_time=decision_time,
         persist=persist,
     )
