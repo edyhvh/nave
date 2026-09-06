@@ -1,0 +1,284 @@
+{
+  "schema_version": "nave.cached-stage1-verification.v1",
+  "verified_at": "2026-09-06T00:24:39.632931+00:00",
+  "acquisition": {
+    "date": "2026-09-01",
+    "hours": [
+      {
+        "hour": "00",
+        "rows": 14942,
+        "sha256": "033fadc4ca8872693592bd246ac35d36f58422a462856fd9957b1f1b13cf65c7"
+      },
+      {
+        "hour": "01",
+        "rows": 4399,
+        "sha256": "e35a65c703c39b7c3b7e52fa6591ebffbe59f660c68699543d894039579c62ea"
+      },
+      {
+        "hour": "02",
+        "rows": 3561,
+        "sha256": "62c67244bdc6287567398b4eb934b9ebd98fc8290e3594352f0e57f6dd10d823"
+      },
+      {
+        "hour": "03",
+        "rows": 7711,
+        "sha256": "6fb9d45d87d9bc405a2298798f2a0a46929a87765d748e0a550d5a37f01a2e61"
+      },
+      {
+        "hour": "04",
+        "rows": 9273,
+        "sha256": "59ba8a4ea7f78dbe844dba058706ebc537e011b2575a7f296dd720176692e453"
+      },
+      {
+        "hour": "05",
+        "rows": 4463,
+        "sha256": "a1f8d83a419a460f7d4e9fc75eb36f5c70bcb5d28a7f246f78e2e18964fad695"
+      },
+      {
+        "hour": "06",
+        "rows": 9959,
+        "sha256": "fa2b99cf9a055314b58a2fdc29a90caa81c22a5e23803e58eb2a073b957b9ef0"
+      },
+      {
+        "hour": "07",
+        "rows": 10868,
+        "sha256": "5d36f8bae47013346adeee9bb65ef82f0f943ce8efcafbb2fd1e76a16029c744"
+      },
+      {
+        "hour": "08",
+        "rows": 18131,
+        "sha256": "3558befd80602a4dcdb8bd926759b40bc71d6d054c5b465108edadd6d1a64ecb"
+      },
+      {
+        "hour": "09",
+        "rows": 42315,
+        "sha256": "18c5d13aa7298e2e6bfdd603ef34b654744002948be37a1aa4dae8d8783b9613"
+      },
+      {
+        "hour": "10",
+        "rows": 3058,
+        "sha256": "2944e33b19b82b18e5331fbe2f7c4addd9d4b81df5e6717e81034fcdf51ea741"
+      },
+      {
+        "hour": "11",
+        "rows": 16795,
+        "sha256": "15d2f33322cab3941346769e492d5f59abe2604006fdd6345a379ec7a66c16b5"
+      },
+      {
+        "hour": "12",
+        "rows": 9785,
+        "sha256": "5c854bed5dc370a02ba76f2450db93ddcc1bded0e40864dd55f5bcd55206ac0d"
+      },
+      {
+        "hour": "13",
+        "rows": 23677,
+        "sha256": "2876c2619f087eabf39e12b836ae7721b88dc7e0ffeae08002b3f58b78e7e471"
+      },
+      {
+        "hour": "14",
+        "rows": 28032,
+        "sha256": "baf56cf1c15dc089899e149b3277858b2658c3b1489d407705ef279d86fbc8e2"
+      },
+      {
+        "hour": "15",
+        "rows": 50641,
+        "sha256": "d9384bdf8b79872fd5bb732f0253ff0c7078e82ada6489702d7680b21502c3ff"
+      },
+      {
+        "hour": "16",
+        "rows": 28530,
+        "sha256": "3947d1ae34cbc32fa9ef208e822e5a1216cae9119dfb81855b86681d74f53d31"
+      },
+      {
+        "hour": "17",
+        "rows": 44054,
+        "sha256": "9e520a23fb0fab389993e120780846b282b95befc74fca785844ce826690b73c"
+      },
+      {
+        "hour": "18",
+        "rows": 52181,
+        "sha256": "e634fb9e230ec4ec3ca2572de3037b751294f84420ef1dfc1ca774be073bd6f6"
+      },
+      {
+        "hour": "19",
+        "rows": 27696,
+        "sha256": "f0a81f6f0fb7c154b1572900e9807223732bd023e77538484bc865080b9f96de"
+      },
+      {
+        "hour": "20",
+        "rows": 7472,
+        "sha256": "d088dec0d4f1606137e14d224e803d90e1b40099028972319f5000f66ee2071c"
+      },
+      {
+        "hour": "21",
+        "rows": 1353,
+        "sha256": "bef6bd38112eac768aefc9cf7728b650faf027655c46ed1d3c0bacdb0526cf97"
+      },
+      {
+        "hour": "22",
+        "rows": 645,
+        "sha256": "721623ba93c21a67d54b6efad47a45a4f8346d7d19614dff84576e9ea8946cc5"
+      },
+      {
+        "hour": "23",
+        "rows": 599,
+        "sha256": "fdeba3bf2a4d3ce3b84f4a1d1af1fc20af772144aa94380bf5fe65968f5ec444"
+      }
+    ],
+    "complete_hours": 24,
+    "sample_size": 1000,
+    "denominator_at_acquisition": 29434,
+    "sample_manifest_sha256": "f1a1fdc256cdca5ebe521bee5a4112b11ef031aeabed5c21f9f128dc4a427e0a",
+    "selection": {
+      "frozen_before_event_replay": true,
+      "method": "sha256(seed || ':' || mint), ascending; outcome-independent",
+      "seed": "nave-2026-09-01-v1"
+    },
+    "acquired_at": "2026-09-01T21:02:37+00:00",
+    "latest_sample_launch": "2026-09-01 20:56:49.000 UTC",
+    "full_calendar_day_sample": false,
+    "sample_warning": "Acquisition timestamp is a necessary, not sufficient, check of full-day source coverage."
+  },
+  "coverage": {
+    "day": "2026-09-01",
+    "collection_end": "2026-09-02T00:00:00Z",
+    "launches": 1000,
+    "coverage": {
+      "15m": {
+        "rows": 1000,
+        "positive": 86,
+        "negative": 881,
+        "right_censored": 0,
+        "migration_unknown": 33,
+        "provider_gap": 0,
+        "binary_rate": 0.0889348500517063
+      },
+      "30m": {
+        "rows": 1000,
+        "positive": 43,
+        "negative": 924,
+        "right_censored": 0,
+        "migration_unknown": 33,
+        "provider_gap": 0,
+        "binary_rate": 0.04446742502585315
+      },
+      "60m": {
+        "rows": 1000,
+        "positive": 18,
+        "negative": 949,
+        "right_censored": 0,
+        "migration_unknown": 33,
+        "provider_gap": 0,
+        "binary_rate": 0.01861427094105481
+      }
+    },
+    "observability": {
+      "resolved_count": 49,
+      "unresolved_count": 951,
+      "resolved_median_early_trades": 306,
+      "unresolved_median_early_trades": 14,
+      "resolved_median_early_buyers": 84,
+      "unresolved_median_early_buyers": 4
+    },
+    "event_rows": 420140,
+    "event_mints": 1021
+  },
+  "model_comparison": {
+    "A_survival": {
+      "features": [
+        "age_seconds",
+        "log_return_to_decision",
+        "curve_progress",
+        "buy_volume_sol_raw",
+        "sell_volume_sol_raw",
+        "trade_count_raw",
+        "unique_buyers_raw",
+        "migration_state"
+      ],
+      "train": {
+        "n": 931,
+        "positive": 20,
+        "base_rate": 0.021482277121374866,
+        "pr_auc_average_precision": 0.31124647823073914,
+        "precision_lift_top20pct": 3.754032258064516,
+        "brier": 0.018008709834059798,
+        "log_loss": 0.08018946763118298,
+        "mean_predicted": 0.02148230427642096
+      },
+      "2026-09-01_temporal_sanity": {
+        "n": 967,
+        "positive": 18,
+        "base_rate": 0.01861427094105481,
+        "pr_auc_average_precision": 0.1337285590619267,
+        "precision_lift_top20pct": 4.175302245250432,
+        "brier": 0.02008357418977235,
+        "log_loss": 0.08514333489930519,
+        "mean_predicted": 0.02527204700689651
+      }
+    },
+    "C_survival": {
+      "features": [
+        "age_seconds",
+        "log_return_to_decision",
+        "curve_progress",
+        "buy_volume_sol_raw",
+        "sell_volume_sol_raw",
+        "trade_count_raw",
+        "unique_buyers_raw",
+        "migration_state",
+        "new_buyer_acceleration",
+        "buy_volume_acceleration",
+        "sell_pressure",
+        "trade_size_concentration"
+      ],
+      "train": {
+        "n": 931,
+        "positive": 20,
+        "base_rate": 0.021482277121374866,
+        "pr_auc_average_precision": 0.3468592884388085,
+        "precision_lift_top20pct": 3.503763440860215,
+        "brier": 0.017692082069504702,
+        "log_loss": 0.07844483506768603,
+        "mean_predicted": 0.021482135222734105
+      },
+      "2026-09-01_temporal_sanity": {
+        "n": 967,
+        "positive": 18,
+        "base_rate": 0.01861427094105481,
+        "pr_auc_average_precision": 0.12314341964220382,
+        "precision_lift_top20pct": 3.618595279217041,
+        "brier": 0.019885698565653025,
+        "log_loss": 0.09869157789818028,
+        "mean_predicted": 0.02513946809978593
+      }
+    },
+    "C_minus_A_test_pr_auc": -0.010585139419722889,
+    "C_minus_A_test_brier": -0.0001978756241193258,
+    "cluster_bootstrap": {
+      "iterations": 1000,
+      "unit": "token; one 10m decision row per token",
+      "pr_auc_delta_mean": -0.0074617584711590785,
+      "pr_auc_delta_ci95": [
+        -0.06018033006874457,
+        0.05484448201628551
+      ],
+      "brier_delta_mean": -0.00018829171938568477,
+      "brier_delta_ci95": [
+        -0.0012746265236209032,
+        0.0009654153646668205
+      ]
+    },
+    "status": "DESCRIPTIVE_FROZEN_INTRADAY_COHORT"
+  },
+  "classification": "DESCRIPTIVE_FROZEN_INTRADAY_COHORT",
+  "edge_validated": false,
+  "dune_queries": 0,
+  "additional_provider_downloads": 0,
+  "limitations": [
+    "Activity survival is not tradable profit.",
+    "No participant-excluded model or execution-cost evaluation.",
+    "Do not admit an intraday launch sample as a comparable full-day sample.",
+    "PONS social case study is not linked to this Solana launch cohort.",
+    "Legacy Stage-1 features use event time, not a receiver-latency replay; online availability is unproven."
+  ]
+}

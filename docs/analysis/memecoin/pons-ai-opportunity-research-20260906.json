@@ -1,0 +1,125 @@
+{
+  "schema_version": "nave.research_note.v1",
+  "research_date_local": "2026-09-06",
+  "timezone": "Europe/Berlin",
+  "retrieval_date_utc": "2026-09-05",
+  "status": "RESEARCH_SPECIFICATION_ONLY",
+  "edge_validated": false,
+  "mode": "READ_ONLY_RESEARCH_ONLY_HUMAN_GATED",
+  "base_commit": "a8ddd02",
+  "sources": [
+    {
+      "id": "miles_video",
+      "url": "https://x.com/milesdeutscher/status/2096010425879961883",
+      "published_at": "2026-09-04T23:00:02Z",
+      "kind": "AUTHOR_COMMENTARY",
+      "retrieval": "X HTML 403; metadata via FxTwitter; complete public auto-generated captions via video.twimg.com",
+      "metadata_url": "https://api.fxtwitter.com/status/2096010425879961883",
+      "captions_url": "https://video.twimg.com/subtitles/amplify_video/2095915267679506435/0/haa6RZFXmA9CTyaG.vtt",
+      "captions_sha256": "6e96d041e7d9eff241702b81604aeb5712593f93b176b7cb323eb97da0b475d4",
+      "verbatim_transcript_committed": false,
+      "thread_replies_retrieved": false,
+      "prompt_library_retrieved": false,
+      "independent_trade_validation": false
+    },
+    {
+      "id": "decrypt_pons",
+      "url": "https://decrypt.co/377349/pons-robinhood-chain-meme-coin-token-factory",
+      "published_date": "2026-09-03",
+      "kind": "SECONDARY_REPORTING",
+      "historical_prices_replayed": false
+    },
+    {
+      "id": "okx_announcement",
+      "url": "https://www.okx.com/en-ar/help/okx-to-list-perpetual-futures-for-pons-crypto",
+      "published_at": "2026-09-05T02:00:00Z",
+      "announced_trading_start": "2026-09-05T03:00:00Z",
+      "kind": "PRIMARY_EXCHANGE_ANNOUNCEMENT",
+      "retrieval": "direct HTTP HTML; browser fetch failed",
+      "trading_execution_verified": false
+    },
+    {
+      "id": "bitquery_investigation",
+      "url": "https://bitquery.io/investigations/pons-launchpad",
+      "source_verification_date": "2026-09-04",
+      "kind": "PROVIDER_RESEARCH",
+      "independently_replayed": false
+    },
+    {
+      "id": "bitquery_api",
+      "url": "https://docs.bitquery.io/docs/blockchain/robinhood/pons-api/",
+      "kind": "PRIMARY_PROVIDER_DOCUMENTATION",
+      "published_at": null,
+      "api_queries_executed": 0
+    },
+    {
+      "id": "dune_efficiency",
+      "url": "https://docs.dune.com/query-engine/writing-efficient-queries",
+      "kind": "PRIMARY_PROVIDER_DOCUMENTATION",
+      "published_at": null
+    }
+  ],
+  "case_study": {
+    "label": "PONS",
+    "provenance": "explicit user request",
+    "canonical_identity_status": "UNRESOLVED",
+    "canonical_chain_id": null,
+    "canonical_asset_address": null,
+    "default_universe_member": false,
+    "current_trade_recommendation": null,
+    "fee_to_token_accrual_status": "UNVERIFIED",
+    "pre_move_detectability": "UNKNOWN"
+  },
+  "existing_contracts": {
+    "features": "m3-feature-contract-20260831.json",
+    "survival": "nave-stage1-survival-contract-20260901.json",
+    "signal_sanity": "m3-signal-sanity-contract-20260831.json",
+    "burst_runner": "m3-dual-horizon-trajectory-research-20260831.md",
+    "execution_gate": "m3-reassessment-and-next-probe-20260831.md",
+    "last_complete_day_review": "nave-stage1-survival-day5-20260901.md",
+    "partial_day_review": "nave-stage1-survival-day6-20260901.md",
+    "contracts_modified": false
+  },
+  "proposed_experiment": {
+    "id": "social_increment_beyond_c_survival",
+    "state": "PROPOSED_NOT_EXECUTED",
+    "population": "fixed launch cohort with complete social-source observation coverage",
+    "decision_seconds_after_launch": 600,
+    "outcome_contract": "nave-stage1-survival-contract-20260901.json",
+    "primary_outcome": "FUTURE_TRADE_AFTER_60M",
+    "comparison": "C_survival versus C_survival plus prior independent source-account mention count",
+    "placebo": "time-shifted mentions",
+    "holdout_dates": null,
+    "source_account_manifest": null,
+    "must_freeze_before_collection": ["source_account_manifest", "poll_policy", "time_boundaries", "training_cutoff"],
+    "unavailable_social_coverage": "BLOCKED_NOT_ZERO_MENTIONS",
+    "activity_is_profitability": false
+  },
+  "costs": {
+    "dune_calls": 0,
+    "dune_queries_executed": 0,
+    "new_dune_credits": 0,
+    "paid_transcriptions": 0,
+    "paid_provider_acquisitions": 0,
+    "current_account_balance_checked": false
+  },
+  "open_gates": [
+    "canonical token, protocol-version and venue identity",
+    "fee-to-swap-to-burn reconciliation for token accrual",
+    "complete launch and continuation coverage",
+    "prospective social-source observation manifest",
+    "untouched chronological holdout and stable incremental evidence",
+    "historical executable depth and frozen numerical cost scenarios",
+    "separate runtime integration and confirmed delivery validation"
+  ],
+  "mutations": {
+    "scope": "new research documents and pull request only",
+    "live_jobs": false,
+    "watch_state": false,
+    "portfolio_state": false,
+    "services": false,
+    "orders": false,
+    "discord_messages": false,
+    "research_runtime_state": false
+  }
+}
