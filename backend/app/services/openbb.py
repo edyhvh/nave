@@ -40,24 +40,51 @@ def _to_records(data: Any) -> list[dict[str, Any]]:
     return [{"value": data}]
 
 
+def _latest_observation_at(records: list[dict[str, Any]]) -> str | None:
+    """Return the provider observation date separately from retrieval time."""
+    values: list[pd.Timestamp] = []
+    for record in records:
+        raw = record.get("date") or record.get("Date") or record.get("timestamp")
+        if raw in (None, ""):
+            continue
+        try:
+            timestamp = pd.Timestamp(raw)
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.tz_localize("UTC")
+            else:
+                timestamp = timestamp.tz_convert("UTC")
+            values.append(timestamp)
+        except (TypeError, ValueError):
+            continue
+    return max(values).isoformat() if values else None
+
+
 def fetch_fred_series(series_id: str) -> dict[str, Any]:
     obb = _get_obb()
     result = obb.economy.fred_series(  # type: ignore[attr-defined]
         symbol=series_id)
+    records = _to_records(result)
+    retrieved_at = datetime.now(timezone.utc).isoformat()
     return {
         "series_id": series_id,
-        "records": _to_records(result),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "records": records,
+        "as_of": retrieved_at,
+        "retrieved_at": retrieved_at,
+        "latest_observation_at": _latest_observation_at(records),
     }
 
 
 def fetch_fixedincome_rate(symbol: str) -> dict[str, Any]:
     obb = _get_obb()
     result = obb.economy.fred_series(symbol=symbol)  # type: ignore[attr-defined]
+    records = _to_records(result)
+    retrieved_at = datetime.now(timezone.utc).isoformat()
     return {
         "symbol": symbol,
-        "records": _to_records(result),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "records": records,
+        "as_of": retrieved_at,
+        "retrieved_at": retrieved_at,
+        "latest_observation_at": _latest_observation_at(records),
     }
 
 
@@ -72,10 +99,14 @@ def fetch_equity_history(symbol: str, start_date: str | None = None,
         kwargs["end_date"] = end_date
     kwargs["provider"] = "yfinance"
     result = obb.equity.price.historical(**kwargs)  # type: ignore[attr-defined]
+    records = _to_records(result)
+    retrieved_at = datetime.now(timezone.utc).isoformat()
     return {
         "symbol": symbol,
-        "records": _to_records(result),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "records": records,
+        "as_of": retrieved_at,
+        "retrieved_at": retrieved_at,
+        "latest_observation_at": _latest_observation_at(records),
     }
 
 
@@ -83,10 +114,14 @@ def fetch_crypto_price(symbol: str) -> dict[str, Any]:
     """Fetch a current crypto quote through OpenBB without fabricating data."""
     obb = _get_obb()
     result = obb.crypto.price(symbol=symbol)  # type: ignore[attr-defined]
+    records = _to_records(result)
+    retrieved_at = datetime.now(timezone.utc).isoformat()
     return {
         "symbol": symbol,
-        "records": _to_records(result),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "records": records,
+        "as_of": retrieved_at,
+        "retrieved_at": retrieved_at,
+        "latest_observation_at": _latest_observation_at(records),
     }
 
 
