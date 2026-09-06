@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 
 from research.core.contracts import ResearchResult, ResearchStatus
@@ -66,7 +65,7 @@ def test_short_evaluation_and_missed_moves_are_explicit():
 
     assert evaluation.status is ResearchStatus.STRATEGY_NOT_VALIDATED
     assert evaluation.payload["metrics"]["hit_rate"] == 1.0
-    assert missed.status is ResearchStatus.ACTION_REQUIRED
+    assert missed.status is ResearchStatus.NO_SETUP
     assert missed.payload["hindsight_data_used_as_signal"] is False
 
 
@@ -81,7 +80,7 @@ def test_quant_presentation_preserves_no_setup_and_action_required():
     no_setup_view = present_result(no_setup)
     action_view = present_result(action.to_dict())
     assert no_setup_view["status"] == "INSUFFICIENT_EVIDENCE"
-    assert action_view["status"] == "ACTION_REQUIRED"
+    assert action_view["status"] == "NO_SETUP"
     assert action_view["human_decision_required"] is True
     assert isinstance(action, ResearchResult)
 

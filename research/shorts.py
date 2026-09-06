@@ -300,7 +300,7 @@ class StockShortResearchWorkflow:
                 "failed_filter": row.get("failed_filter"),
                 "possible_missing_feature": row.get("possible_missing_feature"),
             })
-        status = ResearchStatus.ACTION_REQUIRED if missed else ResearchStatus.NO_SETUP
+        status = ResearchStatus.NO_SETUP
         result = ResearchResult(
             workflow="stocks.short.missed_moves",
             status=status,
