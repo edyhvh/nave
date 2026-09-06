@@ -1,0 +1,189 @@
+{
+  "schema_version": "nave.bounded-memecoin-experiment.v1",
+  "experiment_id": "bundle-adjusted-unique-demand-v1",
+  "status": "FROZEN_PROSPECTIVE_SIBLING",
+  "freeze_timestamp_utc": "2026-09-06T09:19:23Z",
+  "source_commit": "c90c17d5acd1a49c3749ddcb168ed860df2e0612",
+  "freeze_commit": null,
+  "original_contract": {
+    "experiment_id": "closed-day-participant-history-v1",
+    "path": "research/nave/experiments/closed-day-participant-history-v1.json",
+    "sha256": "711b2ea8ee859e6defafbf0a8eff93b78f764eee1ca249e333a59e649fd54de1"
+  },
+  "population": {
+    "definition": "Exactly the complete prospective Pump.fun/Solana launch population collected by the original experiment; all canonical create events in each closed UTC day, including inactive, illiquid, rejected, and never-traded launches.",
+    "population_id": "shared-with-closed-day-participant-history-v1",
+    "denominator_rule": "No strategy, activity, liquidity, wallet, creator, bundle, or outcome filter while constructing the launch denominator.",
+    "population_b": false,
+    "population_c": false,
+    "social_enabled": false
+  },
+  "decision": {
+    "decision_time": "launch_time + 5 minutes exactly",
+    "eligibility": "Only evidence with available_at <= decision_time is eligible.",
+    "event_window": "launch_time <= event_time <= decision_time",
+    "future_information": "Migration time, future prices, later wallet behavior, later outcomes, and later enrichment cannot classify the current launch."
+  },
+  "comparisons": {
+    "A": {
+      "definition": "The existing frozen baseline A from closed-day-participant-history-v1; same-pool five-minute quote volume divided by pool quote liquidity at launch+5m, training-only median/IQR scaling and training 80th percentile.",
+      "source_contract": "closed-day-participant-history-v1",
+      "modified": false
+    },
+    "A_plus_B": {
+      "definition": "A plus the frozen bundle-adjusted unique-demand feature family below.",
+      "composite_score": "NOT_DEFINED_BY_THIS_FREEZE",
+      "additional_feature_families_allowed": false
+    },
+    "A_plus_B_plus_D": {
+      "definition": "A+B plus the frozen serial-deployer negative filter D below.",
+      "composite_score": "NOT_DEFINED_BY_THIS_FREEZE",
+      "additional_feature_families_allowed": false
+    }
+  },
+  "feature_B_bundle_adjusted_unique_demand": {
+    "status": "FROZEN_FEATURE_FAMILY_RAW_FIELDS_ONLY",
+    "primary_feature": "entity_to_raw_unique_buyer_ratio_at_5m",
+    "primary_feature_definition": "bundle_adjusted_unique_economic_entities_at_5m / raw_unique_buyers_at_5m; UNKNOWN when either denominator is zero, identity is unresolved, or the causal evidence gate fails.",
+    "raw_fields_required_at_decision": [
+      "raw_unique_buyers_at_5m",
+      "bundle_adjusted_unique_economic_entities_at_5m",
+      "raw_first_10_buyer_concentration",
+      "entity_adjusted_first_10_concentration",
+      "raw_unique_buyer_growth_1m_3m_5m",
+      "entity_unique_growth_1m_3m_5m",
+      "raw_buyer_acceleration_if_available",
+      "entity_acceleration_if_available",
+      "clustered_participant_volume_share",
+      "clustered_early_entity_supply_share"
+    ],
+    "audit_field_definitions": {
+      "raw_unique_buyers_at_5m": "Distinct known participant wallet identities on BUY events for the current mint/pool in the opening window.",
+      "bundle_adjusted_unique_economic_entities_at_5m": "Connected-component count of known buyer wallets after only the frozen SAME_TRANSACTION coordination edges; component provenance and size distribution must be retained.",
+      "raw_first_10_buyer_concentration": "Opening-window quote volume share attributable to the first 10 distinct raw buyer wallets ordered by their first causally observed BUY event; UNKNOWN if quote amount or ordering is insufficient.",
+      "entity_adjusted_first_10_concentration": "Opening-window quote volume share attributable to the first 10 distinct clustered entities ordered by first causally observed BUY event; UNKNOWN if clustering or quote amount is insufficient.",
+      "raw_unique_buyer_growth_1m_3m_5m": "Cumulative raw distinct-wallet counts at +1m, +3m, and +5m; no interpolation across missing windows.",
+      "entity_unique_growth_1m_3m_5m": "Cumulative connected-component counts at +1m, +3m, and +5m under the same fixed clustering rule.",
+      "raw_buyer_acceleration_if_available": "Finite difference of raw cumulative buyer count between the frozen 1m, 3m, and 5m checkpoints; UNKNOWN when a checkpoint is unavailable.",
+      "entity_acceleration_if_available": "Finite difference of entity cumulative count between the frozen 1m, 3m, and 5m checkpoints; UNKNOWN when a checkpoint is unavailable.",
+      "clustered_participant_volume_share": "Quote volume share from BUY events attributed to a component containing at least two distinct wallets, using only known same-transaction edges.",
+      "clustered_early_entity_supply_share": "Share of opening-window known net base amount attributable to components containing at least two wallets; transfers or missing base amounts make the field UNKNOWN rather than zero."
+    },
+    "clustering_rules": {
+      "nodes": "Known participant wallet identities from the current mint/pool BUY tape.",
+      "same_transaction": "Union wallets co-reported on BUY activity under the same non-null transaction signature for the current mint/pool and opening window; retain the edge as SAME_TRANSACTION_COORDINATION with source signature.",
+      "same_slot": "Persist and report as SAME_SLOT evidence only; never union wallets or infer common ownership from slot equality alone.",
+      "same_pool": "A pool mismatch cannot be silently merged; unresolved pool identity keeps the entity feature UNKNOWN.",
+      "shared_funder": "May create an entity edge only if independently causally proven and available_at <= decision_time; otherwise UNKNOWN and no edge.",
+      "bundle_or_jito_id": "Not required for the primary B feature; if a source later provides one causally, retain it as provenance and evaluate only under a separately frozen extension.",
+      "unknown_behavior": "Unknown participant, pool, signature, funding, or timing evidence remains UNKNOWN; no zero or independent-wallet imputation.",
+      "ticker_identity": "Forbidden."
+    },
+    "no_composite_rule": "This freeze defines raw and entity-adjusted fields plus one primary ratio for later preregistered evaluation. It does not invent a composite score, weights, threshold, or parameter search."
+  },
+  "feature_D_serial_deployer_negative_filter": {
+    "status": "FROZEN_CANDIDATE_NEGATIVE_FILTER",
+    "creator_identity": "Canonical creator/deployer from the launch event; missing creator remains UNKNOWN.",
+    "history_cutoff": "Only prior create events with available_at <= current decision_time and launch_time < current launch_time may count.",
+    "prior_launch_count": "Count prior canonical launches by the same creator in the shared population.",
+    "recent_deployment_frequency": "Count prior canonical launches by the same creator in the trailing 24 hours before the current launch.",
+    "time_since_prior_launch": "Current launch_time minus the immediately prior causally known launch by the same creator.",
+    "historical_coordination_or_liquidity_failures": "Use only if previously resolved under the same frozen raw/closed-day rules before the current decision; otherwise UNKNOWN.",
+    "filter_rule": "D=1 when prior_launch_count >= 3; D=0 when prior_launch_count < 3; D=UNKNOWN when creator/history is unresolved.",
+    "unknown_rule": "UNKNOWN is reported separately and is not automatically rejected or converted to D=1.",
+    "labeling_rule": "Never label a creator SCAMMER and never create a symbol/creator exception."
+  },
+  "negative_controls": [
+    {
+      "name": "raw_unique_buyer_control",
+      "definition": "Evaluate raw unique-buyer count and raw first-10 concentration separately so any apparent B effect must survive the unadjusted buyer-count control."
+    },
+    {
+      "name": "within_day_identity_permutation",
+      "definition": "Permute participant/entity identities within UTC day while preserving event times, cluster-size distribution, and missingness; permutation seed is frozen before validation."
+    },
+    {
+      "name": "time_shifted_coordination_edges",
+      "definition": "Shift coordination edges by +24 hours relative to the current launch while retaining edge structure; any edge that fails the point-in-time cutoff is ineligible and must fail the causal gate."
+    },
+    {
+      "name": "seeded_random_clusters",
+      "definition": "Generate random clusters preserving the observed cluster-size distribution and missingness, seed 20260906."
+    },
+    {
+      "name": "deployer_history_permutation",
+      "definition": "Permute deployer histories within UTC day while preserving missingness and the observed prior-count distribution; no outcome information is used."
+    }
+  ],
+  "outcome": {
+    "reuse_original_contract": true,
+    "source_contract": "closed-day-participant-history-v1",
+    "definition": "Same canonical pool executable quote at decision+30 seconds and decision+60 minutes, $10 quote equivalent, with explicit entry/exit fees, spread, slippage, gas, liquidity, and failed-exit handling.",
+    "horizons": [
+      "decision_time + 30 seconds",
+      "decision_time + 60 minutes"
+    ],
+    "missing_evidence": "UNKNOWN; never zero return or total loss.",
+    "new_outcome_definition": false
+  },
+  "dates": {
+    "validation_days": [
+      "2026-09-07",
+      "2026-09-08",
+      "2026-09-09"
+    ],
+    "untouched_holdout_days": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12"
+    ],
+    "refreeze_required": false,
+    "reason": "The sibling contract was frozen on 2026-09-06 before the first validation UTC day; dates are inherited exactly from the original contract."
+  },
+  "acceptance_criteria": {
+    "inherited_original_gate": true,
+    "criteria": [
+      "At least one genuinely complete closed-UTC-day launch population with no selected-survivor denominator.",
+      "At least 1000 eligible launch identities and at least 200 resolved executable 60-minute outcomes.",
+      "At least 90% same-pool executable outcome coverage at each current primary horizon.",
+      "Positive cost-adjusted expectancy under frozen base and stressed costs, with uncertainty support.",
+      "Stable positive paired improvement over baseline under day/hour-block resampling.",
+      "False-positive rate reported at the full denominator and no worse than baseline by more than 5 percentage points.",
+      "No dependence on a single token, day, venue, or exceptional move.",
+      "All clock, participant-exclusion, liquidity, and failed-exit gates pass; unknowns remain unknown.",
+      "A+B must improve cost-adjusted expectancy over A in both frozen base and stressed costs, remain stable under resampling, survive the raw-buyer-count control, and not materially increase false positives.",
+      "A+B must show information available by launch+5m; late curve, migration, future-price, and later-wallet information cannot be required for the effect.",
+      "A+B must not depend on one token, one UTC day, one venue, or one exceptional move.",
+      "D is secondary: A+B+D must improve A+B separately under the same inherited gates; D cannot rescue a failure of A+B.",
+      "No claim is admissible if the result depends on inferred ownership from same-slot equality, unavailable Jito IDs, unavailable funder graphs, or unknowns treated as negatives."
+    ],
+    "status_at_freeze": "NOT_EVALUATED"
+  },
+  "holdout_policy": {
+    "shared_lock_authoritative": true,
+    "lock_path": "data/research/memecoin/prospective/holdout-lock.json",
+    "rule": "No A+B or A+B+D score, outcome, fit, summary, or strategy conclusion may be computed on holdout before the original validation report hash, acceptance-gate decision, and explicit unlock event exist.",
+    "unlock_artifact": null
+  },
+  "analysis_policy": {
+    "validation_analysis_before_close": false,
+    "holdout_analysis_before_unlock": false,
+    "pnl_now": false,
+    "feature_comparison_now": false,
+    "threshold_fitting_now": false,
+    "winner_inspection_now": false,
+    "strategy_threshold_changes": false
+  },
+  "required_gates": [
+    "shared_complete_closed_utc_population",
+    "complete_receiver_time_tape",
+    "raw_transaction_and_slot_provenance",
+    "participant_identity_cutoff",
+    "same_transaction_cluster_provenance",
+    "creator_history_cutoff",
+    "same_pool_executable_outcomes_reused",
+    "explicit_costs_reused",
+    "untouched_chronological_holdout",
+    "unknowns_retained"
+  ]
+}
