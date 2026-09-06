@@ -14,8 +14,9 @@ that a rule is failing.
 
 ## Strategy and source hierarchy
 
-Yahoo Finance is the default quote source for current indicative prices and
-basic chart data. It is not a complete thesis engine. NAVE combines that quote
+OpenBB's existing equity-history adapter is preferred for current indicative
+prices and basic chart data, with the repository's yfinance provider as an
+explicit fallback. It is not a complete thesis engine. NAVE combines that quote
 with the minimum portfolio-specific evidence needed to act:
 
 1. **Position truth:** confirmed quantity, average cost, fees, execution date,
@@ -120,3 +121,7 @@ never places orders.
 The ETH and SOL addresses supplied by the operator are separate read-only audit
 inputs, not stock positions and not authorization to transact. Wallet snapshots
 may be written only to an explicitly selected local path outside the repository.
+The NAVE portfolio adapter uses `NAVE_PORTFOLIO_STATE_FILE` when set, otherwise
+it can read the existing local Hermes portfolio-manager ledger when present. The
+wallet identifier and wallet-derived snapshots remain local-only and are never
+embedded in NAVE configuration, examples, tests, or Git history.

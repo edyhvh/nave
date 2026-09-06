@@ -1,7 +1,5 @@
 from datetime import UTC, datetime
 
-import pandas as pd
-
 from research.portfolio_providers import PortfolioContextProvider, load_current_ism_inputs
 from trading.stocks.ism_scraper import ISMIndustryRanking, ISMReport
 
@@ -24,10 +22,18 @@ class ReportFetcher:
 def test_ism_inputs_prefer_openbb_fred_for_headline_and_keep_official_ranking():
     result = load_current_ism_inputs(
         report_fetcher=ReportFetcher(),
-        fred_fetcher=lambda series: {"records": [{"date": "2026-09-03", "value": 53.2}], "as_of": "2026-09-04"},
+        fred_fetcher=lambda series: {
+            "records": [
+                {"date": "2026-09-03", "value": 53.2},
+                {"date": "2026-08-01", "value": 50.0},
+            ],
+            "as_of": "2026-09-04",
+        },
     )
     assert result["manufacturing"]["pmi"] == 53.2
     assert result["manufacturing"]["pmi_source"] == "NAPM via OpenBB/FRED"
+    assert result["manufacturing"]["pmi_observation_at"] == "2026-09-03T00:00:00+00:00"
+    assert result["manufacturing"]["pmi_retrieved_at"] == "2026-09-04T00:00:00+00:00"
     assert result["manufacturing"]["hottest_industries"][0]["industry"] == "Software"
 
 
@@ -49,5 +55,8 @@ def test_portfolio_context_uses_openbb_history_and_keeps_missing_fundamentals_tr
         ["AAPL"], now=NOW
     )
     assert result["AAPL"]["market_state"]["current_price"] == 110
+    assert result["AAPL"]["market_state"]["as_of"] == "2026-09-04T00:00:00+00:00"
+    assert result["AAPL"]["market_state"]["retrieved_at"] == "2026-09-04T12:00:00+00:00"
+    assert result["AAPL"]["market_state"]["availability"] == "KNOWN"
     assert result["AAPL"]["technical_condition"] == "healthy"
     assert result["AAPL"]["company_information"]["unavailable_reason"] == "provider offline"

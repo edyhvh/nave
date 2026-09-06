@@ -576,6 +576,8 @@ def refresh(
         ],
     }
     _atomic_write(audit_path, audit)
+    state["updated_at"] = audit["observed_at"]
+    state["ledger_history_complete"] = history_complete
     _atomic_write(state_path, state)
     return {
         "new_fill_count": audit["new_fill_count"],

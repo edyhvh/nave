@@ -8,14 +8,24 @@ schema and deterministic evaluation rules.
 from __future__ import annotations
 
 import json
+import math
 import os
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Mapping
 
-from research.core.contracts import EvidenceKind, EvidenceReference, PointInTime, ResearchResult, ResearchStatus, RunMetadata
+from research.core.contracts import (
+    EvidenceKind,
+    EvidenceReference,
+    PointInTime,
+    ProvenanceCategory,
+    ResearchResult,
+    ResearchStatus,
+    RunMetadata,
+    StateOwner,
+)
 from research.core.store import ResearchStore
 from trading.stocks.ism_equity_pipeline import build_ism_equity_pipeline
 
@@ -44,8 +54,19 @@ class PositionState:
 
 @dataclass(frozen=True)
 class PortfolioState:
+    updated_at: str | None = None
     positions: tuple[PositionState, ...] = ()
     watchlist: tuple[Mapping[str, Any], ...] = ()
+    portfolio_review_universe: tuple[Mapping[str, Any], ...] = ()
+    ism_candidates: tuple[Mapping[str, Any], ...] = ()
+    disclosure_candidates: tuple[Mapping[str, Any], ...] = ()
+    strategy_candidates: tuple[Mapping[str, Any], ...] = ()
+    case_studies: tuple[Mapping[str, Any], ...] = ()
+
+    @staticmethod
+    def _records(payload: Mapping[str, Any], key: str) -> tuple[Mapping[str, Any], ...]:
+        values = payload.get(key) or []
+        return tuple(item for item in values if isinstance(item, Mapping))
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "PortfolioState":
@@ -62,19 +83,38 @@ class PortfolioState:
             for item in payload.get("positions") or []
             if isinstance(item, Mapping) and str(item.get("ticker") or "").strip()
         )
-        watchlist = tuple(item for item in payload.get("watchlist") or [] if isinstance(item, Mapping))
-        return cls(positions=positions, watchlist=watchlist)
+        return cls(
+            updated_at=payload.get("updated_at"),
+            positions=positions,
+            watchlist=cls._records(payload, "watchlist"),
+            portfolio_review_universe=cls._records(payload, "portfolio_review_universe"),
+            ism_candidates=cls._records(payload, "ism_candidates"),
+            disclosure_candidates=cls._records(payload, "disclosure_candidates"),
+            strategy_candidates=cls._records(payload, "strategy_candidates"),
+            case_studies=cls._records(payload, "case_studies"),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "updated_at": self.updated_at,
             "positions": [position.to_dict() for position in self.positions],
             "watchlist": [dict(item) for item in self.watchlist],
+            "portfolio_review_universe": [dict(item) for item in self.portfolio_review_universe],
+            "ism_candidates": [dict(item) for item in self.ism_candidates],
+            "disclosure_candidates": [dict(item) for item in self.disclosure_candidates],
+            "strategy_candidates": [dict(item) for item in self.strategy_candidates],
+            "case_studies": [dict(item) for item in self.case_studies],
         }
 
 
 def default_portfolio_state_path() -> Path:
     configured = os.getenv("NAVE_PORTFOLIO_STATE_FILE")
-    return Path(configured).expanduser() if configured else Path.home() / ".nave" / "portfolio.json"
+    if configured:
+        return Path(configured).expanduser()
+    hermes_state = Path.home() / ".hermes" / "state" / "portfolio_manager" / "portfolio.json"
+    if hermes_state.exists():
+        return hermes_state
+    return Path.home() / ".nave" / "portfolio.json"
 
 
 def load_portfolio_state(path: Path | None = None) -> PortfolioState:
@@ -95,6 +135,7 @@ def _result(
     evidence: list[EvidenceReference] | None = None,
     warnings: list[str] | None = None,
     now: datetime | None = None,
+    input_available_at: datetime | None = None,
 ) -> ResearchResult:
     decision_time = now or datetime.now(UTC)
     return ResearchResult(
@@ -107,12 +148,27 @@ def _result(
             decision_time=decision_time,
             started_at=decision_time,
             completed_at=decision_time,
-            input_available_at=decision_time,
+            input_available_at=input_available_at,
         ),
         payload=payload,
         evidence=tuple(evidence or []),
         warnings=tuple(warnings or []),
     )
+
+
+def fresh_timestamp(value: Any, now: datetime, max_age: timedelta = timedelta(days=3)) -> bool:
+    try:
+        timestamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return timestamp.tzinfo is not None and timedelta(0) <= now - timestamp <= max_age
+    except (ValueError, TypeError):
+        return False
+
+
+def positive_number(value: Any) -> bool:
+    try:
+        return not isinstance(value, bool) and math.isfinite(float(value)) and float(value) > 0
+    except (ValueError, TypeError, OverflowError):
+        return False
 
 
 def review_positions(
@@ -125,16 +181,31 @@ def review_positions(
     evidence_by_ticker = evidence_by_ticker or {}
     decisions: list[dict[str, Any]] = []
     evidence: list[EvidenceReference] = []
+    decision_time = now or datetime.now(UTC)
     for position in state.positions:
         ticker = position.ticker.upper()
         observed = evidence_by_ticker.get(ticker, {})
         reasons: list[str] = []
+        market = observed.get("market_state") or {}
+        company = observed.get("company_information") or {}
+        missing = []
+        if not fresh_timestamp(state.updated_at, decision_time):
+            missing.append("portfolio_state_stale_or_undated")
+        if not positive_number(market.get("current_price")) or not fresh_timestamp(market.get("as_of"), decision_time):
+            missing.append("price_missing_stale_or_invalid")
+        if not company or company.get("unavailable_reason") or company.get("source") == "unavailable":
+            missing.append("company_information_missing")
+        if observed.get("technical_condition") not in {"healthy", "weak", "breakdown"}:
+            missing.append("technical_evidence_missing")
         if observed.get("invalidation") is True or position.candidate_status in {"invalidated", "broken"}:
             action = PortfolioAction.EXIT_CANDIDATE
             reasons.append("thesis_invalidated")
         elif observed.get("meaningful_new_information") is True:
             action = PortfolioAction.REVIEW_REQUIRED
             reasons.append("meaningful_new_information")
+        elif missing:
+            action = PortfolioAction.REVIEW_REQUIRED
+            reasons.extend(missing)
         elif observed.get("technical_condition") in {"weak", "breakdown"}:
             action = PortfolioAction.REDUCE_CANDIDATE
             reasons.append("technical_weakness")
@@ -162,8 +233,13 @@ def review_positions(
                 source="private.portfolio.state",
                 claim=f"Position state for {ticker} was supplied by the user-local portfolio file",
                 kind=EvidenceKind.FACT,
-                point_in_time=PointInTime(available_at=now, decision_time=now),
+                # The ledger's source freshness is not part of PortfolioState;
+                # do not invent availability at the decision time.
+                point_in_time=PointInTime(available_at=None, decision_time=now),
                 metadata={"private_state": True},
+                provenance_category=ProvenanceCategory.USER_STATE.value,
+                state_owner=StateOwner.USER_RUNTIME.value,
+                lifecycle="RECURRING",
             )
         )
     status = ResearchStatus.ACTION_REQUIRED if decisions else ResearchStatus.DATA_UNAVAILABLE
@@ -225,8 +301,11 @@ def portfolio_candidates(
                 source="nave.trading.stocks.ism_equity_pipeline",
                 claim=f"{item.get('symbol')} entered the bounded ISM candidate pool",
                 kind=EvidenceKind.INFERENCE,
-                point_in_time=PointInTime(decision_time=decision_time, available_at=decision_time),
+                point_in_time=PointInTime(decision_time=decision_time, available_at=None),
                 metadata={"sources": sources},
+                provenance_category=ProvenanceCategory.RESEARCH_CANDIDATE.value,
+                state_owner=StateOwner.NAVE_RESEARCH.value,
+                lifecycle="CANDIDATE",
             )
         )
     status = ResearchStatus.SETUP_FOUND if candidates else ResearchStatus.NO_SETUP
@@ -236,6 +315,15 @@ def portfolio_candidates(
         {
             "candidates": candidates,
             "pipeline": pipeline,
+            "state_categories": {
+                "positions": len(state.positions),
+                "active_watches": len(state.watchlist),
+                "portfolio_review_universe": len(state.portfolio_review_universe),
+                "ism_candidates": len(state.ism_candidates),
+                "disclosure_candidates": len(state.disclosure_candidates),
+                "strategy_candidates": len(state.strategy_candidates),
+                "case_studies": len(state.case_studies),
+            },
             "why_is_this_here_required": True,
             "human_decision_required": True,
         },
@@ -271,24 +359,31 @@ def check_watch(
     prices: Mapping[str, float],
     *,
     previous_prices: Mapping[str, float] | None = None,
+    price_timestamps: Mapping[str, str] | None = None,
     now: datetime | None = None,
 ) -> ResearchResult:
     """Cheap deterministic condition check; model escalation is always false."""
     events: list[dict[str, Any]] = []
     checked_prices: dict[str, float | None] = {}
     unavailable: list[str] = []
+    invalid_watches: list[str] = []
+    valid_watch_count = 0
     previous_prices = previous_prices or {}
+    decision_time = now or datetime.now(UTC)
     for watch in watches:
         ticker = str(watch.get("ticker") or "").upper()
         price = prices.get(ticker)
         if not ticker:
             continue
-        checked_prices[ticker] = float(price) if price is not None else None
-        if price is None:
+        if not positive_number(price) or (price_timestamps is not None and not fresh_timestamp(price_timestamps.get(ticker), decision_time)):
+            checked_prices[ticker] = None
             unavailable.append(ticker)
+            continue
+        checked_prices[ticker] = float(price)
         condition_raw = watch.get("condition")
         condition = str(condition_raw or "ZONE").upper()
         if condition not in {"ABOVE", "BELOW", "CROSS_ABOVE", "CROSS_BELOW", "ZONE"}:
+            invalid_watches.append(ticker)
             continue
         try:
             if price is None:
@@ -303,7 +398,19 @@ def check_watch(
                 lower = float(watch["lower"]) if watch.get("lower") is not None else None
                 upper = float(watch["upper"]) if watch.get("upper") is not None else None
             if condition in {"ABOVE", "BELOW", "CROSS_ABOVE", "CROSS_BELOW"} and threshold is None:
+                invalid_watches.append(ticker)
                 continue
+            if condition == "ZONE" and not (
+                (lower is not None and upper is not None)
+                or (not condition_raw and threshold is not None)
+            ):
+                invalid_watches.append(ticker)
+                continue
+            bounds = [value for value in (threshold, lower, upper) if value is not None]
+            if any(not positive_number(value) for value in bounds) or (lower is not None and upper is not None and lower > upper):
+                invalid_watches.append(ticker)
+                continue
+            valid_watch_count += 1
             if condition == "ABOVE":
                 reached = current >= float(threshold)
             elif condition == "BELOW":
@@ -323,7 +430,17 @@ def check_watch(
                     else lower is not None and current >= lower and
                     upper is not None and current <= upper
                 )
+            previous = previous_prices.get(ticker)
+            if reached and positive_number(previous) and condition in {"ZONE", "ABOVE", "BELOW"}:
+                prior = float(previous)
+                previously_reached = (
+                    prior <= float(threshold) if condition == "BELOW" else
+                    prior >= float(threshold) if condition == "ABOVE" or (not condition_raw and threshold is not None) else
+                    lower <= prior <= upper
+                )
+                reached = not previously_reached
         except (TypeError, ValueError):
+            invalid_watches.append(ticker)
             continue
         if reached:
             event = "ZONE_REACHED" if condition == "ZONE" else condition
@@ -334,23 +451,36 @@ def check_watch(
                 "threshold": float(threshold) if threshold is not None else None,
                 "thesis": watch.get("thesis"),
                 "source_strategy": watch.get("source_strategy"),
+                "source_reference": watch.get("source_reference"),
+                "watch_kind": watch.get("watch_kind"),
                 "event": event,
             }
             if lower is not None or upper is not None:
                 item["zone"] = {"lower": lower, "upper": upper}
             events.append(item)
+    status = (
+        ResearchStatus.ACTION_REQUIRED
+        if events
+        else ResearchStatus.NO_SETUP
+        if valid_watch_count and not unavailable and not invalid_watches
+        else ResearchStatus.DATA_UNAVAILABLE
+    )
     result = _result(
         "portfolio.watch",
-        ResearchStatus.ACTION_REQUIRED if events else ResearchStatus.NO_SETUP,
+        status,
         {
             "events": events,
             "checked": len(watches),
+            "valid_watch_count": valid_watch_count,
+            "invalid_watches": sorted(set(invalid_watches)),
             "prices": checked_prices,
             "unavailable_prices": unavailable,
             "model_escalation": False,
             "reason": "deterministic condition comparison only",
         },
         warnings=[
+            *(["no actionable user-local watch conditions were supplied; no-setup was not inferred"] if not valid_watch_count else []),
+            *([f"watch conditions are incomplete or invalid for: {', '.join(sorted(set(invalid_watches)))}"] if invalid_watches else []),
             *(["watch events notify a human; they never execute"] if events else []),
             *([f"current price unavailable for: {', '.join(unavailable)}"] if unavailable else []),
         ],

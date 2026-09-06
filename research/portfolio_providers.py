@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pandas as pd
+from research.core.context import context_is_usable
 
 from trading.stocks.data_provider import FMPClient
 from trading.stocks.ism_scraper import ISMReport, ISMReportFetcher
@@ -30,7 +31,24 @@ def _openbb_fred(series_id: str) -> Mapping[str, Any]:
 
 
 def _latest_number(records: Sequence[Mapping[str, Any]]) -> float | None:
-    for record in reversed(records):
+    dated: list[tuple[pd.Timestamp, Mapping[str, Any]]] = []
+    undated: list[Mapping[str, Any]] = []
+    for record in records:
+        raw_date = record.get("date") or record.get("Date") or record.get("timestamp")
+        if raw_date in (None, ""):
+            undated.append(record)
+            continue
+        try:
+            timestamp = pd.Timestamp(raw_date)
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.tz_localize("UTC")
+            else:
+                timestamp = timestamp.tz_convert("UTC")
+            dated.append((timestamp, record))
+        except (TypeError, ValueError):
+            undated.append(record)
+    ordered = undated + [record for _timestamp, record in sorted(dated, key=lambda item: item[0])]
+    for record in reversed(ordered):
         for key in ("value", "Value", "close", "Close", "last"):
             value = record.get(key)
             try:
@@ -41,13 +59,55 @@ def _latest_number(records: Sequence[Mapping[str, Any]]) -> float | None:
     return None
 
 
-def _report_payload(report: ISMReport, *, pmi: float | None, pmi_source: str, pmi_as_of: Any) -> dict[str, Any]:
+def _timestamp_text(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    try:
+        timestamp = pd.Timestamp(value)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.tz_localize("UTC")
+        else:
+            timestamp = timestamp.tz_convert("UTC")
+        return timestamp.isoformat()
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _latest_record_timestamp(records: Sequence[Mapping[str, Any]]) -> str | None:
+    timestamps: list[pd.Timestamp] = []
+    for record in records:
+        value = record.get("date") or record.get("Date") or record.get("timestamp")
+        if value in (None, ""):
+            continue
+        try:
+            timestamp = pd.Timestamp(value)
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.tz_localize("UTC")
+            else:
+                timestamp = timestamp.tz_convert("UTC")
+            timestamps.append(timestamp)
+        except (TypeError, ValueError):
+            continue
+    return max(timestamps).isoformat() if timestamps else None
+
+
+def _report_payload(
+    report: ISMReport,
+    *,
+    pmi: float | None,
+    pmi_source: str,
+    pmi_as_of: Any,
+    pmi_observation_at: Any,
+    pmi_retrieved_at: Any,
+) -> dict[str, Any]:
     return {
         "kind": report.kind,
         "report_month": report.report_month,
         "pmi": pmi,
         "pmi_source": pmi_source,
         "pmi_as_of": str(pmi_as_of) if pmi_as_of else None,
+        "pmi_observation_at": _timestamp_text(pmi_observation_at),
+        "pmi_retrieved_at": _timestamp_text(pmi_retrieved_at),
         "source_url": report.source_url,
         "source": "official ISM release for industry rankings",
         "hottest_industries": [asdict(item) for item in report.expanding],
@@ -71,18 +131,30 @@ def load_current_ism_inputs(
         pmi = report.pmi
         pmi_source = "official ISM release"
         pmi_as_of = report.report_month
+        pmi_observation_at = report.report_month
+        pmi_retrieved_at = None
         try:
             fred = fred_fetcher(series_id)
             records = fred.get("records") if isinstance(fred, Mapping) else None
             if isinstance(records, list):
-                current = _latest_number([item for item in records if isinstance(item, Mapping)])
+                normalized_records = [item for item in records if isinstance(item, Mapping)]
+                current = _latest_number(normalized_records)
                 if current is not None:
                     pmi = current
                     pmi_source = f"{series_id} via OpenBB/FRED"
                     pmi_as_of = fred.get("as_of")
+                    pmi_observation_at = fred.get("latest_observation_at") or _latest_record_timestamp(normalized_records)
+                    pmi_retrieved_at = fred.get("retrieved_at") or fred.get("as_of")
         except Exception as exc:  # noqa: BLE001
             outputs["warnings"].append(f"{kind} headline PMI OpenBB unavailable: {exc}")
-        outputs[kind] = _report_payload(report, pmi=pmi, pmi_source=pmi_source, pmi_as_of=pmi_as_of)
+        outputs[kind] = _report_payload(
+            report,
+            pmi=pmi,
+            pmi_source=pmi_source,
+            pmi_as_of=pmi_as_of,
+            pmi_observation_at=pmi_observation_at,
+            pmi_retrieved_at=pmi_retrieved_at,
+        )
     return outputs
 
 
@@ -133,7 +205,7 @@ class PortfolioContextProvider:
             from backend.app.services.openbb import fetch_equity_history
         return fetch_equity_history(symbol, start, end)
 
-    def _history(self, ticker: str, now: datetime) -> tuple[pd.Series, str, str | None]:
+    def _history(self, ticker: str, now: datetime) -> tuple[pd.Series, str, str | None, str | None]:
         start = (now.date() - timedelta(days=90)).isoformat()
         try:
             payload = self.history_fetcher(ticker, start, now.date().isoformat())
@@ -141,7 +213,12 @@ class PortfolioContextProvider:
             if isinstance(records, list):
                 series = _records_to_series([item for item in records if isinstance(item, Mapping)])
                 if not series.empty:
-                    return series, "OpenBB equity.price.historical (yfinance)", str(payload.get("as_of") or now.isoformat())
+                    return (
+                        series,
+                        "OpenBB equity.price.historical (yfinance)",
+                        _timestamp_text(payload.get("latest_observation_at")) or series.index[-1].isoformat(),
+                        _timestamp_text(payload.get("retrieved_at") or payload.get("as_of")),
+                    )
         except Exception:
             pass
         try:
@@ -150,10 +227,11 @@ class PortfolioContextProvider:
             )
             series = rows.get(ticker.upper(), pd.Series(dtype=float))
             if not series.empty:
-                return series.astype(float), "repo YFinancePriceProvider", now.isoformat()
+                series = series.astype(float)
+                return series, "repo YFinancePriceProvider", series.index[-1].isoformat(), now.isoformat()
         except Exception:
             pass
-        return pd.Series(dtype=float), "unavailable", None
+        return pd.Series(dtype=float), "unavailable", None, None
 
     def build_review_context(
         self,
@@ -164,10 +242,10 @@ class PortfolioContextProvider:
     ) -> dict[str, dict[str, Any]]:
         observed_at = (now or datetime.now(UTC)).astimezone(UTC)
         output: dict[str, dict[str, Any]] = {}
-        macro_validated = bool(macro_context and macro_context.get("validated") is True)
+        macro_validated = context_is_usable(macro_context or {}, now=observed_at)
         for raw_ticker in tickers:
             ticker = str(raw_ticker).upper()
-            series, price_source, price_as_of = self._history(ticker, observed_at)
+            series, price_source, price_observation_at, price_retrieved_at = self._history(ticker, observed_at)
             current = float(series.iloc[-1]) if not series.empty else None
             moving_average = float(series.tail(20).mean()) if len(series) >= 2 else None
             return_20d = float(series.iloc[-1] / series.iloc[-min(len(series), 20)] - 1) if len(series) >= 2 else None
@@ -187,12 +265,23 @@ class PortfolioContextProvider:
                 "macro_context_status": "VALIDATED" if macro_validated else "UNKNOWN",
                 "company_information": fundamentals_payload,
                 "sector_context": {"sector": sector, "source": fundamental_source},
-                "market_state": {"current_price": current, "source": price_source, "as_of": price_as_of},
+                "market_state": {
+                    "current_price": current,
+                    "source": price_source,
+                    "as_of": price_observation_at,
+                    "retrieved_at": price_retrieved_at,
+                    "availability": "KNOWN" if price_observation_at else "UNKNOWN",
+                },
                 "technical_condition": technical,
                 "technical": {"moving_average_20": moving_average, "return_20d": return_20d},
                 "fundamentals": fundamentals_payload,
                 "sources": [source for source in (price_source, fundamental_source) if source != "unavailable"],
-                "freshness": {"observed_at": observed_at.isoformat(), "price_as_of": price_as_of},
+                "freshness": {
+                    "observed_at": observed_at.isoformat(),
+                    "price_observation_at": price_observation_at,
+                    "price_retrieved_at": price_retrieved_at,
+                    "availability": "KNOWN" if price_observation_at else "UNKNOWN",
+                },
                 "meaningful_new_information": False,
             }
         return output

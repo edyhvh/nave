@@ -3,7 +3,8 @@ import json
 from typer.testing import CliRunner
 
 from cli.main import app
-from research.core.contracts import ResearchResult
+from cli.commands.portfolio import _load_watches
+from research.portfolio import PortfolioState
 
 
 def test_research_help_is_registered():
@@ -55,3 +56,44 @@ def test_missing_status_is_explicit_index_envelope(tmp_path, monkeypatch):
     assert value['envelope_type'] == 'research_result_index'
     with pytest.raises(ValueError):
         ResearchResult.from_dict(value)
+def test_portfolio_watch_without_file_uses_only_user_state(tmp_path, monkeypatch):
+    empty_watch_state = tmp_path / "empty-watches.json"
+    empty_watch_state.write_text(json.dumps({"watches": []}), encoding="utf-8")
+    monkeypatch.setenv("NAVE_QUANT_WATCH_STATE_FILE", str(empty_watch_state))
+    state = PortfolioState(watchlist=({"ticker": "SPCX", "condition": "BELOW", "threshold": 120},))
+    assert _load_watches(None, state) == [
+        {"ticker": "SPCX", "condition": "BELOW", "threshold": 120}
+    ]
+    assert _load_watches(None, PortfolioState()) == []
+
+
+def test_portfolio_watch_accepts_explicit_private_state_file(tmp_path):
+    state_file = tmp_path / "portfolio.json"
+    state_file.write_text(
+        json.dumps({"positions": [], "watchlist": [{"ticker": "SPCX", "condition": "BELOW", "threshold": 120}]}),
+        encoding="utf-8",
+    )
+    prices_file = tmp_path / "prices.json"
+    from datetime import UTC, datetime
+    prices_file.write_text(json.dumps({"prices": {"SPCX": 119.0}, "observed_at": {"SPCX": datetime.now(UTC).isoformat()}}), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "portfolio",
+            "watch",
+            "--portfolio-file",
+            str(state_file),
+            "--prices-file",
+            str(prices_file),
+            "--state-dir",
+            str(tmp_path / "research-state"),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    payload = json.loads(result.stdout)
+    assert payload["payload"]["events"][0]["ticker"] == "SPCX"
+    assert payload["payload"]["watchlist_source"] == str(state_file)
+    assert payload["payload"]["watchlist_source_kind"] == "user_local_portfolio_state"
