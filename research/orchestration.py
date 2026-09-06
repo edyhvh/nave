@@ -73,12 +73,31 @@ def validate_job_declarations(declarations: Sequence[JobDeclaration]) -> list[st
     return errors
 
 
-def present_result(result: ResearchResult | Mapping[str, Any]) -> dict[str, Any]:
+def discord_chunks(text: str, limit: int = 2000) -> list[str]:
+    """Lossless UTF-16-sized chunks, including astral characters used on Discord."""
+    if limit < 2:
+        raise ValueError("chunk limit must be at least two")
+    chunks, current, size = [], [], 0
+    for char in text:
+        units = len(char.encode("utf-16-le")) // 2
+        if size + units > limit:
+            chunks.append("".join(current))
+            current, size = [], 0
+        current.append(char)
+        size += units
+    if current:
+        chunks.append("".join(current))
+    return chunks
+
+
+def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: str | None = None) -> dict[str, Any]:
     """Return the concise, evidence-aware object Quant can present."""
     if not isinstance(result, ResearchResult):
         result = ResearchResult.from_dict(result)
     result.validate()
     payload = dict(result.payload)
+    if channel_id is not None and (not channel_id.isdigit() or len(channel_id) < 15):
+        raise ValueError("Discord destination must be an explicit numeric parent-channel ID")
     if result.status is ResearchStatus.NO_SETUP:
         next_action = "Present NO_SETUP with scan evidence; do not invent a strategy thesis."
     elif result.status is ResearchStatus.ACTION_REQUIRED:
@@ -87,7 +106,44 @@ def present_result(result: ResearchResult | Mapping[str, Any]) -> dict[str, Any]
         next_action = "Present the evidence gap and do not recommend an action."
     else:
         next_action = "Present the structured research result and preserve its evidence and warnings."
+    prefix = "CRYPTO:" if result.workflow.startswith(("crypto.", "memecoin.")) else "STOCKS:"
+    silent = result.status is ResearchStatus.NO_SETUP and (
+        payload.get("silent") is True or result.workflow == "portfolio.watch"
+    ) and not result.warnings
+    action_es = (
+        "Faltan datos o evidencia suficiente. No hay recomendación operativa."
+        if result.status in {ResearchStatus.INSUFFICIENT_EVIDENCE, ResearchStatus.DATA_UNAVAILABLE, ResearchStatus.ERROR}
+        else "Estrategia sin validar; continuar investigación, sin operar."
+        if result.status is ResearchStatus.STRATEGY_NOT_VALIDATED
+        else "Sin configuración confirmada; no inventar una tesis."
+        if result.status is ResearchStatus.NO_SETUP
+        else "Revisión humana requerida. Esto no es una orden ni una señal de compra."
+    )
+    lines = [f"{prefix} {result.workflow} — {result.status.value}",
+             f"Fecha de decisión: {result.metadata.decision_time.isoformat()}", action_es]
+    for key, title in (("positions", "Posiciones"), ("events", "Alertas"),
+                       ("final_candidates", "Candidatos"), ("candidates", "Candidatos"),
+                       ("records", "Registros"), ("rejected_candidates", "Rechazos"),
+                       ("metrics", "Métricas"), ("unparsed_responsibilities", "Responsabilidades pendientes")):
+        if payload.get(key):
+            lines.append(f"\n**{title}**\n" + json.dumps(payload[key], ensure_ascii=False, default=str))
+    for key in ("summary", "reason", "corroboration_status", "evidence_quality"):
+        if payload.get(key):
+            lines.append(f"{key}: {payload[key]}")
+    if result.warnings:
+        lines.append("\n**Advertencias**\n" + "\n".join(str(w) for w in result.warnings))
+    if result.evidence:
+        lines.append("\n**Fuentes y disponibilidad**")
+        lines.extend(f"{item.reference_id}: {item.citation or item.source} ({item.kind.value}; {item.point_in_time.availability})" for item in result.evidence)
+    lines.append(f"ID de investigación: {result.metadata.run_id}. Ejecución deshabilitada.")
+    text = "[SILENT]" if silent else "\n".join(lines)
     return {
+        "result": result.to_dict(),
+        "payload": payload,
+        "evidence": [item.to_dict() for item in result.evidence],
+        "discord_text": text,
+        "discord_chunks": [] if silent else discord_chunks(text),
+        "delivery": {"platform": "discord", "chat_id": channel_id, "surface": "parent", "silent": silent, "ready": channel_id is not None},
         "workflow": result.workflow,
         "status": result.status.value,
         "strategy": result.metadata.strategy_name,
@@ -104,4 +160,3 @@ def present_result(result: ResearchResult | Mapping[str, Any]) -> dict[str, Any]
         "human_decision_required": True,
         "safety_boundary": result.safety_boundary.value,
     }
-

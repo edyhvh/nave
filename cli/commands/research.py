@@ -56,7 +56,10 @@ def report(
 @research_app.command("present")
 def present(
     json_file: Path = typer.Option(..., "--json-file", exists=True, readable=True),
+    channel_id: str | None = typer.Option(None, "--channel-id", help="Explicit parent Discord channel; never inferred from origin."),
+    discord: bool = typer.Option(False, "--discord", help="Emit only the Spanish report for Hermes' chunking Discord adapter."),
 ) -> None:
     """Render the concise evidence-aware view intended for Quant delivery."""
     result = ResearchResult.from_dict(json.loads(json_file.read_text(encoding="utf-8")))
-    typer.echo(json.dumps(present_result(result), indent=2, default=str))
+    view = present_result(result, channel_id=channel_id)
+    typer.echo(view["discord_text"] if discord else json.dumps(view, indent=2, default=str))
