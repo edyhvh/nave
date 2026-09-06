@@ -81,9 +81,9 @@ def test_evaluation_is_statistically_explicit_and_does_not_auto_validate():
         "crypto", outcomes, decision_time=DECISION
     )
 
-    assert result.payload["strategy_state"] is StrategyState.PROMISING.value
-    assert result.payload["metrics"]["sample_size"] == 30
-    assert result.status is ResearchStatus.STRATEGY_NOT_VALIDATED
+    assert result.payload["strategy_state"] == StrategyState.EXPERIMENTAL.value
+    assert result.payload["metrics"]["sample_size"] == 0
+    assert result.status is ResearchStatus.INSUFFICIENT_EVIDENCE
     assert "VALIDATED" in result.payload["validation_gate"]
 
 
@@ -94,3 +94,21 @@ def test_evaluation_with_no_outcomes_is_insufficient_evidence():
 
     assert result.status is ResearchStatus.INSUFFICIENT_EVIDENCE
     assert result.payload["strategy_state"] == StrategyState.EXPERIMENTAL.value
+
+
+def test_outcomes_require_identity_finite_returns_and_later_timestamp():
+    from datetime import timedelta
+    workflow = OptionResearchWorkflow()
+    scan = workflow.scan('crypto', [_snapshot()], decision_time=DECISION)
+    outcome = {'strategy': scan.metadata.strategy_name, 'underlying': 'BTC',
+               'source_scan_run_id': scan.metadata.run_id, 'decision_time': DECISION.isoformat(),
+               'observed_at': (DECISION + timedelta(hours=1)).isoformat(), 'forward_return_pct': 2}
+    result = workflow.evaluate('crypto', [outcome], scan_results=[scan], decision_time=DECISION + timedelta(days=1))
+    assert result.payload['metrics']['sample_size'] == 1
+    assert result.payload['cost_basis'] == 'GROSS_UNCOSTED'
+    assert result.payload['strategy_state'] == 'EXPERIMENTAL'
+    for change in [{'forward_return_pct': float('inf')}, {'forward_return_pct': float('nan')},
+                   {'observed_at': DECISION.isoformat()}, {'underlying': 'ETH'}, {'source_scan_run_id': 'other'}]:
+        rejected = workflow.evaluate('crypto', [{**outcome, **change}], scan_results=[scan], decision_time=DECISION + timedelta(days=1))
+        assert rejected.payload['metrics']['sample_size'] == 0
+        assert rejected.payload['strategy_state'] != 'VALIDATED'

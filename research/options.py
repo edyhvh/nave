@@ -9,9 +9,10 @@ call a broker.
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -68,7 +69,8 @@ def _number(value: object) -> float | None:
     if value in (None, "") or isinstance(value, bool):
         return None
     try:
-        return float(value)  # type: ignore[arg-type]
+        number = float(value)  # type: ignore[arg-type]
+        return number if math.isfinite(number) else None
     except (TypeError, ValueError):
         return None
 
@@ -138,7 +140,7 @@ class VolatilityInputs:
                 if row.get("directional_thesis") not in (None, "")
                 else None
             ),
-            defined_risk=bool(row.get("defined_risk", False)),
+            defined_risk=row.get("defined_risk") is True,
             source=str(row.get("source") or "provided_snapshot"),
             source_url=str(row["source_url"]) if row.get("source_url") else None,
         )
@@ -269,6 +271,9 @@ class OptionResearchWorkflow:
             if definition.domain is OptionDomain.CRYPTO and item.underlying not in definition.underlyings:
                 rejected.append({"asset": item.underlying, "reason": "outside_crypto_scope"})
                 continue
+            if item.event_time is None or decided - item.event_time > timedelta(days=1):
+                rejected.append({"asset": item.underlying, "reason": "stale_volatility_snapshot"})
+                continue
             missing = item.missing_dimensions()
             if missing:
                 rejected.append({"asset": item.underlying, "reason": "missing_dimensions", "dimensions": missing})
@@ -313,11 +318,39 @@ class OptionResearchWorkflow:
         strategy_name: str | None = None,
         decision_time: datetime | str | None = None,
         persist: bool = False,
+        scan_results: Sequence[ResearchResult] = (),
     ) -> ResearchResult:
         definition = strategy_definition(domain, strategy_name)
         decided = self._decision_time(decision_time)
-        returns = [_number(row.get("forward_return_pct", row.get("return_pct"))) for row in outcomes]
-        valid_returns = [value for value in returns if value is not None]
+        snapshots = {}
+        for scan in scan_results:
+            scan.validate()
+            if scan.workflow != f"options.{definition.domain.value}.scan" or scan.metadata.strategy_name != definition.name:
+                continue
+            for row in scan.payload.get("observations", []):
+                snapshots[(scan.metadata.run_id, row["underlying"], scan.metadata.decision_time)] = row
+        valid_returns = []
+        joined = []
+        excluded = []
+        seen = set()
+        for index, row in enumerate(outcomes):
+            value = _number(row.get("forward_return_pct", row.get("return_pct")))
+            try:
+                decision = _timestamp(row.get("decision_time"), field="decision_time")
+                observed = _timestamp(row.get("observed_at"), field="observed_at")
+            except ValueError:
+                decision = observed = None
+            key = (row.get("source_scan_run_id"), row.get("underlying"), decision)
+            if (value is None or key not in snapshots or key in seen or observed is None
+                    or decision is None or observed <= decision or observed > decided
+                    or row.get("strategy") != definition.name):
+                excluded.append({"row": index, "reason": "invalid_nonfinite_unmatched_or_noncausal_outcome"})
+                continue
+            seen.add(key)
+            valid_returns.append(value)
+            joined.append({"source_scan_run_id": key[0], "underlying": key[1],
+                           "decision_time": decision.isoformat(), "observed_at": observed.isoformat(),
+                           "forward_return_pct": value})
         cumulative = 0.0
         peak = 0.0
         max_drawdown = 0.0
@@ -328,12 +361,7 @@ class OptionResearchWorkflow:
         sample_size = len(valid_returns)
         average_return = sum(valid_returns) / sample_size if sample_size else None
         win_rate = sum(value > 0 for value in valid_returns) / sample_size if sample_size else None
-        if sample_size < 30:
-            state = StrategyState.EXPERIMENTAL
-        elif average_return is not None and average_return > 0:
-            state = StrategyState.PROMISING
-        else:
-            state = StrategyState.REJECTED
+        state = StrategyState.EXPERIMENTAL
         status = ResearchStatus.STRATEGY_NOT_VALIDATED if sample_size else ResearchStatus.INSUFFICIENT_EVIDENCE
         result = ResearchResult(
             workflow=f"options.{definition.domain.value}.evaluate",
@@ -348,6 +376,9 @@ class OptionResearchWorkflow:
                     "win_rate": win_rate,
                     "max_drawdown_pct": max_drawdown if sample_size else None,
                 },
+                "cost_basis": "GROSS_UNCOSTED",
+                "joined_outcomes": joined,
+                "excluded_outcomes": excluded,
                 "validation_gate": "No automatic VALIDATED state; require an explicit review of sample, costs, and regime stability.",
                 "execution_enabled": False,
             },
