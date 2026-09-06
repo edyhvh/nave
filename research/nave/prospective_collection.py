@@ -247,6 +247,7 @@ class ProspectiveCollector:
         source_commit: str | None = None,
         max_event_bytes: int = DEFAULT_MAX_EVENT_BYTES,
         heartbeat_seconds: int = 60,
+        receive_timeout_seconds: float = 60,
     ):
         self.repo_root = repo_root
         self.data_root = data_root
@@ -261,6 +262,7 @@ class ProspectiveCollector:
         self.source_commit = source_commit or git_commit(repo_root)
         self.max_event_bytes = max_event_bytes
         self.heartbeat_seconds = heartbeat_seconds
+        self.receive_timeout_seconds = receive_timeout_seconds
         self.started_at = self.clock().astimezone(UTC)
         self.stop_requested = False
         self.connection_number = 0
@@ -1079,7 +1081,14 @@ class ProspectiveCollector:
                         self.manifest["connections"][-1]["connected_at"] = iso(self.clock())
                         self._write_manifest()
                         backoff = 1
-                        async for message in websocket:
+                        while not self.stop_requested:
+                            # A peer can answer pings while its event stream is
+                            # stalled. Bound data silence so the existing error
+                            # path records a gap and reconnects instead of
+                            # retaining a stale CONNECTED manifest indefinitely.
+                            message = await asyncio.wait_for(
+                                websocket.recv(), timeout=self.receive_timeout_seconds
+                            )
                             now = self.clock().astimezone(UTC)
                             if now >= stop_at:
                                 self.stop_requested = True
@@ -1106,6 +1115,7 @@ class ProspectiveCollector:
                         {"connection_number": self.connection_number, "at": iso(now), "error": str(exc)[:2000]}
                     )
                     self._record_error(f"stream connection failed: {exc}", now, connection=self.connection_number)
+                    self._flush_checkpoints(force=True)
                     for checkpoint_path in self.data_root.glob("*/date=*/checkpoint.json"):
                         payload = json.loads(checkpoint_path.read_text())
                         if payload.get("event_date", "9999-99-99") <= now.date().isoformat():

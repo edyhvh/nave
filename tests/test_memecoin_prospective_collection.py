@@ -193,3 +193,33 @@ def test_timestamp_parser_does_not_impute_invalid_values():
     assert parse_provider_timestamp("not-a-time") is None
     assert parse_provider_timestamp(None) is None
     assert parse_provider_timestamp(int(T0.timestamp() * 1000)) == T0
+
+
+def test_silent_connected_stream_records_failure_and_preserves_incomplete_day(tmp_path, monkeypatch):
+    import asyncio
+    from research.nave import prospective_collection as module
+
+    collector = _collector(tmp_path)
+    collector.receive_timeout_seconds = 0.01
+    collector.process_message(json.dumps(_event()), T0)
+
+    class SilentConnection:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            collector.request_stop()
+
+        async def recv(self):
+            await asyncio.Future()
+
+    monkeypatch.setattr(module.websockets, "connect", lambda *a, **kw: SilentConnection())
+    asyncio.run(collector.run(stop_at=T0 + timedelta(hours=1), reconnect_max_seconds=0))
+    assert collector.manifest["connections"][-1]["status"] == "FAILED"
+    assert len(collector.manifest["provider_failures"]) == 1
+    day = tmp_path / "prospective" / "validation" / "date=2026-09-07"
+    checkpoint = json.loads((day / "checkpoint.json").read_text())
+    assert checkpoint["status"] == "INCOMPLETE"
+    assert checkpoint["provider_failures"] == 1
+    assert holdout_lock_path(tmp_path / "prospective").exists()
+    collector._db.close()
