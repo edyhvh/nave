@@ -77,6 +77,7 @@ def main() -> None:
                               "Legacy Stage-1 features use event time, not a receiver-latency replay; online availability is unproven.",
                               "Do not admit an intraday launch sample as a comparable full-day sample.",
                               "PONS social case study is not linked to this Solana launch cohort."]}
+    output["model_comparison"]["status"] = output["classification"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2, allow_nan=False) + "\n")
     print(json.dumps({"output": str(args.output), "classification": output["classification"]}))

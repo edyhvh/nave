@@ -268,7 +268,7 @@
         0.0009654153646668205
       ]
     },
-    "status": "PRELIMINARY_TEMPORAL_SANITY"
+    "status": "DESCRIPTIVE_FROZEN_INTRADAY_COHORT"
   },
   "classification": "DESCRIPTIVE_FROZEN_INTRADAY_COHORT",
   "edge_validated": false,

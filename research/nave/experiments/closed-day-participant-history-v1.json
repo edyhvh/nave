@@ -1,0 +1,79 @@
+{
+  "schema_version": "nave.bounded-memecoin-experiment.v1",
+  "experiment_id": "closed-day-participant-history-v1",
+  "status": "NEXT_BOUNDED_EXPERIMENT",
+  "edge_validated": false,
+  "execution_enabled": false,
+  "freeze_date": "2026-09-06",
+  "training_cutoff": "2026-09-07T00:00:00Z",
+  "validation_days": [
+    "2026-09-07",
+    "2026-09-08",
+    "2026-09-09"
+  ],
+  "untouched_holdout_days": [
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12"
+  ],
+  "collection_authorized": false,
+  "max_paid_credits": 0,
+  "population": "All canonical Solana launches in each closed UTC day; acquire after day end, require source completeness proof and denominator. No top-active selection.",
+  "event_tape": "All events through decision and 60-minute outcome, ordered by received_at and chain event id; retain gaps and failures, never replace receiver time with event time.",
+  "decision": "Exactly launch_time + 5 minutes; events must be received by decision_time.",
+  "frozen_baseline": "Same-pool five-minute quote volume divided by pool quote liquidity at launch+5m. Training-only median/IQR scaling. Baseline score is scaled ratio; select above its training 80th percentile, no daily refitting.",
+  "incremental_feature": "Fraction of current participants with prior activity in another mint during trailing 24 hours, excluding all events for current mint; only history received before decision. Freeze on training, no identity inference from ticker. Combined score = scaled baseline + scaled participant fraction with equal weights; training-only median/IQR and 80th percentile. Zero IQR or missing features makes observation ineligible. No fit on validation/holdout.",
+  "outcome": "Same canonical pool swap quote at decision+30 seconds and decision+60 minutes, size 10 USD quote equivalent, reject missing depth; compute net return with explicit entry/exit pool fees, quote slippage, gas and failed-exit losses. No activity survival proxy.",
+  "cost_stress": "Report base quoted costs and twice slippage+gas. Unknown costs or failed liquidity exit are not successful outcomes.",
+  "comparison": "Baseline vs baseline+participant-history; identical population, sizing, timing and costs. Report paired net return difference, coverage including failed exits, uncertainty and daily results. No VALIDATED shortcut.",
+  "negative_controls": [
+    "mint-identity permutation within closed day",
+    "feature shifted +24h (must fail point-in-time gate)",
+    "random seeded participant history with seed 20260906"
+  ],
+  "holdout_policy": "One evaluation after frozen validation report is hashed. No feature/rule edits after holdout access; changes require a new future holdout.",
+  "stop": "One three-day validation, one three-day holdout; if completeness/cost/availability gates fail, report INSUFFICIENT_DATA and stop. No automatic acquisition retries or parameter searches.",
+  "social": {
+    "enabled": false,
+    "source_manifest": [],
+    "polling_cadence_seconds": 300,
+    "identity_rules": "chain + contract from raw post; unresolved identity stays UNKNOWN",
+    "observation_time": "provider receiver timestamp persisted before feature construction",
+    "training_cutoff": "2026-09-07T00:00:00Z",
+    "validation_days": [
+      "2026-09-07",
+      "2026-09-08",
+      "2026-09-09"
+    ],
+    "holdout_days": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12"
+    ],
+    "gate": "Empty source manifest: collection forbidden. Freeze an explicit account/source list and hash before collection; if dates lapse, preregister future dates. Retrospective X leads excluded.",
+    "output_required": [
+      "source",
+      "post_id",
+      "author",
+      "published_at",
+      "retrieved_at",
+      "chain",
+      "contract",
+      "claim",
+      "classification",
+      "raw_reference",
+      "confidence",
+      "availability"
+    ],
+    "comparison": "baseline vs baseline+social, negative controls and +24h time-shift placebo, same untouched holdout"
+  },
+  "required_gates": [
+    "closed_utc_population",
+    "complete_receiver_time_tape",
+    "participant_excluded_history",
+    "same_pool_executable_marks",
+    "explicit_costs",
+    "frozen_features",
+    "untouched_chronological_holdout"
+  ]
+}

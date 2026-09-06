@@ -1,0 +1,60 @@
+{
+  "experiment_id": "closed-day-participant-history-v1",
+  "spec_sha256": "711b2ea8ee859e6defafbf0a8eff93b78f764eee1ca249e333a59e649fd54de1",
+  "status": "NEXT_BOUNDED_EXPERIMENT",
+  "edge_validated": false,
+  "local_manifests": [
+    {
+      "date": "2026-08-29",
+      "manifest_sha256": "40263cc7d9ffb3df9bc23b4c8795e7653652c863090fdf6d4506553e70fd8644",
+      "sample_size": 1000,
+      "denominator": 39415,
+      "unique_sample_identities": 1000,
+      "acquired_after_close": null,
+      "complete_population_proven": false,
+      "reason": "Existing selected launch samples are feasibility input only; no source completeness proof, receiver tape or executable costed outcomes."
+    },
+    {
+      "date": "2026-08-30",
+      "manifest_sha256": "30718918e297305055d6f93e94e0e94ecce6b616b22801309bb828cf2011f8f7",
+      "sample_size": 1000,
+      "denominator": 36161,
+      "unique_sample_identities": 1000,
+      "acquired_after_close": null,
+      "complete_population_proven": false,
+      "reason": "Existing selected launch samples are feasibility input only; no source completeness proof, receiver tape or executable costed outcomes."
+    },
+    {
+      "date": "2026-08-31",
+      "manifest_sha256": "0d37a49c7f7df8e17976a11a52162b8dc69988bca855eea0b18ff73425f6658b",
+      "sample_size": 1000,
+      "denominator": 37540,
+      "unique_sample_identities": 1000,
+      "acquired_after_close": true,
+      "complete_population_proven": false,
+      "reason": "Existing selected launch samples are feasibility input only; no source completeness proof, receiver tape or executable costed outcomes."
+    },
+    {
+      "date": "2026-09-01",
+      "manifest_sha256": "f1a1fdc256cdca5ebe521bee5a4112b11ef031aeabed5c21f9f128dc4a427e0a",
+      "sample_size": 1000,
+      "denominator": 29434,
+      "unique_sample_identities": 1000,
+      "acquired_after_close": false,
+      "complete_population_proven": false,
+      "reason": "Existing selected launch samples are feasibility input only; no source completeness proof, receiver tape or executable costed outcomes."
+    }
+  ],
+  "unmet_gates": [
+    "closed_utc_population",
+    "complete_receiver_time_tape",
+    "participant_excluded_history",
+    "same_pool_executable_marks",
+    "explicit_costs",
+    "frozen_features",
+    "untouched_chronological_holdout"
+  ],
+  "remote_calls": 0,
+  "paid_credits": 0,
+  "holdout_accessed": false
+}
