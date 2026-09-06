@@ -32,6 +32,30 @@ class EvidenceKind(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class ProvenanceCategory(StrEnum):
+    """Origin class for evidence and state-affecting inputs."""
+
+    USER_STATE = "USER_STATE"
+    DOMAIN_RULE = "DOMAIN_RULE"
+    PROVIDER_RESULT = "PROVIDER_RESULT"
+    TEST_FIXTURE = "TEST_FIXTURE"
+    DOCUMENTATION_EXAMPLE = "DOCUMENTATION_EXAMPLE"
+    ARBITRARY_IMPLEMENTATION_DEFAULT = "ARBITRARY_IMPLEMENTATION_DEFAULT"
+    RESEARCH_CANDIDATE = "RESEARCH_CANDIDATE"
+    RESEARCH_CASE_STUDY = "RESEARCH_CASE_STUDY"
+
+
+class StateOwner(StrEnum):
+    """Owner class for data that may influence a research result."""
+
+    USER_RUNTIME = "USER_RUNTIME"
+    NAVE_RESEARCH = "NAVE_RESEARCH"
+    ABI_ORCHESTRATION = "ABI_ORCHESTRATION"
+    PROVIDER = "PROVIDER"
+    TEST = "TEST"
+    DOCUMENTATION = "DOCUMENTATION"
+
+
 class SafetyBoundary(StrEnum):
     """The non-negotiable boundary carried by every research result."""
 
@@ -117,6 +141,9 @@ class EvidenceReference:
     point_in_time: PointInTime = field(default_factory=PointInTime)
     citation: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    provenance_category: str = ProvenanceCategory.PROVIDER_RESULT.value
+    state_owner: str = StateOwner.NAVE_RESEARCH.value
+    lifecycle: str = "OBSERVED"
 
     def __post_init__(self) -> None:
         if not self.reference_id.strip():
@@ -125,6 +152,12 @@ class EvidenceReference:
             raise ValueError("evidence source is required")
         if not self.claim.strip():
             raise ValueError("evidence claim is required")
+        if not self.provenance_category.strip():
+            raise ValueError("evidence provenance_category is required")
+        if not self.state_owner.strip():
+            raise ValueError("evidence state_owner is required")
+        if not self.lifecycle.strip():
+            raise ValueError("evidence lifecycle is required")
         if self.confidence is not None and not 0.0 <= self.confidence <= 1.0:
             raise ValueError("evidence confidence must be between 0 and 1")
         self.point_in_time.validate()
@@ -139,6 +172,9 @@ class EvidenceReference:
             "point_in_time": self.point_in_time.to_dict(),
             "citation": self.citation,
             "metadata": dict(self.metadata),
+            "provenance_category": self.provenance_category,
+            "state_owner": self.state_owner,
+            "lifecycle": self.lifecycle,
         }
 
     @classmethod
@@ -152,6 +188,11 @@ class EvidenceReference:
             point_in_time=PointInTime.from_dict(value.get("point_in_time")),
             citation=value.get("citation"),
             metadata=value.get("metadata") or {},
+            provenance_category=str(
+                value.get("provenance_category") or ProvenanceCategory.PROVIDER_RESULT.value
+            ),
+            state_owner=str(value.get("state_owner") or StateOwner.NAVE_RESEARCH.value),
+            lifecycle=str(value.get("lifecycle") or "OBSERVED"),
         )
 
 

@@ -6,6 +6,7 @@ from research.core.contracts import (
     EvidenceKind,
     EvidenceReference,
     PointInTime,
+    ProvenanceCategory,
     ResearchResult,
     ResearchStatus,
     RunMetadata,
@@ -81,6 +82,15 @@ def test_point_in_time_does_not_fake_missing_availability():
     assert point.availability == "UNKNOWN"
     late = PointInTime(available_at=NOW + timedelta(seconds=1), decision_time=NOW)
     assert late.availability == "LATE"
+
+
+def test_evidence_requires_nonempty_provenance_owner_and_lifecycle():
+    reference = evidence()
+    assert reference.provenance_category == ProvenanceCategory.PROVIDER_RESULT.value
+    assert reference.state_owner == "NAVE_RESEARCH"
+    assert reference.lifecycle == "OBSERVED"
+    with pytest.raises(ValueError, match="provenance_category"):
+        EvidenceReference(reference_id="x", source="fixture", claim="claim", provenance_category="")
 
 
 def test_incomplete_state_is_rejected():
