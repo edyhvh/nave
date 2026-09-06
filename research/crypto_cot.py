@@ -77,12 +77,24 @@ class COTContextProvider:
                 "historical_percentile": bias.historical_percentile,
                 "as_of_date": as_of.isoformat() if as_of else None,
                 "release_date": release.isoformat() if release else None,
-                "source": str(payload.get("source") or bias.metadata.get("source") or "CFTC"),
+                "source": str(
+                    payload.get("source")
+                    or bias.metadata.get("source")
+                    or "cftc_openbb"
+                ),
             }
 
         freshest = min(as_of_dates) if as_of_dates else None
         freshness_days = (observed_at.date() - freshest).days if freshest else None
         stale = freshness_days is None or freshness_days > self.stale_after_days
+        missing_markets = sorted({"BTC", "ETH"} - markets.keys())
+        incomplete = bool(missing_markets) or any(
+            item["as_of_date"] is None or item["release_date"] is None
+            or item["bias"] not in {"bullish", "bearish", "neutral"}
+            or _date(item["release_date"]) > observed_at.date()
+            or _date(item["as_of_date"]) > _date(item["release_date"])
+            for item in markets.values()
+        )
         directions = {item["bias"] for item in markets.values()}
         if directions == {"bullish"} and len(markets) >= 2:
             regime = "bullish"
@@ -93,15 +105,17 @@ class COTContextProvider:
         else:
             regime = "unknown"
         return {
-            "status": "STALE" if stale else "OK",
-            "regime": regime if not stale else "unknown",
+            "status": "PARTIAL" if incomplete else "STALE" if stale else "OK",
+            "regime": regime if not stale and not incomplete else "unknown",
+            "missing_markets": missing_markets,
             "scope": "market/regime context; no per-altcoin COT signal",
             "source": "CFTC via OpenBB with official CFTC fallback",
             "as_of_date": freshest.isoformat() if freshest else None,
             "release_date": max(release_dates).isoformat() if release_dates else None,
             "freshness_days": freshness_days,
             "markets": markets,
-            "warnings": (["COT report is stale; no directional COT gate was applied"] if stale else []),
+            "warnings": (["COT market coverage or release metadata is incomplete"] if incomplete else [])
+                        + (["COT report is stale; no directional COT gate was applied"] if stale else []),
         }
 
 

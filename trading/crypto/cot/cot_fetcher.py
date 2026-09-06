@@ -27,7 +27,6 @@ import requests
 logger = logging.getLogger(__name__)
 
 CACHE_DIR = Path.home() / ".cache" / "nave" / "cot"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_VERSION = 4
 HISTORY_CACHE_FILE = CACHE_DIR / "history_cot.json"
 MIN_PERCENTILE_HISTORY_WEEKS = 52
@@ -172,6 +171,10 @@ def fetch_latest_cot(
                 data = cached["data"]
                 for asset_name, v in data.items():
                     v["cached"] = True
+                    # Older caches predate explicit provider provenance.
+                    # Cached rows without a source came from this OpenBB-first
+                    # fetch path; direct-fallback rows already carry cftc_direct.
+                    v.setdefault("source", "cftc_openbb")
                     rows = _augment_with_local_history(
                         asset=asset_name,
                         report_type=report_type,
@@ -264,6 +267,7 @@ def fetch_latest_cot(
                     "symbol": symbol,
                     "report_type": report_type,
                     "cached": False,
+                    "source": "cftc_openbb",
                 }
                 data[asset]["raw"] = _augment_with_local_history(
                     asset=asset,
@@ -340,6 +344,7 @@ def fetch_latest_cot(
         "data": data,
     }
     try:
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
         with open(cache_file, "w") as f:
             json.dump(cache_data, f, default=str, indent=2)
     except OSError as exc:
@@ -831,6 +836,7 @@ def _load_history_cache() -> dict[str, list[dict[str, Any]]]:
 
 def _save_history_cache(cache: dict[str, list[dict[str, Any]]]) -> None:
     try:
+        HISTORY_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(HISTORY_CACHE_FILE, "w") as f:
             json.dump(cache, f, default=str, indent=2)
     except OSError:

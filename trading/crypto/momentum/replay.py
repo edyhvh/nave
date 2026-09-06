@@ -35,7 +35,6 @@ from trading.crypto.momentum.universe import (
 
 
 REPLAY_SCHEMA_VERSION = "crypto-momentum-discovery-replay.v1"
-DEFAULT_REPLAY_TARGETS = ("ARB", "CAKE", "CRV", "TWT", "EDGE", "PONS")
 ALLOWED_SETUP_CLASSIFICATIONS = {
     "PROMISING EXPLORATORY SIGNAL",
     "WEAK / UNSTABLE SIGNAL",
@@ -347,7 +346,7 @@ class UniverseMomentumReplay:
         ]
         metrics = summarize_replay(observations, outcomes, self.config, window_start=start_at)
         target_report = self._target_report(
-            list(symbols) if symbols is not None else list(DEFAULT_REPLAY_TARGETS),
+            list(symbols) if symbols is not None else [],
             observations,
             first_records,
             outcomes,

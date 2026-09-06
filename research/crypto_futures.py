@@ -16,6 +16,7 @@ from typing import Any, Mapping
 
 from research.core.contracts import EvidenceKind, EvidenceReference, PointInTime, ResearchResult, ResearchStatus, RunMetadata
 from research.core.store import ResearchStore
+from research.core.context import context_is_usable
 from trading.crypto.momentum.service import MomentumMarketService
 from research.crypto_cot import COTContextProvider
 
@@ -24,13 +25,13 @@ STRATEGY_NAME = "crypto-futures-momentum-cot"
 STRATEGY_VERSION = "1.0.0"
 
 
-def _parse_time(value: Any, default: datetime) -> datetime:
+def _parse_time(value: Any, default: datetime | None) -> datetime | None:
     if isinstance(value, datetime):
-        return value.astimezone(UTC) if value.tzinfo else value.replace(tzinfo=UTC)
+        return value.astimezone(UTC) if value.tzinfo else default
     if isinstance(value, str) and value:
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC) if parsed.tzinfo else default
         except ValueError:
             pass
     return default
@@ -65,8 +66,8 @@ def cot_regime_passes(regime: str, direction: str | None) -> bool:
     return True
 
 
-def _macro_context_passes(context: Mapping[str, Any] | None) -> bool:
-    return bool(context and context.get("validated") is True)
+def _macro_context_passes(context: Mapping[str, Any] | None, *, now: datetime | None = None) -> bool:
+    return context_is_usable(context, now=now)
 
 
 def _candidate_evidence(
@@ -111,20 +112,28 @@ def build_funnel(
         "macro_pass": 0,
         "cot_pass": 0,
         "final_candidates": 0,
+        "invalid_observations": 0,
     }
     final_candidates: list[dict[str, Any]] = []
     evidence: list[EvidenceReference] = []
     observations = payload.get("observations") or []
     unique_members: set[str] = set()
+    macro_checks: list[bool] = []
     effective_cot_regime = str(
         (cot_context or {}).get("regime") if cot_context is not None else cot_regime
     ).lower()
     if effective_cot_regime not in {"bullish", "bearish", "neutral"}:
         effective_cot_regime = "unknown"
+    if cot_context is not None and cot_context.get("status") != "OK":
+        effective_cot_regime = "unknown"
     for observation in observations:
         if not isinstance(observation, Mapping):
             continue
-        observation_time = _parse_time(observation.get("observation_timestamp"), datetime.now(UTC))
+        observation_time = _parse_time(observation.get("observation_timestamp"), None)
+        if observation_time is None:
+            counts["invalid_observations"] += 1
+            continue
+        macro_checks.append(_macro_context_passes(macro_context, now=observation_time))
         members = observation.get("universe_members_deduplicated") or observation.get("universe_members") or []
         for member in members:
             if isinstance(member, Mapping):
@@ -161,7 +170,12 @@ def build_funnel(
             setup = raw_candidate.get("setup_validation")
             setup_valid = bool(isinstance(setup, Mapping) and setup.get("valid") is True)
             direction = _direction(raw_candidate)
-            macro_pass = _macro_context_passes(macro_context)
+            macro_pass = macro_checks[-1]
+            features = raw_candidate.get("features") if isinstance(raw_candidate.get("features"), Mapping) else {}
+            available = _parse_time(features.get("data_timestamp"), None)
+            if available is None or available > observation_time:
+                counts["invalid_observations"] += 1
+                continue
             cot_pass = cot_regime_passes(effective_cot_regime, direction)
             if eligible:
                 counts["eligible"] += 1
@@ -214,8 +228,8 @@ def build_funnel(
         "cot_context_status": (cot_context or {}).get("status", "MANUAL_OR_UNKNOWN"),
         "cot_source": (cot_context or {}).get("source"),
         "cot_as_of_date": (cot_context or {}).get("as_of_date"),
-        "macro_context_validated": _macro_context_passes(macro_context),
-        "validated_cava_context_consumed": _macro_context_passes(macro_context),
+        "macro_context_validated": bool(macro_checks) and all(macro_checks),
+        "validated_cava_context_consumed": bool(macro_checks) and all(macro_checks),
     }
     return funnel, final_candidates, evidence
 

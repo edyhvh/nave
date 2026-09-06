@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from research.core.contracts import ResearchStatus
 from research.core.store import ResearchStore
@@ -7,6 +7,12 @@ from research.crypto_cot import COTContextProvider
 
 
 NOW = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
+
+
+def macro():
+    return {"validated": True, "evidence_quality": "VALIDATED", "corroboration_status": "VALIDATED",
+            "published_at": (NOW - timedelta(hours=1)).isoformat(), "validated_at": NOW.isoformat(),
+            "expires_at": (NOW + timedelta(days=1)).isoformat()}
 
 
 def candidate(*, symbol="ALT", rank=90, liquidity="PASS", setup_valid=True, direction="long"):
@@ -66,7 +72,7 @@ def test_validated_macro_and_cot_context_produce_research_candidate(tmp_path):
     workflow = CryptoFuturesWorkflow(store=ResearchStore(tmp_path))
     result = workflow.scan_payload(
         replay(candidate()),
-        macro_context={"validated": True, "confidence": 0.8},
+        macro_context=macro(),
         cot_regime="neutral",
         now=NOW,
     )
@@ -93,7 +99,7 @@ def test_evaluation_and_missed_moves_are_separate_audits(tmp_path):
     workflow = CryptoFuturesWorkflow(store=ResearchStore(tmp_path))
     scan = workflow.scan_payload(
         replay(candidate(symbol="SELECTED"), candidate(symbol="MISSED", rank=50, liquidity="REJECT", setup_valid=False)),
-        macro_context={"validated": True},
+        macro_context=macro(),
         cot_regime="neutral",
         now=NOW,
     )
@@ -150,7 +156,7 @@ def test_cot_context_provider_reports_market_regime_source_and_freshness():
 
 def test_scan_artifact_does_not_persist_forward_outcomes(tmp_path):
     result = CryptoFuturesWorkflow(store=ResearchStore(tmp_path)).scan_payload(
-        replay(candidate()), macro_context={"validated": True}, cot_regime="neutral", now=NOW
+        replay(candidate()), macro_context=macro(), cot_regime="neutral", now=NOW
     )
     assert "outcomes" not in result.payload["raw_replay_summary"]
     assert result.payload["raw_replay_summary"]["outcomes_persisted"] is False

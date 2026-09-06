@@ -586,7 +586,7 @@ def universe_momentum_scan(
     start: str = typer.Option(..., "--start", help="UTC observation-window start."),
     end: str = typer.Option(..., "--end", help="UTC observation-window end."),
     symbols: str = typer.Option(
-        "ARB,CAKE,CRV,TWT,EDGE,PONS",
+        "",
         "--symbols",
         help="Target tickers or canonical asset IDs for the audit.",
     ),
