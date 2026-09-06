@@ -197,7 +197,7 @@ def test_timestamp_parser_does_not_impute_invalid_values():
 
 def test_silent_connected_stream_records_failure_and_preserves_incomplete_day(tmp_path, monkeypatch):
     import asyncio
-    from research.nave import prospective_collection as module
+    from research.nave import prospective_runtime as module
 
     collector = _collector(tmp_path)
     collector.receive_timeout_seconds = 0.01
@@ -215,8 +215,9 @@ def test_silent_connected_stream_records_failure_and_preserves_incomplete_day(tm
 
     monkeypatch.setattr(module.websockets, "connect", lambda *a, **kw: SilentConnection())
     asyncio.run(collector.run(stop_at=T0 + timedelta(hours=1), reconnect_max_seconds=0))
-    assert collector.manifest["connections"][-1]["status"] == "FAILED"
-    assert len(collector.manifest["provider_failures"]) == 1
+    runtime = json.loads((tmp_path / "prospective/runtime-health.json").read_text())
+    assert runtime["connection_state"] == "DISCONNECTED"
+    assert "APPLICATION_STREAM_SILENCE" in runtime["last_connection_error"]
     day = tmp_path / "prospective" / "validation" / "date=2026-09-07"
     checkpoint = json.loads((day / "checkpoint.json").read_text())
     assert checkpoint["status"] == "INCOMPLETE"

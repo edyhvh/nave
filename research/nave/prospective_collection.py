@@ -7,7 +7,6 @@ trading endpoint, or modify the production scanner.
 
 from __future__ import annotations
 
-import asyncio
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 import heapq
@@ -19,8 +18,6 @@ import sqlite3
 import subprocess
 import time
 from typing import Any, Callable, Iterable
-
-import websockets
 
 from research.nave.pumpapi_replay import normalize_event
 
@@ -276,13 +273,16 @@ class ProspectiveCollector:
         self._outcome_heap: list[tuple[float, int, str]] = []
         self._outcome_heap_sequence = 0
         self._pool_states: dict[str, dict[str, Any]] = {}
+        self._batch_active = False
+        self._new_output_dirs: set[Path] = set()
         self._db = self._open_db()
         self._manifest_path = self.data_root / "collector-manifest.json"
         self._initialize_state()
 
     def _open_db(self) -> sqlite3.Connection:
         self.data_root.mkdir(parents=True, exist_ok=True)
-        db = sqlite3.connect(self.data_root / "collector.sqlite3")
+        # One serialized persistence worker owns this connection after startup.
+        db = sqlite3.connect(self.data_root / "collector.sqlite3", check_same_thread=False)
         db.execute("PRAGMA journal_mode=WAL")
         db.execute(
             """CREATE TABLE IF NOT EXISTS events (
@@ -334,6 +334,7 @@ class ProspectiveCollector:
                 created_at=self.started_at,
             )
         manifest = json.loads(self._manifest_path.read_text()) if self._manifest_path.exists() else None
+        self.previous_manifest = dict(manifest) if manifest else None
         if manifest is not None and manifest.get("contract_sha256") != self.contract_sha256:
             raise ValueError("existing collector manifest has a different contract hash")
         if manifest is None:
@@ -447,6 +448,8 @@ class ProspectiveCollector:
         heapq.heappush(self._outcome_heap, (target.timestamp(), self._outcome_heap_sequence, job_key))
 
     def _write_manifest(self) -> None:
+        if self._batch_active:
+            return
         self.manifest["counts"] = dict(self._counters)
         self.manifest["last_updated_at"] = iso(self.clock())
         _atomic_json(self._manifest_path, self.manifest)
@@ -489,20 +492,73 @@ class ProspectiveCollector:
         _atomic_json(path, payload)
 
     def _flush_checkpoints(self, *, force: bool = False) -> None:
+        if self._batch_active:
+            return
         if not force and time.monotonic() - self._last_checkpoint_flush < 5:
             return
         for (partition, event_day), payload in self._checkpoint_cache.items():
             self._write_checkpoint(partition, event_day, payload)
         self._last_checkpoint_flush = time.monotonic()
 
+    def _commit(self) -> None:
+        if not self._batch_active:
+            self._db.commit()
+
+    def process_batch(self, frames: list[tuple[str | bytes, datetime]]) -> None:
+        """Fsync JSONL before one FULL SQLite commit; retain crash ambiguity.
+
+        Interrupted pre-commit batches can leave keyed JSONL tails. The durable
+        marker requires reconciliation on restart, never silent completeness.
+        """
+        from research.nave.prospective_runtime import durable_json
+
+        marker = self.data_root / "batch-state.json"
+        durable_json(marker, {"status": "IN_FLIGHT", "started_at": iso(self.clock()),
+                              "frames": len(frames)})
+        self._batch_active = True
+        try:
+            for message, received_at in frames:
+                self._rotate_segments(received_at)
+                self.process_message(message, received_at)
+            fsync_started = time.perf_counter()
+            for handle in self._handles.values():
+                handle.flush()
+                os.fsync(handle.fileno())
+            for directory in sorted(self._new_output_dirs, key=lambda path: len(path.parts), reverse=True):
+                descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+            self._new_output_dirs.clear()
+            self.last_jsonl_fsync_seconds = time.perf_counter() - fsync_started
+            commit_started = time.perf_counter()
+            self._db.commit()
+            self.last_sqlite_commit_seconds = time.perf_counter() - commit_started
+        except BaseException:
+            self._db.rollback()
+            raise
+        finally:
+            self._batch_active = False
+        durable_json(marker, {"status": "COMMITTED", "finished_at": iso(self.clock()),
+                              "frames": len(frames)})
+        self._flush_checkpoints()
+
     def _append_line(self, path: Path, row: dict[str, Any]) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
         handle = self._handles.get(path)
         if handle is None:
+            path.parent.mkdir(parents=True, exist_ok=True)
             handle = path.open("a", encoding="utf-8")
             self._handles[path] = handle
+            directory = path.parent
+            while directory.is_relative_to(self.data_root):
+                self._new_output_dirs.add(directory)
+                if directory == self.data_root:
+                    break
+                directory = directory.parent
         handle.write(canonical_json(row) + "\n")
-        handle.flush()
+        if not self._batch_active:
+            handle.flush()
 
     def _segment_path(self, partition: str, event_day: str, received_at: datetime) -> Path:
         return (
@@ -591,7 +647,7 @@ class ProspectiveCollector:
             received_at=received_at,
             checkpoint=checkpoint,
         )
-        self._db.commit()
+        self._commit()
         return launch_time, True
 
     def _schedule_outcomes(
@@ -652,7 +708,7 @@ class ProspectiveCollector:
             )
             checkpoint["outcome_jobs"] += 1
             self._counters["outcome_jobs"] += 1
-        self._db.commit()
+        self._commit()
 
     def _participant_path(self, event_path: Path) -> Path:
         return event_path.parent.parent.parent / "participants.jsonl"
@@ -803,7 +859,7 @@ class ProspectiveCollector:
             if inserted == 1:
                 self._append_line(output_path, record)
                 self._counters["outcome_snapshots"] += 1
-        self._db.commit()
+        self._commit()
 
     def _normalize_record(
         self,
@@ -896,6 +952,7 @@ class ProspectiveCollector:
             return
 
         event_key = provider_event_key(raw)
+        self.last_processed_event_key = event_key
         action = str(raw.get("action") or raw.get("txType") or "").strip().lower()
         provider_event_time = parse_provider_timestamp(raw.get("timestamp"))
         partition, event_day = partition_for_event(
@@ -924,7 +981,7 @@ class ProspectiveCollector:
             checkpoint["duplicate_events"] += 1
             self._counters["duplicate_events"] += 1
             self._flush_checkpoints()
-            self._db.commit()
+            self._commit()
             return
 
         segment = self._segment_path(partition, event_day, received_at)
@@ -989,7 +1046,7 @@ class ProspectiveCollector:
             checkpoint=checkpoint,
         )
         self._flush_checkpoints()
-        self._db.commit()
+        self._commit()
         if self._counters["event_rows"] % 100 == 0:
             self._write_manifest()
 
@@ -1004,6 +1061,7 @@ class ProspectiveCollector:
     def _close_all_segments(self) -> None:
         for handle in self._handles.values():
             handle.flush()
+            os.fsync(handle.fileno())
             handle.close()
         self._handles.clear()
 
@@ -1024,14 +1082,16 @@ class ProspectiveCollector:
                     if segment_path.exists():
                         hour_payload.update(
                             {
-                                "status": "COMPLETE",
+                                "status": "CLOSED_PENDING_RECONCILIATION",
                                 "file_size_bytes": segment_path.stat().st_size,
                                 "sha256": sha256_file(segment_path),
                             }
                         )
             event_day = payload.get("event_date")
             partition = payload.get("partition")
-            if payload.get("event_rows", 0) == 0 and payload.get("unique_launches", 0) == 0:
+            if payload.get("provider_failures", 0) > 0:
+                payload["status"] = "INCOMPLETE"
+            elif payload.get("event_rows", 0) == 0 and payload.get("unique_launches", 0) == 0:
                 payload["status"] = "NOT_STARTED"
             elif status == "STOPPED_BEFORE_WINDOW_END":
                 payload["status"] = "INCOMPLETE"
@@ -1051,130 +1111,33 @@ class ProspectiveCollector:
         self.stop_requested = True
 
     async def run(self, *, stop_at: datetime, reconnect_max_seconds: int = 60) -> int:
-        stop_at = stop_at.astimezone(UTC)
-        self.manifest["stop_at"] = iso(stop_at)
-        self._write_manifest()
-        backoff = 1
-        try:
-            while not self.stop_requested and self.clock().astimezone(UTC) < stop_at:
-                self.connection_number += 1
-                connection_started = self.clock().astimezone(UTC)
-                self.manifest["connections"].append(
-                    {"connection_number": self.connection_number, "opened_at": iso(connection_started), "status": "OPENING"}
-                )
-                self._write_manifest()
-                try:
-                    async with websockets.connect(
-                        self.stream_uri,
-                        open_timeout=15,
-                        close_timeout=5,
-                        # Keep a frequent heartbeat so the provider does not
-                        # close the long-lived stream.  Disable the client's
-                        # own timeout because synchronous persistence can
-                        # occasionally delay a pong on this high-volume feed;
-                        # transport/read failures still enter reconnect.
-                        ping_interval=5,
-                        ping_timeout=None,
-                        max_size=self.max_event_bytes,
-                    ) as websocket:
-                        self.manifest["connections"][-1]["status"] = "CONNECTED"
-                        self.manifest["connections"][-1]["connected_at"] = iso(self.clock())
-                        self._write_manifest()
-                        backoff = 1
-                        while not self.stop_requested:
-                            # A peer can answer pings while its event stream is
-                            # stalled. Bound data silence so the existing error
-                            # path records a gap and reconnects instead of
-                            # retaining a stale CONNECTED manifest indefinitely.
-                            message = await asyncio.wait_for(
-                                websocket.recv(), timeout=self.receive_timeout_seconds
-                            )
-                            now = self.clock().astimezone(UTC)
-                            if now >= stop_at:
-                                self.stop_requested = True
-                                break
-                            self._rotate_segments(now)
-                            self.process_message(message, now)
-                            # recv() can return immediately while the provider
-                            # has buffered a high-volume burst.  Yield after
-                            # persistence so websocket heartbeat and signal
-                            # tasks are never starved by the synchronous tape
-                            # writer.
-                            await asyncio.sleep(0)
-                            if time.monotonic() - self._last_heartbeat >= self.heartbeat_seconds:
-                                self._last_heartbeat = time.monotonic()
-                                self._write_manifest()
-                                print(json.dumps({"status": "RUNNING", "counts": dict(self._counters)}, sort_keys=True), flush=True)
-                except asyncio.CancelledError:
-                    raise
-                except Exception as exc:
-                    now = self.clock().astimezone(UTC)
-                    self.manifest["connections"][-1]["status"] = "FAILED"
-                    self.manifest["connections"][-1]["closed_at"] = iso(now)
-                    self.manifest["provider_failures"].append(
-                        {"connection_number": self.connection_number, "at": iso(now), "error": str(exc)[:2000]}
-                    )
-                    self._record_error(f"stream connection failed: {exc}", now, connection=self.connection_number)
-                    self._flush_checkpoints(force=True)
-                    for checkpoint_path in self.data_root.glob("*/date=*/checkpoint.json"):
-                        payload = json.loads(checkpoint_path.read_text())
-                        if payload.get("event_date", "9999-99-99") <= now.date().isoformat():
-                            payload["provider_failures"] = payload.get("provider_failures", 0) + 1
-                            self._write_checkpoint(payload["partition"], payload["event_date"], payload)
-                    self._write_manifest()
-                    await asyncio.sleep(min(backoff, reconnect_max_seconds))
-                    backoff = min(backoff * 2, reconnect_max_seconds)
-        finally:
-            self._mark_finished("STOPPED_BEFORE_WINDOW_END" if self.clock().astimezone(UTC) < stop_at else "WINDOW_COLLECTION_ENDED")
-        return 0
+        from research.nave.prospective_runtime import run_pipeline
+        return await run_pipeline(self, stop_at, reconnect_max_seconds)
 
 
 def operational_status(data_root: Path) -> dict[str, Any]:
-    """Return operational facts only; never reads outcome values or features."""
-    manifest_path = data_root / "collector-manifest.json"
-    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
-    result: dict[str, Any] = {
-        "schema_version": "nave.memecoin.collection-status.v1",
-        "data_root": str(data_root),
-        "collector_state": manifest.get("status") if manifest else "NOT_STARTED",
-        "contract_sha256": manifest.get("contract_sha256") if manifest else None,
-        "validation_holdout_analysis": "HOLDOUT_LOCKED",
-        "days": [],
+    """Operational files only: never scan event or outcome tapes."""
+    from research.nave.prospective_runtime import CONTRACT_PATH, health_reasons
+    runtime_path = data_root / "runtime-health.json"
+    runtime = json.loads(runtime_path.read_text()) if runtime_path.exists() else {}
+    lock_path = holdout_lock_path(data_root)
+    lock = json.loads(lock_path.read_text()) if lock_path.exists() else {}
+    reasons = health_reasons(runtime, json.loads(CONTRACT_PATH.read_text()))
+    state = runtime.get("state", "RECOVERING")
+    if reasons and state == "HEALTHY":
+        state = "DEGRADED_BACKLOG"
+    return {
+        "schema_version": "nave.memecoin.collection-status.v2",
+        "collector_state": state,
+        "reasons": reasons,
+        "runtime": runtime,
+        "validation_holdout_analysis": lock.get("status", "LOCK_MISSING"),
+        "holdout_lock_path": str(lock_path),
+        "days": [
+            {key: row.get(key) for key in
+             ("partition", "event_date", "status", "last_updated_at", "event_rows",
+              "provider_failures", "source_reconciliation")}
+            for path in sorted(data_root.glob("*/date=*/checkpoint.json"))
+            for row in [json.loads(path.read_text())]
+        ],
     }
-    for checkpoint_path in sorted(data_root.glob("*/date=*/checkpoint.json")):
-        payload = json.loads(checkpoint_path.read_text())
-        snapshot_path = checkpoint_path.parent / "outcome-snapshots.jsonl"
-        outcome_snapshots_captured = (
-            sum(1 for _ in snapshot_path.open(encoding="utf-8"))
-            if snapshot_path.exists()
-            else 0
-        )
-        outcome_jobs_scheduled = payload.get("outcome_jobs", 0)
-        completed_hours = sum(
-            1 for value in payload.get("hours", {}).values() if value.get("status") == "COMPLETE"
-        )
-        pending_hours = sum(
-            1 for value in payload.get("hours", {}).values() if value.get("status") in {"OPEN", "NOT_STARTED"}
-        )
-        result["days"].append(
-            {
-                "partition": payload.get("partition"),
-                "utc_date": payload.get("event_date"),
-                "state": payload.get("status"),
-                "hours_complete": completed_hours,
-                "hours_pending_or_open": pending_hours,
-                "launch_count": payload.get("unique_launches", 0),
-                "event_rows": payload.get("event_rows", 0),
-                "participant_rows": payload.get("participant_rows", 0),
-                "outcome_jobs_scheduled": outcome_jobs_scheduled,
-                "outcome_snapshots_captured": outcome_snapshots_captured,
-                "outcome_jobs_pending_or_scheduled": max(
-                    outcome_jobs_scheduled - outcome_snapshots_captured, 0
-                ),
-                "provider_failures": payload.get("provider_failures", 0),
-                "disk_checkpoint_path": str(checkpoint_path),
-            }
-        )
-    result["provider_failures"] = len(manifest.get("provider_failures", [])) if manifest else 0
-    result["holdout_lock_path"] = str(holdout_lock_path(data_root))
-    return result
