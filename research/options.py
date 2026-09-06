@@ -392,4 +392,3 @@ class OptionResearchWorkflow:
         if persist and self.store:
             self.store.save_result(result)
         return result
-

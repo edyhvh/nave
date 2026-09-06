@@ -10,8 +10,25 @@ import typer
 from cli.professional_typer import ProfessionalTyper
 from research.core.contracts import ResearchResult
 from research.core.store import ResearchStore
+from research.orchestration import present_result
 
 research_app = ProfessionalTyper(help="Inspect read-only structured research results.")
+
+
+@research_app.command("run")
+def run_quant(
+    workflow: str = typer.Option(..., "--workflow", help="cava, watch, portfolio, ism, disclosures, crypto, memecoin, or shorts"),
+    state_dir: Path = typer.Option(..., "--state-dir"),
+    channel_id: str = typer.Option(..., "--channel-id"),
+    input_file: Path | None = typer.Option(None, "--input-file", exists=True, readable=True),
+) -> None:
+    """Execute a bounded NAVE CLI workflow and emit only its Discord report; never sends."""
+    from research.quant_runner import run
+    try:
+        view = run(workflow, state_dir=state_dir, channel_id=channel_id, input_file=input_file)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(view["discord_text"])
 
 
 @research_app.command("status")
@@ -50,3 +67,16 @@ def report(
     """Validate and render a saved structured result."""
     result = ResearchResult.from_dict(json.loads(json_file.read_text(encoding="utf-8")))
     typer.echo(result.to_markdown() if markdown else result.to_json())
+
+
+@research_app.command("present")
+def present(
+    json_file: Path = typer.Option(..., "--json-file", exists=True, readable=True),
+    channel_id: str | None = typer.Option(None, "--channel-id", help="Explicit parent Discord channel; never inferred from origin."),
+    origin_file: Path | None = typer.Option(None, "--origin-file", exists=True, readable=True, help="Explicit interactive Discord origin JSON; omitted for scheduled reports."),
+    discord: bool = typer.Option(False, "--discord", help="Emit only the Spanish report for Hermes' chunking Discord adapter."),
+) -> None:
+    """Render the concise evidence-aware view intended for Quant delivery."""
+    result = ResearchResult.from_dict(json.loads(json_file.read_text(encoding="utf-8")))
+    view = present_result(result, channel_id=channel_id, origin=json.loads(origin_file.read_text()) if origin_file else None)
+    typer.echo(view["discord_text"] if discord else json.dumps(view, indent=2, allow_nan=False))
