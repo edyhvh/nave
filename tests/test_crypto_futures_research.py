@@ -86,7 +86,8 @@ def test_validated_macro_and_cot_context_produce_research_candidate(tmp_path):
 def test_no_setup_still_persists_scanned_evidence(tmp_path):
     result = CryptoFuturesWorkflow(store=ResearchStore(tmp_path)).scan_payload(
         replay(candidate(rank=50, liquidity="REJECT", setup_valid=False)),
-        cot_regime="unknown",
+        cot_regime="neutral",
+        macro_context=macro(),
         now=NOW,
     )
     assert result.status is ResearchStatus.NO_SETUP

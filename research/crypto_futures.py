@@ -199,7 +199,8 @@ def build_funnel(
                 "entry_research_zone": setup.get("entry_zone"),
                 "invalidation": setup.get("invalidation"),
                 "horizon": "configured forward outcome horizon",
-                "confidence": min(1.0, max(0.0, float(raw_candidate.get("rank_score") or 0.0) / 100.0)),
+                "confidence": None,
+                "rank_score": raw_candidate.get("rank_score"),
                 "major_risks": [
                     "derivatives liquidity can change before a human decision",
                     "COT is market/regime context and is not asset-specific",
@@ -362,7 +363,11 @@ class CryptoFuturesWorkflow:
         if funnel["cot_regime"] not in {"bullish", "bearish", "neutral"}:
             warnings.append("COT regime unavailable; COT is not applied as an asset-level signal")
         warnings.extend(str(item) for item in (cot_context or {}).get("warnings", []))
-        status = ResearchStatus.SETUP_FOUND if candidates else ResearchStatus.NO_SETUP
+        status = (
+            ResearchStatus.SETUP_FOUND if candidates else
+            ResearchStatus.INSUFFICIENT_EVIDENCE if warnings or funnel.get("invalid_observations") else
+            ResearchStatus.NO_SETUP
+        )
         result = self._result(
             workflow="crypto.futures.scan",
             status=status,
