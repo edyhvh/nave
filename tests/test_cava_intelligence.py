@@ -76,7 +76,7 @@ def test_validated_context_is_persisted_and_cursor_advances(tmp_path):
                 kind=EvidenceKind.FACT,
                 confidence=0.95,
                 citation="https://official.example/macro",
-                point_in_time=PointInTime(available_at=NOW, decision_time=NOW),
+                point_in_time=PointInTime(event_time=NOW, available_at=NOW, decision_time=NOW),
                 metadata={"topic": topic},
             )
             for topic in ("inflation", "liquidity")
@@ -202,3 +202,29 @@ def test_cava_partial_source_failure_never_persists_qualified_context(tmp_path):
     assert result.payload["contradictions"] == []
     assert result.payload["cursor_advanced"] is False
     assert "rates" in " ".join(result.warnings)
+
+
+def test_plain_commentary_has_no_known_speaker_or_fact():
+    claims = _transcript_claims(parse_rss(RSS)[0], Transcript('El mercado está complicado.', 'es', 'supadata', NOW), NOW)
+    assert claims[0].kind is EvidenceKind.UNKNOWN
+    assert claims[0].metadata['speaker_attributed'] is False
+
+
+def test_failed_latest_does_not_starve_older_or_advance_cursor(tmp_path):
+    provider = FixtureTranscriptProvider(error='removed')
+    workflow = CavaWorkflow(store=ResearchStore(tmp_path))
+    for _ in range(3):
+        workflow.run(rss_xml=RSS, transcript_provider=provider, now=NOW)
+    assert provider.calls == ['new-video', 'old-video', 'new-video']
+    assert workflow.store.load_context('cava_cursor') is None
+
+
+def test_direct_fred_actual_csv_shape_and_separate_clocks():
+    from research.cava.corroboration import _direct_fred, _SERIES
+    http = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(
+        200, text='observation_date,CPIAUCSL\n2026-08-01,324.5\n')))
+    data = _direct_fred('CPIAUCSL', http)
+    assert data['records'][0]['CPIAUCSL'] == '324.5'
+    assert data['latest_observation_at'] == data['as_of'] == '2026-08-01'
+    assert data['retrieved_at'] != data['as_of']
+    assert 'gold' not in _SERIES

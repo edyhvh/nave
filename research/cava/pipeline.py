@@ -79,7 +79,7 @@ def _classify_claim(text: str) -> EvidenceKind:
         return EvidenceKind.INFERENCE
     if any(marker in lowered for marker in ("desconozco", "no sé", "no se", "sin confirmar")):
         return EvidenceKind.UNKNOWN
-    return EvidenceKind.FACT
+    return EvidenceKind.UNKNOWN
 
 
 def _transcript_claims(video: CavaVideo, transcript: Transcript, decision_time: datetime) -> list[EvidenceReference]:
@@ -99,7 +99,7 @@ def _transcript_claims(video: CavaVideo, transcript: Transcript, decision_time: 
                     decision_time=decision_time,
                 ),
                 citation=video.url,
-                metadata={"speaker_attributed": True, "video_id": video.video_id},
+                metadata={"speaker_attributed": False, "video_id": video.video_id},
             )
         )
     return claims
@@ -170,13 +170,13 @@ class CavaWorkflow:
         processed = payload.get("processed_video_ids") if isinstance(payload, Mapping) else []
         return {str(item) for item in processed or [] if str(item).strip()}
 
-    def _save_cursor(self, processed: set[str], *, last_processed: CavaVideo) -> None:
+    def _save_cursor(self, processed: set[str], *, last_processed: CavaVideo, decision_time: datetime) -> None:
         self.store.save_context(
             "cava_cursor",
             {
                 "processed_video_ids": sorted(processed),
                 "last_processed_video_id": last_processed.video_id,
-                "last_processed_at": datetime.now(UTC).isoformat(),
+                "last_processed_at": decision_time.isoformat(),
             },
         )
 
@@ -265,7 +265,12 @@ class CavaWorkflow:
             self.store.save_result(result)
             return result
 
-        video = new_videos[0]
+        # Retry fairly without marking unsuccessful videos processed. Persist the
+        # attempt before provider work so a repeated crash also cannot starve RSS.
+        attempts = dict(self.store.load_context("cava_attempts") or {})
+        video = min(new_videos, key=lambda item: int(attempts.get(item.video_id, 0)))
+        attempts[video.video_id] = int(attempts.get(video.video_id, 0)) + 1
+        self.store.save_context("cava_attempts", attempts)
         try:
             transcript = transcript_provider.fetch(video.video_id)
         except TranscriptUnavailable as exc:
@@ -278,7 +283,7 @@ class CavaWorkflow:
                     "video": {"id": video.video_id, "title": video.title, "url": video.url},
                     "published_at": video.published_at.isoformat(),
                     "cursor_advanced": False,
-                    "evidence_quality": "RSS_ONLY",
+                    "evidence_quality": "UNAVAILABLE",
                     "downstream_implications": {
                         "stocks": "UNKNOWN",
                         "crypto": "UNKNOWN",
@@ -305,10 +310,10 @@ class CavaWorkflow:
         claims = [by_id[item.reference_id] for item in claims]
         warnings: list[str] = list(corroboration.warnings)
         if not corroboration.evidence:
-            warnings.append("no eligible authoritative corroboration was found; transcript claims remain speaker-attributed")
+            warnings.append("no eligible authoritative corroboration was found; transcript claims remain unverified commentary")
         covered_topics = {item.metadata.get("topic") for item in corroboration.evidence
-                          if item.kind is EvidenceKind.FACT and item.point_in_time.available_at is not None
-                          and item.point_in_time.available_at <= decision_time}
+                          if item.kind is EvidenceKind.FACT
+                          and by_id[item.reference_id].point_in_time.availability == "ELIGIBLE"}
         context_validated = bool(claims and indicators and set(indicators) <= covered_topics
                                  and not warnings and not corroboration.contradictions
                                  and video.published_at <= transcript.available_at <= decision_time
@@ -340,7 +345,7 @@ class CavaWorkflow:
                 "options": "REVIEW volatility and catalyst evidence",
                 "shorts": "REVIEW sector/technical confirmation before any candidate",
             },
-            "evidence_quality": "VALIDATED" if context_validated else "TRANSCRIPT_ONLY",
+            "evidence_quality": "VALIDATED" if context_validated else "PARTIAL" if corroboration.evidence else "TRANSCRIPT_ONLY",
             "confidence": None,
             "cursor_advanced": context_validated,
         }
@@ -377,7 +382,7 @@ class CavaWorkflow:
                     "confidence": payload["confidence"],
                 },
             )
-            self._save_cursor(processed, last_processed=video)
+            self._save_cursor(processed, last_processed=video, decision_time=decision_time)
         else:
             self._invalidate_context("new context is partial, stale or contradicted")
         return result

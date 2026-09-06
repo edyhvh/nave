@@ -36,7 +36,6 @@ _SERIES: dict[str, str] = {
     "rates": "DFF",
     "dollar": "DTWEXBGS",
     "copper": "PCOPPUSDM",
-    "gold": "GOLDAMGBD228NLBM",
     "liquidity": "WALCL",
 }
 
@@ -138,7 +137,9 @@ def _direct_fred(series_id: str, http: httpx.Client) -> Mapping[str, Any]:
         record = dict(zip(headers, values))
         if _record_value(record) is not None:
             records.append(record)
-    return {"series_id": series_id, "records": records, "as_of": datetime.now(UTC).isoformat()}
+    observed = max((_record_date(row) for row in records if _record_date(row)), default=None)
+    return {"series_id": series_id, "records": records, "as_of": observed,
+            "latest_observation_at": observed, "retrieved_at": datetime.now(UTC).isoformat()}
 
 
 @dataclass
@@ -182,7 +183,10 @@ class CavaCorroborator:
                     topics[topic] = claim
 
         for topic, transcript_claim in topics.items():
-            series_id = _SERIES[topic]
+            series_id = _SERIES.get(topic)
+            if series_id is None:
+                self._warnings.append(f"corroboration unavailable for {topic}: no supported reliable series")
+                continue
             try:
                 raw, provider_path = self._fetch(series_id)
                 records = raw.get("records") if isinstance(raw, Mapping) else None
@@ -200,7 +204,7 @@ class CavaCorroborator:
                 stale_days = {"inflation": 62, "copper": 62, "liquidity": 14}.get(topic, 7)
                 if (decision_time.date() - latest_date).days > stale_days:
                     raise RuntimeError("latest source observation is stale")
-                retrieved_raw = raw.get("retrieved_at") or raw.get("as_of")
+                retrieved_raw = raw.get("retrieved_at")
                 retrieved = datetime.fromisoformat(str(retrieved_raw).replace("Z", "+00:00")) if retrieved_raw else None
                 if retrieved is None or retrieved.tzinfo is None:
                     raise RuntimeError("source retrieval timestamp is unavailable")
@@ -230,6 +234,7 @@ class CavaCorroborator:
                             "retrieved_at": retrieved.isoformat(),
                             "latest_observation_at": raw.get("latest_observation_at"),
                             "provider_path": provider_path,
+                            "vintage_status": "CURRENT_RETRIEVAL_NOT_HISTORICAL_VINTAGE",
                             "transcript_claim_id": transcript_claim.reference_id,
                             "relationship": "context",
                         },

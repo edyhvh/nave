@@ -14,6 +14,7 @@ from cli.professional_typer import ProfessionalTyper
 from research.cava.pipeline import CAVA_RSS_URL, CavaWorkflow
 from research.cava.transcript import SupadataTranscriptProvider
 from research.core.store import ResearchStore
+from research.core.context import FileResearchContext
 
 intel_app = ProfessionalTyper(help="NAVE intelligence workflows.")
 cava_app = ProfessionalTyper(help="José Luis Cava video and macro intelligence.")
@@ -65,7 +66,7 @@ def context_latest(
     json_out: bool = typer.Option(False, "--json", help="Emit JSON only."),
 ) -> None:
     """Show the latest validated Cava context without re-scraping."""
-    context = ResearchStore(state_dir).load_context("cava")
+    context = FileResearchContext(state_dir).latest_cava_context()
     payload = context or {"status": "DATA_UNAVAILABLE", "context": None}
     if json_out:
         typer.echo(json.dumps(payload, indent=2, default=str))
