@@ -103,8 +103,9 @@ def _eligible(row: Mapping[str, Any], *, min_volume_acceleration: float, min_liq
             blockers.append("liquidity")
     except (TypeError, ValueError):
         blockers.append("liquidity_missing")
-    if str(features.get("risk_status") or "UNKNOWN").upper() != "PASS":
-        blockers.append("safety_or_contract_risk")
+    risk = str(features.get("risk_status") or "UNKNOWN").upper()
+    if risk != "PASS":
+        blockers.append("safety_or_contract_risk" if risk in {"FAIL", "REJECT"} else "safety_evidence_missing")
     if features.get("holder_structure") in (None, "UNKNOWN"):
         blockers.append("holder_structure")
     if features.get("wallet_activity") in (None, "UNKNOWN"):
@@ -262,6 +263,12 @@ class MemecoinResearchWorkflow:
         payload_rows = rows
         if dune_cache:
             raw = json.loads(dune_cache.read_text(encoding="utf-8"))
+            if isinstance(raw, Mapping) and raw.get("provider") == "dune":
+                fetched = _strict_time(raw.get("fetched_at"))
+                ttl = float(raw.get("max_age_seconds", 86400))
+                age = (datetime.now(UTC) - fetched).total_seconds() if fetched else -1
+                if not math.isfinite(ttl) or ttl <= 0 or not 0 <= age <= ttl or raw.get("row_count") != len(raw.get("rows") or []):
+                    raise ValueError("Dune cache is stale or incomplete; explicit refresh required")
             payload_rows = raw.get("rows", raw) if isinstance(raw, Mapping) else raw
             if isinstance(raw, Mapping):
                 usage = raw.get("credit_usage") if isinstance(raw.get("credit_usage"), Mapping) else {}

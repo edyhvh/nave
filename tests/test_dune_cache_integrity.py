@@ -7,6 +7,9 @@ from subprocess import CompletedProcess
 import pytest
 
 from research.dune.materializer import DuneMaterializer
+from research.memecoin_workflow import MemecoinResearchWorkflow
+from research.core.store import ResearchStore
+from research.nave.resource_guard import check
 
 
 def test_concurrent_materializers_only_execute_once_and_keep_limit_identity(tmp_path):
@@ -37,3 +40,12 @@ def test_stale_cache_requires_explicit_refresh_and_failed_refresh_preserves_file
         with pytest.raises(ValueError, match="no result rows"):
             materializer.materialize(query_id="123", output=output, force=True)
         assert json.loads(output.read_text()) == old
+
+
+def test_discovery_cannot_bypass_cache_freshness_and_nan_cannot_authorize_credits(tmp_path):
+    output = tmp_path / "cache.json"
+    output.write_text(json.dumps({"provider": "dune", "rows": [], "row_count": 0,
+                                  "fetched_at": "2020-01-01T00:00:00Z"}))
+    with pytest.raises(ValueError, match="stale"):
+        MemecoinResearchWorkflow(store=ResearchStore(tmp_path / "state")).discover([], dune_cache=output)
+    assert not check(credits_used=0, credits_included=2500, checkpoint_used=0, estimate=float("nan"), free_disk_gb=20).allowed
