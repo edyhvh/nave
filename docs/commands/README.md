@@ -44,6 +44,16 @@ source .venv/bin/activate
 ./scripts/dev_shell.sh pytest -q
 ```
 
+Read-only stock-short research:
+
+```bash
+nave stocks short scan --input-file snapshots.json --json
+```
+
+The scanner requires multiple non-macro factors, retains rejected candidates,
+and emits research results only. Quant job migration declarations are kept in
+`ops/quant_nave_jobs.json` with `PREPARE_ONLY` and disabled by default.
+
 ## 2) Unified CLI (`nave`)
 
 If `nave` is not available in your shell, use:
@@ -61,11 +71,31 @@ which nave
 nave --help
 ```
 
-Main help/version:
+Main help/version (research examples require the corresponding PRs #42–#49 in the served checkout):
 
 ```bash
 nave --help
 nave version
+
+# NAVE-owned structured intelligence
+nave intel cava daily --json
+nave intel context latest --json
+
+# Human-gated portfolio research
+nave portfolio review --json
+nave portfolio candidates --ism-file ism.json --json
+nave portfolio ism --ism-file ism.json --json
+nave portfolio watch --watch-file watches.json --prices-file prices.json --json
+
+# Normalized public financial disclosures
+nave disclosures sync --congress-file congress.json --executive-file executive.json --json
+
+# Point-in-time memecoin research (local/cached input)
+nave memecoin discover --input-file snapshot.json --json
+nave memecoin evaluate --outcomes-file outcomes.json --json
+nave memecoin missed-moves --outcomes-file outcomes.json --json
+nave memecoin backtest --discover-file discovery.json --outcomes-file outcomes.json --json
+nave memecoin status --json
 ```
 
 Data commands:
@@ -113,6 +143,19 @@ Note: `nave cot report` now prints both `Futures Only` and `Futures+Options`
 metrics for each asset. The `--report-type` option controls which dataset is
 used as the primary bias source.
 
+Read-only options research:
+
+```bash
+nave options crypto scan --input-file snapshots.json --json
+nave options stocks scan --input-file snapshots.json --json
+nave strategy evaluate crypto_iv_rv_defined_risk --domain crypto --input-file outcomes.json --json
+```
+
+The options research commands only consume supplied snapshots/outcomes. They
+record point-in-time availability, keep crypto (BTC/ETH) and equity options
+separate, and classify strategies as `EXPERIMENTAL`, `PROMISING`, `VALIDATED`,
+or `REJECTED`. They never create orders or broker actions.
+
 ## 3) Python Module CLIs
 
 Hyperliquid client module:
@@ -123,6 +166,27 @@ python -m trading.crypto.client positions --wallet hermes
 python -m trading.crypto.client orders --wallet hermes
 python -m trading.crypto.client mids --wallet hermes
 python -m trading.crypto.client markets --wallet hermes
+
+# Existing BTC/ETH momentum scan with an appended current-universe research view
+PYTHONPATH=. .venv/bin/python cli/main.py crypto momentum-scan \
+  --include-universe-discovery --universe-size 100 --json
+
+# Research-only point-in-time top-100 plus liquid-perpetual replay (offline)
+PYTHONPATH=. .venv/bin/python cli/main.py crypto universe-momentum-scan \
+  --fixture tests/fixtures/crypto_momentum_replay.json \
+  --start 2026-08-25T00:00:00Z --end 2026-09-01T00:00:00Z \
+  --cadence 6h --symbols ARB,CAKE,CRV,TWT,EDGE,PONS --json
+
+# Structured crypto futures lifecycle over an explicit point-in-time fixture
+PYTHONPATH=. .venv/bin/python cli/main.py crypto futures scan \
+  --fixture tests/fixtures/crypto_momentum_replay.json \
+  --start 2026-08-25T00:00:00Z --end 2026-09-01T00:00:00Z \
+  --cot-regime neutral --json
+PYTHONPATH=. .venv/bin/python cli/main.py crypto futures evaluate \
+  --outcomes-file outcomes.json --json
+PYTHONPATH=. .venv/bin/python cli/main.py crypto futures missed-moves \
+  --outcomes-file outcomes.json --json
+PYTHONPATH=. .venv/bin/python cli/main.py crypto futures status --json
 python -m trading.crypto.client summary --wallet hermes --mainnet
 ```
 
