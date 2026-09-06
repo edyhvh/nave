@@ -1,8 +1,9 @@
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 
 from research.core.contracts import ResearchStatus
 from research.core.store import ResearchStore
-from research.memecoin_workflow import MemecoinResearchWorkflow, discover_rows, missed_moves
+from research.memecoin_workflow import MemecoinResearchWorkflow, discover_rows
 from research.dune.materializer import DuneMaterializer
 
 
@@ -12,7 +13,8 @@ NOW = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
 def row(asset="ALT", *, available_at=NOW, risk="PASS", volume=3.0, liquidity=50_000):
     return {
         "asset": asset,
-        "mint": f"mint-{asset}",
+        "chain_id": "eip155:1",
+        "contract_address": "0x" + sha256(asset.encode()).hexdigest()[:40],
         "decision_time": NOW.isoformat(),
         "available_at": available_at.isoformat() if available_at else None,
         "features": {
@@ -34,7 +36,7 @@ def test_point_in_time_eligibility_rejects_future_feature():
 
 def test_discovery_output_and_case_study_do_not_overfit_meme(tmp_path):
     workflow = MemecoinResearchWorkflow(store=ResearchStore(tmp_path))
-    result = workflow.discover([row("ALT"), row("MEME")])
+    result = workflow.discover([row("ALT"), {**row("MEME"), "case_study_source": "explicit fixture"}])
     assert result.status is ResearchStatus.SETUP_FOUND
     assert {item["asset"] for item in result.payload["selected"]} == {"ALT", "MEME"}
     assert result.payload["case_study"]["overfit_guard"] == "no asset-specific rule added"
@@ -52,12 +54,13 @@ def test_cached_dune_path_does_not_claim_unmeasured_remote_usage(tmp_path):
 def test_evaluation_and_missed_move_have_no_hindsight_leak(tmp_path):
     workflow = MemecoinResearchWorkflow(store=ResearchStore(tmp_path))
     scan = workflow.discover([row("SELECTED"), row("MISSED", volume=0.5, liquidity=1_000, risk="FAIL")])
-    evaluation = workflow.evaluate(scan_result=scan, outcomes=[{"asset": "SELECTED", "later_move_pct": 0.2}])
+    evaluation = workflow.evaluate(scan_result=scan, outcomes=[{**row("SELECTED"), "observed_at": (NOW + timedelta(hours=1)).isoformat(), "later_move_pct": 0.2}])
     assert evaluation.status is ResearchStatus.STRATEGY_NOT_VALIDATED
     missed = workflow.missed_moves(
         scan_result=scan,
         outcomes=[{
-            "asset": "MISSED",
+            **row("MISSED"),
+            "observed_at": (NOW + timedelta(hours=1)).isoformat(),
             "later_move_pct": 3.0,
             "information_available_at": (NOW + timedelta(hours=1)).isoformat(),
             "possible_missing_feature": "wallet_cluster_velocity",

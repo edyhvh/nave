@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import math
+import re
 import uuid
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Mapping
@@ -14,19 +17,8 @@ from research.memecoin.research_primitives import validate_feature_derivability
 
 
 STRATEGY_NAME = "memecoin-point-in-time-discovery"
-STRATEGY_VERSION = "1.0.0"
+STRATEGY_VERSION = "1.1.0"
 FEATURES = ("volume_acceleration", "liquidity", "holder_structure", "wallet_activity", "narrative")
-
-
-def _time(value: Any, default: datetime) -> datetime:
-    if isinstance(value, datetime):
-        parsed = value
-    else:
-        try:
-            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        except (TypeError, ValueError):
-            return default
-    return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 def _strict_time(value: Any) -> datetime | None:
@@ -37,15 +29,45 @@ def _strict_time(value: Any) -> datetime | None:
         parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except (TypeError, ValueError):
         return None
-    return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC) if parsed.tzinfo is not None else None
 
 
 def _asset(row: Mapping[str, Any]) -> str:
     return str(row.get("asset") or row.get("symbol") or row.get("mint") or "").strip()
 
 
+def canonical_identity(row: Mapping[str, Any]) -> str | None:
+    """Resolve explicit chain/address identity; labels never join research rows."""
+    chain = str(row.get("chain_id") or "").strip()
+    address = str(row.get("contract_address") or row.get("mint") or "").strip()
+    if re.fullmatch(r"eip155:[1-9][0-9]*", chain):
+        if not re.fullmatch(r"0x[0-9a-fA-F]{40}", address) or int(address, 16) == 0:
+            return None
+        address = address.lower()
+    elif chain == "solana:mainnet":
+        alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+        if not 32 <= len(address) <= 44 or any(char not in alphabet for char in address):
+            return None
+        number = 0
+        for char in address:
+            number = number * 58 + alphabet.index(char)
+        leading = len(address) - len(address.lstrip("1"))
+        if leading + (number.bit_length() + 7) // 8 != 32:
+            return None
+    else:
+        return None
+    return f"{chain}:{address}"
+
+
+def _snapshot_key(row: Mapping[str, Any]) -> tuple[str, datetime] | None:
+    identity, decision = canonical_identity(row), _strict_time(row.get("decision_time"))
+    return (identity, decision) if identity and decision else None
+
+
 def _eligible(row: Mapping[str, Any], *, min_volume_acceleration: float, min_liquidity_usd: float) -> tuple[bool, list[str]]:
-    decision_time = _time(row.get("decision_time"), datetime.now(UTC))
+    decision_time = _strict_time(row.get("decision_time"))
+    if decision_time is None:
+        return False, ["invalid_decision_time"]
     available_at = row.get("available_at")
     if not available_at:
         return False, ["unknown_feature_availability"]
@@ -56,13 +78,28 @@ def _eligible(row: Mapping[str, Any], *, min_volume_acceleration: float, min_liq
         return False, ["hindsight_feature_not_available_at_decision"]
     blockers: list[str] = []
     features = row.get("features") if isinstance(row.get("features"), Mapping) else row
+    clocks = row.get("feature_available_at")
+    if clocks is not None:
+        if not isinstance(clocks, Mapping):
+            blockers.append("invalid_feature_availability")
+        else:
+            for feature, clock in clocks.items():
+                stamp = _strict_time(clock)
+                if stamp is None or stamp > decision_time:
+                    blockers.append(f"unknown_or_late_feature:{feature}")
     try:
-        if float(features.get("volume_acceleration")) < min_volume_acceleration:
+        volume = float(features.get("volume_acceleration"))
+        if not math.isfinite(volume):
+            blockers.append("volume_acceleration_missing")
+        elif volume < min_volume_acceleration:
             blockers.append("volume_acceleration")
     except (TypeError, ValueError):
         blockers.append("volume_acceleration_missing")
     try:
-        if float(features.get("liquidity_usd")) < min_liquidity_usd:
+        liquidity = float(features.get("liquidity_usd"))
+        if not math.isfinite(liquidity):
+            blockers.append("liquidity_missing")
+        elif liquidity < min_liquidity_usd:
             blockers.append("liquidity")
     except (TypeError, ValueError):
         blockers.append("liquidity_missing")
@@ -84,24 +121,37 @@ def discover_rows(
     """Apply a small evidence-backed feature set without using future values."""
     selected: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
+    if not isinstance(rows, list) or any(not isinstance(row, Mapping) for row in rows):
+        raise ValueError("snapshot rows must be a list of objects")
+    if any(not math.isfinite(value) or value <= 0 for value in (min_volume_acceleration, min_liquidity_usd)):
+        raise ValueError("discovery thresholds must be finite and positive")
     derivability = validate_feature_derivability(rows)
+    keys = Counter(_snapshot_key(row) for row in rows)
     for raw in rows:
         row = dict(raw)
         name = _asset(row)
-        if not name:
-            rejected.append({"asset": None, "rejection_filters": ["missing_asset_identity"]})
-            continue
         passed, blockers = _eligible(
             row,
             min_volume_acceleration=min_volume_acceleration,
             min_liquidity_usd=min_liquidity_usd,
         )
+        if canonical_identity(row) is None:
+            blockers.append("missing_or_invalid_canonical_identity")
+        key = _snapshot_key(row)
+        if key is not None and keys[key] > 1:
+            blockers.append("duplicate_snapshot_identity")
+        passed = passed and not blockers
         snapshot = {
             "asset": name,
+            "chain_id": row.get("chain_id"),
+            "contract_address": row.get("contract_address"),
+            "canonical_identity": canonical_identity(row),
             "mint": row.get("mint"),
             "decision_time": row.get("decision_time"),
             "available_at": row.get("available_at"),
             "features": dict(row.get("features") or {}),
+            "feature_available_at": row.get("feature_available_at"),
+            "source_references": row.get("source_references", []),
             "feature_set": list(FEATURES),
             "point_in_time": passed,
         }
@@ -110,7 +160,7 @@ def discover_rows(
                 **snapshot,
                 "thesis": "volume acceleration + liquidity + holder structure + wallet activity + narrative",
                 "research_only": True,
-                "confidence": 0.5,
+                "edge_validated": False,
                 "major_risks": ["contract risk and manipulation", "liquidity can disappear", "social/narrative signals are noisy"],
             })
         else:
@@ -127,8 +177,11 @@ def discover_rows(
 
 
 def missed_moves(scan_payload: Mapping[str, Any], outcomes: list[Mapping[str, Any]], *, move_threshold: float) -> list[dict[str, Any]]:
-    selected = {str(row.get("asset") or "").lower() for row in scan_payload.get("selected") or []}
-    rejected = {str(row.get("asset") or "").lower(): row for row in scan_payload.get("rejected") or []}
+    if not math.isfinite(move_threshold) or move_threshold <= 0:
+        raise ValueError("move_threshold must be finite and positive")
+    selected = {_snapshot_key(row) for row in scan_payload.get("selected") or []}
+    rejected = {_snapshot_key(row): row for row in scan_payload.get("rejected") or [] if _snapshot_key(row)}
+    seen: set[tuple[str, datetime]] = set()
     output: list[dict[str, Any]] = []
     for outcome in outcomes:
         asset = _asset(outcome)
@@ -136,10 +189,15 @@ def missed_moves(scan_payload: Mapping[str, Any], outcomes: list[Mapping[str, An
             move = float(outcome.get("later_move_pct", outcome.get("forward_return")))
         except (TypeError, ValueError):
             continue
-        if not asset or move < move_threshold or asset.lower() in selected:
+        key = _snapshot_key(outcome)
+        observed = _strict_time(outcome.get("observed_at"))
+        if key is None or observed is None or observed <= key[1]:
             continue
-        row = rejected.get(asset.lower())
-        decision_time = _time((row or outcome).get("decision_time"), datetime.now(UTC))
+        if not math.isfinite(move) or move < move_threshold or key in selected or key in seen:
+            continue
+        seen.add(key)
+        row = rejected.get(key)
+        decision_time = key[1]
         info_time_raw = outcome.get("information_available_at")
         info_time = _strict_time(info_time_raw) if info_time_raw else None
         information_state = "UNKNOWN" if info_time is None else (
@@ -147,6 +205,12 @@ def missed_moves(scan_payload: Mapping[str, Any], outcomes: list[Mapping[str, An
         )
         output.append({
             "asset": asset,
+            "chain_id": outcome.get("chain_id"),
+            "contract_address": outcome.get("contract_address"),
+            "mint": outcome.get("mint"),
+            "canonical_identity": key[0],
+            "decision_time": decision_time.isoformat(),
+            "observed_at": observed.isoformat(),
             "decision_time_snapshot": row,
             "later_move_pct": move,
             "available_information": outcome.get("available_information", row.get("features") if row else None),
@@ -212,12 +276,18 @@ class MemecoinResearchWorkflow:
                 )
         result_payload = discover_rows(payload_rows)
         result_payload["dune_usage"] = dune_usage
-        meme_present = any(str(_asset(row)).upper() in {"MEME", "$MEME"} for row in payload_rows if isinstance(row, Mapping))
-        result_payload["case_study"] = (
-            {"asset": "$MEME", "used_as": "one named cohort case study only", "overfit_guard": "no asset-specific rule added"}
-            if meme_present else None
-        )
+        cases = [{"asset": _asset(row), "canonical_identity": canonical_identity(row),
+                  "source": row["case_study_source"], "used_as": "explicit caller case study only",
+                  "overfit_guard": "no asset-specific rule added"}
+                 for row in payload_rows if row.get("case_study_source") and canonical_identity(row)]
+        result_payload["case_studies"] = cases
+        result_payload["case_study"] = cases[0] if len(cases) == 1 else None
         status = ResearchStatus.SETUP_FOUND if result_payload["selected"] else ResearchStatus.NO_SETUP
+        evidence_gaps = any(any(reason not in {"volume_acceleration", "liquidity", "safety_or_contract_risk"}
+                                for reason in row["rejection_filters"])
+                            for row in result_payload["rejected"])
+        if evidence_gaps or not payload_rows:
+            status = ResearchStatus.INSUFFICIENT_EVIDENCE
         result = self._result(
             "memecoin.discover",
             status,
@@ -228,21 +298,31 @@ class MemecoinResearchWorkflow:
         return result
 
     def evaluate(self, *, scan_result: ResearchResult, outcomes: list[Mapping[str, Any]]) -> ResearchResult:
-        selected = {str(row.get("asset") or "").lower() for row in scan_result.payload.get("selected") or []}
+        selected = {_snapshot_key(row) for row in scan_result.payload.get("selected") or [] if _snapshot_key(row)}
         evaluated = []
+        seen = set()
+        excluded = []
         for outcome in outcomes:
-            if str(_asset(outcome)).lower() not in selected:
+            key = _snapshot_key(outcome)
+            observed = _strict_time(outcome.get("observed_at"))
+            if key is None or key not in selected or observed is None or observed <= key[1] or key in seen:
+                excluded.append({"canonical_identity": canonical_identity(outcome), "reason": "unmatched_duplicate_or_unproven_outcome_time"})
                 continue
             try:
                 value = float(outcome.get("later_move_pct", outcome.get("forward_return")))
             except (TypeError, ValueError):
                 continue
-            evaluated.append({**dict(outcome), "forward_move": value, "hit": value > 0})
+            if not math.isfinite(value):
+                excluded.append({"canonical_identity": key[0], "reason": "nonfinite_outcome"})
+                continue
+            seen.add(key)
+            evaluated.append({**dict(outcome), "canonical_identity": key[0], "forward_move": value, "hit": value > 0})
         hits = sum(bool(row["hit"]) for row in evaluated)
         payload = {
             "strategy": STRATEGY_NAME,
             "strategy_version": scan_result.metadata.strategy_version,
             "evaluated": evaluated,
+            "excluded_outcomes": excluded,
             "metrics": {
                 "selected_count": len(selected),
                 "evaluated_count": len(evaluated),
