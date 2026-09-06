@@ -90,7 +90,20 @@ def discord_chunks(text: str, limit: int = 2000) -> list[str]:
     return chunks
 
 
-def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: str | None = None) -> dict[str, Any]:
+def delivery_destination(channel_id: str | None, origin: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Discord threads/forum posts are transport channel IDs themselves."""
+    if origin is None:
+        return {"platform": "discord", "chat_id": channel_id, "surface": "parent", "origin_type": "scheduled", "ready": channel_id is not None}
+    kind = origin.get("origin_type")
+    if kind not in {"channel", "thread", "forum_post"}:
+        raise ValueError("interactive origin_type is required")
+    destination = origin.get("forum_post_id") if kind == "forum_post" else origin.get("thread_id") if kind == "thread" else origin.get("channel_id")
+    if not isinstance(destination, str) or not destination.isdigit() or len(destination) < 15:
+        raise ValueError("explicit originating Discord channel/thread ID required")
+    return {"platform": "discord", "chat_id": destination, "surface": kind, "origin": dict(origin), "ready": True}
+
+
+def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: str | None = None, origin: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Return the concise, evidence-aware object Quant can present."""
     if not isinstance(result, ResearchResult):
         result = ResearchResult.from_dict(result)
@@ -149,7 +162,7 @@ def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: st
         "discord_text": text,
         "presentation_truncated": presentation_truncated,
         "discord_chunks": [] if silent else discord_chunks(text),
-        "delivery": {"platform": "discord", "chat_id": channel_id, "surface": "parent", "silent": silent, "ready": channel_id is not None},
+        "delivery": {**delivery_destination(channel_id, origin), "silent": silent},
         "workflow": result.workflow,
         "status": result.status.value,
         "strategy": result.metadata.strategy_name,

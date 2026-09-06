@@ -12,7 +12,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["RSS cursor and video dedupe"], "cheap_semantic": ["claim extraction"], "strong_reasoning": ["corroboration synthesis"], "paid_external_data": ["Supadata transcript when needed"]}
+      "model_lanes": {
+        "deterministic": [
+          "RSS cursor and video dedupe"
+        ],
+        "cheap_semantic": [
+          "claim extraction"
+        ],
+        "strong_reasoning": [
+          "corroboration synthesis"
+        ],
+        "paid_external_data": [
+          "Supadata transcript when needed"
+        ]
+      },
+      "runner_workflow": "cava"
     },
     {
       "key": "quant.crypto_futures_scan",
@@ -23,18 +37,46 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["top-100 funnel"], "cheap_semantic": ["none"], "strong_reasoning": ["final thesis only"], "paid_external_data": ["market and derivatives feeds"]}
+      "model_lanes": {
+        "deterministic": [
+          "top-100 funnel"
+        ],
+        "cheap_semantic": [
+          "none"
+        ],
+        "strong_reasoning": [
+          "final thesis only"
+        ],
+        "paid_external_data": [
+          "market and derivatives feeds"
+        ]
+      },
+      "runner_workflow": "crypto"
     },
     {
       "key": "quant.portfolio_review",
       "old_job": "quant.weekly_portfolio_review",
       "command": "nave portfolio review",
-      "schedule": "0 10 * * 1",
+      "schedule": "0 10 * * *",
       "timezone": "America/Argentina/Buenos_Aires",
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["state and threshold checks"], "cheap_semantic": ["new-information extraction"], "strong_reasoning": ["thesis review"], "paid_external_data": ["none declared"]}
+      "model_lanes": {
+        "deterministic": [
+          "state and threshold checks"
+        ],
+        "cheap_semantic": [
+          "new-information extraction"
+        ],
+        "strong_reasoning": [
+          "thesis review"
+        ],
+        "paid_external_data": [
+          "none declared"
+        ]
+      },
+      "runner_workflow": "portfolio"
     },
     {
       "key": "quant.ism_release",
@@ -45,7 +87,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["industry mapping"], "cheap_semantic": ["company evidence extraction"], "strong_reasoning": ["candidate synthesis"], "paid_external_data": ["official ISM/FMP data"]}
+      "model_lanes": {
+        "deterministic": [
+          "industry mapping"
+        ],
+        "cheap_semantic": [
+          "company evidence extraction"
+        ],
+        "strong_reasoning": [
+          "candidate synthesis"
+        ],
+        "paid_external_data": [
+          "official ISM/FMP data"
+        ]
+      },
+      "runner_workflow": "ism"
     },
     {
       "key": "quant.political_disclosures",
@@ -56,7 +112,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["normalization and dedupe"], "cheap_semantic": ["none"], "strong_reasoning": ["candidate provenance review"], "paid_external_data": ["official disclosure sources"]}
+      "model_lanes": {
+        "deterministic": [
+          "normalization and dedupe"
+        ],
+        "cheap_semantic": [
+          "none"
+        ],
+        "strong_reasoning": [
+          "candidate provenance review"
+        ],
+        "paid_external_data": [
+          "official disclosure sources"
+        ]
+      },
+      "runner_workflow": "disclosures"
     },
     {
       "key": "quant.price_watch",
@@ -67,7 +137,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["price threshold comparison"], "cheap_semantic": ["zone context only"], "strong_reasoning": ["only after material change"], "paid_external_data": ["none declared"]}
+      "model_lanes": {
+        "deterministic": [
+          "price threshold comparison"
+        ],
+        "cheap_semantic": [
+          "zone context only"
+        ],
+        "strong_reasoning": [
+          "only after material change"
+        ],
+        "paid_external_data": [
+          "none declared"
+        ]
+      },
+      "runner_workflow": "watch"
     },
     {
       "key": "quant.memecoin_research",
@@ -78,7 +162,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["feature and cache checks"], "cheap_semantic": ["narrative extraction"], "strong_reasoning": ["cohort interpretation"], "paid_external_data": ["cached Dune results first"]}
+      "model_lanes": {
+        "deterministic": [
+          "feature and cache checks"
+        ],
+        "cheap_semantic": [
+          "narrative extraction"
+        ],
+        "strong_reasoning": [
+          "cohort interpretation"
+        ],
+        "paid_external_data": [
+          "cached Dune results first"
+        ]
+      },
+      "runner_workflow": "memecoin"
     },
     {
       "key": "quant.options_research",
@@ -89,7 +187,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["IV/RV calculations"], "cheap_semantic": ["catalyst extraction"], "strong_reasoning": ["only after validation"], "paid_external_data": ["volatility provider"]}
+      "model_lanes": {
+        "deterministic": [
+          "IV/RV calculations"
+        ],
+        "cheap_semantic": [
+          "catalyst extraction"
+        ],
+        "strong_reasoning": [
+          "only after validation"
+        ],
+        "paid_external_data": [
+          "volatility provider"
+        ]
+      },
+      "runner_workflow": null
     },
     {
       "key": "quant.stock_short_scan",
@@ -100,7 +212,21 @@
       "enabled": false,
       "production_ready": false,
       "migration_status": "PREPARE_ONLY",
-      "model_lanes": {"deterministic": ["factor gates"], "cheap_semantic": ["earnings and catalyst extraction"], "strong_reasoning": ["final thesis only"], "paid_external_data": ["market and fundamentals feeds"]}
+      "model_lanes": {
+        "deterministic": [
+          "factor gates"
+        ],
+        "cheap_semantic": [
+          "earnings and catalyst extraction"
+        ],
+        "strong_reasoning": [
+          "final thesis only"
+        ],
+        "paid_external_data": [
+          "market and fundamentals feeds"
+        ]
+      },
+      "runner_workflow": "shorts"
     }
   ]
 }

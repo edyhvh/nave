@@ -20,14 +20,15 @@ from trading.stocks.operational_calendar import operational_now
 COMMANDS = {
     "cava": ("intel", "cava", "daily"),
     "watch": ("portfolio", "watch"),
-    "portfolio": ("portfolio", "review", "--refresh-ledger"),
+    "portfolio": ("portfolio", "review"),
     "ism": ("portfolio", "ism"),
     "disclosures": ("disclosures", "sync"),
     "crypto": ("crypto", "futures", "scan"),
     "memecoin": ("memecoin", "discover"),
+    "shorts": ("stocks", "short", "scan"),
 }
 WORKFLOWS = {"cava": "intel.cava.daily", "watch": "portfolio.watch", "portfolio": "portfolio.review",
-             "ism": "portfolio.ism", "disclosures": "disclosures.sync", "crypto": "crypto.futures.scan", "memecoin": "memecoin.discover"}
+             "ism": "portfolio.ism", "disclosures": "disclosures.sync", "crypto": "crypto.futures.scan", "memecoin": "memecoin.discover", "shorts": "stocks.short.scan"}
 
 
 def run(workflow: str, *, state_dir: Path, channel_id: str, input_file: Path | None = None,
@@ -41,7 +42,7 @@ def run(workflow: str, *, state_dir: Path, channel_id: str, input_file: Path | N
     if workflow == "memecoin" and (input_file is None or not input_file.is_file()):
         raise ValueError("memecoin requires an explicit frozen snapshot file")
     command = [sys.executable, "-m", "cli.main", *COMMANDS[workflow], "--state-dir", str(state_dir.resolve()), "--json"]
-    if workflow == "memecoin":
+    if workflow in {"memecoin", "shorts"} and input_file is not None:
         command.extend(["--input-file", str(input_file.resolve())])
     started = datetime.now(UTC)
     try:
