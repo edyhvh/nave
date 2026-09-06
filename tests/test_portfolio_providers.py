@@ -1,5 +1,8 @@
 from datetime import UTC, datetime
 
+import pandas as pd
+import pytest
+
 from research.portfolio_providers import PortfolioContextProvider, load_current_ism_inputs
 from trading.stocks.ism_scraper import ISMIndustryRanking, ISMReport
 
@@ -60,3 +63,26 @@ def test_portfolio_context_uses_openbb_history_and_keeps_missing_fundamentals_tr
     assert result["AAPL"]["market_state"]["availability"] == "KNOWN"
     assert result["AAPL"]["technical_condition"] == "healthy"
     assert result["AAPL"]["company_information"]["unavailable_reason"] == "provider offline"
+
+
+@pytest.mark.parametrize("index", [
+    pd.DatetimeIndex(["2026-09-03", "2026-09-04"]),
+    pd.DatetimeIndex(["2026-09-03", "2026-09-04"], tz="America/New_York"),
+])
+def test_daily_fallback_preserves_observation_date_with_aware_timestamp(index):
+    from research.portfolio import fresh_timestamp
+
+    class Prices:
+        def fetch_daily_closes(self, *_args, **_kwargs):
+            return {"BE": pd.Series([100.0, 110.0], index=index)}
+
+    provider = PortfolioContextProvider(history_fetcher=lambda *_: {}, price_provider=Prices())
+    series, source, observed, retrieved = provider._history("BE", NOW)
+    assert len(series) == 2 and source == "repo YFinancePriceProvider"
+    timestamp = datetime.fromisoformat(observed)
+    assert timestamp.tzinfo is not None
+    assert timestamp.date() == index[-1].date()
+    assert observed != retrieved
+    assert retrieved == NOW.isoformat()
+    assert fresh_timestamp(observed, NOW)
+    assert not fresh_timestamp(observed, datetime(2026, 9, 10, tzinfo=UTC))

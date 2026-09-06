@@ -228,7 +228,10 @@ class PortfolioContextProvider:
             series = rows.get(ticker.upper(), pd.Series(dtype=float))
             if not series.empty:
                 series = series.astype(float)
-                return series, "repo YFinancePriceProvider", series.index[-1].isoformat(), now.isoformat()
+                # Daily fallback indices are often timezone-naive calendar labels.
+                # Apply the same UTC date-label convention as OpenBB above; never
+                # substitute retrieval time for the historical observation date.
+                return series, "repo YFinancePriceProvider", _timestamp_text(series.index[-1]), now.isoformat()
         except Exception:
             pass
         return pd.Series(dtype=float), "unavailable", None, None
