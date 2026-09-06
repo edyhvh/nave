@@ -71,7 +71,7 @@ def test_sync_deduplicates_and_preserves_source_provenance(tmp_path):
         ],
         now=NOW,
     )
-    assert first.status is ResearchStatus.SETUP_FOUND
+    assert first.status is ResearchStatus.INSUFFICIENT_EVIDENCE
     assert first.payload["fetched_total"] == 2
     assert {row["source_family"] for row in first.payload["records"]} == {"congress", "executive"}
     assert first.payload["portfolio_candidate_consumed"] is False
@@ -127,7 +127,7 @@ def test_congress_and_executive_provider_failures_are_isolated(tmp_path):
     result = DisclosureWorkflow(store=ResearchStore(tmp_path)).sync_files(
         congress_provider=Failing(), executive_provider=Executive(), now=NOW
     )
-    assert result.status is ResearchStatus.SETUP_FOUND
+    assert result.status is ResearchStatus.INSUFFICIENT_EVIDENCE
     assert result.payload["records"][0]["source_family"] == "executive"
     assert any("congress provider unavailable" in warning for warning in result.warnings)
 
@@ -144,7 +144,7 @@ def test_official_house_provider_returns_filing_level_evidence():
         http=httpx.Client(transport=httpx.MockTransport(handler)),
     )
     rows = provider.fetch()
-    assert rows[0]["subject"] == "Nancy Pelosi"
+    assert rows[0]["subject"] == "UNKNOWN"
     assert rows[0]["transaction_type"] == "FILING"
     assert rows[0]["source_url"].endswith("20033725.pdf")
 
@@ -154,6 +154,24 @@ def test_official_oge_provider_preserves_trump_source_url():
         document_urls=("https://extapps2.oge.gov/201/Trump-05.08.2026.pdf",)
     )
     row = provider.fetch()[0]
-    assert row["subject"] == "Donald Trump"
+    assert row["subject"] == "UNKNOWN"
     assert row["asset"] == "PUBLIC_FINANCIAL_DISCLOSURE"
-    assert row["disclosure_date"] == "2026-05-08"
+    assert row["disclosure_date"] is None
+
+
+def test_house_last_name_collision_does_not_invent_filer():
+    client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200,
+        text='<a href="/a.pdf">Nancy Pelosi</a><a href="/b.pdf">Other Pelosi</a>')))
+    rows = OfficialHouseDisclosureProvider(http=client).fetch()
+    assert len(rows) == 2
+    assert all(row['subject'] == 'UNKNOWN' and row['owner'] is None and row['confidence'] is None for row in rows)
+
+
+def test_transactions_sharing_filing_are_distinct_and_explicit_amendment_survives(tmp_path):
+    workflow = DisclosureWorkflow(store=ResearchStore(tmp_path))
+    result = workflow.sync_payload(congress_records=[congress_record(symbol='ABC'), congress_record(symbol='XYZ')], now=NOW)
+    assert len(result.payload['records']) == 2
+    assert len({row['filing_id'] for row in result.payload['records']}) == 1
+    assert len({row['transaction_id'] for row in result.payload['records']}) == 2
+    amended = normalize_congress(congress_record(link='https://official.example/amended', supersedes_filing_id='https://official.example/congress/1'))
+    assert amended.supersedes_filing_id == 'https://official.example/congress/1'

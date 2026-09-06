@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import json
 import uuid
 from dataclasses import asdict, dataclass
@@ -35,6 +36,9 @@ class NormalizedDisclosure:
     timeliness: str = "UNKNOWN"
     filing_lag_days: int | None = None
     unique_id: str = ""
+    filing_id: str | None = None
+    transaction_id: str | None = None
+    supersedes_filing_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self) | {
@@ -78,8 +82,8 @@ def _lag(transaction_date: str | None, disclosure_date: str | None) -> tuple[int
 
 def _stable_id(record: Mapping[str, Any], fields: Mapping[str, Any]) -> str:
     source = _clean(record.get("link") or record.get("source_url") or record.get("source_reference"))
-    if source:
-        return source
+    fields = {**fields, "source": source, "source_transaction_id": record.get("transaction_id"),
+              "supersedes_filing_id": record.get("supersedes_filing_id")}
     canonical = "|".join(str(fields.get(key) or "").strip().lower() for key in sorted(fields))
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -90,13 +94,13 @@ def _normalize(
     if family is SourceFamily.CONGRESS:
         first = _clean(record.get("firstName")) or ""
         last = _clean(record.get("lastName")) or ""
-        subject = (f"{first} {last}").strip() or _clean(record.get("politician")) or "Unknown"
+        subject = (f"{first} {last}").strip() or _clean(record.get("politician") or record.get("subject")) or "UNKNOWN"
         asset = _clean(record.get("symbol") or record.get("assetDescription") or record.get("asset_description") or record.get("asset"))
         tx_type = _clean(record.get("type") or record.get("transactionType") or record.get("transaction_type"))
         owner = _clean(record.get("owner"))
         source = _clean(record.get("link") or record.get("source_url"))
     else:
-        subject = _clean(record.get("subject") or record.get("filer") or record.get("name")) or "Unknown"
+        subject = _clean(record.get("subject") or record.get("filer") or record.get("name")) or "UNKNOWN"
         asset = _clean(record.get("asset") or record.get("symbol") or record.get("asset_description") or record.get("assetDescription"))
         tx_type = _clean(record.get("transaction_type") or record.get("transactionType") or record.get("type"))
         owner = _clean(record.get("owner"))
@@ -126,10 +130,13 @@ def _normalize(
         amount_range=fields["amount_range"],
         source_url_reference=source or "unlinked-official-record",
         source_family=family,
-        confidence=float(record["confidence"]) if isinstance(record.get("confidence"), (int, float)) else None,
+        confidence=float(record["confidence"]) if isinstance(record.get("confidence"), (int, float)) and not isinstance(record.get("confidence"), bool) and math.isfinite(record["confidence"]) and 0 <= record["confidence"] <= 1 else None,
         timeliness=timeliness,
         filing_lag_days=lag,
         unique_id=_stable_id(record, fields),
+        filing_id=_clean(record.get("filing_id")) or source,
+        transaction_id=_clean(record.get("transaction_id")) or (_stable_id(record, fields) if _date(transaction_date) else None),
+        supersedes_filing_id=_clean(record.get("supersedes_filing_id")),
     )
 
 
@@ -198,7 +205,7 @@ class DisclosureWorkflow:
         ]
         result = ResearchResult(
             workflow="disclosures.sync",
-            status=ResearchStatus.SETUP_FOUND if new_records else ResearchStatus.NO_SETUP,
+            status=ResearchStatus.INSUFFICIENT_EVIDENCE if new_records else ResearchStatus.NO_SETUP,
             metadata=RunMetadata(
                 strategy_name="political-disclosures-normalization",
                 strategy_version="1.0.0",
@@ -212,6 +219,7 @@ class DisclosureWorkflow:
                 "records": [record.to_dict() for record in new_records],
                 "fetched_total": len(unique),
                 "new_total": len(new_records),
+                "record_semantics": "DISCLOSURE_RECORDS_NOT_STRATEGY_SIGNALS",
                 "source_families": [family.value for family in SourceFamily],
                 "portfolio_candidate_consumed": False,
                 "disclosure_is_not_a_buy_signal": True,

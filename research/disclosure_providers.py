@@ -58,14 +58,15 @@ class OfficialHouseDisclosureProvider:
                     continue
                 output.append(
                     {
-                        "subject": subject,
-                        "owner": "filer/household",
+                        "subject": "UNKNOWN",
+                        "requested_subject": subject,
+                        "owner": None,
                         "asset": "FINANCIAL_DISCLOSURE_FILING",
                         "transaction_type": "FILING",
                         "transaction_date": None,
                         "disclosure_date": None,
                         "source_url": link,
-                        "confidence": 0.95,
+                        "confidence": None,
                         "provider": "official_house_disclosures",
                     }
                 )
@@ -98,14 +99,15 @@ class OfficialOGEExecutiveDisclosureProvider:
             urls = [url for url in _links(response.text, base_url=self.index_url) if needle in url.lower()]
         return [
             {
-                "subject": self.subject,
-                "owner": "filer/household",
+                "subject": "UNKNOWN",
+                "requested_subject": self.subject,
+                "owner": None,
                 "asset": "PUBLIC_FINANCIAL_DISCLOSURE",
                 "transaction_type": "ANNUAL_REPORT",
                 "transaction_date": None,
-                "disclosure_date": _date_from_url(url),
+                "disclosure_date": None,
                 "source_url": url,
-                "confidence": 0.95,
+                "confidence": None,
                 "provider": "official_oge",
             }
             for url in urls
@@ -114,8 +116,9 @@ class OfficialOGEExecutiveDisclosureProvider:
 
 
 def _date_from_url(value: str) -> str | None:
-    match = re.search(r"(\d{2})[.-](\d{2})[.-](\d{4})", value)
-    return f"{match.group(3)}-{match.group(1)}-{match.group(2)}" if match else None
+    # A filename does not establish official filing-date semantics.
+    return None
+
 
 
 __all__ = ["OfficialHouseDisclosureProvider", "OfficialOGEExecutiveDisclosureProvider"]
