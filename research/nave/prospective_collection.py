@@ -285,8 +285,11 @@ class ProspectiveCollector:
         db = sqlite3.connect(self.data_root / "collector.sqlite3", check_same_thread=False)
         db.execute("PRAGMA journal_mode=WAL")
         # The live dedupe index outgrows SQLite's default ~2 MiB page cache.
-        # Bound the writer cache at 128 MiB; retain FULL durability and schema.
-        db.execute("PRAGMA cache_size=-131072")
+        # Bound the writer cache at 512 MiB, with at most 2 GiB of demand-paged
+        # mapped reads. This avoids repeated pread/index-page churn in the
+        # growing dedupe database. FULL durability and schema are unchanged.
+        db.execute("PRAGMA cache_size=-524288")
+        db.execute("PRAGMA mmap_size=2147483648")
         db.execute(
             """CREATE TABLE IF NOT EXISTS events (
                 event_key TEXT PRIMARY KEY,
