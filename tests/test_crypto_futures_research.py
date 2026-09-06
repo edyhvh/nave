@@ -40,7 +40,7 @@ def replay(*candidates):
             "observation_timestamp": NOW.isoformat(),
             "source": "fixture",
             "source_timestamp": NOW.isoformat(),
-            "universe_members_deduplicated": [{"symbol": item["symbol"]} for item in candidates],
+            "universe_members_deduplicated": [{"symbol": item["symbol"], "canonical_asset_id": item["canonical_asset_id"]} for item in candidates],
             "candidates": list(candidates),
         }],
         "window": {"start": NOW.isoformat(), "end": NOW.isoformat()},
@@ -106,7 +106,7 @@ def test_evaluation_and_missed_moves_are_separate_audits(tmp_path):
     )
     evaluation = workflow.evaluate(
         scan_result=scan,
-        outcomes=[{"asset": "SELECTED", "forward_return": 0.12, "regime": "neutral"}],
+        outcomes=[{"asset": "SELECTED", "canonical_asset_id": "selected", "forward_return": 0.12, "regime": "neutral"}],
     )
     assert evaluation.status is ResearchStatus.STRATEGY_NOT_VALIDATED
     assert evaluation.payload["metrics"]["hit_rate"] == 1.0
@@ -114,7 +114,7 @@ def test_evaluation_and_missed_moves_are_separate_audits(tmp_path):
         scan_result=scan,
         outcomes=[
             {
-                "asset": "MISSED",
+                "asset": "MISSED", "canonical_asset_id": "missed",
                 "forward_return": 0.40,
                 "universe_membership": True,
                 "information_available_at": "2026-09-04T12:01:00+00:00",
@@ -122,7 +122,7 @@ def test_evaluation_and_missed_moves_are_separate_audits(tmp_path):
             }
         ],
     )
-    assert missed.status is ResearchStatus.ACTION_REQUIRED
+    assert missed.status is ResearchStatus.NO_SETUP
     row = missed.payload["missed_moves"][0]
     assert row["rejection_filters"] == ["momentum_or_rank", "derivatives_liquidity", "market_structure_or_setup"]
     assert row["information_existed_before_move"] == "AFTER_DECISION"
@@ -170,3 +170,32 @@ def test_missed_move_analysis_does_not_treat_unavailable_information_as_known():
         [{"asset": "ALT", "forward_return": 0.3, "information_available_at": None}],
     )
     assert rows[0]["information_existed_before_move"] == "UNKNOWN"
+
+
+def test_replay_clock_comes_from_snapshot_even_if_caller_supplies_today(tmp_path):
+    result = CryptoFuturesWorkflow(store=ResearchStore(tmp_path)).scan_payload(
+        replay(candidate()), now=NOW + timedelta(days=2))
+    assert result.metadata.decision_time == NOW
+    assert result.metadata.input_available_at == NOW
+
+
+def test_explicit_cot_override_is_honored():
+    funnel, selected, _ = build_funnel(replay(candidate()), macro_context=macro(),
+        cot_context={'regime': 'bullish', 'status': 'OVERRIDE', 'override': True})
+    assert funnel['cot_regime'] == 'bullish'
+    assert len(selected) == 1
+
+
+def test_invalid_availability_cannot_be_before_move():
+    for invalid in ['bad', '2026-09-04T12:00:00']:
+        rows = analyze_missed_moves(replay(candidate(rank=50)), [{
+            'canonical_asset_id': 'alt', 'forward_return': .4, 'decision_time': NOW.isoformat(),
+            'information_available_at': invalid}])
+        assert rows[0]['information_existed_before_move'] == 'UNKNOWN'
+
+
+def test_ticker_only_outcome_never_joins_canonical_selection(tmp_path):
+    workflow = CryptoFuturesWorkflow(store=ResearchStore(tmp_path))
+    scan = workflow.scan_payload(replay(candidate()), macro_context=macro(), cot_regime='neutral')
+    result = workflow.evaluate(scan_result=scan, outcomes=[{'symbol': 'ALT', 'forward_return': .5}])
+    assert result.payload['metrics']['evaluated_count'] == 0

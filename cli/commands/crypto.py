@@ -62,7 +62,7 @@ def futures_scan(
             cadence=cadence,
             universe_size=universe_size,
             cot_regime=cot_regime or "unknown",
-            macro_context=workflow.store.load_context("cava"),
+            macro_context=None,
         )
     else:
         if start or end:

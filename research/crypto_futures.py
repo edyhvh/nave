@@ -9,6 +9,8 @@ trade alert.
 from __future__ import annotations
 
 import uuid
+import math
+from dataclasses import replace
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,13 +40,15 @@ def _parse_time(value: Any, default: datetime | None) -> datetime | None:
 
 
 def _asset_key(candidate: Mapping[str, Any]) -> str:
-    return str(
-        candidate.get("canonical_asset_id")
-        or candidate.get("contract_address")
-        or candidate.get("symbol")
-        or candidate.get("asset")
-        or "unknown"
-    ).lower()
+    canonical = candidate.get("canonical_asset_id")
+    if canonical:
+        return "canonical:" + str(canonical).lower()
+    chain, address = candidate.get("chain_id"), candidate.get("contract_address")
+    if chain and address:
+        return f"{chain}:{address}"
+    key = candidate.get("asset_key")
+    return str(key) if key and ":" in str(key) else "unknown"
+
 
 
 def _direction(candidate: Mapping[str, Any]) -> str | None:
@@ -87,7 +91,7 @@ def _candidate_evidence(
             ),
             point_in_time=PointInTime(
                 event_time=observation_time,
-                available_at=_parse_time(features.get("data_timestamp"), observation_time),
+                available_at=_parse_time(features.get("data_timestamp"), None),
                 decision_time=decision_time,
             ),
             metadata={"asset": _asset_key(candidate)},
@@ -124,7 +128,7 @@ def build_funnel(
     ).lower()
     if effective_cot_regime not in {"bullish", "bearish", "neutral"}:
         effective_cot_regime = "unknown"
-    if cot_context is not None and cot_context.get("status") != "OK":
+    if cot_context is not None and cot_context.get("status") not in {"OK", "OVERRIDE"}:
         effective_cot_regime = "unknown"
     for observation in observations:
         if not isinstance(observation, Mapping):
@@ -153,7 +157,7 @@ def build_funnel(
                 confidence=1.0,
                 point_in_time=PointInTime(
                     event_time=observation_time,
-                    available_at=_parse_time(observation.get("source_timestamp"), observation_time)
+                    available_at=_parse_time(observation.get("source_timestamp"), None)
                     if observation.get("source_timestamp")
                     else None,
                     decision_time=observation_time,
@@ -173,7 +177,7 @@ def build_funnel(
             macro_pass = macro_checks[-1]
             features = raw_candidate.get("features") if isinstance(raw_candidate.get("features"), Mapping) else {}
             available = _parse_time(features.get("data_timestamp"), None)
-            if available is None or available > observation_time:
+            if _asset_key(raw_candidate) == "unknown" or available is None or available > observation_time:
                 counts["invalid_observations"] += 1
                 continue
             cot_pass = cot_regime_passes(effective_cot_regime, direction)
@@ -225,6 +229,7 @@ def build_funnel(
     funnel = {
         **counts,
         "cot_regime": effective_cot_regime,
+        "stage_semantics": {"momentum_pass": "ranking_state ELIGIBLE", "derivatives_pass": "liquidity state PASS"},
         "cot_scope": "market/regime context; no per-altcoin COT signal",
         "cot_context_status": (cot_context or {}).get("status", "MANUAL_OR_UNKNOWN"),
         "cot_source": (cot_context or {}).get("source"),
@@ -243,7 +248,7 @@ def analyze_missed_moves(
 ) -> list[dict[str, Any]]:
     """Identify large later moves without reading future data into the scan."""
     selected = {
-        str(candidate.get("asset_key") or candidate.get("asset") or "").lower()
+        _asset_key(candidate)
         for candidate in (scan_payload.get("final_candidates") or [])
         if isinstance(candidate, Mapping)
     }
@@ -263,17 +268,17 @@ def analyze_missed_moves(
             move = float(forward_return)
         except (TypeError, ValueError):
             continue
-        key = str(outcome.get("asset_key") or outcome.get("asset") or outcome.get("symbol") or "").lower()
-        if move < move_threshold or key in selected:
+        key = _asset_key(outcome)
+        if not math.isfinite(move) or move < move_threshold or key in selected:
             continue
-        candidate = candidate_by_key.get(key)
+        candidate = candidate_by_key.get(key) if key != "unknown" else None
         decision_time = _parse_time(
             (candidate or {}).get("observation_timestamp") or outcome.get("decision_time"),
-            datetime.now(UTC),
+            None,
         )
         available_at_raw = outcome.get("information_available_at")
-        available_at = _parse_time(available_at_raw, decision_time) if available_at_raw else None
-        if available_at is None:
+        available_at = _parse_time(available_at_raw, None) if available_at_raw else None
+        if available_at is None or decision_time is None or key == "unknown":
             information_state = "UNKNOWN"
         else:
             information_state = "BEFORE_MOVE" if available_at <= decision_time else "AFTER_DECISION"
@@ -293,7 +298,7 @@ def analyze_missed_moves(
             {
                 "asset": outcome.get("asset") or outcome.get("symbol"),
                 "asset_key": key,
-                "decision_time": decision_time.isoformat(),
+                "decision_time": decision_time.isoformat() if decision_time else None,
                 "later_move": move,
                 "information_existed_before_move": information_state,
                 "universe_membership": outcome.get("universe_membership", candidate is not None),
@@ -351,12 +356,22 @@ class CryptoFuturesWorkflow:
         mode: str = "REPLAY",
         now: datetime | None = None,
     ) -> ResearchResult:
+        observation_times = [_parse_time(row.get("observation_timestamp"), None)
+                             for row in replay_payload.get("observations", []) if isinstance(row, Mapping)]
+        known_times = [stamp for stamp in observation_times if stamp is not None]
+        if mode == "REPLAY":
+            if not known_times:
+                raise ValueError("REPLAY requires a historical observation timestamp")
+            now = max(known_times)
+        elif now is None:
+            now = max(known_times) if known_times else datetime.now(UTC)
         funnel, candidates, evidence = build_funnel(
             replay_payload,
             macro_context=macro_context,
             cot_regime=cot_regime,
             cot_context=cot_context,
         )
+        evidence = [replace(ref, point_in_time=replace(ref.point_in_time, decision_time=now)) for ref in evidence]
         warnings = []
         if not funnel["macro_context_validated"]:
             warnings.append("validated Cava/macro context unavailable; final candidates are suppressed")
@@ -488,7 +503,7 @@ class CryptoFuturesWorkflow:
         hit_threshold: float = 0.0,
     ) -> ResearchResult:
         selected = {
-            str(item.get("asset_key") or item.get("asset") or "").lower()
+            _asset_key(item)
             for item in scan_result.payload.get("final_candidates", [])
             if isinstance(item, Mapping)
         }
@@ -496,12 +511,14 @@ class CryptoFuturesWorkflow:
         for outcome in outcomes:
             if not isinstance(outcome, Mapping):
                 continue
-            key = str(outcome.get("asset_key") or outcome.get("asset") or outcome.get("symbol") or "").lower()
-            if key not in selected:
+            key = _asset_key(outcome)
+            if key == "unknown" or key not in selected:
                 continue
             try:
                 forward_return = float(outcome["forward_return"])
             except (KeyError, TypeError, ValueError):
+                continue
+            if not math.isfinite(forward_return):
                 continue
             evaluated.append({**dict(outcome), "asset_key": key, "hit": forward_return >= hit_threshold})
         hits = sum(bool(item["hit"]) for item in evaluated)
@@ -553,7 +570,7 @@ class CryptoFuturesWorkflow:
         missed = analyze_missed_moves(scan_result.payload, outcomes, move_threshold=move_threshold)
         result = self._result(
             workflow="crypto.futures.missed_moves",
-            status=ResearchStatus.ACTION_REQUIRED if missed else ResearchStatus.NO_SETUP,
+            status=ResearchStatus.NO_SETUP,
             payload={
                 "strategy": STRATEGY_NAME,
                 "strategy_version": scan_result.metadata.strategy_version,
