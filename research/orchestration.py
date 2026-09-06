@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -103,6 +102,25 @@ def delivery_destination(channel_id: str | None, origin: Mapping[str, Any] | Non
     return {"platform": "discord", "chat_id": destination, "surface": kind, "origin": dict(origin), "ready": True}
 
 
+def _concise(value: Any) -> str:
+    """Bound human output; complete structured data remains in the journal."""
+    if isinstance(value, Mapping):
+        fields = ("ticker", "symbol", "asset_key", "mint", "subject", "status", "action", "condition", "reason", "claim", "text", "value", "return_basis")
+        facts = [f"{key}: {str(value[key])[:180]}" for key in fields if value.get(key) is not None and not isinstance(value[key], (dict, list))]
+        if not facts:
+            facts = [f"{key}: {str(item)[:120]}" for key, item in list(value.items())[:6] if not isinstance(item, (dict, list))]
+        return "; ".join(facts) or "Detalle disponible en el resultado guardado."
+    return str(value)[:240]
+
+
+def _section(value: Any) -> str:
+    rows = value if isinstance(value, list) else [value]
+    text = "\n".join("- " + _concise(row) for row in rows[:5])
+    if len(rows) > 5:
+        text += f"\n- {len(rows) - 5} registros adicionales en el resultado guardado."
+    return text
+
+
 def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: str | None = None, origin: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Return the concise, evidence-aware object Quant can present."""
     if not isinstance(result, ResearchResult):
@@ -141,7 +159,7 @@ def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: st
                        ("records", "Registros"), ("rejected_candidates", "Rechazos"),
                        ("metrics", "Métricas"), ("unparsed_responsibilities", "Responsabilidades pendientes")):
         if payload.get(key):
-            lines.append(f"\n**{title}**\n" + json.dumps(payload[key], ensure_ascii=False, default=str))
+            lines.append(f"\n**{title}**\n" + _section(payload[key]))
     for key in ("summary", "reason", "corroboration_status", "evidence_quality"):
         if payload.get(key):
             lines.append(f"{key}: {payload[key]}")

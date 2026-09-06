@@ -33,3 +33,13 @@ def test_unicode_chunks_and_silence_never_hide_provider_failure():
     unavailable = replace(silent, status=ResearchStatus.DATA_UNAVAILABLE)
     assert present_result(unavailable)["discord_text"].startswith("STOCKS:")
     assert present_result(unavailable)["delivery"]["ready"] is False
+
+
+def test_human_view_is_bounded_while_full_record_survives():
+    rows = [{"symbol": "ABC", "reason": "watch crossed", "private_detail": "x" * 5000}] * 20
+    view = present_result(result(events=rows))
+    assert view["payload"]["events"] == rows
+    assert "symbol: ABC" in view["discord_text"]
+    assert "15 registros adicionales" in view["discord_text"]
+    assert "private_detail" not in view["discord_text"]
+    assert len(view["discord_text"]) < 2000

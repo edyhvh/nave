@@ -17,7 +17,7 @@ research_app = ProfessionalTyper(help="Inspect read-only structured research res
 
 @research_app.command("run")
 def run_quant(
-    workflow: str = typer.Option(..., "--workflow", help="cava, watch, portfolio, ism, disclosures, crypto, or memecoin"),
+    workflow: str = typer.Option(..., "--workflow", help="cava, watch, portfolio, ism, disclosures, crypto, memecoin, or shorts"),
     state_dir: Path = typer.Option(..., "--state-dir"),
     channel_id: str = typer.Option(..., "--channel-id"),
     input_file: Path | None = typer.Option(None, "--input-file", exists=True, readable=True),
@@ -73,9 +73,10 @@ def report(
 def present(
     json_file: Path = typer.Option(..., "--json-file", exists=True, readable=True),
     channel_id: str | None = typer.Option(None, "--channel-id", help="Explicit parent Discord channel; never inferred from origin."),
+    origin_file: Path | None = typer.Option(None, "--origin-file", exists=True, readable=True, help="Explicit interactive Discord origin JSON; omitted for scheduled reports."),
     discord: bool = typer.Option(False, "--discord", help="Emit only the Spanish report for Hermes' chunking Discord adapter."),
 ) -> None:
     """Render the concise evidence-aware view intended for Quant delivery."""
     result = ResearchResult.from_dict(json.loads(json_file.read_text(encoding="utf-8")))
-    view = present_result(result, channel_id=channel_id)
-    typer.echo(view["discord_text"] if discord else json.dumps(view, indent=2, default=str))
+    view = present_result(result, channel_id=channel_id, origin=json.loads(origin_file.read_text()) if origin_file else None)
+    typer.echo(view["discord_text"] if discord else json.dumps(view, indent=2, allow_nan=False))

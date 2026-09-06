@@ -148,13 +148,13 @@ Read-only options research:
 ```bash
 nave options crypto scan --input-file snapshots.json --json
 nave options stocks scan --input-file snapshots.json --json
-nave strategy evaluate crypto_iv_rv_defined_risk --domain crypto --input-file outcomes.json --json
+nave strategy evaluate crypto_iv_rv_defined_risk --domain crypto --input-file outcomes.json --scan-file scan.json --json
 ```
 
 The options research commands only consume supplied snapshots/outcomes. They
 record point-in-time availability, keep crypto (BTC/ETH) and equity options
-separate, and classify strategies as `EXPERIMENTAL`, `PROMISING`, `VALIDATED`,
-or `REJECTED`. They never create orders or broker actions.
+separate. Automatic evaluation remains `EXPERIMENTAL`, with metrics explicitly
+`GROSS_UNCOSTED`; it cannot establish `VALIDATED` or executable edge. They never create orders or broker actions.
 
 ## 3) Python Module CLIs
 
@@ -337,8 +337,6 @@ Direct uvicorn:
 ```bash
 uvicorn --app-dir=backend app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-nave cot report
-```
 
 Weekly research + backtest workflow:
 
@@ -357,3 +355,24 @@ python scripts/setup_wallets.py
 python -m trading.crypto.client summary --wallet hermes
 nave trading run --strategy cot-weekly --paper --capital 2000
 ```
+
+## Research delivery and paid-data gates
+
+`nave research status --json` returns an explicitly typed result index; use
+`nave research report --json-file result.json` to validate a complete result.
+`nave research present --json-file result.json --channel-id ID` prepares a scheduled
+parent report. Interactive calls add `--origin-file origin.json` containing
+`origin_type` (`channel`, `thread`, `forum_post`) and the corresponding `channel_id`,
+`thread_id`, or `forum_post_id`; `message_id` and parent `channel_id` are preserved.
+Nothing in these commands sends to Discord.
+
+`nave research run --workflow shorts --input-file snapshots.json --state-dir STATE --channel-id ID`
+is the bounded shorts runner. Options has no runner or schedule.
+
+Dune materialization requires frozen SQL via `--query-file` and an explicit recent
+budget approval via `--budget-file` before any remote execution. No default approval
+or credit estimate exists. Cache identity includes SQL hash and row limit.
+Cava supports profile-scoped `SUPADATA_API_KEY`; missing transcript credentials or
+provider failure yields `DATA_UNAVAILABLE`. FRED gold corroboration is disabled
+because the formerly configured series returns 404. Current FRED retrievals do not
+claim historical vintage availability.
