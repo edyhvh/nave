@@ -123,6 +123,8 @@ def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: st
              f"Fecha de decisión: {result.metadata.decision_time.isoformat()}", action_es]
     for key, title in (("positions", "Posiciones"), ("events", "Alertas"),
                        ("final_candidates", "Candidatos"), ("candidates", "Candidatos"),
+                       ("selected", "Candidatos seleccionados"), ("claims", "Afirmaciones atribuidas"),
+                       ("macro_implications", "Contexto macro"), ("funnel", "Cobertura y filtros"),
                        ("records", "Registros"), ("rejected_candidates", "Rechazos"),
                        ("metrics", "Métricas"), ("unparsed_responsibilities", "Responsabilidades pendientes")):
         if payload.get(key):
@@ -137,11 +139,15 @@ def present_result(result: ResearchResult | Mapping[str, Any], *, channel_id: st
         lines.extend(f"{item.reference_id}: {item.citation or item.source} ({item.kind.value}; {item.point_in_time.availability})" for item in result.evidence)
     lines.append(f"ID de investigación: {result.metadata.run_id}. Ejecución deshabilitada.")
     text = "[SILENT]" if silent else "\n".join(lines)
+    presentation_truncated = len(text.encode("utf-16-le")) // 2 > 12000
+    if presentation_truncated:
+        text = "".join(discord_chunks(text, 11000)[:1]) + f"\n[Extracto: reporte extenso. JSON completo preservado; ID {result.metadata.run_id}. No operar sin revisar la evidencia completa.]"
     return {
         "result": result.to_dict(),
         "payload": payload,
         "evidence": [item.to_dict() for item in result.evidence],
         "discord_text": text,
+        "presentation_truncated": presentation_truncated,
         "discord_chunks": [] if silent else discord_chunks(text),
         "delivery": {"platform": "discord", "chat_id": channel_id, "surface": "parent", "silent": silent, "ready": channel_id is not None},
         "workflow": result.workflow,
