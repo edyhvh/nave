@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import asdict, dataclass
 
 
@@ -49,6 +50,8 @@ def check(
     """
     values = (credits_used, credits_included, checkpoint_used, estimate)
     reasons: list[str] = []
+    if any(not math.isfinite(value) for value in values) or (free_disk_gb is not None and not math.isfinite(free_disk_gb)):
+        reasons.append("non-finite budget input")
     if any(value < 0 for value in values):
         reasons.append("negative budget input")
     if credits_included <= 0:
